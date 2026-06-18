@@ -1,6 +1,6 @@
 {
-  "name": "Zalo Clone Chat",
-  "short_name": "Zalo Chat",
+  "name": "Chat Tho-Fi",
+  "short_name": "Tho-Fi",
   "description": "Ứng dụng nhắn tin gọi điện Real-time",
   "start_url": "/",
   "display": "standalone",
@@ -8,7 +8,7 @@
   "theme_color": "#0068ff",
   "icons": [
     {
-      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Icon_of_Zalo.svg/512px-Icon_of_Zalo.svg.png",
+      "src": "/tho_fi_icon.png",
       "sizes": "512x512",
       "type": "image/png"
     }

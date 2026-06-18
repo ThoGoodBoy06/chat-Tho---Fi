@@ -44,6 +44,11 @@ exports.register = async (req, res) => {
     const token = generateToken(user);
     res.status(201).json({ success: true, data: user, token });
   } catch (error) {
+    if (error.code === "P2002") {
+      return res
+        .status(400)
+        .json({ message: "Tên đăng nhập đã tồn tại, vui lòng chọn tên khác!" });
+    }
     console.error("!!! LỖI ĐĂNG KÝ:", error);
     res.status(500).json({ message: "Lỗi server", error: error.message });
   }
