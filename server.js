@@ -41,7 +41,7 @@ app.get("/", async (req, res) => {
     const userCount = await prisma.users.count();
     res.json({
       message: "🚀 Backend Chat App đang hoạt động tuyệt vời!",
-      database: "Đã kết nối SQL Server",
+      database: "Đã kết nối PostgreSQL", // Cập nhật cho đúng loại DB
       totalUsers: userCount,
     });
   } catch (error) {
