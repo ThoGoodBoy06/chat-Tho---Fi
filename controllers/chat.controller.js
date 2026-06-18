@@ -4,6 +4,37 @@ const prisma = new PrismaClient();
 
 const { v4: uuidv4 } = require("uuid");
 
+const { initializeApp, cert, getApps } = require("firebase-admin/app");
+const { getMessaging } = require("firebase-admin/messaging");
+const fs = require("fs");
+const path = require("path");
+
+// Khởi tạo Firebase Admin (Chỉ chạy 1 lần khi server khởi động)
+if (!getApps().length) {
+  try {
+    const keyPathJson = path.join(__dirname, "../firebase-key.json");
+    const keyPathTxt = path.join(__dirname, "../firebase-key");
+    let serviceAccount;
+
+    if (fs.existsSync(keyPathJson)) {
+      serviceAccount = require(keyPathJson);
+    } else if (fs.existsSync(keyPathTxt)) {
+      serviceAccount = JSON.parse(fs.readFileSync(keyPathTxt, "utf8"));
+    }
+
+    if (serviceAccount) {
+      initializeApp({
+        credential: cert(serviceAccount),
+      });
+      console.log("🔥 Firebase Admin khởi tạo thành công!");
+    } else {
+      console.warn("⚠️ Cảnh báo: Không tìm thấy file firebase-key. Thông báo đẩy sẽ bị tắt.");
+    }
+  } catch (error) {
+    console.error("❌ Lỗi khởi tạo Firebase Admin:", error.message);
+  }
+}
+
 // 1. Lấy danh sách đoạn chat của user hiện tại
 
 exports.getConversations = async (req, res) => {
