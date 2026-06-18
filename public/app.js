@@ -1716,18 +1716,28 @@ async function sendNativeNotification(msg) {
   }
   // 2. DÀNH CHO TRÌNH DUYỆT WEB (CHROME, SAFARI, EDGE TRÊN MÁY TÍNH & ĐIỆN THOẠI)
   else if ("Notification" in window && Notification.permission === "granted") {
-    const notification = new Notification(senderName, {
-      body: snippet,
-      icon: avatarUrl,
-    });
-    notification.onclick = () => {
-      window.focus(); // Đánh thức tab trình duyệt lên trên cùng
-      startChat(msg.senderId, senderName, avatarUrl);
-      const messagesTabNav = document.querySelector(
-        '.nav-item[title="Tin nhắn"]',
+    try {
+      const notification = new Notification(senderName, {
+        body: snippet,
+        icon: avatarUrl,
+      });
+      notification.onclick = () => {
+        window.focus(); // Đánh thức tab trình duyệt lên trên cùng
+        startChat(msg.senderId, senderName, avatarUrl);
+        const messagesTabNav = document.querySelector(
+          '.nav-item[title="Tin nhắn"]',
+        );
+        if (messagesTabNav) switchTab("tab-messages", messagesTabNav);
+      };
+    } catch (err) {
+      console.warn(
+        "Trình duyệt di động chặn Notification, chuyển sang dùng Toast.",
+        err,
       );
-      if (messagesTabNav) switchTab("tab-messages", messagesTabNav);
-    };
+      showNewMessageToast(msg);
+    }
+  } else {
+    showNewMessageToast(msg);
   }
 }
 
