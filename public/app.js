@@ -8,6 +8,21 @@ const API_URL = `${SERVER_URL}/api`;
 let isAppInBackground = false;
 document.addEventListener("visibilitychange", () => {
   isAppInBackground = document.visibilityState === "hidden";
+
+  if (!isAppInBackground) {
+    // 1. Kéo lại tin nhắn bị lỡ trong lúc trình duyệt ngủ đông (mất kết nối Socket)
+    if (typeof loadConversations === "function") loadConversations();
+    if (typeof reloadCurrentChat === "function" && currentConversationId)
+      reloadCurrentChat();
+
+    // 2. Dọn dẹp các thông báo Toast cũ bị kẹt
+    setTimeout(() => {
+      document.querySelectorAll(".new-message-toast").forEach((toast) => {
+        toast.classList.add("hiding");
+        setTimeout(() => toast.remove(), 300);
+      });
+    }, 4000);
+  }
 });
 
 // Lấy plugin Capacitor nếu đang ở môi trường build Native
@@ -56,6 +71,35 @@ function isChatAreaVisible() {
 
   return true;
 }
+
+// --- MỞ KHÓA ÂM THANH TRÌNH DUYỆT (CHỐNG CHẶN AUTOPLAY) ---
+let isAudioUnlocked = false;
+
+function unlockBrowserAudio() {
+  if (isAudioUnlocked) return;
+  const audioIds = [
+    "incoming-ringtone",
+    "outgoing-ringtone",
+    "remote-audio",
+    "message-sound",
+  ];
+  audioIds.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.play()
+        .then(() => {
+          el.pause();
+          el.currentTime = 0;
+        })
+        .catch(() => {});
+    }
+  });
+  isAudioUnlocked = true;
+  document.removeEventListener("click", unlockBrowserAudio);
+  document.removeEventListener("touchstart", unlockBrowserAudio);
+}
+document.addEventListener("click", unlockBrowserAudio);
+document.addEventListener("touchstart", unlockBrowserAudio);
 
 function resetReadReceiptState(conversationId = currentConversationId) {
   readReceiptState.conversationId = conversationId || null;
@@ -487,12 +531,16 @@ function initizeChatSession(userData, userToken) {
     if (!isFromMe) {
       // Phụ trợ 1: Phát âm thanh "Ting" (tăng khả năng nhận biết)
       try {
-        const msgSound = new Audio("/amthanhtinnhan.mp3");
-        msgSound
-          .play()
-          .catch((e) =>
-            console.warn("Trình duyệt chặn âm thanh (cần tương tác trước):", e),
-          );
+        const msgSound = document.getElementById("message-sound");
+        if (msgSound) {
+          msgSound.currentTime = 0;
+          msgSound
+            .play()
+            .catch((e) => console.warn("Trình duyệt chặn âm thanh:", e));
+        } else {
+          const fallbackSound = new Audio("amthanhtinnhan.mp3");
+          fallbackSound.play().catch((e) => {});
+        }
       } catch (err) {}
 
       // Phụ trợ 2: Lệnh Rung
@@ -1627,13 +1675,17 @@ function showNewMessageToast(msg) {
     snippet = "[ Hình ảnh ]";
   }
 
+  const safeName = escapeHTML(senderName);
+  const safeAvatar = escapeHTML(avatarUrl);
+  const safeSnippet = escapeHTML(snippet);
+
   const toast = document.createElement("div");
   toast.className = "new-message-toast";
   toast.innerHTML = `
-    <img src="${avatarUrl}" alt="Avatar">
+    <img src="${safeAvatar}" alt="Avatar">
     <div class="toast-content">
-      <div class="toast-name">${senderName}</div>
-      <div class="toast-msg-text">${snippet}</div>
+      <div class="toast-name">${safeName}</div>
+      <div class="toast-msg-text">${safeSnippet}</div>
     </div>
   `;
 
@@ -1653,9 +1705,9 @@ function showNewMessageToast(msg) {
 
   container.appendChild(toast);
 
-  // Tự động ẩn Toast mượt mà sau 4 giây
+  // Tự động ẩn Toast mượt mà sau 4 giây (NGOẠI TRỪ lúc app đang tắt/nằm dưới nền)
   setTimeout(() => {
-    if (toast.parentElement) {
+    if (toast.parentElement && !isAppInBackground) {
       toast.classList.add("hiding");
       setTimeout(() => toast.remove(), 300);
     }
@@ -1716,25 +1768,32 @@ async function sendNativeNotification(msg) {
   }
   // 2. DÀNH CHO TRÌNH DUYỆT WEB (CHROME, SAFARI, EDGE TRÊN MÁY TÍNH & ĐIỆN THOẠI)
   else if ("Notification" in window && Notification.permission === "granted") {
-    try {
-      const notification = new Notification(senderName, {
-        body: snippet,
-        icon: avatarUrl,
-      });
-      notification.onclick = () => {
-        window.focus(); // Đánh thức tab trình duyệt lên trên cùng
-        startChat(msg.senderId, senderName, avatarUrl);
-        const messagesTabNav = document.querySelector(
-          '.nav-item[title="Tin nhắn"]',
-        );
-        if (messagesTabNav) switchTab("tab-messages", messagesTabNav);
-      };
-    } catch (err) {
-      console.warn(
-        "Trình duyệt di động chặn Notification, chuyển sang dùng Toast.",
-        err,
-      );
+    const isMobileWeb =
+      /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) &&
+      !LocalNotifications;
+    if (isMobileWeb) {
       showNewMessageToast(msg);
+    } else {
+      try {
+        const notification = new Notification(senderName, {
+          body: snippet,
+          icon: avatarUrl,
+        });
+        notification.onclick = () => {
+          window.focus(); // Đánh thức tab trình duyệt lên trên cùng
+          startChat(msg.senderId, senderName, avatarUrl);
+          const messagesTabNav = document.querySelector(
+            '.nav-item[title="Tin nhắn"]',
+          );
+          if (messagesTabNav) switchTab("tab-messages", messagesTabNav);
+        };
+      } catch (err) {
+        console.warn(
+          "Trình duyệt di động chặn Notification, chuyển sang dùng Toast.",
+          err,
+        );
+        showNewMessageToast(msg);
+      }
     }
   } else {
     showNewMessageToast(msg);
@@ -2152,7 +2211,7 @@ function stopRingtone() {
 }
 
 function playOutgoingRingtone() {
-  const ringtone = document.getElementById("outending-ringtone");
+  const ringtone = document.getElementById("outgoing-ringtone");
   if (ringtone) {
     ringtone.volume = 1.0;
     ringtone.currentTime = 0;
@@ -2163,12 +2222,12 @@ function playOutgoingRingtone() {
       );
     }
   } else {
-    console.error("Không tìm thấy thẻ <audio id='outending-ringtone'>!");
+    console.error("Không tìm thấy thẻ <audio id='outgoing-ringtone'>!");
   }
 }
 
 function stopOutgoingRingtone() {
-  const ringtone = document.getElementById("outending-ringtone");
+  const ringtone = document.getElementById("outgoing-ringtone");
   if (ringtone) {
     ringtone.pause();
     ringtone.currentTime = 0;
@@ -2179,7 +2238,7 @@ function stopOutgoingRingtone() {
 async function startCall(callType) {
   if (!currentChatPartnerId) return alert("Vui lòng chọn một người để gọi.");
 
-  const outRing = document.getElementById("outending-ringtone");
+  const outRing = document.getElementById("outgoing-ringtone");
   if (outRing) {
     outRing.play().catch(() => {});
     outRing.pause();

@@ -17,7 +17,7 @@
     />
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" href="icon.png" type="image/png" />
-    <link rel="stylesheet" href="style.css?v=10019" />
+    <link rel="stylesheet" href="style.css?v=10028" />
   </head>
 
   <body>
@@ -736,8 +736,13 @@
       <source src="dialtone.mp3" type="audio/mpeg" />
     </audio>
 
+    <!-- Element phát âm thanh tin nhắn -->
+    <audio id="message-sound" preload="auto">
+      <source src="amthanhtinnhan.mp3" type="audio/mpeg" />
+    </audio>
+
     <!-- Import Socket.IO và file xử lý logic -->
     <script src="https://chat-tho-fi.onrender.com/socket.io/socket.io.js"></script>
-    <script src="app.js?v=10019"></script>
+    <script src="app.js?v=10028"></script>
   </body>
 </html>
