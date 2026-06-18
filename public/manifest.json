@@ -1,0 +1,16 @@
+{
+  "name": "Zalo Clone Chat",
+  "short_name": "Zalo Chat",
+  "description": "Ứng dụng nhắn tin gọi điện Real-time",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f5f7",
+  "theme_color": "#0068ff",
+  "icons": [
+    {
+      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Icon_of_Zalo.svg/512px-Icon_of_Zalo.svg.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

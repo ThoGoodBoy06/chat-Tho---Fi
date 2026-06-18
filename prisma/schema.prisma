@@ -1,0 +1,114 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ConversationMembers {
+  id             String         @id @default(uuid())
+  conversationId String?
+  userId         String?
+  role           String?        @default("member")
+  joinedAt       DateTime?      @default(now())
+  Conversations  Conversations? @relation(fields: [conversationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  Users          Users?         @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model Conversations {
+  id                  String                @id @default(uuid())
+  type                String?               @default("private")
+  name                String?
+  avatar              String?
+  createdBy           String?
+  createdAt           DateTime?             @default(now())
+  ConversationMembers ConversationMembers[]
+  Users               Users?                @relation(fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  Messages            Messages[]
+}
+
+model Friends {
+  id                              String    @id @default(uuid())
+  senderId                        String?
+  receiverId                      String?
+  status                          String?   @default("pending")
+  createdAt                       DateTime? @default(now())
+  Users_Friends_receiverIdToUsers Users?    @relation("Friends_receiverIdToUsers", fields: [receiverId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  Users_Friends_senderIdToUsers   Users?    @relation("Friends_senderIdToUsers", fields: [senderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model Messages {
+  id             String         @id @default(uuid())
+  conversationId String?
+  senderId       String?
+  type           String?        @default("text")
+  content        String?
+  imageUrl       String?
+  videoUrl       String?
+  audioUrl       String?
+  fileUrl        String?
+  replyMessageId String?
+  isDeleted      Boolean?       @default(false)
+  isRecalled     Boolean?       @default(false)
+  isRead         Boolean?       @default(false)
+  reactions      String?
+  createdAt      DateTime?      @default(now())
+  updatedAt      DateTime?      @default(now())
+  Conversations  Conversations? @relation(fields: [conversationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  Users          Users?         @relation(fields: [senderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model Users {
+  id                              String                @id @default(uuid())
+  username                        String                @unique
+  fullName                        String
+  email                           String?               @unique
+  phone                           String?               @unique
+  password                        String
+  avatar                          String?
+  coverPhoto                      String?
+  bio                             String?
+  isOnline                        Boolean?              @default(false)
+  lastSeen                        DateTime?
+  createdAt                       DateTime?             @default(now())
+  updatedAt                       DateTime?             @default(now())
+  ConversationMembers             ConversationMembers[]
+  Conversations                   Conversations[]
+  Friends_Friends_receiverIdToUsers Friends[]             @relation("Friends_receiverIdToUsers")
+  Friends_Friends_senderIdToUsers   Friends[]             @relation("Friends_senderIdToUsers")
+  Messages                        Messages[]
+  sent_requests     FriendRequests[] @relation("sent_requests")
+  received_requests FriendRequests[] @relation("received_requests")
+  NotificationsReceived Notifications[] @relation("UserNotifications")
+  NotificationsSent     Notifications[] @relation("SenderNotifications")
+}
+
+model FriendRequests {
+  id           String   @id @default(uuid())
+  requesterId  String
+  receiverId   String
+  status       String   @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Định nghĩa quan hệ
+  requester    Users    @relation("sent_requests", fields: [requesterId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  receiver     Users    @relation("received_requests", fields: [receiverId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([requesterId, receiverId]) // Đảm bảo mỗi cặp user chỉ có 1 mối quan hệ
+}
+
+model Notifications {
+  id        String   @id @default(uuid())
+  userId    String
+  senderId  String
+  type      String   // VD: 'FRIEND_ACCEPTED'
+  content   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  User      Users    @relation("UserNotifications", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  Sender    Users    @relation("SenderNotifications", fields: [senderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
