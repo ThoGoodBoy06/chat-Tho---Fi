@@ -1,4 +1,5 @@
 require("dotenv").config();
+require("./firebaseConfig");
 const express = require("express");
 const cors = require("cors");
 const { PrismaClient } = require("@prisma/client");
@@ -298,6 +299,29 @@ app.post("/api/users/avatar", upload.single("avatar"), async (req, res) => {
     res
       .status(500)
       .json({ message: "Lỗi server khi upload ảnh", details: error.message });
+  }
+});
+
+// --- API LƯU FCM TOKEN CỦA THIẾT BỊ ---
+app.post("/api/users/fcm-token", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader ? authHeader.split(" ")[1] : null;
+    if (!token)
+      return res.status(401).json({ message: "Không có quyền truy cập" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const { fcmToken } = req.body;
+
+    await prisma.users.update({
+      where: { id: decoded.id },
+      data: { fcmToken: fcmToken },
+    });
+
+    res.json({ success: true, message: "Lưu mã thiết bị thành công" });
+  } catch (error) {
+    console.error("Lỗi lưu FCM Token:", error);
+    res.status(500).json({ success: false, message: "Lỗi Server" });
   }
 });
 

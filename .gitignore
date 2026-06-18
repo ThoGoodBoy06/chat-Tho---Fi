@@ -3,3 +3,11 @@ node_modules
 .env
 
 /generated/prisma
+
+# Bỏ qua khóa bảo mật Firebase
+firebase-key
+firebase-key.json
+
+# Bỏ qua các file rác của Android/Capacitor (vì chỉ tập trung Web)
+capacitor.config.json
+android/

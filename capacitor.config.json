@@ -1,9 +1,0 @@
-{
-  "appId": "com.zaloclone.chat",
-  "appName": "Chat Tho-Fi",
-  "webDir": "public",
-  "server": {
-    "url": "https://chat-tho-fi.onrender.com",
-    "cleartext": true
-  }
-}

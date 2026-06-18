@@ -1,0 +1,14 @@
+# Tự động nhận diện file text và chuẩn hóa line endings
+* text=auto
+
+# Các file text luôn được chuẩn hóa
+*.js      text
+*.json    text
+*.html    text
+*.css     text
+*.prisma  text
+*.md      text
+
+# Các file ảnh/binary không bao giờ được thay đổi
+*.png     binary
+*.jpg     binary

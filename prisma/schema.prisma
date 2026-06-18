@@ -83,6 +83,7 @@ model Users {
   received_requests FriendRequests[] @relation("received_requests")
   NotificationsReceived Notifications[] @relation("UserNotifications")
   NotificationsSent     Notifications[] @relation("SenderNotifications")
+  fcmToken  String?  
 }
 
 model FriendRequests {

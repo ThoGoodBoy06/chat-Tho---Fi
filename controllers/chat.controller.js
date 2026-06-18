@@ -154,14 +154,45 @@ exports.sendMessage = async (req, res) => {
 
     const members = await prisma.conversationMembers.findMany({
       where: { conversationId },
+      include: {
+        Users: { select: { fcmToken: true } }
+      }
     });
 
     // 3. Lấy Socket.IO instance và phát tin nhắn Real-time đến phòng của từng thành viên
 
     const io = req.app.get("io");
+    const admin = require("firebase-admin"); // Nạp công cụ bắn thông báo Firebase
 
     members.forEach((member) => {
       io.to(member.userId).emit("receive_message", newMessage);
+
+      // --- BẮN PUSH NOTIFICATION ---
+      // Chỉ gửi cho người nhận (đối phương) và khi họ đã có FCM Token
+      if (member.userId !== senderId && member.Users && member.Users.fcmToken) {
+        let snippet = newMessage.content;
+        if (snippet.startsWith("data:image") || snippet.match(/\.(jpeg|jpg|gif|png)$/i)) {
+          snippet = "[ Hình ảnh ]";
+        }
+
+        const payload = {
+          token: member.Users.fcmToken,
+          notification: {
+            title: newMessage.Users.fullName || "Tin nhắn mới",
+            body: snippet,
+          },
+          data: {
+            conversationId: String(conversationId),
+            senderId: String(senderId),
+            type: "chat_message",
+          },
+        };
+
+        // Gửi ngầm không cần await để tránh làm chậm tốc độ gửi tin nhắn
+        admin.messaging().send(payload)
+          .then(() => console.log(`📲 Đã bắn Push Notification cho User ${member.userId}`))
+          .catch((err) => console.error(`❌ Lỗi gửi Push Notification:`, err.message));
+      }
     });
 
     res.status(201).json({ success: true, data: newMessage });

@@ -461,7 +461,7 @@
             >
               <img
                 id="my-cover"
-                src="https://via.placeholder.com/800x300?text=Cập+nhật+ảnh+bìa"
+                src="https://ui-avatars.com/api/?name=Cover&background=e9ecef&color=333&size=800&font-size=0.1"
                 alt="Cover Image"
               />
               <div class="cover-overlay"><i class="fas fa-camera"></i></div>
@@ -741,8 +741,12 @@
       <source src="amthanhtinnhan.mp3" type="audio/mpeg" />
     </audio>
 
+    <!-- Import Firebase Web SDK (Compat mode) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+
     <!-- Import Socket.IO và file xử lý logic -->
-    <script src="https://chat-tho-fi.onrender.com/socket.io/socket.io.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
     <script src="app.js?v=10028"></script>
   </body>
 </html>

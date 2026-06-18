@@ -1,8 +1,26 @@
 // ĐỔI ĐỊA CHỈ NÀY THÀNH IP MÁY TÍNH CỦA BẠN (VD: http://192.168.1.15:3000)
 // (Cách xem IP: Mở CMD trên máy tính -> gõ ipconfig -> Tìm dòng IPv4 Address)
-const SERVER_URL = "https://chat-tho-fi.onrender.com"; // Địa chỉ Backend trên Render.com
+const SERVER_URL = window.location.origin; // Tự động nhận diện localhost hoặc Render
 // const SERVER_URL = window.location.protocol === "file:" || window.location.origin.includes("capacitor") ? "http://192.168.1.X:3000" : window.location.origin; // Dòng này dùng khi chạy local hoặc build APK nội bộ
 const API_URL = `${SERVER_URL}/api`;
+
+// TỰ ĐỘNG THAY THẾ ẢNH LỖI (404) BẰNG ẢNH MẶC ĐỊNH
+document.addEventListener(
+  "error",
+  function (e) {
+    if (e.target.tagName && e.target.tagName.toLowerCase() === "img") {
+      const fallback =
+        "https://ui-avatars.com/api/?name=User&background=random";
+      if (
+        e.target.src !== fallback &&
+        !e.target.src.includes("ui-avatars.com")
+      ) {
+        e.target.src = fallback;
+      }
+    }
+  },
+  true,
+);
 
 // --- QUẢN LÝ APP STATE (CAPACITOR / TRÌNH DUYỆT) ---
 let isAppInBackground = false;
@@ -24,12 +42,6 @@ document.addEventListener("visibilitychange", () => {
     }, 4000);
   }
 });
-
-// Lấy plugin Capacitor nếu đang ở môi trường build Native
-const LocalNotifications =
-  window.Capacitor && window.Capacitor.Plugins
-    ? window.Capacitor.Plugins.LocalNotifications
-    : null;
 
 let token = "";
 let myId = "";
@@ -429,13 +441,54 @@ function initizeChatSession(userData, userToken) {
         : SERVER_URL + userData.coverImage;
     } else {
       document.getElementById("my-cover").src =
-        "https://via.placeholder.com/800x300?text=Cập+nhật+ảnh+bìa";
+        "https://ui-avatars.com/api/?name=Cover&background=e9ecef&color=333&size=800&font-size=0.1";
     }
   }
 
   // Yêu cầu quyền gửi thông báo trên Trình duyệt Web (Nếu chưa cấp)
   if ("Notification" in window && Notification.permission === "default") {
     Notification.requestPermission();
+  }
+
+  // --- CÀI ĐẶT FIREBASE CLOUD MESSAGING (Lấy FCM Token) ---
+  if (typeof firebase !== "undefined") {
+    try {
+      // TODO 1: Dán firebaseConfig của bạn vào đây (Giống hệt file sw.js)
+      const firebaseConfig = {
+        apiKey: "AIzaSyDk6fayVDs0YbbhwldYxgHcN4nnjnPwmRc",
+        authDomain: "chat-tho-fi.firebaseapp.com",
+        projectId: "chat-tho-fi",
+        storageBucket: "chat-tho-fi.firebasestorage.app",
+        messagingSenderId: "513501588929",
+        appId: "1:513501588929:web:54fd6c5fab227868bfd340",
+      };
+
+      if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+      const messaging = firebase.messaging();
+
+      // TODO 2: Dán VAPID Key của bạn vào đây
+      messaging
+        .getToken({
+          vapidKey:
+            "BBtraQSvar7RExe_T8aVhoA3TebgLw0S-ucoMcuV-Oef-H7ULkJGWyBctnxfY5tLnawpWQ9Wn8Aihi-wJaLiGu0",
+        })
+        .then((currentToken) => {
+          if (currentToken) {
+            console.log("🔥 Đã lấy được FCM Token:", currentToken);
+            fetch(`${API_URL}/users/fcm-token`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ fcmToken: currentToken }),
+            });
+          }
+        })
+        .catch((err) => console.log("Lỗi khi lấy FCM token:", err));
+    } catch (error) {
+      console.error("Lỗi khởi tạo Firebase Frontend:", error);
+    }
   }
 
   // Kết nối Socket.IO Real-time
@@ -1737,40 +1790,9 @@ async function sendNativeNotification(msg) {
         senderName,
       )}&background=random`;
 
-  // 1. DÀNH CHO APP NATIVE (ANDROID/IOS CÀI BẰNG CAPACITOR)
-  if (LocalNotifications) {
-    try {
-      let permStatus = await LocalNotifications.checkPermissions();
-      if (permStatus.display !== "granted") {
-        permStatus = await LocalNotifications.requestPermissions();
-      }
-      if (permStatus.display === "granted") {
-        await LocalNotifications.schedule({
-          notifications: [
-            {
-              title: senderName,
-              body: snippet,
-              id: new Date().getTime(),
-              schedule: { at: new Date(Date.now() + 100) },
-              extra: {
-                conversationId: msg.conversationId,
-                senderId: msg.senderId,
-                senderName: senderName,
-                senderAvatar: sender.avatar || "",
-              },
-            },
-          ],
-        });
-      }
-    } catch (error) {
-      console.error("Lỗi khi bắn Native Notification:", error);
-    }
-  }
-  // 2. DÀNH CHO TRÌNH DUYỆT WEB (CHROME, SAFARI, EDGE TRÊN MÁY TÍNH & ĐIỆN THOẠI)
-  else if ("Notification" in window && Notification.permission === "granted") {
-    const isMobileWeb =
-      /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) &&
-      !LocalNotifications;
+  // DÀNH CHO TRÌNH DUYỆT WEB (CHROME, SAFARI, EDGE TRÊN MÁY TÍNH & ĐIỆN THOẠI)
+  if ("Notification" in window && Notification.permission === "granted") {
+    const isMobileWeb = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     if (isMobileWeb) {
       showNewMessageToast(msg);
     } else {
@@ -1798,30 +1820,6 @@ async function sendNativeNotification(msg) {
   } else {
     showNewMessageToast(msg);
   }
-}
-
-// Lắng nghe sự kiện lúc user CHẠM vào Native Notification trên trung tâm thông báo Android
-if (LocalNotifications) {
-  LocalNotifications.addListener(
-    "localNotificationActionPerformed",
-    (notificationAction) => {
-      const data = notificationAction.notification.extra;
-      if (data && data.senderId) {
-        let avatarUrl = data.senderAvatar;
-        if (avatarUrl && !avatarUrl.startsWith("http")) {
-          avatarUrl = SERVER_URL + avatarUrl;
-        }
-
-        // Đánh thức app và điều hướng mở luồng chat
-        startChat(data.senderId, data.senderName, avatarUrl);
-
-        const messagesTabNav = document.querySelector(
-          '.nav-item[title="Tin nhắn"]',
-        );
-        if (messagesTabNav) switchTab("tab-messages", messagesTabNav);
-      }
-    },
-  );
 }
 
 // ==========================================
