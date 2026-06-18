@@ -162,7 +162,6 @@ exports.sendMessage = async (req, res) => {
     // 3. Lấy Socket.IO instance và phát tin nhắn Real-time đến phòng của từng thành viên
 
     const io = req.app.get("io");
-    const admin = require("firebase-admin"); // Nạp công cụ bắn thông báo Firebase
 
     members.forEach((member) => {
       io.to(member.userId).emit("receive_message", newMessage);
@@ -188,10 +187,12 @@ exports.sendMessage = async (req, res) => {
           },
         };
 
-        // Gửi ngầm không cần await để tránh làm chậm tốc độ gửi tin nhắn
-        admin.messaging().send(payload)
-          .then(() => console.log(`📲 Đã bắn Push Notification cho User ${member.userId}`))
-          .catch((err) => console.error(`❌ Lỗi gửi Push Notification:`, err.message));
+        // Gửi ngầm không cần await để tránh làm chậm tốc độ gửi tin nhắn (Chỉ gửi khi Firebase đã khởi tạo)
+        if (getApps().length > 0) {
+          getMessaging().send(payload)
+            .then(() => console.log(`📲 Đã bắn Push Notification cho User ${member.userId}`))
+            .catch((err) => console.error(`❌ Lỗi gửi Push Notification:`, err.message));
+        }
       }
     });
 
