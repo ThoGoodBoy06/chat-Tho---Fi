@@ -5,6 +5,9 @@ const SERVER_URL =
   window.location.origin.includes("capacitor")
     ? "http:// 192.168.1.176"
     : window.location.origin;
+const SERVER_URL = "https://chat-tho-fi.onrender.com"; // Đã cập nhật thành địa chỉ Render.com
+const SERVER_URL = "https://chat-tho-fi.onrender.com"; // Địa chỉ Backend trên Render.com
+// const SERVER_URL = window.location.protocol === "file:" || window.location.origin.includes("capacitor") ? "http://192.168.1.X:3000" : window.location.origin; // Dòng này dùng khi chạy local hoặc build APK nội bộ
 const API_URL = `${SERVER_URL}/api`;
 
 let token = "";
