@@ -59,9 +59,7 @@ body {
   background: #fff;
   padding: 40px 32px;
   border-radius: 16px;
-  box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.08),
-    0 4px 12px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
   width: 360px;
   text-align: center;
   box-sizing: border-box;
@@ -151,9 +149,7 @@ body {
   font-size: 16px;
   font-family: "Inter", sans-serif;
   cursor: pointer;
-  transition:
-    background 0.2s ease,
-    transform 0.1s ease;
+  transition: background 0.2s ease, transform 0.1s ease;
 }
 
 .auth-btn:disabled {
@@ -639,9 +635,7 @@ body {
   gap: 8px;
   opacity: 0;
   visibility: hidden;
-  transition:
-    opacity 0.2s ease,
-    visibility 0.2s ease;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
 }
 
 .message:hover .message-actions,
@@ -662,9 +656,7 @@ body {
   cursor: pointer;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
   position: relative;
-  transition:
-    background 0.2s,
-    color 0.2s;
+  transition: background 0.2s, color 0.2s;
 }
 
 .action-item:hover {
@@ -820,9 +812,7 @@ body {
   z-index: 200;
   opacity: 0;
   visibility: hidden;
-  transition:
-    opacity 0.2s ease,
-    visibility 0.2s ease;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
 }
 
 #mobile-action-overlay.show {
@@ -975,6 +965,95 @@ body {
   opacity: 1;
 }
 
+/* =========================================
+   TOAST TIN NHẮN MỚI (IN-APP)
+========================================= */
+
+#top-toast-container {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 90%;
+  max-width: 400px;
+  pointer-events: none;
+  /* Tránh cản trở thao tác ngầm khi trống */
+}
+
+.new-message-toast {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  pointer-events: auto;
+  /* Cho phép click lại */
+  cursor: pointer;
+  animation: slideDownToast 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55) forwards;
+}
+
+.new-message-toast.hiding {
+  animation: slideUpToast 0.3s ease-in forwards;
+}
+
+@keyframes slideDownToast {
+  0% {
+    transform: translateY(-100px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideUpToast {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100px);
+    opacity: 0;
+  }
+}
+
+.new-message-toast img {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.new-message-toast .toast-content {
+  flex: 1;
+  overflow: hidden;
+}
+
+.new-message-toast .toast-name {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text-dark);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.new-message-toast .toast-msg-text {
+  font-size: 13px;
+  color: var(--text-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* System Message (Missed Call) */
 
 .system-message {
@@ -1053,9 +1132,8 @@ body {
   padding-top: max(40px, env(safe-area-inset-top));
   padding-bottom: max(80px, env(safe-area-inset-bottom));
   /* FIX: Tăng đáy để 5 nút điều khiển không dính mép */
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
-    sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
   color: #ffffff;
 }
 

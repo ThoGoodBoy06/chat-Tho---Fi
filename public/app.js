@@ -4,6 +4,15 @@ const SERVER_URL = "https://chat-tho-fi.onrender.com"; // Địa chỉ Backend t
 // const SERVER_URL = window.location.protocol === "file:" || window.location.origin.includes("capacitor") ? "http://192.168.1.X:3000" : window.location.origin; // Dòng này dùng khi chạy local hoặc build APK nội bộ
 const API_URL = `${SERVER_URL}/api`;
 
+// --- QUẢN LÝ APP STATE (CAPACITOR / TRÌNH DUYỆT) ---
+let isAppInBackground = false;
+document.addEventListener("visibilitychange", () => {
+  isAppInBackground = document.visibilityState === "hidden";
+});
+
+// Lấy plugin Capacitor nếu đang ở môi trường build Native
+const { LocalNotifications } = window.Capacitor ? window.Capacitor.Plugins : {};
+
 let token = "";
 let myId = "";
 let myName = "";
@@ -230,7 +239,9 @@ function getPartnerAvatar() {
   }
   const nameEl = document.getElementById("chat-header-name");
   const name = nameEl ? nameEl.innerText : "User";
-  return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(
+    name,
+  )}&background=random`;
 }
 
 // --- QUẢN LÝ OVERLAY TRÊN MOBILE ---
@@ -350,7 +361,9 @@ function initizeChatSession(userData, userToken) {
     ? userData.avatar.startsWith("http")
       ? userData.avatar
       : SERVER_URL + userData.avatar
-    : `https://ui-avatars.com/api/?name=${encodeURIComponent(myName)}&background=random`;
+    : `https://ui-avatars.com/api/?name=${encodeURIComponent(
+        myName,
+      )}&background=random`;
 
   // Đồng bộ thông tin sang Tab Hồ sơ
   document.getElementById("profile-name").innerText = myName;
@@ -445,7 +458,10 @@ function initizeChatSession(userData, userToken) {
 
   socket.on("receive_message", (msg) => {
     let shouldMarkAsRead = false;
-    if (isSameId(msg.conversationId, currentConversationId)) {
+    const isCurrentChat = isSameId(msg.conversationId, currentConversationId);
+    const isFromMe = isSameId(msg.senderId, myId);
+
+    if (isCurrentChat) {
       // 1. Render tin nhắn ngay lập tức bằng tốc độ của Socket
       displayMessage(msg);
 
@@ -453,14 +469,14 @@ function initizeChatSession(userData, userToken) {
       updateReadReceiptsDOM();
 
       // 3. Chỉ gửi "Đã xem" nếu mình là người NHẬN và ĐANG THỰC SỰ NHÌN VÀO KHUNG CHAT
-      if (!isSameId(msg.senderId, myId) && isChatAreaVisible()) {
+      if (!isFromMe && isChatAreaVisible()) {
         emitMarkMessagesRead();
         shouldMarkAsRead = true;
       }
     }
 
     // 4. Phát âm thanh và Rung điện thoại khi có tin nhắn mới từ người khác
-    if (!isSameId(msg.senderId, myId)) {
+    if (!isFromMe) {
       // Phụ trợ 1: Phát âm thanh "Ting" (tăng khả năng nhận biết)
       try {
         const msgSound = new Audio("/amthanhtinnhan.mp3");
@@ -477,12 +493,18 @@ function initizeChatSession(userData, userToken) {
         try {
           // Dùng 1 lệnh duy nhất để tránh xung đột làm trình duyệt hủy rung
           const canVibrate = navigator.vibrate([400, 200, 400]); // Rung mạnh: 400ms - nghỉ 200 - 400ms
-          if (!canVibrate)
-            console.warn(
-              "Hệ thống từ chối rung (bạn phải chạm vào màn hình ít nhất 1 lần).",
-            );
+          if (!canVibrate) console.warn("Hệ thống từ chối rung.");
         } catch (error) {
           console.warn("Trình duyệt chặn quyền rung:", error);
+        }
+      }
+
+      // TÍNH NĂNG MỚI: TOAST IN-APP VÀ NATIVE NOTIFICATION (CAPACITOR)
+      if (!isCurrentChat || isAppInBackground) {
+        if (isAppInBackground) {
+          sendNativeNotification(msg);
+        } else {
+          showNewMessageToast(msg);
         }
       }
     }
@@ -605,21 +627,25 @@ async function loadConversations() {
             ? conv.Messages[0].isRecalled
               ? "Tin nhắn đã bị thu hồi"
               : conv.Messages[0].content.startsWith("data:image")
-                ? "[ Hình ảnh]"
-                : conv.Messages[0].content
+              ? "[ Hình ảnh]"
+              : conv.Messages[0].content
             : "Bắt đầu trò chuyện!";
 
         const avatarUrl = user.avatar
           ? user.avatar.startsWith("http")
             ? user.avatar
             : SERVER_URL + user.avatar
-          : `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName || "User")}&background=random`;
+          : `https://ui-avatars.com/api/?name=${encodeURIComponent(
+              user.fullName || "User",
+            )}&background=random`;
 
         const unreadCount =
           conv._count && conv._count.Messages ? conv._count.Messages : 0;
         const unreadBadgeHtml =
           unreadCount > 0
-            ? `<span class="unread-badge">${unreadCount > 99 ? "99+" : unreadCount}</span>`
+            ? `<span class="unread-badge">${
+                unreadCount > 99 ? "99+" : unreadCount
+              }</span>`
             : "";
         const msgStyle =
           unreadCount > 0 ? "font-weight: 600; color: var(--text-dark);" : "";
@@ -637,7 +663,9 @@ async function loadConversations() {
           </div>
           <div class="chat-list-content">
             <div class="chat-list-header">
-              <span class="chat-list-name">${user.fullName || "Người dùng"}</span>
+              <span class="chat-list-name">${
+                user.fullName || "Người dùng"
+              }</span>
               <div class="chat-list-right" style="display: flex; align-items: center; gap: 8px;">
                 ${unreadBadgeHtml}
               </div>
@@ -680,7 +708,9 @@ async function searchUser() {
         ? user.avatar.startsWith("http")
           ? user.avatar
           : SERVER_URL + user.avatar
-        : `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=random`;
+        : `https://ui-avatars.com/api/?name=${encodeURIComponent(
+            user.fullName,
+          )}&background=random`;
 
       const div = document.createElement("div");
       div.className = "search-result-item";
@@ -710,7 +740,9 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
     document.getElementById("chat-header-name").innerText = receiverName;
     document.getElementById("current-chat-avatar").src =
       receiverAvatar ||
-      `https://ui-avatars.com/api/?name=${encodeURIComponent(receiverName)}&background=random`;
+      `https://ui-avatars.com/api/?name=${encodeURIComponent(
+        receiverName,
+      )}&background=random`;
     document.getElementById("input-area").style.display = "flex";
 
     const res = await fetch(`${API_URL}/chat/conversations`, {
@@ -921,7 +953,9 @@ function renderFriendRequests() {
       ? user.avatar.startsWith("http")
         ? user.avatar
         : SERVER_URL + user.avatar
-      : `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=random`;
+      : `https://ui-avatars.com/api/?name=${encodeURIComponent(
+          user.fullName,
+        )}&background=random`;
 
     const itemEl = document.createElement("div");
     itemEl.className = "friend-request-item";
@@ -963,7 +997,9 @@ async function searchUserForFriend() {
         ? user.avatar.startsWith("http")
           ? user.avatar
           : SERVER_URL + user.avatar
-        : `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=random`;
+        : `https://ui-avatars.com/api/?name=${encodeURIComponent(
+            user.fullName,
+          )}&background=random`;
 
       const div = document.createElement("div");
       div.className = "search-result-item";
@@ -1032,18 +1068,26 @@ async function loadFriends() {
         ? user.avatar.startsWith("http")
           ? user.avatar
           : SERVER_URL + user.avatar
-        : `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=random`;
+        : `https://ui-avatars.com/api/?name=${encodeURIComponent(
+            user.fullName,
+          )}&background=random`;
 
       const itemEl = document.createElement("div");
       itemEl.className = "friend-request-item";
       itemEl.innerHTML = `
         <div class="friend-request-info">
-          <div class="avatar"><img src="${avatarUrl}" alt="Avatar">${user.isOnline ? '<div class="online-dot"></div>' : ""}</div>
+          <div class="avatar"><img src="${avatarUrl}" alt="Avatar">${
+        user.isOnline ? '<div class="online-dot"></div>' : ""
+      }</div>
           <span>${user.fullName}</span>
         </div>
         <div class="friend-request-actions">
-              <button class="btn-decline" onclick="removeFriend('${user.id}')" style="margin-right: 8px;">Xóa</button>
-          <button class="btn-accept" onclick="startChat('${user.id}', '${user.fullName}', '${avatarUrl}')">Nhắn tin</button>
+              <button class="btn-decline" onclick="removeFriend('${
+                user.id
+              }')" style="margin-right: 8px;">Xóa</button>
+          <button class="btn-accept" onclick="startChat('${user.id}', '${
+        user.fullName
+      }', '${avatarUrl}')">Nhắn tin</button>
         </div>
       `;
       listEl.appendChild(itemEl);
@@ -1095,7 +1139,9 @@ function displayMessage(msg) {
   const messagesDiv = document.getElementById("messages");
   const messageElement = document.createElement("div");
   messageElement.id = `msg-${msg.id}`;
-  messageElement.className = `message ${msg.senderId === myId ? "my-message" : "other-message"}`;
+  messageElement.className = `message ${
+    msg.senderId === myId ? "my-message" : "other-message"
+  }`;
   messageElement.dataset.messageId = msg.id;
   messageElement.dataset.senderId = msg.senderId || "";
   messageElement.dataset.isRead = msg.isRead ? "true" : "false";
@@ -1119,7 +1165,10 @@ function displayMessage(msg) {
     metaElement.style.justifyContent = "center";
     const timeElement = document.createElement("span");
     const date = msg.createdAt ? new Date(msg.createdAt) : new Date();
-    timeElement.innerText = `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
+    timeElement.innerText = `${date
+      .getHours()
+      .toString()
+      .padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
     metaElement.appendChild(timeElement);
     messageElement.appendChild(metaElement);
 
@@ -1536,6 +1585,141 @@ document.addEventListener(
   },
   { passive: false },
 );
+
+// =========================================
+// THÔNG BÁO TIN NHẮN MỚI (IN-APP TOAST & NATIVE)
+// =========================================
+
+function showNewMessageToast(msg) {
+  const container = document.getElementById("top-toast-container");
+  if (!container) return;
+
+  const sender = msg.Users || {};
+  const senderName = sender.fullName || "Tin nhắn mới";
+  let avatarUrl = sender.avatar
+    ? sender.avatar.startsWith("http")
+      ? sender.avatar
+      : SERVER_URL + sender.avatar
+    : `https://ui-avatars.com/api/?name=${encodeURIComponent(
+        senderName,
+      )}&background=random`;
+
+  let snippet = msg.content;
+  if (msg.isRecalled) snippet = "Tin nhắn đã bị thu hồi";
+  else if (msg.type === "missed_call") snippet = "Cuộc gọi nhỡ";
+  else if (
+    msg.content &&
+    (msg.content.startsWith("data:image") ||
+      msg.content.match(/\.(jpeg|jpg|gif|png)$/i))
+  ) {
+    snippet = "[ Hình ảnh ]";
+  }
+
+  const toast = document.createElement("div");
+  toast.className = "new-message-toast";
+  toast.innerHTML = `
+    <img src="${avatarUrl}" alt="Avatar">
+    <div class="toast-content">
+      <div class="toast-name">${senderName}</div>
+      <div class="toast-msg-text">${snippet}</div>
+    </div>
+  `;
+
+  // Tương tác: Bấm vào Toast để mở thẳng phòng chat
+  toast.onclick = () => {
+    toast.classList.add("hiding");
+    setTimeout(() => toast.remove(), 300);
+
+    startChat(msg.senderId, senderName, avatarUrl);
+
+    // Chuyển tab về menu tin nhắn nếu user đang lướt tab khác
+    const messagesTabNav = document.querySelector(
+      '.nav-item[title="Tin nhắn"]',
+    );
+    if (messagesTabNav) switchTab("tab-messages", messagesTabNav);
+  };
+
+  container.appendChild(toast);
+
+  // Tự động ẩn Toast mượt mà sau 4 giây
+  setTimeout(() => {
+    if (toast.parentElement) {
+      toast.classList.add("hiding");
+      setTimeout(() => toast.remove(), 300);
+    }
+  }, 4000);
+}
+
+async function sendNativeNotification(msg) {
+  if (!LocalNotifications) return; // Nếu chạy web thường thì bỏ qua hàm này
+
+  try {
+    const sender = msg.Users || {};
+    const senderName = sender.fullName || "Tin nhắn mới";
+
+    let snippet = msg.content;
+    if (msg.isRecalled) snippet = "Tin nhắn đã bị thu hồi";
+    else if (msg.type === "missed_call") snippet = "Cuộc gọi nhỡ";
+    else if (
+      msg.content &&
+      (msg.content.startsWith("data:image") ||
+        msg.content.match(/\.(jpeg|jpg|gif|png)$/i))
+    ) {
+      snippet = "[ Hình ảnh ]";
+    }
+
+    // Kiểm tra & xin quyền (Android 13+ bắt buộc phải xin quyền thủ công này)
+    let permStatus = await LocalNotifications.checkPermissions();
+    if (permStatus.display !== "granted") {
+      permStatus = await LocalNotifications.requestPermissions();
+    }
+
+    if (permStatus.display === "granted") {
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            title: senderName,
+            body: snippet,
+            id: new Date().getTime(), // Timestamp làm ID độc nhất
+            schedule: { at: new Date(Date.now() + 100) }, // Bắn ngay lập tức
+            extra: {
+              conversationId: msg.conversationId,
+              senderId: msg.senderId,
+              senderName: senderName,
+              senderAvatar: sender.avatar || "",
+            },
+          },
+        ],
+      });
+    }
+  } catch (error) {
+    console.error("Lỗi khi bắn Native Notification:", error);
+  }
+}
+
+// Lắng nghe sự kiện lúc user CHẠM vào Native Notification trên trung tâm thông báo Android
+if (LocalNotifications) {
+  LocalNotifications.addListener(
+    "localNotificationActionPerformed",
+    (notificationAction) => {
+      const data = notificationAction.notification.extra;
+      if (data && data.senderId) {
+        let avatarUrl = data.senderAvatar;
+        if (avatarUrl && !avatarUrl.startsWith("http")) {
+          avatarUrl = SERVER_URL + avatarUrl;
+        }
+
+        // Đánh thức app và điều hướng mở luồng chat
+        startChat(data.senderId, data.senderName, avatarUrl);
+
+        const messagesTabNav = document.querySelector(
+          '.nav-item[title="Tin nhắn"]',
+        );
+        if (messagesTabNav) switchTab("tab-messages", messagesTabNav);
+      }
+    },
+  );
+}
 
 // ==========================================
 // CẬP NHẬT "ĐÃ XEM" KHI QUAY LẠI TRÌNH DUYỆT
@@ -2020,7 +2204,9 @@ async function startCall(callType) {
   document.getElementById("call-name").innerText = partnerName;
 
   const currentChatAvatarEl = document.getElementById("current-chat-avatar");
-  let partnerAvatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(partnerName)}&background=random`;
+  let partnerAvatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+    partnerName,
+  )}&background=random`;
 
   if (currentChatAvatarEl && currentChatAvatarEl.src) {
     partnerAvatarUrl = currentChatAvatarEl.src;
@@ -2081,12 +2267,15 @@ function handleIncomingCall(data) {
         ? callerAvatar
         : SERVER_URL + callerAvatar;
     } else {
-      safeAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(callerName || "User")}&background=random`;
+      safeAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+        callerName || "User",
+      )}&background=random`;
     }
 
     document.getElementById("call-avatar").src = safeAvatar;
-    document.getElementById("call-status").innerText =
-      `${callType === "video" ? "video" : "điện thoại"} cho bạn...`;
+    document.getElementById("call-status").innerText = `${
+      callType === "video" ? "video" : "điện thoại"
+    } cho bạn...`;
 
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     const flipBtn = document.getElementById("flip-cam-btn");
@@ -2166,7 +2355,9 @@ async function handleCallAccepted(data) {
           ? calleeInfo.avatar
           : SERVER_URL + calleeInfo.avatar;
       } else {
-        avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(calleeInfo.fullName || "User")}&background=random`;
+        avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+          calleeInfo.fullName || "User",
+        )}&background=random`;
       }
 
       document.getElementById("call-avatar").src = avatarUrl;
@@ -2244,8 +2435,9 @@ async function startCallSession(isCaller, calleeInfo = null) {
               : false,
         };
 
-        localStream =
-          await navigator.mediaDevices.getUserMedia(mediaConstraints);
+        localStream = await navigator.mediaDevices.getUserMedia(
+          mediaConstraints,
+        );
 
         if (callTypeGlobal === "video") {
           document.getElementById("local-video").srcObject = localStream;
@@ -2676,9 +2868,14 @@ function renderNotifications() {
       ? sender.avatar.startsWith("http")
         ? sender.avatar
         : SERVER_URL + sender.avatar
-      : `https://ui-avatars.com/api/?name=${encodeURIComponent(sender.fullName)}&background=random`;
+      : `https://ui-avatars.com/api/?name=${encodeURIComponent(
+          sender.fullName,
+        )}&background=random`;
     const date = new Date(notif.createdAt);
-    const timeStr = `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")} - ${date.getDate()}/${date.getMonth() + 1}`;
+    const timeStr = `${date.getHours().toString().padStart(2, "0")}:${date
+      .getMinutes()
+      .toString()
+      .padStart(2, "0")} - ${date.getDate()}/${date.getMonth() + 1}`;
 
     const itemEl = document.createElement("div");
     itemEl.className = `notification-item ${notif.isRead ? "" : "unread"}`;
@@ -2718,7 +2915,9 @@ function showToastNotification(notif) {
     ? sender.avatar.startsWith("http")
       ? sender.avatar
       : SERVER_URL + sender.avatar
-    : `https://ui-avatars.com/api/?name=${encodeURIComponent(sender.fullName)}&background=random`;
+    : `https://ui-avatars.com/api/?name=${encodeURIComponent(
+        sender.fullName,
+      )}&background=random`;
 
   const toast = document.createElement("div");
   toast.className = "toast-msg";
