@@ -9,6 +9,7 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const jwt = require("jsonwebtoken");
+const authMiddleware = require("./middlewares/auth.middleware");
 
 const app = express();
 const prisma = new PrismaClient();
@@ -53,7 +54,7 @@ app.get("/", async (req, res) => {
 });
 
 // API phụ trợ (Danh bạ) để xem danh sách tất cả người dùng và lấy ID dễ dàng
-app.get("/api/users", async (req, res) => {
+app.get("/api/users", authMiddleware, async (req, res) => {
   const users = await prisma.users.findMany({
     select: { id: true, username: true, fullName: true },
   });
@@ -61,7 +62,7 @@ app.get("/api/users", async (req, res) => {
 });
 
 // API Tìm kiếm người dùng bằng Tên (Tính năng kết bạn)
-app.get("/api/users/search", async (req, res) => {
+app.get("/api/users/search", authMiddleware, async (req, res) => {
   const { q } = req.query;
   if (!q) return res.json({ success: true, data: [] });
 
@@ -213,13 +214,18 @@ app.get("/api/users/notifications", async (req, res) => {
 });
 
 // API Đánh dấu đã đọc thông báo
-app.patch("/api/users/notifications/:id/read", async (req, res) => {
+app.patch("/api/users/notifications/:id/read", authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    await prisma.notifications.update({
-      where: { id },
+    const result = await prisma.notifications.updateMany({
+      where: { id, userId: req.user.id },
       data: { isRead: true },
     });
+    if (result.count === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Không tìm thấy thông báo." });
+    }
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
