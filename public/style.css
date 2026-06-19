@@ -2578,3 +2578,95 @@ input:checked + .slider:before {
   color: #05a060 !important;
   background: rgba(5, 160, 96, 0.15) !important;
 }
+
+/* =========================================
+   TÍNH NĂNG GỬI FILE & TIN NHẮN THOẠI
+========================================= */
+
+/* Giao diện File gửi đi */
+.file-message-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg-color);
+  border-radius: 8px;
+  cursor: pointer;
+  max-width: 280px;
+  transition: background 0.2s;
+  user-select: none;
+  border: 1px solid var(--border-color);
+}
+
+.my-message .file-message-card {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.other-message .file-message-card {
+  background: var(--hover-bg);
+  border-color: var(--border-color);
+  color: var(--text-dark);
+}
+
+.file-icon-wrapper {
+  font-size: 28px;
+  color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.my-message .file-icon-wrapper {
+  color: #ffffff;
+}
+
+.file-info-wrapper {
+  flex: 1;
+  overflow: hidden;
+  text-align: left;
+}
+
+.file-name-text {
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+
+.file-size-text {
+  font-size: 11px;
+  color: var(--text-light);
+}
+
+.my-message .file-size-text {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Giao diện Voice Message Audio Player */
+.voice-message-player {
+  max-width: 240px;
+  height: 38px;
+  outline: none;
+  display: block;
+}
+
+/* Nút Ghi âm đang hoạt động (Đỏ nhấp nháy) */
+#voice-record-btn.recording {
+  color: #ff3b30 !important;
+  animation: flashRed 1s infinite alternate;
+}
+
+@keyframes flashRed {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0.6;
+    transform: scale(1.15);
+  }
+}

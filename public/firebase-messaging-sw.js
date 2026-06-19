@@ -20,4 +20,40 @@ const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
   console.log("[firebase-messaging-sw.js] Đã nhận tin nhắn chạy ngầm", payload);
+
+  const title = payload.notification?.title || "Tin nhắn mới";
+  const body = payload.notification?.body || "Bạn có một tin nhắn mới trên Tho-Fi Chat";
+
+  const options = {
+    body: body,
+    icon: "/icon.png",
+    badge: "/icon.png",
+    data: payload.data,
+    vibrate: [200, 100, 200],
+    tag: payload.data?.conversationId || "tho-fi-chat-notification",
+    renotify: true
+  };
+
+  self.registration.showNotification(title, options);
+});
+
+// Xử lý khi click vào banner thông báo chạy ngầm trên điện thoại
+self.addEventListener("notificationclick", function(event) {
+  event.notification.close();
+
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then(function(clientList) {
+      // Tìm xem có tab web Tho-Fi nào đang mở không
+      for (let i = 0; i < clientList.length; i++) {
+        let client = clientList[i];
+        if (client.url.includes(self.location.origin) && "focus" in client) {
+          return client.focus();
+        }
+      }
+      // Nếu không có tab nào mở, mở tab mới
+      if (clients.openWindow) {
+        return clients.openWindow("/");
+      }
+    })
+  );
 });

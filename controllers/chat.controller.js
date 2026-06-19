@@ -151,7 +151,7 @@ exports.sendMessage = async (req, res) => {
 
     const { conversationId } = req.params;
 
-    const { content, replyMessageId } = req.body;
+    const { content, replyMessageId, type } = req.body;
 
     if (!content) {
       return res
@@ -172,6 +172,8 @@ exports.sendMessage = async (req, res) => {
         senderId,
 
         content,
+
+        type: type || "text",
 
         replyMessageId: replyMessageId || null,
       },

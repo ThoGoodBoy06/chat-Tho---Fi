@@ -51,6 +51,9 @@ let pendingFriendRequests = [];
 let notificationsList = [];
 let replyingToMessage = null;
 let currentChatMessages = [];
+let mediaRecorder = null;
+let audioChunks = [];
+let isRecording = false;
 
 const readReceiptState = {
     conversationId: null,
@@ -936,9 +939,19 @@ function updateChatListUI(msg, isRead = false) {
         let snippet = msg.content;
         if (msg.isRecalled) snippet = "Tin nhắn đã bị thu hồi";
         else if (msg.type === "missed_call") snippet = "Cuộc gọi nhỡ";
+        else if (msg.type === "file") {
+            try {
+                const fileData = JSON.parse(msg.content);
+                snippet = `[ Tệp tin: ${fileData.fileName} ]`;
+            } catch (e) {
+                snippet = "[ Tệp tin ]";
+            }
+        }
+        else if (msg.type === "audio") snippet = "[ Tin nhắn thoại ]";
         else if (
-            msg.content.startsWith("data:image") ||
-            msg.content.match(/\.(jpeg|jpg|gif|png)$/i)
+            msg.content &&
+            (msg.content.startsWith("data:image") ||
+            msg.content.match(/\.(jpeg|jpg|gif|png)$/i))
         )
             snippet = "[ Hình ảnh ]";
 
@@ -1312,9 +1325,61 @@ function displayMessage(msg) {
         messageContent.style.border = "1px solid var(--border-color)";
         messageBody.appendChild(messageContent);
     } else {
-        if (
-            msg.content.startsWith("data:image/") ||
-            msg.content.match(/\.(jpeg|jpg|gif|png)$/i)
+        if (msg.type === "file") {
+            try {
+                const fileData = JSON.parse(msg.content);
+                const fileExt = fileData.fileName.split(".").pop().toLowerCase();
+
+                let iconClass = "far fa-file";
+                if (["pdf"].includes(fileExt)) iconClass = "far fa-file-pdf text-danger";
+                else if (["doc", "docx"].includes(fileExt)) iconClass = "far fa-file-word text-primary";
+                else if (["xls", "xlsx"].includes(fileExt)) iconClass = "far fa-file-excel text-success";
+                else if (["zip", "rar", "7z"].includes(fileExt)) iconClass = "far fa-file-archive text-warning";
+                else if (["txt"].includes(fileExt)) iconClass = "far fa-file-alt";
+
+                let sizeStr = `${(fileData.fileSize / 1024).toFixed(1)} KB`;
+                if (fileData.fileSize > 1024 * 1024) {
+                    sizeStr = `${(fileData.fileSize / (1024 * 1024)).toFixed(1)} MB`;
+                }
+
+                messageContent.innerHTML = `
+                    <div class="file-message-card">
+                        <div class="file-icon-wrapper">
+                            <i class="${iconClass}"></i>
+                        </div>
+                        <div class="file-info-wrapper">
+                            <div class="file-name-text">${fileData.fileName}</div>
+                            <div class="file-size-text">${sizeStr}</div>
+                        </div>
+                    </div>
+                `;
+
+                messageContent.onclick = (e) => {
+                    e.stopPropagation();
+                    const link = document.createElement("a");
+                    link.href = fileData.base64;
+                    link.download = fileData.fileName;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                };
+
+                messageContent.style.background = "transparent";
+                messageContent.style.padding = "0";
+            } catch (err) {
+                console.error("Lỗi parse file message:", err);
+                messageContent.innerText = "[ Tệp tin bị lỗi ]";
+            }
+        } else if (msg.type === "audio") {
+            messageContent.innerHTML = `
+                <audio src="${msg.content}" controls class="voice-message-player"></audio>
+            `;
+            messageContent.style.background = "transparent";
+            messageContent.style.padding = "0";
+        } else if (
+            msg.content &&
+            (msg.content.startsWith("data:image/") ||
+            msg.content.match(/\.(jpeg|jpg|gif|png)$/i))
         ) {
             messageContent.innerHTML = `<img src="${msg.content}" class="message-image" onclick="openLightbox(this.src)" alt="Ảnh tin nhắn" />`;
             messageContent.style.background = "transparent";
@@ -1702,6 +1767,33 @@ if (imageUploadInput) {
     });
 }
 
+// Sự kiện Gửi Tệp tin (File/Document)
+const fileUploadInput = document.getElementById("file-upload");
+if (fileUploadInput) {
+    fileUploadInput.addEventListener("change", function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Giới hạn tệp tin dưới 10MB để không quá tải dữ liệu Base64 trong database
+        if (file.size > 10 * 1024 * 1024) {
+            return alert("Vui lòng chọn tệp tin có dung lượng dưới 10MB.");
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const base64Data = event.target.result;
+            const filePayload = {
+                fileName: file.name,
+                fileSize: file.size,
+                base64: base64Data
+            };
+            sendFileOrAudioMessage(JSON.stringify(filePayload), "file");
+            fileUploadInput.value = "";
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
 // 8. Sự kiện Nhập phím "Đang gõ..."
 if (messageInput) {
     messageInput.addEventListener("input", () => {
@@ -1869,6 +1961,15 @@ function showNewMessageToast(msg) {
     let snippet = msg.content;
     if (msg.isRecalled) snippet = "Tin nhắn đã bị thu hồi";
     else if (msg.type === "missed_call") snippet = "Cuộc gọi nhỡ";
+    else if (msg.type === "file") {
+        try {
+            const fileData = JSON.parse(msg.content);
+            snippet = `[ Tệp tin: ${fileData.fileName} ]`;
+        } catch (e) {
+            snippet = "[ Tệp tin ]";
+        }
+    }
+    else if (msg.type === "audio") snippet = "[ Tin nhắn thoại ]";
     else if (
         msg.content &&
         (msg.content.startsWith("data:image") ||
@@ -1923,6 +2024,15 @@ async function sendNativeNotification(msg) {
     let snippet = msg.content;
     if (msg.isRecalled) snippet = "Tin nhắn đã bị thu hồi";
     else if (msg.type === "missed_call") snippet = "Cuộc gọi nhỡ";
+    else if (msg.type === "file") {
+        try {
+            const fileData = JSON.parse(msg.content);
+            snippet = `[ Tệp tin: ${fileData.fileName} ]`;
+        } catch (e) {
+            snippet = "[ Tệp tin ]";
+        }
+    }
+    else if (msg.type === "audio") snippet = "[ Tin nhắn thoại ]";
     else if (
         msg.content &&
         (msg.content.startsWith("data:image") ||
@@ -3365,4 +3475,110 @@ function showTempToast(message) {
         toast.classList.remove("show");
         setTimeout(() => toast.remove(), 300);
     }, 2000);
+}
+
+// Gửi tin nhắn chứa tệp tin hoặc tin nhắn thoại
+function sendFileOrAudioMessage(content, type) {
+    if (!currentConversationId) {
+        return alert("Bạn chưa chọn cuộc hội thoại!");
+    }
+
+    try {
+        const payload = {
+            content,
+            type
+        };
+        if (replyingToMessage) {
+            payload.replyMessageId = replyingToMessage.id;
+        }
+
+        const res = fetch(`${API_URL}/chat/${currentConversationId}/messages`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(payload),
+        });
+
+        cancelReply();
+
+        res
+            .then((response) => response.json())
+            .then((data) => {
+                if (data.success) {
+                    displayMessage(data.data);
+                    loadConversations();
+                } else {
+                    alert("Gửi thất bại: " + data.message);
+                }
+            });
+    } catch (err) {
+        alert("Lỗi mạng: " + err.message);
+    }
+}
+
+// Bật/tắt trạng thái ghi âm tin nhắn thoại
+function toggleVoiceRecording() {
+    const recordBtn = document.getElementById("voice-record-btn");
+    const input = document.getElementById("message-input");
+
+    if (!recordBtn || !input) return;
+
+    if (!isRecording) {
+        // Bắt đầu ghi âm
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            return alert("Trình duyệt của bạn không hỗ trợ ghi âm.");
+        }
+
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then((stream) => {
+                isRecording = true;
+                audioChunks = [];
+                
+                recordBtn.classList.remove("fa-microphone");
+                recordBtn.classList.add("fa-stop", "recording");
+                
+                input.placeholder = "Đang ghi âm... Nhấp nút Stop để gửi.";
+                input.disabled = true;
+
+                // Khởi tạo MediaRecorder
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: "audio/mp3" });
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const base64Audio = event.target.result;
+                        sendFileOrAudioMessage(base64Audio, "audio");
+                    };
+                    reader.readAsDataURL(audioBlob);
+
+                    // Tắt tất cả các track trong stream để giải phóng mic
+                    stream.getTracks().forEach((track) => track.stop());
+                };
+
+                mediaRecorder.start();
+            })
+            .catch((err) => {
+                console.error("Lỗi truy cập Micro:", err);
+                alert("Không thể truy cập Micro. Vui lòng cấp quyền ghi âm.");
+            });
+    } else {
+        // Dừng ghi âm và gửi
+        isRecording = false;
+        
+        recordBtn.classList.remove("fa-stop", "recording");
+        recordBtn.classList.add("fa-microphone");
+        
+        input.placeholder = "Nhập tin nhắn...";
+        input.disabled = false;
+
+        if (mediaRecorder && mediaRecorder.state !== "inactive") {
+            mediaRecorder.stop();
+        }
+    }
 }

@@ -388,7 +388,11 @@
                   onclick="document.getElementById('image-upload').click()"
                 ></i>
                 <input type="file" id="image-upload" accept="image/*" hidden />
-                <i class="fas fa-paperclip icon-btn"></i>
+                <i
+                  class="fas fa-paperclip icon-btn"
+                  onclick="document.getElementById('file-upload').click()"
+                ></i>
+                <input type="file" id="file-upload" hidden />
                 <i class="fas fa-smile icon-btn"></i>
               </div>
               <div class="input-wrapper">
@@ -399,6 +403,12 @@
                 />
               </div>
               <div class="input-actions-right">
+                <i
+                  class="fas fa-microphone icon-btn"
+                  id="voice-record-btn"
+                  onclick="toggleVoiceRecording()"
+                  style="margin-right: 8px;"
+                ></i>
                 <i
                   class="fas fa-paper-plane icon-btn send-btn"
                   onclick="sendMessage()"
