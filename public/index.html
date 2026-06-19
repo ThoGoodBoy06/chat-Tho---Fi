@@ -369,6 +369,18 @@
 
             <div id="messages"></div>
 
+            <!-- Thanh Xem Trước Tin Nhắn Trả Lời (Reply Preview) -->
+            <div id="reply-preview-container" class="reply-preview-container" style="display: none;">
+              <div class="reply-preview-content">
+                <div class="reply-preview-title">
+                  <i class="fas fa-reply" style="margin-right: 6px; font-size: 11px; color: var(--primary-color);"></i>
+                  <span>Đang trả lời <strong id="reply-preview-sender">User</strong></span>
+                </div>
+                <div id="reply-preview-text" class="reply-preview-text">Nội dung tin nhắn...</div>
+              </div>
+              <i class="fas fa-times reply-preview-close" onclick="cancelReply()"></i>
+            </div>
+
             <div class="input-area" id="input-area" style="display: none">
               <div class="input-actions-left">
                 <i

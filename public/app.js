@@ -49,6 +49,8 @@ let socket = null;
 let typingTimeout = null;
 let pendingFriendRequests = [];
 let notificationsList = [];
+let replyingToMessage = null;
+let currentChatMessages = [];
 
 const readReceiptState = {
     conversationId: null,
@@ -904,6 +906,7 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
         messagesDiv.innerHTML = "";
 
         if (dataMsg.data) {
+            currentChatMessages = dataMsg.data;
             dataMsg.data.forEach((msg) => displayMessage(msg));
             updateReadReceiptsDOM();
             emitMarkMessagesRead();
@@ -983,6 +986,7 @@ async function reloadCurrentChat() {
         const messagesDiv = document.getElementById("messages");
         messagesDiv.innerHTML = "";
         if (dataMsg.data) {
+            currentChatMessages = dataMsg.data;
             dataMsg.data.forEach((msg) => displayMessage(msg));
             updateReadReceiptsDOM();
         }
@@ -1243,6 +1247,10 @@ function displayMessage(msg) {
     // CHỐT CHẶN: Nếu tin nhắn đã được render (bởi Socket) thì bỏ qua để tránh trùng lặp
     if (document.getElementById(`msg-${msg.id}`)) return;
 
+    if (!currentChatMessages.some(m => m.id === msg.id)) {
+        currentChatMessages.push(msg);
+    }
+
     const messagesDiv = document.getElementById("messages");
     const messageElement = document.createElement("div");
     messageElement.id = `msg-${msg.id}`;
@@ -1315,6 +1323,50 @@ function displayMessage(msg) {
             messageContent.innerText = msg.content;
         }
 
+        // Nâng cấp: Hiển thị tin nhắn trích dẫn (Replied Message Preview)
+        if (msg.replyMessageId) {
+            const parentMsg = currentChatMessages.find((m) => m.id === msg.replyMessageId);
+            if (parentMsg) {
+                const replyBox = document.createElement("div");
+                replyBox.className = "replied-message-box";
+
+                let parentSenderName = "Người dùng";
+                if (parentMsg.senderId === myId) {
+                    parentSenderName = "Bạn";
+                } else if (parentMsg.Users) {
+                    parentSenderName = parentMsg.Users.fullName;
+                } else {
+                    const headerName = document.getElementById("chat-header-name");
+                    if (headerName) parentSenderName = headerName.innerText;
+                }
+
+                let parentText = parentMsg.content;
+                if (parentMsg.isRecalled) {
+                    parentText = "Tin nhắn đã bị thu hồi";
+                } else if (
+                    parentMsg.content &&
+                    (parentMsg.content.startsWith("data:image/") ||
+                    parentMsg.content.match(/\.(jpeg|jpg|gif|png)$/i))
+                ) {
+                    parentText = "[ Hình ảnh ]";
+                } else if (parentMsg.type === "missed_call") {
+                    parentText = "[ Cuộc gọi nhỡ ]";
+                }
+
+                replyBox.innerHTML = `
+                    <div class="replied-sender-name">${parentSenderName}</div>
+                    <div class="replied-message-text">${parentText}</div>
+                `;
+
+                replyBox.onclick = (e) => {
+                    e.stopPropagation();
+                    scrollToAndHighlightMessage(msg.replyMessageId);
+                };
+
+                messageContent.prepend(replyBox);
+            }
+        }
+
         // TẠO NÚT THẢ CẢM XÚC (Reaction)
         const reactBtn = document.createElement("div");
         reactBtn.className = "action-item react-btn";
@@ -1351,6 +1403,17 @@ function displayMessage(msg) {
         moreBtn.innerHTML = '<i class="fas fa-ellipsis-h"></i>';
         const moreMenu = document.createElement("div");
         moreMenu.className = "more-menu";
+
+        const replyOption = document.createElement("div");
+        replyOption.className = "menu-item reply-action";
+        replyOption.innerText = "Trả lời";
+        replyOption.onclick = (e) => {
+            e.stopPropagation();
+            setReplyMode(msg.id);
+            moreMenu.classList.remove("show");
+            hideMobileOverlay();
+        };
+        moreMenu.appendChild(replyOption);
 
         if (msg.senderId === myId) {
             const recallOption = document.createElement("div");
@@ -1392,8 +1455,18 @@ function displayMessage(msg) {
 
         moreBtn.appendChild(moreMenu);
 
+        const replyBtn = document.createElement("div");
+        replyBtn.className = "action-item reply-btn";
+        replyBtn.innerHTML = '<i class="fas fa-reply"></i>';
+        replyBtn.title = "Trả lời";
+        replyBtn.onclick = (e) => {
+            e.stopPropagation();
+            setReplyMode(msg.id);
+        };
+
         const actions = document.createElement("div");
         actions.className = "message-actions";
+        actions.appendChild(replyBtn);
         actions.appendChild(reactBtn);
         actions.appendChild(moreBtn);
 
@@ -1401,6 +1474,66 @@ function displayMessage(msg) {
         messageBody.appendChild(actions);
 
         renderReactions(messageBody, msg.reactions);
+
+        // Vuốt kéo để trả lời trên Mobile (Swipe right to reply)
+        let swipeStartX = 0;
+        let swipeStartY = 0;
+        let isHorizontalSwipe = false;
+        let lastTranslateX = 0;
+        
+        const swipeIndicator = document.createElement("div");
+        swipeIndicator.className = "swipe-reply-indicator";
+        swipeIndicator.innerHTML = '<i class="fas fa-reply"></i>';
+        messageElement.appendChild(swipeIndicator);
+
+        messageBody.addEventListener("touchstart", (e) => {
+            if (window.innerWidth > 768) return;
+            swipeStartX = e.touches[0].clientX;
+            swipeStartY = e.touches[0].clientY;
+            isHorizontalSwipe = false;
+            lastTranslateX = 0;
+            messageBody.style.transition = "none";
+        }, { passive: true });
+
+        messageBody.addEventListener("touchmove", (e) => {
+            if (window.innerWidth > 768) return;
+            const diffX = e.touches[0].clientX - swipeStartX;
+            const diffY = e.touches[0].clientY - swipeStartY;
+
+            if (!isHorizontalSwipe && Math.abs(diffX) > 10 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
+                isHorizontalSwipe = true;
+            }
+
+            if (isHorizontalSwipe) {
+                if (diffX > 0) {
+                    e.preventDefault();
+                    lastTranslateX = Math.min(diffX, 70);
+                    messageBody.style.transform = `translateX(${lastTranslateX}px)`;
+                    
+                    if (lastTranslateX >= 45) {
+                        swipeIndicator.classList.add("active");
+                    } else {
+                        swipeIndicator.classList.remove("active");
+                    }
+                }
+            }
+        }, { passive: false });
+
+        messageBody.addEventListener("touchend", () => {
+            if (window.innerWidth > 768) return;
+            messageBody.style.transition = "transform 0.2s ease-out";
+            messageBody.style.transform = "translateX(0px)";
+            swipeIndicator.classList.remove("active");
+
+            if (isHorizontalSwipe && lastTranslateX >= 45) {
+                setReplyMode(msg.id);
+                if (navigator.vibrate) {
+                    try {
+                        navigator.vibrate(30);
+                    } catch (err) {}
+                }
+            }
+        });
 
         // Xử lý nhấn giữ trên di động
         let pressTimer;
@@ -1492,14 +1625,21 @@ function sendMessage(imageContent = null) {
     }
 
     try {
+        const payload = { content };
+        if (replyingToMessage) {
+            payload.replyMessageId = replyingToMessage.id;
+        }
+
         const res = fetch(`${API_URL}/chat/${currentConversationId}/messages`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({ content }),
+            body: JSON.stringify(payload),
         });
+
+        cancelReply();
 
         res
             .then((response) => response.json())
@@ -3054,3 +3194,85 @@ document.addEventListener(
         }
     }, { passive: false },
 );
+
+// =========================================
+// HỖ TRỢ TÍNH NĂNG TRẢ LỜI TIN NHẮN (REPLY)
+// =========================================
+
+// Thiết lập chế độ trả lời tin nhắn
+function setReplyMode(msgId) {
+    const msg = currentChatMessages.find(m => m.id === msgId);
+    if (!msg) return;
+
+    replyingToMessage = msg;
+    
+    // Tìm tên người gửi
+    let senderName = "Người dùng";
+    if (msg.senderId === myId) {
+        senderName = "chính mình";
+    } else if (msg.Users) {
+        senderName = msg.Users.fullName;
+    } else {
+        const headerName = document.getElementById("chat-header-name");
+        if (headerName) senderName = headerName.innerText;
+    }
+
+    // Thiết lập nội dung trích dẫn
+    let textPreview = msg.content;
+    if (msg.isRecalled) {
+        textPreview = "Tin nhắn đã bị thu hồi";
+    } else if (msg.content && (msg.content.startsWith("data:image/") || msg.content.match(/\.(jpeg|jpg|gif|png)$/i))) {
+        textPreview = "[Hình ảnh]";
+    } else if (msg.type === "missed_call") {
+        textPreview = "[Cuộc gọi nhỡ]";
+    }
+
+    // Hiển thị thanh preview
+    const previewContainer = document.getElementById("reply-preview-container");
+    const previewSender = document.getElementById("reply-preview-sender");
+    const previewText = document.getElementById("reply-preview-text");
+
+    if (previewContainer && previewSender && previewText) {
+        previewSender.innerText = senderName;
+        previewText.innerText = textPreview;
+        previewContainer.style.display = "flex";
+        
+        // Cuộn xuống để không bị che khuất ô nhập
+        const messagesDiv = document.getElementById("messages");
+        if (messagesDiv) messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    // Focus vào input để gõ luôn
+    const input = document.getElementById("message-input");
+    if (input) input.focus();
+}
+
+// Hủy chế độ trả lời tin nhắn
+function cancelReply() {
+    replyingToMessage = null;
+    const previewContainer = document.getElementById("reply-preview-container");
+    if (previewContainer) {
+        previewContainer.style.display = "none";
+    }
+}
+
+// Cuộn đến tin nhắn gốc và nháy sáng highlight
+function scrollToAndHighlightMessage(msgId) {
+    const targetEl = document.getElementById(`msg-${msgId}`);
+    if (targetEl) {
+        targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
+        
+        // Thêm class highlight
+        targetEl.classList.remove("message-highlight");
+        // Force reflow
+        void targetEl.offsetWidth;
+        targetEl.classList.add("message-highlight");
+        
+        // Xóa class highlight sau khi chạy xong animation
+        setTimeout(() => {
+            targetEl.classList.remove("message-highlight");
+        }, 1500);
+    } else {
+        alert("Tin nhắn gốc đã quá cũ hoặc không tìm thấy trong giao diện hiện tại.");
+    }
+}

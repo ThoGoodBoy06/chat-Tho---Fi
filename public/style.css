@@ -2386,3 +2386,174 @@ input:checked + .slider:before {
     align-self: flex-end !important;
   }
 }
+
+/* =========================================
+   TÍNH NĂNG TRẢ LỜI TIN NHẮN (REPLY)
+========================================= */
+
+/* 1. Thanh Xem Trước Trả Lời (ở trên ô nhập tin nhắn) */
+.reply-preview-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--sidebar-bg);
+  border-top: 1px solid var(--border-color);
+  border-left: 4px solid var(--primary-color);
+  padding: 10px 16px;
+  animation: slideUpReply 0.25s ease-out;
+  z-index: 4;
+}
+
+@keyframes slideUpReply {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.reply-preview-content {
+  flex: 1;
+  overflow: hidden;
+  margin-right: 12px;
+}
+
+.reply-preview-title {
+  font-size: 12px;
+  color: var(--primary-color);
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+}
+
+.reply-preview-title strong {
+  color: var(--text-dark);
+  margin-left: 4px;
+}
+
+.reply-preview-text {
+  font-size: 13px;
+  color: var(--text-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reply-preview-close {
+  color: var(--text-light);
+  cursor: pointer;
+  padding: 8px;
+  font-size: 16px;
+  transition: color 0.2s;
+}
+
+.reply-preview-close:hover {
+  color: #ff4d4f;
+}
+
+/* 2. Bong bóng trích dẫn bên trong tin nhắn */
+.replied-message-box {
+  background: rgba(0, 0, 0, 0.05);
+  border-left: 3px solid var(--primary-color);
+  border-radius: 4px;
+  padding: 6px 10px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  max-width: 100%;
+  user-select: none;
+  transition: opacity 0.2s;
+}
+
+.replied-message-box:hover {
+  opacity: 0.85;
+}
+
+.my-message .replied-message-box {
+  background: rgba(255, 255, 255, 0.2);
+  border-left-color: #ffffff;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.other-message .replied-message-box {
+  color: var(--text-light);
+}
+
+.replied-sender-name {
+  font-weight: 600;
+  margin-bottom: 2px;
+  color: var(--text-dark);
+}
+
+.my-message .replied-sender-name {
+  color: #ffffff;
+}
+
+.replied-message-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 3. Hiệu ứng Nhấp Nháy Highlight khi cuộn tới tin nhắn gốc */
+.message-highlight {
+  animation: pulseHighlight 1.5s ease-in-out;
+}
+
+@keyframes pulseHighlight {
+  0% {
+    box-shadow: 0 0 0 0 rgba(0, 104, 255, 0.7);
+    transform: scale(1);
+  }
+  25% {
+    box-shadow: 0 0 15px 5px rgba(0, 104, 255, 0.5);
+    transform: scale(1.02);
+  }
+  50% {
+    box-shadow: 0 0 15px 5px rgba(0, 104, 255, 0.5);
+    transform: scale(1.02);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 104, 255, 0);
+    transform: scale(1);
+  }
+}
+
+/* 4. Thao tác vuốt kéo để trả lời trên Điện thoại */
+.message-body {
+  transition: transform 0.15s ease-out;
+  position: relative;
+}
+
+.swipe-reply-indicator {
+  position: absolute;
+  left: -40px;
+  top: 50%;
+  transform: translateY(-50%) scale(0.5);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--active-bg);
+  color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.1s, transform 0.1s;
+  pointer-events: none;
+}
+
+.swipe-reply-indicator.active {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+}
+
+/* Mobile actions menu item for Reply */
+.message.show-mobile-actions .menu-item.reply-action::before {
+  content: "\f3e5"; /* fa-reply */
+  color: #0068ff;
+  background: rgba(0, 104, 255, 0.15);
+}
