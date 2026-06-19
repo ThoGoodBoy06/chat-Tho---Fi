@@ -1718,38 +1718,69 @@ function sendMessage(imageContent = null) {
         });
     }
 
-    try {
-        const payload = { content };
-        if (replyingToMessage) {
-            payload.replyMessageId = replyingToMessage.id;
-        }
+    // ✨ OPTIMISTIC UI: Hiển thị tin nhắn ngay lập tức, không chờ server
+    const optimisticId = `optimistic-${Date.now()}`;
+    const optimisticMsg = {
+        id: optimisticId,
+        conversationId: currentConversationId,
+        senderId: myId,
+        content: content,
+        type: imageContent && imageContent.startsWith("data:image") ? "image" : "text",
+        isRecalled: false,
+        createdAt: new Date().toISOString(),
+        replyMessageId: replyingToMessage ? replyingToMessage.id : null,
+        Users: { id: myId, fullName: myName, avatar: null },
+    };
+    currentChatMessages.push(optimisticMsg);
+    displayMessage(optimisticMsg);
 
-        const res = fetch(`${API_URL}/chat/${currentConversationId}/messages`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(payload),
-        });
+    // Cập nhật sidebar ngay không chờ server
+    updateChatListUI(optimisticMsg, true);
 
-        cancelReply();
+    cancelReply();
 
-        res
-            .then((response) => response.json())
-            .then((data) => {
-                if (data.success) {
-                    // Chỉ gọi hiển thị, chốt chặn trong displayMessage sẽ lo việc chặn trùng lặp
-                    displayMessage(data.data);
-
-                    loadConversations();
-                } else {
-                    alert("Server từ chối gửi tin nhắn: " + data.message);
-                }
-            });
-    } catch (err) {
-        alert("Lỗi kết nối mạng: " + err.message);
+    const payload = { content };
+    if (replyingToMessage) {
+        payload.replyMessageId = replyingToMessage.id;
     }
+
+    fetch(`${API_URL}/chat/${currentConversationId}/messages`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+    })
+    .then((response) => response.json())
+    .then((data) => {
+        if (data.success) {
+            // Thay thế tin nhắn optimistic bằng tin nhắn thật từ server
+            const optimisticEl = document.getElementById(`msg-${optimisticId}`);
+            if (optimisticEl) {
+                // Cập nhật id để khớp với id thật và socket sẽ nhận biết không hiển thị trùng
+                optimisticEl.id = `msg-${data.data.id}`;
+                optimisticEl.dataset.messageId = data.data.id;
+            }
+            // Cập nhật trong mảng currentChatMessages
+            const idx = currentChatMessages.findIndex(m => m.id === optimisticId);
+            if (idx !== -1) currentChatMessages[idx] = data.data;
+        } else {
+            // Nếu gửi thất bại, xóa tin nhắn optimistic
+            alert("Server từ chối gửi tin nhắn: " + data.message);
+            const optimisticEl = document.getElementById(`msg-${optimisticId}`);
+            if (optimisticEl) optimisticEl.remove();
+            const idx = currentChatMessages.findIndex(m => m.id === optimisticId);
+            if (idx !== -1) currentChatMessages.splice(idx, 1);
+        }
+    })
+    .catch((err) => {
+        alert("Lỗi kết nối mạng: " + err.message);
+        const optimisticEl = document.getElementById(`msg-${optimisticId}`);
+        if (optimisticEl) optimisticEl.remove();
+        const idx = currentChatMessages.findIndex(m => m.id === optimisticId);
+        if (idx !== -1) currentChatMessages.splice(idx, 1);
+    });
 }
 
 // 6. Bấm phím Enter để gửi tin nhắn
@@ -3527,7 +3558,8 @@ function sendFileOrAudioMessage(content, type) {
             .then((data) => {
                 if (data.success) {
                     displayMessage(data.data);
-                    loadConversations();
+                    // Cập nhật sidebar nhẹ hơn, không reload toàn bộ danh sách
+                    updateChatListUI(data.data, true);
                 } else {
                     alert("Gửi thất bại: " + data.message);
                 }

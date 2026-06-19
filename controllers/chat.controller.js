@@ -185,8 +185,10 @@ exports.sendMessage = async (req, res) => {
       },
     });
 
-    // 2. Lấy danh sách thành viên trong cuộc trò chuyện
+    // Trả response ngay sau khi lưu DB xong (không đợi socket/FCM)
+    res.status(201).json({ success: true, data: newMessage });
 
+    // 2. Lấy danh sách thành viên và phát tin nhắn real-time (sau khi đã respond xong)
     const members = await prisma.conversationMembers.findMany({
       where: { conversationId },
       include: {
@@ -240,11 +242,10 @@ exports.sendMessage = async (req, res) => {
       }
     });
 
-    res.status(201).json({ success: true, data: newMessage });
-
     console.log("✅ LƯU TIN NHẮN VÀO DATABASE THÀNH CÔNG!");
 
     console.log("-----------------------------------------");
+
   } catch (error) {
     // Ghi lại lỗi chi tiết ra Terminal để dễ dàng gỡ lỗi
 

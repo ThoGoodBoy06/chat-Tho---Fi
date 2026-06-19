@@ -3015,3 +3015,26 @@ body[data-theme="dark"] .sidebar-header {
   background: linear-gradient(135deg, #e03c31, #b3161c);
   box-shadow: 0 6px 16px rgba(255, 77, 79, 0.3);
 }
+
+/* Tin nhắn optimistic (đang gửi) - hiệu ứng nhạt đi nhẹ */
+[id^="msg-optimistic-"] {
+  opacity: 0.75;
+  position: relative;
+}
+
+[id^="msg-optimistic-"] .message-content::after {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-left: 6px;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin-sending 0.7s linear infinite;
+  vertical-align: middle;
+}
+
+@keyframes spin-sending {
+  to { transform: rotate(360deg); }
+}
