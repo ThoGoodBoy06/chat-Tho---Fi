@@ -3171,6 +3171,26 @@ function showToastNotification(notif) {
 // CHỐNG ZOOM VÀ DOUBLE-TAP TRÊN MOBILE
 // ==========================================
 
+// Chống pinch-to-zoom (phóng to/thu nhỏ bằng nhiều ngón tay) trên Android/iOS
+document.addEventListener(
+    "touchmove",
+    function(e) {
+        if (e.touches.length > 1) {
+            e.preventDefault();
+        }
+    },
+    { passive: false }
+);
+
+// Chống zoom cử chỉ trên iOS Safari
+document.addEventListener(
+    "gesturestart",
+    function(e) {
+        e.preventDefault();
+    },
+    { passive: false }
+);
+
 let lastTouchEnd = 0;
 document.addEventListener(
     "touchend",
