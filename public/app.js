@@ -2261,8 +2261,9 @@ function switchTab(tabId, navElement) {
 }
 
 // Đăng xuất
-function logout() {
-    if (!confirm("Bạn có chắc chắn muốn đăng xuất không?")) return;
+async function logout() {
+    const consent = await customConfirm("Đăng xuất", "Bạn có chắc chắn muốn đăng xuất khỏi tài khoản không?", "Đăng xuất", "Hủy", true);
+    if (!consent) return;
 
     localStorage.removeItem("authToken");
     token = "";
@@ -2319,12 +2320,14 @@ async function openEditProfileModal() {
     const currentName = document.getElementById("profile-name").innerText;
     const currentBio = document.getElementById("profile-bio").innerText;
 
-    const newName = prompt("Nhập tên hiển thị mới của bạn:", currentName);
+    const newName = await customPrompt("Đổi tên hiển thị", "Nhập tên hiển thị mới của bạn:", currentName, "Tên hiển thị");
     if (newName === null) return;
 
-    const newBio = prompt(
+    const newBio = await customPrompt(
+        "Đổi tiểu sử",
         "Nhập dòng trạng thái/tiểu sử mới:",
         currentBio !== "Chưa có tiểu sử" ? currentBio : "",
+        "Tiểu sử / Dòng trạng thái"
     );
     if (newBio === null) return;
 
@@ -3597,4 +3600,97 @@ function toggleVoiceRecording() {
             mediaRecorder.stop();
         }
     }
+}
+
+// ==========================================
+// CUSTOM DIALOG SYSTEM (MODALS)
+// ==========================================
+
+function customConfirm(title, message, okText = "Xác nhận", cancelText = "Hủy", isDanger = true) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById("custom-confirm-modal");
+        const titleEl = document.getElementById("custom-confirm-title");
+        const msgEl = document.getElementById("custom-confirm-message");
+        const okBtn = document.getElementById("custom-confirm-ok-btn");
+        const cancelBtn = document.getElementById("custom-confirm-cancel-btn");
+
+        if (!modal || !titleEl || !msgEl || !okBtn || !cancelBtn) {
+            return resolve(confirm(message));
+        }
+
+        titleEl.innerText = title;
+        msgEl.innerText = message;
+        okBtn.innerText = okText;
+        cancelBtn.innerText = cancelText;
+
+        if (isDanger) {
+            okBtn.className = "custom-btn btn-danger";
+        } else {
+            okBtn.className = "custom-btn btn-primary";
+        }
+
+        modal.style.display = "flex";
+        setTimeout(() => modal.classList.add("show"), 10);
+
+        function cleanup(result) {
+            modal.classList.remove("show");
+            setTimeout(() => {
+                modal.style.display = "none";
+            }, 300);
+            okBtn.onclick = null;
+            cancelBtn.onclick = null;
+            resolve(result);
+        }
+
+        okBtn.onclick = () => cleanup(true);
+        cancelBtn.onclick = () => cleanup(false);
+    });
+}
+
+function customPrompt(title, message, defaultValue = "", placeholder = "Nhập vào đây...") {
+    return new Promise((resolve) => {
+        const modal = document.getElementById("custom-prompt-modal");
+        const titleEl = document.getElementById("custom-prompt-title");
+        const msgEl = document.getElementById("custom-prompt-message");
+        const inputEl = document.getElementById("custom-prompt-input");
+        const okBtn = document.getElementById("custom-prompt-ok-btn");
+        const cancelBtn = document.getElementById("custom-prompt-cancel-btn");
+
+        if (!modal || !titleEl || !msgEl || !inputEl || !okBtn || !cancelBtn) {
+            return resolve(prompt(message, defaultValue));
+        }
+
+        titleEl.innerText = title;
+        msgEl.innerText = message;
+        inputEl.value = defaultValue;
+        inputEl.placeholder = placeholder;
+        
+        modal.style.display = "flex";
+        setTimeout(() => {
+            modal.classList.add("show");
+            inputEl.focus();
+        }, 10);
+
+        function cleanup(result) {
+            modal.classList.remove("show");
+            setTimeout(() => {
+                modal.style.display = "none";
+            }, 300);
+            okBtn.onclick = null;
+            cancelBtn.onclick = null;
+            resolve(result);
+        }
+
+        okBtn.onclick = () => {
+            const val = inputEl.value;
+            cleanup(val);
+        };
+        cancelBtn.onclick = () => cleanup(null);
+
+        inputEl.onkeypress = (e) => {
+            if (e.key === "Enter") {
+                okBtn.click();
+            }
+        };
+    });
 }
