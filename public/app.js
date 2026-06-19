@@ -732,14 +732,30 @@ async function loadConversations() {
 
             if (otherMember) {
                 const user = otherMember.Users;
-                const lastMsg =
-                    conv.Messages.length > 0 ?
-                    conv.Messages[0].isRecalled ?
-                    "Tin nhắn đã bị thu hồi" :
-                    conv.Messages[0].content.startsWith("data:image") ?
-                    "[ Hình ảnh]" :
-                    conv.Messages[0].content :
-                    "Bắt đầu trò chuyện!";
+                let lastMsg = "Bắt đầu trò chuyện!";
+                if (conv.Messages.length > 0) {
+                    const firstMsg = conv.Messages[0];
+                    if (firstMsg.isRecalled) {
+                        lastMsg = "Tin nhắn đã bị thu hồi";
+                    } else if (firstMsg.type === "file") {
+                        try {
+                            const fileData = JSON.parse(firstMsg.content);
+                            lastMsg = `[ Tệp tin: ${fileData.fileName} ]`;
+                        } catch (e) {
+                            lastMsg = "[ Tệp tin ]";
+                        }
+                    } else if (firstMsg.type === "audio") {
+                        lastMsg = "[ Tin nhắn thoại ]";
+                    } else if (
+                        firstMsg.content &&
+                        (firstMsg.content.startsWith("data:image") ||
+                            firstMsg.content.match(/\.(jpeg|jpg|gif|png)$/i))
+                    ) {
+                        lastMsg = "[ Hình ảnh ]";
+                    } else {
+                        lastMsg = firstMsg.content;
+                    }
+                }
 
                 const avatarUrl = user.avatar ?
                     user.avatar.startsWith("http") ?

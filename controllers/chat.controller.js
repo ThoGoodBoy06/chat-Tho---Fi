@@ -205,7 +205,16 @@ exports.sendMessage = async (req, res) => {
       // Chỉ gửi cho người nhận (đối phương) và khi họ đã có FCM Token
       if (member.userId !== senderId && member.Users && member.Users.fcmToken) {
         let snippet = newMessage.content;
-        if (snippet.startsWith("data:image") || snippet.match(/\.(jpeg|jpg|gif|png)$/i)) {
+        if (newMessage.type === "file") {
+          try {
+            const fileData = JSON.parse(newMessage.content);
+            snippet = `[ Tệp tin: ${fileData.fileName} ]`;
+          } catch (e) {
+            snippet = "[ Tệp tin ]";
+          }
+        } else if (newMessage.type === "audio") {
+          snippet = "[ Tin nhắn thoại ]";
+        } else if (snippet.startsWith("data:image") || snippet.match(/\.(jpeg|jpg|gif|png)$/i)) {
           snippet = "[ Hình ảnh ]";
         }
 
