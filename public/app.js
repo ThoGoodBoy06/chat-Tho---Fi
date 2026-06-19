@@ -1415,6 +1415,19 @@ function displayMessage(msg) {
         };
         moreMenu.appendChild(replyOption);
 
+        if (!msg.isRecalled) {
+            const copyOption = document.createElement("div");
+            copyOption.className = "menu-item copy-action";
+            copyOption.innerText = "Sao chép";
+            copyOption.onclick = (e) => {
+                e.stopPropagation();
+                copyMessageText(msg.content);
+                moreMenu.classList.remove("show");
+                hideMobileOverlay();
+            };
+            moreMenu.appendChild(copyOption);
+        }
+
         if (msg.senderId === myId) {
             const recallOption = document.createElement("div");
             recallOption.className = "menu-item text-danger";
@@ -3295,4 +3308,61 @@ function scrollToAndHighlightMessage(msgId) {
     } else {
         alert("Tin nhắn gốc đã quá cũ hoặc không tìm thấy trong giao diện hiện tại.");
     }
+}
+
+// Sao chép văn bản tin nhắn vào Clipboard
+function copyMessageText(content) {
+    if (!content) return;
+    
+    // Kiểm tra nếu là hình ảnh (base64 hoặc đường dẫn hình ảnh)
+    if (content.startsWith("data:image/") || content.match(/\.(jpeg|jpg|gif|png)$/i)) {
+        showTempToast("Không thể sao chép hình ảnh dưới dạng văn bản.");
+        return;
+    }
+    
+    navigator.clipboard.writeText(content)
+        .then(() => {
+            showTempToast("Đã sao chép tin nhắn.");
+        })
+        .catch((err) => {
+            console.error("Lỗi sao chép:", err);
+            // Fallback cho môi trường không có HTTPS hoặc thiết bị cũ
+            const textarea = document.createElement("textarea");
+            textarea.value = content;
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand("copy");
+                showTempToast("Đã sao chép tin nhắn.");
+            } catch (e) {
+                showTempToast("Không thể sao chép tin nhắn.");
+            }
+            document.body.removeChild(textarea);
+        });
+}
+
+// Hiển thị Toast thông báo nhanh (dành riêng cho sao chép)
+function showTempToast(message) {
+    const container = document.getElementById("toast-container");
+    if (!container) return;
+
+    const toast = document.createElement("div");
+    toast.className = "toast-msg";
+    toast.style.padding = "10px 18px";
+    toast.style.background = "rgba(0, 0, 0, 0.85)";
+    toast.style.color = "#ffffff";
+    toast.style.borderRadius = "8px";
+    toast.style.fontSize = "13px";
+    toast.style.fontWeight = "500";
+    toast.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.15)";
+    toast.style.textAlign = "center";
+    toast.style.zIndex = "99999";
+    toast.innerText = message;
+
+    container.appendChild(toast);
+    setTimeout(() => toast.classList.add("show"), 10);
+    setTimeout(() => {
+        toast.classList.remove("show");
+        setTimeout(() => toast.remove(), 300);
+    }, 2000);
 }

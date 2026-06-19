@@ -2571,3 +2571,10 @@ input:checked + .slider:before {
   color: #0068ff;
   background: rgba(0, 104, 255, 0.15);
 }
+
+/* Mobile actions menu item for Copy */
+.message.show-mobile-actions .menu-item.copy-action::before {
+  content: "\f0c5" !important; /* fa-copy */
+  color: #05a060 !important;
+  background: rgba(5, 160, 96, 0.15) !important;
+}
