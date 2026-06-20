@@ -682,31 +682,20 @@ function initizeChatSession(userData, userToken) {
             }
         }
 
-        // 4. Phát âm thanh và Rung điện thoại khi có tin nhắn mới từ người khác
+        // 4. Phát âm thanh và Rung điện thoại khi có tin nhắn mới từ người khác (Foreground)
         if (!isFromMe) {
-            // Phụ trợ 1: Phát âm thanh "Ting" (tăng khả năng nhận biết)
-            try {
-                const msgSound = document.getElementById("message-sound");
-                if (msgSound) {
-                    msgSound.currentTime = 0;
-                    msgSound
-                        .play()
-                        .catch((e) => console.warn("Trình duyệt chặn âm thanh:", e));
-                } else {
-                    const fallbackSound = new Audio("amthanhtinnhan.mp3");
-                    fallbackSound.play().catch((e) => {});
-                }
-            } catch (err) {}
+            // Khởi tạo Audio đối tượng và phát amthanhtinnhan.mp3
+            const notificationAudio = new Audio("amthanhtinnhan.mp3");
+            notificationAudio.play().catch((err) => {
+                console.warn("DOMException: Chính sách Auto-play của trình duyệt chặn phát âm thanh:", err.message);
+            });
 
-            // Phụ trợ 2: Lệnh Rung
-            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-            if (isMobile && navigator.vibrate) {
+            // Rung phản hồi nhịp kép (Rung 200ms, nghỉ 100ms, rung 200ms) trên các thiết bị hỗ trợ
+            if (navigator.vibrate) {
                 try {
-                    // Dùng 1 lệnh duy nhất để tránh xung đột làm trình duyệt hủy rung
-                    const canVibrate = navigator.vibrate([400, 200, 400]); // Rung mạnh: 400ms - nghỉ 200 - 400ms
-                    if (!canVibrate) console.warn("Hệ thống từ chối rung.");
-                } catch (error) {
-                    console.warn("Trình duyệt chặn quyền rung:", error);
+                    navigator.vibrate([200, 100, 200]);
+                } catch (err) {
+                    console.warn("Trình duyệt hoặc hệ điều hành từ chối cấp quyền rung:", err.message);
                 }
             }
 
