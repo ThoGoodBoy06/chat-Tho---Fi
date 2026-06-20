@@ -4,7 +4,6 @@ const prisma = new PrismaClient();
 // 1. Cập nhật thông tin Profile (Tên, Bio)
 exports.updateProfile = async (req, res) => {
   try {
-    // Giả định bạn có authMiddleware gắn userId vào req.user.id
     const userId = req.user ? req.user.id : req.userId;
     const { fullName, bio } = req.body;
 
@@ -19,11 +18,17 @@ exports.updateProfile = async (req, res) => {
         fullName: true,
         bio: true,
         avatar: true,
-        coverImage: true,
+        coverPhoto: true,
       },
     });
 
-    res.status(200).json({ success: true, data: updatedUser });
+    // Trả về thuộc tính coverImage tương đương cho tương thích client cũ
+    const responseData = {
+      ...updatedUser,
+      coverImage: updatedUser.coverPhoto
+    };
+
+    res.status(200).json({ success: true, data: responseData });
   } catch (error) {
     console.error("!!! LỖI CẬP NHẬT PROFILE:", error);
     res.status(500).json({ message: "Lỗi server", error: error.message });
@@ -34,16 +39,16 @@ exports.updateProfile = async (req, res) => {
 exports.updateCoverImage = async (req, res) => {
   try {
     const userId = req.user ? req.user.id : req.userId;
-    if (!req.file)
+    const { coverPhoto } = req.body; // Base64 string from client
+    if (!coverPhoto)
       return res.status(400).json({ message: "Vui lòng chọn ảnh bìa" });
 
-    const coverUrl = `/covers/${req.file.filename}`;
     await prisma.users.update({
       where: { id: userId },
-      data: { coverImage: coverUrl },
+      data: { coverPhoto: coverPhoto },
     });
 
-    res.status(200).json({ success: true, coverUrl });
+    res.status(200).json({ success: true, coverUrl: coverPhoto });
   } catch (error) {
     console.error("!!! LỖI UPLOAD COVER:", error);
     res

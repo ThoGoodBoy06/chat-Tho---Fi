@@ -273,7 +273,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-app.post("/api/users/avatar", upload.single("avatar"), async (req, res) => {
+app.post("/api/users/avatar", async (req, res) => {
   try {
     // Xác thực Token thủ công
     const authHeader = req.headers.authorization;
@@ -283,23 +283,22 @@ app.post("/api/users/avatar", upload.single("avatar"), async (req, res) => {
       return res.status(401).json({ message: "Không có quyền truy cập" });
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    if (!req.file)
-      return res.status(400).json({ message: "Vui lòng chọn ảnh" });
+    const { avatar } = req.body; // Base64 string from client
+    if (!avatar)
+      return res.status(400).json({ message: "Vui lòng chọn ảnh đại diện" });
 
-    const avatarUrl = `/avatars/${req.file.filename}`;
-
-    // Lưu vào DB
+    // Lưu thẳng Base64 string vào DB Neon
     await prisma.users.update({
       where: { id: decoded.id },
-      data: { avatar: avatarUrl },
+      data: { avatar: avatar },
     });
 
-    res.json({ success: true, avatarUrl });
+    res.json({ success: true, avatarUrl: avatar });
   } catch (error) {
     console.error("Lỗi upload avatar:", error);
     res
       .status(500)
-      .json({ message: "Lỗi server khi upload ảnh", details: error.message });
+      .json({ message: "Lỗi server khi lưu ảnh đại diện", details: error.message });
   }
 });
 

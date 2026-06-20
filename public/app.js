@@ -1,6 +1,12 @@
 const SERVER_URL = window.location.origin;
 const API_URL = `${SERVER_URL}/api`;
 
+function formatUrl(url) {
+    if (!url) return "";
+    if (url.startsWith("http") || url.startsWith("data:image")) return url;
+    return SERVER_URL + url;
+}
+
 // TỰ ĐỘNG THAY THẾ ẢNH LỖI (404) BẰNG ẢNH MẶC ĐỊNH
 document.addEventListener(
     "error",
@@ -445,12 +451,8 @@ function initizeChatSession(userData, userToken) {
 
     document.getElementById("my-name").innerText = myName;
     document.getElementById("my-avatar").src = userData.avatar ?
-        userData.avatar.startsWith("http") ?
-        userData.avatar :
-        SERVER_URL + userData.avatar :
-        `https://ui-avatars.com/api/?name=${encodeURIComponent(
-        myName,
-      )}&background=random`;
+        formatUrl(userData.avatar) :
+        `https://ui-avatars.com/api/?name=${encodeURIComponent(myName)}&background=random`;
 
     // Đồng bộ thông tin sang Tab Hồ sơ
     document.getElementById("profile-name").innerText = myName;
@@ -462,11 +464,7 @@ function initizeChatSession(userData, userToken) {
         userData.bio || "Chưa có tiểu sử";
     if (document.getElementById("my-cover")) {
         if (userData.coverImage) {
-            document.getElementById("my-cover").src = userData.coverImage.startsWith(
-                    "http",
-                ) ?
-                userData.coverImage :
-                SERVER_URL + userData.coverImage;
+            document.getElementById("my-cover").src = formatUrl(userData.coverImage);
         } else {
             document.getElementById("my-cover").src =
                 "https://ui-avatars.com/api/?name=Cover&background=e9ecef&color=333&size=800&font-size=0.1";
@@ -787,9 +785,7 @@ async function loadConversations() {
                 }
 
                 const avatarUrl = user.avatar ?
-                    user.avatar.startsWith("http") ?
-                    user.avatar :
-                    SERVER_URL + user.avatar :
+                    formatUrl(user.avatar) :
                     `https://ui-avatars.com/api/?name=${encodeURIComponent(
               user.fullName || "User",
             )}&background=random`;
@@ -862,9 +858,7 @@ async function searchUser() {
             if (user.id === myId) return;
 
             const avatarUrl = user.avatar ?
-                user.avatar.startsWith("http") ?
-                user.avatar :
-                SERVER_URL + user.avatar :
+                formatUrl(user.avatar) :
                 `https://ui-avatars.com/api/?name=${encodeURIComponent(
             user.fullName,
           )}&background=random`;
@@ -1143,9 +1137,7 @@ function renderFriendRequests() {
     pendingFriendRequests.forEach((req) => {
         const user = req.requester;
         const avatarUrl = user.avatar ?
-            user.avatar.startsWith("http") ?
-            user.avatar :
-            SERVER_URL + user.avatar :
+            formatUrl(user.avatar) :
             `https://ui-avatars.com/api/?name=${encodeURIComponent(
           user.fullName,
         )}&background=random`;
@@ -1189,9 +1181,7 @@ async function searchUserForFriend() {
             if (user.id === myId) return;
 
             const avatarUrl = user.avatar ?
-                user.avatar.startsWith("http") ?
-                user.avatar :
-                SERVER_URL + user.avatar :
+                formatUrl(user.avatar) :
                 `https://ui-avatars.com/api/?name=${encodeURIComponent(
             user.fullName,
           )}&background=random`;
@@ -1260,9 +1250,7 @@ async function loadFriends() {
         listEl.innerHTML = "";
         data.data.forEach((user) => {
             const avatarUrl = user.avatar ?
-                user.avatar.startsWith("http") ?
-                user.avatar :
-                SERVER_URL + user.avatar :
+                formatUrl(user.avatar) :
                 `https://ui-avatars.com/api/?name=${encodeURIComponent(
             user.fullName,
           )}&background=random`;
@@ -1953,28 +1941,34 @@ if (avatarUploadInput) {
         const file = e.target.files[0];
         if (!file) return;
 
-        const formData = new FormData();
-        formData.append("avatar", file);
+        // Đọc file thành Base64 để lưu thẳng lên Neon DB
+        const reader = new FileReader();
+        reader.onload = async function(event) {
+            const base64String = event.target.result;
 
-        try {
-            const res = await fetch(`${API_URL}/users/avatar`, {
-                method: "POST",
-                headers: { Authorization: `Bearer ${token}` },
-                body: formData,
-            });
+            try {
+                const res = await fetch(`${API_URL}/users/avatar`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ avatar: base64String }),
+                });
 
-            const data = await res.json();
-            if (data.success) {
-                document.getElementById("my-avatar").src = SERVER_URL + data.avatarUrl;
-                if (document.getElementById("my-avatar-profile"))
-                    document.getElementById("my-avatar-profile").src =
-                    SERVER_URL + data.avatarUrl;
-            } else {
-                alert("Lỗi tải ảnh: " + data.message);
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById("my-avatar").src = base64String;
+                    if (document.getElementById("my-avatar-profile"))
+                        document.getElementById("my-avatar-profile").src = base64String;
+                } else {
+                    alert("Lỗi tải ảnh: " + data.message);
+                }
+            } catch (error) {
+                alert("Lỗi hệ thống khi tải ảnh lên!");
             }
-        } catch (error) {
-            alert("Lỗi hệ thống khi tải ảnh lên!");
-        }
+        };
+        reader.readAsDataURL(file);
     });
 }
 
@@ -2082,9 +2076,7 @@ function showNewMessageToast(msg) {
     const sender = msg.Users || {};
     const senderName = sender.fullName || "Tin nhắn mới";
     let avatarUrl = sender.avatar ?
-        sender.avatar.startsWith("http") ?
-        sender.avatar :
-        SERVER_URL + sender.avatar :
+        formatUrl(sender.avatar) :
         `https://ui-avatars.com/api/?name=${encodeURIComponent(
         senderName,
       )}&background=random`;
@@ -2173,9 +2165,7 @@ async function sendNativeNotification(msg) {
     }
 
     let avatarUrl = sender.avatar ?
-        sender.avatar.startsWith("http") ?
-        sender.avatar :
-        SERVER_URL + sender.avatar :
+        formatUrl(sender.avatar) :
         `https://ui-avatars.com/api/?name=${encodeURIComponent(
         senderName,
       )}&background=random`;
@@ -2408,25 +2398,32 @@ if (coverUploadInput) {
         const file = e.target.files[0];
         if (!file) return;
 
-        const formData = new FormData();
-        formData.append("coverImage", file);
+        // Đọc file thành Base64 để lưu thẳng lên Neon DB
+        const reader = new FileReader();
+        reader.onload = async function(event) {
+            const base64String = event.target.result;
 
-        try {
-            const res = await fetch(`${API_URL}/users/cover`, {
-                method: "POST",
-                headers: { Authorization: `Bearer ${token}` },
-                body: formData,
-            });
+            try {
+                const res = await fetch(`${API_URL}/users/cover`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ coverPhoto: base64String }),
+                });
 
-            const data = await res.json();
-            if (data.success) {
-                document.getElementById("my-cover").src = SERVER_URL + data.coverUrl;
-            } else {
-                alert("Lỗi tải ảnh bìa: " + data.message);
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById("my-cover").src = base64String;
+                } else {
+                    alert("Lỗi tải ảnh bìa: " + data.message);
+                }
+            } catch (error) {
+                alert("Lỗi hệ thống khi tải ảnh bìa lên!");
             }
-        } catch (error) {
-            alert("Lỗi hệ thống khi tải ảnh bìa lên!");
-        }
+        };
+        reader.readAsDataURL(file);
     });
 }
 
@@ -2742,9 +2739,7 @@ function handleIncomingCall(data) {
 
         let safeAvatar;
         if (callerAvatar && callerAvatar.trim() !== "") {
-            safeAvatar = callerAvatar.startsWith("http") ?
-                callerAvatar :
-                SERVER_URL + callerAvatar;
+            safeAvatar = formatUrl(callerAvatar);
         } else {
             safeAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(
         callerName || "User",
@@ -2835,9 +2830,7 @@ async function handleCallAccepted(data) {
 
             let avatarUrl;
             if (calleeInfo.avatar && calleeInfo.avatar.trim() !== "") {
-                avatarUrl = calleeInfo.avatar.startsWith("http") ?
-                    calleeInfo.avatar :
-                    SERVER_URL + calleeInfo.avatar;
+                avatarUrl = formatUrl(calleeInfo.avatar);
             } else {
                 avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
           calleeInfo.fullName || "User",
@@ -3346,9 +3339,7 @@ function renderNotifications() {
     notificationsList.forEach((notif) => {
         const sender = notif.Sender;
         const avatarUrl = sender.avatar ?
-            sender.avatar.startsWith("http") ?
-            sender.avatar :
-            SERVER_URL + sender.avatar :
+            formatUrl(sender.avatar) :
             `https://ui-avatars.com/api/?name=${encodeURIComponent(
           sender.fullName,
         )}&background=random`;
@@ -3393,9 +3384,7 @@ function showToastNotification(notif) {
 
     const sender = notif.Sender;
     const avatarUrl = sender.avatar ?
-        sender.avatar.startsWith("http") ?
-        sender.avatar :
-        SERVER_URL + sender.avatar :
+        formatUrl(sender.avatar) :
         `https://ui-avatars.com/api/?name=${encodeURIComponent(
         sender.fullName,
       )}&background=random`;
