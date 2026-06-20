@@ -273,7 +273,23 @@ const stunServers = {
     iceServers: [
         { urls: "stun:stun.l.google.com:19302" },
         { urls: "stun:stun1.l.google.com:19302" },
+        { urls: "stun:stun2.l.google.com:19302" },
+        { urls: "stun:stun3.l.google.com:19302" },
+        { urls: "stun:stun4.l.google.com:19302" },
+        { urls: "stun:stun.cloudflare.com:3478" },
+        { urls: "stun:openrelay.metered.ca:80" },
+        {
+            urls: "turn:openrelay.metered.ca:80",
+            username: "openrelayproject",
+            credential: "openrelayproject",
+        },
+        {
+            urls: "turn:openrelay.metered.ca:443",
+            username: "openrelayproject",
+            credential: "openrelayproject",
+        },
     ],
+    iceCandidatePoolSize: 10,
 };
 
 // --- QUẢN LÝ OVERLAY LOADING TOÀN CỤC ---
@@ -325,7 +341,7 @@ function showMobileOverlay(messageEl) {
     if (!overlay) {
         overlay = document.createElement("div");
         overlay.id = "mobile-action-overlay";
-        const chatArea = document.querySelector(".chat-area") || document.body;
+        const chatArea = document.querySelector(".chat-window") || document.body;
         chatArea.appendChild(overlay);
         overlay.addEventListener("click", hideMobileOverlay);
         overlay.addEventListener("touchstart", hideMobileOverlay, {
@@ -1761,6 +1777,8 @@ function sendMessage(imageContent = null) {
                 // Cập nhật id để khớp với id thật và socket sẽ nhận biết không hiển thị trùng
                 optimisticEl.id = `msg-${data.data.id}`;
                 optimisticEl.dataset.messageId = data.data.id;
+                // ✨ Xóa dấu chấm spinner - tin nhắn đã gửi xong
+                optimisticEl.style.opacity = "1";
             }
             // Cập nhật trong mảng currentChatMessages
             const idx = currentChatMessages.findIndex(m => m.id === optimisticId);
@@ -2544,18 +2562,6 @@ function stopOutgoingRingtone() {
 // 1. Bắt đầu cuộc gọi (Người gọi)
 async function startCall(callType) {
     if (!currentChatPartnerId) return alert("Vui lòng chọn một người để gọi.");
-
-    const outRing = document.getElementById("outgoing-ringtone");
-    if (outRing) {
-        outRing.play().catch(() => {});
-        outRing.pause();
-    }
-
-    const remoteAudioEl = document.getElementById("remote-audio");
-    if (remoteAudioEl) {
-        remoteAudioEl.play().catch(() => {});
-        remoteAudioEl.pause();
-    }
 
     callTypeGlobal = callType;
     currentCallPartnerId = currentChatPartnerId;

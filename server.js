@@ -326,8 +326,7 @@ app.post("/api/users/fcm-token", async (req, res) => {
 
     res.json({ success: true, message: "Lưu mã thiết bị thành công" });
   } catch (error) {
-    console.error("Lỗi lưu FCM Token:", error);
-    res.status(500).json({ success: false, message: "Lỗi Server" });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
@@ -341,4 +340,43 @@ server.listen(PORT, () => {
   console.log(`=========================================`);
   console.log(`🚀 Server đang chạy tại: http://localhost:${PORT}`);
   console.log(`=========================================`);
+
+  // ============================================
+  // KEEP-ALIVE: Ngăn Neon DB ngủ đông (cold start)
+  // Neon DB free tier tự ngắt kết nối sau ~5 phút không hoạt động
+  // Ping mỗi 4 phút để giữ kết nối luôn sẵn sàng
+  // ============================================
+  const DB_PING_INTERVAL = 4 * 60 * 1000; // 4 phút
+  setInterval(async () => {
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      console.log("🟢 [Keep-alive] DB ping thành công");
+    } catch (err) {
+      console.warn("🟡 [Keep-alive] DB ping thất bại:", err.message);
+    }
+  }, DB_PING_INTERVAL);
+
+  // ============================================
+  // KEEP-ALIVE: Ngăn Render.com ngủ đông (sleep)
+  // Render free tier tự sleep sau 15 phút không có HTTP request
+  // Self-ping mỗi 14 phút để server luôn thức
+  // ============================================
+  const RENDER_URL = process.env.RENDER_EXTERNAL_URL || "";
+  if (RENDER_URL) {
+    const https = require("https");
+    const http = require("http");
+    const SELF_PING_INTERVAL = 14 * 60 * 1000; // 14 phút
+    setInterval(() => {
+      const client = RENDER_URL.startsWith("https") ? https : http;
+      client.get(`${RENDER_URL}/health`, (res) => {
+        console.log(`🟢 [Keep-alive] Self-ping Render: ${res.statusCode}`);
+      }).on("error", (err) => {
+        console.warn("🟡 [Keep-alive] Self-ping thất bại:", err.message);
+      });
+    }, SELF_PING_INTERVAL);
+    console.log(`🔄 Keep-alive self-ping đã bật cho: ${RENDER_URL}`);
+  }
 });
+
+// Health check endpoint (dùng bởi self-ping)
+app.get("/health", (req, res) => res.json({ status: "ok", time: new Date().toISOString() }));

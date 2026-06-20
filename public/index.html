@@ -17,7 +17,7 @@
     />
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" href="icon.png" type="image/png" />
-    <link rel="stylesheet" href="style.css?v=20001" />
+    <link rel="stylesheet" href="style.css?v=20002" />
   </head>
 
   <body>
@@ -217,7 +217,7 @@
     <!-- Màn hình Chat (Mặc định ẩn, đăng nhập xong mới hiện) -->
     <div id="chat-screen" style="display: none">
       <!-- Thanh Điều Hướng (Navigation) -->
-      <nav class="main-nav">
+      <nav class="sidebar">
         <div
           class="nav-item active"
           onclick="switchTab('tab-messages', this)"
@@ -266,7 +266,7 @@
         <!-- TAB 1: TIN NHẮN (Bao gồm danh bạ và khung chat cũ) -->
         <div id="tab-messages" class="tab-pane active">
           <!-- Cột danh bạ bên trái -->
-          <div class="sidebar">
+          <aside class="chat-list">
             <!-- Header Sidebar -->
             <div class="sidebar-header">
               <div class="user-info">
@@ -310,10 +310,10 @@
             <div class="chat-list-container">
               <ul id="user-list"></ul>
             </div>
-          </div>
+          </aside>
 
           <!-- Khung chat bên phải -->
-          <div class="chat-area">
+          <main class="chat-window">
             <!-- Header Chat -->
             <div
               class="chat-header"
@@ -415,7 +415,7 @@
                 ></i>
               </div>
             </div>
-          </div>
+          </main>
         </div>
 
         <!-- TAB 2: DANH BẠ & KẾT BẠN (NEW) -->
@@ -802,6 +802,6 @@
 
     <!-- Import Socket.IO và file xử lý logic -->
     <script src="/socket.io/socket.io.js"></script>
-    <script src="app.js?v=20001"></script>
+    <script src="app.js?v=20002"></script>
   </body>
 </html>
