@@ -510,7 +510,10 @@ function initizeChatSession(userData, userToken) {
 
     // Kết nối Socket.IO Real-time
     socket = io(SERVER_URL);
-    socket.emit("user_connected", myId);
+    socket.on("connect", () => {
+        console.log("⚡ Kết nối Socket thành công, đang xác thực user_connected: " + myId);
+        socket.emit("user_connected", myId);
+    });
 
     // Nghe danh sách lời mời bạn bè ban đầu
     socket.on("initial_friend_requests", (requests) => {
