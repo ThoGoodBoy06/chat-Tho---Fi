@@ -1,5 +1,4 @@
-const { PrismaClient } = require("@prisma/client");
-const prisma = new PrismaClient();
+const prisma = require("../prisma");
 
 // 1. Cập nhật thông tin Profile (Tên, Bio)
 exports.updateProfile = async (req, res) => {

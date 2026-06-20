@@ -2,7 +2,6 @@ require("dotenv").config();
 require("./firebaseConfig");
 const express = require("express");
 const cors = require("cors");
-const { PrismaClient } = require("@prisma/client");
 const http = require("http");
 const { Server } = require("socket.io");
 const multer = require("multer");
@@ -12,7 +11,7 @@ const jwt = require("jsonwebtoken");
 const authMiddleware = require("./middlewares/auth.middleware");
 
 const app = express();
-const prisma = new PrismaClient();
+const prisma = require("./prisma");
 
 // Tạo HTTP server từ app Express
 const server = http.createServer(app);
