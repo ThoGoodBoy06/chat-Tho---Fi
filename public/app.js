@@ -948,6 +948,12 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
             dataMsg.data.forEach((msg) => displayMessage(msg));
             updateReadReceiptsDOM();
             emitMarkMessagesRead();
+
+            // Tự động đồng bộ tin nhắn cuối cùng vào sidebar khi mở phòng chat để tránh lệch giao diện
+            if (dataMsg.data.length > 0) {
+                const lastMsg = dataMsg.data[dataMsg.data.length - 1];
+                updateChatListUI(lastMsg, true);
+            }
         }
     } catch (error) {
         alert("Lỗi khi mở phòng trò chuyện: " + error.message);
@@ -956,69 +962,84 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
 
 // --- HÀM CẬP NHẬT GIAO DIỆN CHAT LIST KHI CÓ TIN NHẮN MỚI ---
 function updateChatListUI(msg, isRead = false) {
-    const userList = document.getElementById("user-list");
-    if (!userList) return;
-    const chatItem = userList.querySelector(
-        `li[data-conversation-id="${msg.conversationId}"]`,
-    );
+    try {
+        const userList = document.getElementById("user-list");
+        if (!userList) return;
 
-    if (!chatItem) {
-        // Nếu là cuộc trò chuyện mới tinh chưa có, tải lại toàn bộ danh sách
-        loadConversations();
-        return;
-    }
-
-    // 1. Cập nhật nội dung text snippet mới nhất
-    const msgTextEl = chatItem.querySelector(".chat-list-msg");
-    if (msgTextEl) {
-        let snippet = msg.content;
-        if (msg.isRecalled) snippet = "Tin nhắn đã bị thu hồi";
-        else if (msg.type === "missed_call") snippet = "Cuộc gọi nhỡ";
-        else if (msg.type === "file") {
-            try {
-                const fileData = JSON.parse(msg.content);
-                snippet = `[ Tệp tin: ${fileData.fileName} ]`;
-            } catch (e) {
-                snippet = "[ Tệp tin ]";
+        // Tìm item bằng isSameId để tránh lệch chữ hoa/thường hoặc khoảng trắng giữa các UUID
+        const items = userList.querySelectorAll("li");
+        let chatItem = null;
+        for (const item of items) {
+            if (isSameId(item.dataset.conversationId, msg.conversationId)) {
+                chatItem = item;
+                break;
             }
         }
-        else if (msg.type === "audio") snippet = "[ Tin nhắn thoại ]";
-        else if (
-            msg.content &&
-            (msg.content.startsWith("data:image") ||
-            msg.content.match(/\.(jpeg|jpg|gif|png)$/i))
-        )
-            snippet = "[ Hình ảnh ]";
 
-        msgTextEl.innerText = snippet;
+        if (!chatItem) {
+            // Nếu là cuộc trò chuyện mới tinh chưa có, tải lại toàn bộ danh sách
+            loadConversations();
+            return;
+        }
 
-        // In đậm nếu chưa đọc
+        // 1. Cập nhật nội dung text snippet mới nhất
+        const msgTextEl = chatItem.querySelector(".chat-list-msg");
+        if (msgTextEl) {
+            let snippet = msg.content || "";
+            if (msg.isRecalled) snippet = "Tin nhắn đã bị thu hồi";
+            else if (msg.type === "missed_call") snippet = "Cuộc gọi nhỡ";
+            else if (msg.type === "file") {
+                try {
+                    const fileData = JSON.parse(msg.content);
+                    snippet = `[ Tệp tin: ${fileData.fileName} ]`;
+                } catch (e) {
+                    snippet = "[ Tệp tin ]";
+                }
+            }
+            else if (msg.type === "audio") snippet = "[ Tin nhắn thoại ]";
+            else if (
+                msg.content &&
+                (msg.content.startsWith("data:image") ||
+                msg.content.match(/\.(jpeg|jpg|gif|png)$/i))
+            ) {
+                snippet = "[ Hình ảnh ]";
+            }
+
+            msgTextEl.innerText = snippet;
+
+            // In đậm nếu chưa đọc
+            if (!isRead && msg.senderId !== myId) {
+                msgTextEl.style.fontWeight = "600";
+                msgTextEl.style.color = "var(--text-dark)";
+            } else {
+                msgTextEl.style.fontWeight = "normal";
+                msgTextEl.style.color = "var(--text-light)";
+            }
+        }
+
+        // 2. Tăng số đếm Badge nếu mình là người nhận và phòng chat đang đóng
         if (!isRead && msg.senderId !== myId) {
-            msgTextEl.style.fontWeight = "600";
-            msgTextEl.style.color = "var(--text-dark)";
+            const rightContainer = chatItem.querySelector(".chat-list-right");
+            let badge = chatItem.querySelector(".unread-badge");
+
+            if (badge) {
+                let currentCount = parseInt(badge.innerText.replace("+", "")) || 0;
+                if (badge.innerText === "99+") currentCount = 99;
+                currentCount++;
+                badge.innerText = currentCount > 99 ? "99+" : currentCount;
+            } else if (rightContainer) {
+                badge = document.createElement("span");
+                badge.className = "unread-badge";
+                badge.innerText = "1";
+                rightContainer.appendChild(badge);
+            }
         }
+
+        // 3. Đẩy item lên vị trí đầu tiên của danh sách
+        userList.prepend(chatItem);
+    } catch (error) {
+        console.error("Lỗi trong updateChatListUI:", error);
     }
-
-    // 2. Tăng số đếm Badge nếu mình là người nhận và phòng chat đang đóng
-    if (!isRead && msg.senderId !== myId) {
-        const rightContainer = chatItem.querySelector(".chat-list-right");
-        let badge = chatItem.querySelector(".unread-badge");
-
-        if (badge) {
-            let currentCount = parseInt(badge.innerText.replace("+", "")) || 0;
-            if (badge.innerText === "99+") currentCount = 99;
-            currentCount++;
-            badge.innerText = currentCount > 99 ? "99+" : currentCount;
-        } else if (rightContainer) {
-            badge = document.createElement("span");
-            badge.className = "unread-badge";
-            badge.innerText = "1";
-            rightContainer.appendChild(badge);
-        }
-    }
-
-    // 3. Đẩy item lên vị trí đầu tiên của danh sách
-    userList.prepend(chatItem);
 }
 
 // --- TẢI LẠI ĐOẠN CHAT ---
