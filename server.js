@@ -171,14 +171,9 @@ app.delete("/api/users/friends/:friendId", async (req, res) => {
         where: { id: friendship.id },
       });
 
-      // Báo cho người bị xóa biết để cập nhật UI real-time
+      // Báo cho người bị xóa biết để cập nhật UI real-time (qua room)
       const io = req.app.get("io");
-      const friendSocketId = io.userSockets
-        ? io.userSockets.get(friendId)
-        : null;
-      if (friendSocketId) {
-        io.to(friendSocketId).emit("unfriended", { unfriendedBy: userId });
-      }
+      io.to(friendId).emit("unfriended", { unfriendedBy: userId });
 
       res.json({ success: true, message: "Đã xóa bạn bè và cuộc trò chuyện." });
     } else {

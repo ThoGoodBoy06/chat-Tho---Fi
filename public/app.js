@@ -1292,6 +1292,33 @@ function displayMessage(msg) {
     // CHỐT CHẶN: Nếu tin nhắn đã được render (bởi Socket) thì bỏ qua để tránh trùng lặp
     if (document.getElementById(`msg-${msg.id}`)) return;
 
+    // ✨ Hợp nhất tin nhắn tạm (optimistic UI) nếu có để tránh trùng lặp và kẹt spinner
+    if (msg.senderId === myId && msg.id && !msg.id.toString().startsWith("optimistic-")) {
+        const optMsg = currentChatMessages.find(m => 
+            m.id && 
+            m.id.toString().startsWith("optimistic-") && 
+            m.senderId === msg.senderId && 
+            m.content === msg.content
+        );
+
+        if (optMsg) {
+            const optimisticEl = document.getElementById(`msg-${optMsg.id}`);
+            if (optimisticEl) {
+                console.log("✨ Hợp nhất thành công tin nhắn tạm:", optMsg.id, "->", msg.id);
+                // Đổi ID và dataset
+                optimisticEl.id = `msg-${msg.id}`;
+                optimisticEl.dataset.messageId = msg.id;
+                optimisticEl.style.opacity = "1";
+                
+                // Cập nhật trong mảng currentChatMessages
+                const idx = currentChatMessages.indexOf(optMsg);
+                if (idx !== -1) currentChatMessages[idx] = msg;
+                
+                return; // Trả về sớm, không tạo phần tử mới!
+            }
+        }
+    }
+
     if (!currentChatMessages.some(m => m.id === msg.id)) {
         currentChatMessages.push(msg);
     }
@@ -2744,10 +2771,15 @@ function handleIncomingCall(data) {
 }
 
 // 2.5 Xử lý khi cuộc gọi bị từ chối (Người gọi)
-function handleCallRejected() {
+function handleCallRejected(data) {
     stopVibration();
     stopOutgoingRingtone();
-    alert("Người dùng đã từ chối cuộc gọi.");
+    const reason = data ? data.reason : null;
+    if (reason === "offline") {
+        alert("Người dùng hiện không trực tuyến.");
+    } else {
+        alert("Người dùng đã từ chối cuộc gọi.");
+    }
     endCall(false);
 }
 

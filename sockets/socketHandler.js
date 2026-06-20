@@ -58,19 +58,32 @@ module.exports = (io) => {
     socket.on("disconnect", async () => {
       console.log("🔴 Một thiết bị vừa ngắt kết nối: " + socket.id);
       if (socket.userId) {
-        userSockets.delete(socket.userId);
+        // Chỉ xóa khỏi map nếu socket.id đang ngắt kết nối là socket đang lưu trữ trong map
+        if (userSockets.get(socket.userId) === socket.id) {
+          userSockets.delete(socket.userId);
+        }
 
-        // Cập nhật trạng thái Offline và lần truy cập cuối vào Database
-        await prisma.users.update({
-          where: { id: socket.userId },
-          data: { isOnline: false, lastSeen: new Date() },
-        });
+        // Kiểm tra xem người dùng này còn bất kỳ socket kết nối nào khác không (thông qua room của họ)
+        const userRoom = io.sockets.adapter.rooms.get(socket.userId);
+        const hasRemainingSockets = userRoom && userRoom.size > 0;
 
-        // Báo cho mọi người biết user này đã offline
-        io.emit("user_status_changed", {
-          userId: socket.userId,
-          isOnline: false,
-        });
+        // Chỉ cập nhật DB offline nếu người dùng không còn kết nối nào khác
+        if (!hasRemainingSockets) {
+          try {
+            await prisma.users.update({
+              where: { id: socket.userId },
+              data: { isOnline: false, lastSeen: new Date() },
+            });
+
+            // Báo cho mọi người biết user này đã offline
+            io.emit("user_status_changed", {
+              userId: socket.userId,
+              isOnline: false,
+            });
+          } catch (e) {
+            console.error("Lỗi khi cập nhật trạng thái offline:", e);
+          }
+        }
       }
     });
 
@@ -160,32 +173,33 @@ module.exports = (io) => {
       }
     });
 
-    // --- LOGIC GỌI VIDEO / THOẠI (WEBRTC SIGNALING) ---
-
     // 5. User A gửi yêu cầu gọi (request_call) cho User B
     socket.on(
       "request_call",
       ({ callerId, callerName, calleeId, callType, callerAvatar }) => {
-        const calleeSocketId = userSockets.get(calleeId);
-        if (calleeSocketId) {
+        // Kiểm tra trạng thái online thời gian thực của callee qua room Socket.IO
+        const calleeRoom = io.sockets.adapter.rooms.get(calleeId);
+        const isCalleeOnline = calleeRoom && calleeRoom.size > 0;
+
+        if (isCalleeOnline) {
           console.log(`📞 ${callerName} đang gọi cho ${calleeId}`);
-          // Chuyển tiếp cuộc gọi đến (incoming_call) cho User B
-          io.to(calleeSocketId).emit("incoming_call", {
+          // Chuyển tiếp cuộc gọi đến (incoming_call) cho User B (qua room)
+          io.to(calleeId).emit("incoming_call", {
             callerId,
             callerName,
             callerAvatar,
             callType,
           });
+        } else {
+          // Trả trực tiếp phản hồi từ chối do offline về cho caller
+          socket.emit("call_rejected", { reason: "offline" });
         }
       },
     );
 
     // 6. User B từ chối cuộc gọi
     socket.on("reject_call", async ({ callerId, callType }) => {
-      const callerSocketId = userSockets.get(callerId);
-      if (callerSocketId) {
-        io.to(callerSocketId).emit("call_rejected");
-      }
+      io.to(callerId).emit("call_rejected", { reason: "rejected" });
 
       // Xử lý tạo tin nhắn "Cuộc gọi nhỡ" hệ thống
       try {
@@ -227,51 +241,39 @@ module.exports = (io) => {
 
     // 7. User B chấp nhận cuộc gọi
     socket.on("accept_call", async ({ callerId }) => {
-      const callerSocketId = userSockets.get(callerId);
-      if (callerSocketId) {
-        try {
-          // Lấy thông tin của người vừa chấp nhận cuộc gọi (callee) từ DB
-          const callee = await prisma.users.findUnique({
-            where: { id: socket.userId },
-            select: { id: true, fullName: true, avatar: true },
-          });
+      try {
+        // Lấy thông tin của người vừa chấp nhận cuộc gọi (callee) từ DB
+        const callee = await prisma.users.findUnique({
+          where: { id: socket.userId },
+          select: { id: true, fullName: true, avatar: true },
+        });
 
-          // Gửi sự kiện chấp nhận kèm thông tin của callee về cho caller
-          io.to(callerSocketId).emit("call_accepted", {
-            calleeInfo: callee,
-          });
-        } catch (error) {
-          console.error("Lỗi lấy thông tin người nhận cuộc gọi:", error);
-          io.to(callerSocketId).emit("call_accepted", { calleeInfo: null });
-        }
+        // Gửi sự kiện chấp nhận kèm thông tin của callee về cho caller (qua room)
+        io.to(callerId).emit("call_accepted", {
+          calleeInfo: callee,
+        });
+      } catch (error) {
+        console.error("Lỗi lấy thông tin người nhận cuộc gọi:", error);
+        io.to(callerId).emit("call_accepted", { calleeInfo: null });
       }
     });
 
     // 8. Chuyển tiếp tín hiệu WebRTC (Offer, Answer, ICE Candidate)
     socket.on("webrtc_signal", ({ connectedUserId, signal }) => {
-      const connectedUserSocketId = userSockets.get(connectedUserId);
-      if (connectedUserSocketId) {
-        io.to(connectedUserSocketId).emit("webrtc_signal", {
-          signal,
-          senderId: socket.userId,
-        });
-      }
+      io.to(connectedUserId).emit("webrtc_signal", {
+        signal,
+        senderId: socket.userId,
+      });
     });
 
     // 9. Kết thúc cuộc gọi
     socket.on("end_call", ({ connectedUserId }) => {
-      const connectedUserSocketId = userSockets.get(connectedUserId);
-      if (connectedUserSocketId) {
-        io.to(connectedUserSocketId).emit("call_ended");
-      }
+      io.to(connectedUserId).emit("call_ended");
     });
 
     // 10. Nâng cấp từ Voice lên Video
     socket.on("did_upgrade_to_video", ({ to }) => {
-      const toSocketId = userSockets.get(to);
-      if (toSocketId) {
-        io.to(toSocketId).emit("did_upgrade_to_video");
-      }
+      io.to(to).emit("did_upgrade_to_video");
     });
 
     // --- LOGIC KẾT BẠN (FRIEND REQUEST) ---
@@ -313,11 +315,8 @@ module.exports = (io) => {
           },
         });
 
-        // Gửi thông báo real-time cho người nhận nếu họ online
-        const receiverSocketId = userSockets.get(receiverId);
-        if (receiverSocketId) {
-          io.to(receiverSocketId).emit("new_friend_request", newRequest);
-        }
+        // Gửi thông báo real-time cho người nhận (qua room)
+        io.to(receiverId).emit("new_friend_request", newRequest);
 
         socket.emit("friend_request_sent", { receiverId });
       } catch (error) {
@@ -358,17 +357,15 @@ module.exports = (io) => {
           },
         });
 
-        const requesterSocketId = userSockets.get(friendship.requesterId);
-        if (requesterSocketId) {
-          io.to(requesterSocketId).emit(
-            "friend_request_accepted",
-            friendship.receiver,
-          );
-          io.to(requesterSocketId).emit(
-            "new_global_notification",
-            notification,
-          );
-        }
+        // Phát sự kiện real-time qua room của requester
+        io.to(friendship.requesterId).emit(
+          "friend_request_accepted",
+          friendship.receiver,
+        );
+        io.to(friendship.requesterId).emit(
+          "new_global_notification",
+          notification,
+        );
 
         socket.emit("you_accepted_friend_request", friendship.requester);
       } catch (error) {
@@ -390,12 +387,10 @@ module.exports = (io) => {
           where: { id: requestId },
         });
 
-        const requesterSocketId = userSockets.get(request.requesterId);
-        if (requesterSocketId) {
-          io.to(requesterSocketId).emit("friend_request_rejected", {
-            userId: receiverId,
-          });
-        }
+        // Phát sự kiện từ chối qua room của requester
+        io.to(request.requesterId).emit("friend_request_rejected", {
+          userId: receiverId,
+        });
       } catch (error) {
         console.error("Lỗi khi từ chối lời mời:", error);
       }
