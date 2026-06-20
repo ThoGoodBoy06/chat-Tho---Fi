@@ -17,7 +17,7 @@
     />
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" href="icon.png" type="image/png" />
-    <link rel="stylesheet" href="style.css?v=20005" />
+    <link rel="stylesheet" href="style.css?v=20013" />
   </head>
 
   <body>
@@ -348,23 +348,29 @@
               </div>
             </div>
 
-            <div
-              id="chat-header-placeholder"
-              style="
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                height: 100%;
-                flex-direction: column;
-                color: var(--text-light);
-              "
-            >
-              <i
-                class="fas fa-comments"
-                style="font-size: 64px; margin-bottom: 16px; opacity: 0.5"
-              ></i>
-              <h3>Chào mừng đến với Zalo Web</h3>
-              <p>Khám phá những tiện ích hỗ trợ làm việc và trò chuyện</p>
+            <div id="chat-header-placeholder">
+              <svg viewBox="0 0 100 100" class="empty-chat-svg">
+                <defs>
+                  <linearGradient id="bubble1-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="var(--primary-color)" stop-opacity="0.85" />
+                    <stop offset="100%" stop-color="var(--primary-hover)" stop-opacity="0.85" />
+                  </linearGradient>
+                  <linearGradient id="bubble2-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#ffffff" stop-opacity="0.15" />
+                    <stop offset="100%" stop-color="#ffffff" stop-opacity="0.05" />
+                  </linearGradient>
+                </defs>
+                <path d="M25,55 C25,41.2 36.2,30 50,30 C63.8,30 75,41.2 75,55 C75,60.5 73.2,65.6 70.2,69.8 L73,81 L61.5,77.5 C58,79.1 54.1,80 50,80 C36.2,80 25,68.8 25,55 Z" fill="url(#bubble2-grad)" stroke="var(--border-color)" stroke-width="1" />
+                <path d="M15,40 C15,26.2 26.2,15 40,15 C53.8,15 65,26.2 65,40 C65,53.8 53.8,65 40,65 C35.9,65 32,64.1 28.5,62.5 L17,66 L19.8,54.8 C16.8,50.6 15,45.5 15,40 Z" fill="url(#bubble1-grad)" />
+                <circle cx="32" cy="40" r="3" fill="#ffffff" opacity="0.9" />
+                <circle cx="40" cy="40" r="3" fill="#ffffff" opacity="0.9" />
+                <circle cx="48" cy="40" r="3" fill="#ffffff" opacity="0.9" />
+              </svg>
+              <h3>Chào mừng đến với Chat Tho-Fi</h3>
+              <p>Kết nối nhanh chóng, gọi điện và nhắn tin không giới hạn</p>
+              <button class="btn-start-chat" onclick="switchTab('tab-contacts', document.querySelectorAll('.nav-item')[1])">
+                <i class="fas fa-paper-plane"></i> Bắt đầu cuộc trò chuyện mới
+              </button>
             </div>
 
             <div id="messages"></div>
@@ -593,21 +599,10 @@
               </div>
             </div>
 
-            <div class="zalo-menu-list mt-3">
-              <div class="zalo-menu-item" onclick="logout()">
-                <div
-                  class="menu-left"
-                  style="
-                    color: #e03c31;
-                    font-weight: 500;
-                    justify-content: center;
-                    width: 100%;
-                  "
-                >
-                  <i class="fas fa-sign-out-alt menu-icon"></i> Đăng xuất tài
-                  khoản
-                </div>
-              </div>
+            <div class="zalo-menu-list mt-3" style="border: none; background: transparent; box-shadow: none;">
+              <button class="logout-btn-danger" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i> Đăng xuất tài khoản
+              </button>
             </div>
           </div>
         </div>
@@ -802,6 +797,6 @@
 
     <!-- Import Socket.IO và file xử lý logic -->
     <script src="/socket.io/socket.io.js"></script>
-    <script src="app.js?v=20012"></script>
+    <script src="app.js?v=20013"></script>
   </body>
 </html>

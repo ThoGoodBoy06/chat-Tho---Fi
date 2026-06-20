@@ -1280,12 +1280,12 @@ async function loadFriends() {
           <span>${user.fullName}</span>
         </div>
         <div class="friend-request-actions">
-              <button class="btn-decline" onclick="removeFriend('${
-                user.id
-              }')" style="margin-right: 8px;">Xóa</button>
-          <button class="btn-accept" onclick="startChat('${user.id}', '${
+          <button class="btn-chat-friend btn-outline" onclick="startChat('${user.id}', '${
         user.fullName
-      }', '${avatarUrl}')">Nhắn tin</button>
+      }', '${avatarUrl}')"><i class="far fa-comment-dots"></i> Nhắn tin</button>
+          <button class="btn-delete-friend" onclick="removeFriend('${
+            user.id
+          }')" title="Xóa bạn bè"><i class="fas fa-trash-alt"></i></button>
         </div>
       `;
             listEl.appendChild(itemEl);
@@ -3351,30 +3351,80 @@ function renderNotifications() {
     }
 
     listEl.innerHTML = "";
-    notificationsList.forEach((notif) => {
-        const sender = notif.Sender;
-        const avatarUrl = sender.avatar ?
-            formatUrl(sender.avatar) :
-            `https://ui-avatars.com/api/?name=${encodeURIComponent(
-          sender.fullName,
-        )}&background=random`;
-        const date = new Date(notif.createdAt);
-        const timeStr = `${date.getHours().toString().padStart(2, "0")}:${date
-      .getMinutes()
-      .toString()
-      .padStart(2, "0")} - ${date.getDate()}/${date.getMonth() + 1}`;
 
-        const itemEl = document.createElement("div");
-        itemEl.className = `notification-item ${notif.isRead ? "" : "unread"}`;
-        itemEl.onclick = () => markNotificationAsRead(notif.id);
-        itemEl.innerHTML = `
-      <img src="${avatarUrl}" class="notification-avatar" alt="Avatar">
-      <div class="notification-content">
-        <p class="notification-text"><b>${sender.fullName}</b> ${notif.content}</p>
-        <p class="notification-time">${timeStr}</p>
-      </div>
-    `;
-        listEl.appendChild(itemEl);
+    // Grouping by date
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const groups = {
+        today: { name: "Hôm nay", items: [] },
+        yesterday: { name: "Hôm qua", items: [] },
+        older: { name: "Cũ hơn", items: [] }
+    };
+
+    notificationsList.forEach((notif) => {
+        const date = new Date(notif.createdAt);
+        const dDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        
+        if (dDate.getTime() === today.getTime()) {
+            groups.today.items.push(notif);
+        } else if (dDate.getTime() === yesterday.getTime()) {
+            groups.yesterday.items.push(notif);
+        } else {
+            groups.older.items.push(notif);
+        }
+    });
+
+    Object.keys(groups).forEach((key) => {
+        const group = groups[key];
+        if (group.items.length === 0) return;
+
+        // Render header
+        const headerEl = document.createElement("div");
+        headerEl.className = "notification-group-title";
+        headerEl.innerText = group.name;
+        listEl.appendChild(headerEl);
+
+        // Render group items
+        group.items.forEach((notif) => {
+            const sender = notif.Sender;
+            const avatarUrl = sender.avatar ?
+                formatUrl(sender.avatar) :
+                `https://ui-avatars.com/api/?name=${encodeURIComponent(
+              sender.fullName,
+            )}&background=random`;
+            const date = new Date(notif.createdAt);
+            const timeStr = `${date.getHours().toString().padStart(2, "0")}:${date
+          .getMinutes()
+          .toString()
+          .padStart(2, "0")} - ${date.getDate()}/${date.getMonth() + 1}`;
+
+            let iconClass = "fa-comments";
+            if (notif.type && (notif.type.includes("FRIEND") || notif.type.includes("friend"))) {
+                iconClass = "fa-user-plus";
+            } else if (notif.content && (notif.content.includes("kết bạn") || notif.content.includes("lời mời") || notif.content.includes("chấp nhận"))) {
+                iconClass = "fa-user-plus";
+            }
+
+            const itemEl = document.createElement("div");
+            itemEl.className = `notification-item ${notif.isRead ? "" : "unread"}`;
+            itemEl.onclick = () => markNotificationAsRead(notif.id);
+            itemEl.innerHTML = `
+          <div class="notification-avatar-container">
+            <img src="${avatarUrl}" class="notification-avatar" alt="Avatar">
+            <div class="notification-type-badge ${iconClass === 'fa-user-plus' ? 'friend' : 'msg'}">
+              <i class="fas ${iconClass}"></i>
+            </div>
+          </div>
+          <div class="notification-content">
+            <p class="notification-text"><b>${sender.fullName}</b> ${notif.content}</p>
+            <p class="notification-time">${timeStr}</p>
+          </div>
+        `;
+            listEl.appendChild(itemEl);
+        });
     });
 }
 
