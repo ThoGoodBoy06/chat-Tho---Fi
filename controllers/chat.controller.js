@@ -220,11 +220,41 @@ exports.sendMessage = async (req, res) => {
           snippet = "[ Hình ảnh ]";
         }
 
+        const senderAvatar = newMessage.Users.avatar;
+        let avatarUrl = "https://chat-tho-fi.onrender.com/icon.png";
+        if (senderAvatar) {
+          avatarUrl = senderAvatar.startsWith("http")
+            ? senderAvatar
+            : `https://chat-tho-fi.onrender.com${senderAvatar}`;
+        } else {
+          avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+            newMessage.Users.fullName || "User"
+          )}&background=random`;
+        }
+
         const payload = {
           token: member.Users.fcmToken,
           notification: {
             title: newMessage.Users.fullName || "Tin nhắn mới",
             body: snippet,
+            image: avatarUrl,
+          },
+          android: {
+            priority: "high",
+          },
+          apns: {
+            payload: {
+              aps: {
+                sound: "default",
+                badge: 1,
+              },
+            },
+          },
+          webpush: {
+            notification: {
+              icon: avatarUrl,
+              badge: "https://chat-tho-fi.onrender.com/icon.png",
+            },
           },
           data: {
             conversationId: String(conversationId),
