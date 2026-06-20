@@ -343,7 +343,10 @@ function hideMobileOverlay() {
     if (overlay) overlay.classList.remove("show");
     document
         .querySelectorAll(".message.show-mobile-actions")
-        .forEach((m) => m.classList.remove("show-mobile-actions"));
+        .forEach((m) => {
+            m.classList.remove("show-mobile-actions");
+            m.classList.remove("flip-up");
+        });
     document
         .querySelectorAll(".reaction-palette.show")
         .forEach((p) => p.classList.remove("show"));
@@ -370,6 +373,18 @@ function showMobileOverlay(messageEl) {
     hideMobileOverlay();
     messageEl.classList.add("show-mobile-actions");
     overlay.classList.add("show");
+
+    // Kiem tra vi tri tin nhan: neu gan day man hinh, dao nguoc action panel len tren
+    requestAnimationFrame(() => {
+        const rect = messageEl.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        // Can it nhat 180px cho reaction palette + menu
+        if (spaceBelow < 180) {
+            messageEl.classList.add("flip-up");
+        } else {
+            messageEl.classList.remove("flip-up");
+        }
+    });
 }
 
 // Hệ thống gài quét lỗi toàn cục

@@ -2415,6 +2415,24 @@ input:checked + .slider:before {
   .message.my-message {
     align-self: flex-end !important;
   }
+
+  /* FIX: FLIP ACTION PANEL LEN TREN KHI TIN NHAN O GAN DAY MAN HINH */
+  .message.show-mobile-actions.flip-up .message-actions {
+    top: auto !important;
+    bottom: 100% !important;
+    margin-top: 0 !important;
+    margin-bottom: 8px !important;
+  }
+}
+
+/* FLIP-UP GLOBAL (outside media query) */
+@media (max-width: 768px) {
+  .message.show-mobile-actions.flip-up .message-actions {
+    top: auto !important;
+    bottom: 100% !important;
+    margin-top: 0 !important;
+    margin-bottom: 8px !important;
+  }
 }
 
 /* =========================================
