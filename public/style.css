@@ -2649,15 +2649,15 @@ input:checked + .slider.round:before {
   .chat-header {
     position: sticky;
     top: 0;
-    padding: 12px 16px;
-    padding-top: calc(12px + env(safe-area-inset-top, 0px));
+    padding: 10px 16px !important;
+    padding-top: calc(10px + env(safe-area-inset-top, 0px)) !important;
     z-index: 150;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
     background: var(--primary-color) !important;
     color: white !important;
     border-bottom: none !important;
     box-sizing: border-box;
-    height: calc(56px + env(safe-area-inset-top, 0px));
+    height: auto !important;
   }
   
   .chat-header h3,
