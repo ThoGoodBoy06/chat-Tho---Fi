@@ -3981,3 +3981,36 @@ document.addEventListener("click", (e) => {
     }
 });
 
+// Hàm xin quyền thông báo và lấy FCM Token
+async function requestNotificationPermission() {
+    if (!("Notification" in window)) {
+        console.warn("Trình duyệt này không hỗ trợ hiển thị thông báo.");
+        return;
+    }
+
+    try {
+        const permission = await Notification.requestPermission();
+        if (permission === "granted") {
+            console.log("Quyền thông báo đã được chấp thuận.");
+            
+            if (typeof firebase !== "undefined") {
+                const messaging = firebase.messaging();
+                const currentToken = await messaging.getToken({
+                    vapidKey: "BBtraQSvar7RExe_T8aVhoA3TebgLw0S-ucoMcuV-Oef-H7ULkJGWyBctnxfY5tLnawpWQ9Wn8Aihi-wJaLiGu0" // VAPID Key của bạn
+                });
+                
+                if (currentToken) {
+                    console.log("🔥 FCM Token lấy thành công:", currentToken);
+                } else {
+                    console.warn("Không thể sinh ra Token. Hãy kiểm tra lại cấu hình Firebase.");
+                }
+            }
+        } else {
+            console.warn("Người dùng từ chối cấp quyền thông báo.");
+        }
+    } catch (error) {
+        console.error("Lỗi trong quá trình xin quyền hoặc lấy FCM Token:", error);
+    }
+}
+
+

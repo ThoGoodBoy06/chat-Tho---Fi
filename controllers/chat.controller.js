@@ -554,3 +554,46 @@ exports.reactToMessage = async (req, res) => {
     res.status(500).json({ message: "Lỗi thả cảm xúc", error: error.message });
   }
 };
+
+/**
+ * Hàm gửi Push Notification sử dụng Firebase Admin SDK
+ * @param {string} fcmToken - Token FCM của thiết bị nhận
+ * @param {string} title - Tiêu đề thông báo
+ * @param {string} body - Nội dung thông báo
+ */
+exports.sendPushNotification = async (fcmToken, title, body) => {
+  if (getApps().length === 0) {
+    console.warn("⚠️ Firebase Admin chưa được khởi tạo. Không thể gửi thông báo.");
+    return;
+  }
+
+  const payload = {
+    token: fcmToken,
+    notification: {
+      title: title,
+      body: body,
+      image: "https://chat-tho-fi.onrender.com/icon.png"
+    },
+    android: {
+      priority: "high" // Hiện banner Head-up trên Android
+    },
+    apns: {
+      payload: {
+        aps: {
+          sound: "default", // Đổ chuông trên iOS
+          badge: 1
+        }
+      }
+    }
+  };
+
+  try {
+    const response = await getMessaging().send(payload);
+    console.log("📲 Đã gửi Push Notification thành công:", response);
+    return response;
+  } catch (error) {
+    console.error("❌ Lỗi gửi Push Notification qua Firebase Admin:", error.message);
+    throw error;
+  }
+};
+
