@@ -37,7 +37,16 @@ module.exports = (io) => {
             },
           },
         });
-        socket.emit("initial_friend_requests", pendingRequests);
+
+        // Map avatar sang URL tĩnh
+        const mappedPending = pendingRequests.map(r => {
+          if (r.requester) {
+            r.requester.avatar = r.requester.avatar ? `/api/users/${r.requester.id}/avatar` : null;
+          }
+          return r;
+        });
+
+        socket.emit("initial_friend_requests", mappedPending);
       } catch (e) {
         console.error("Lỗi khi lấy danh sách lời mời kết bạn:", e);
       }
@@ -230,8 +239,17 @@ module.exports = (io) => {
             },
           });
 
-          io.to(socket.userId).emit("receive_message", missedCallMsg);
-          io.to(callerId).emit("receive_message", missedCallMsg);
+          // Map avatar sang URL tĩnh
+          const mappedMissedCallMsg = {
+            ...missedCallMsg,
+            Users: missedCallMsg.Users ? {
+              ...missedCallMsg.Users,
+              avatar: missedCallMsg.Users.avatar ? `/api/users/${missedCallMsg.Users.id}/avatar` : null
+            } : null
+          };
+
+          io.to(socket.userId).emit("receive_message", mappedMissedCallMsg);
+          io.to(callerId).emit("receive_message", mappedMissedCallMsg);
         }
       } catch (error) {
         console.error("Lỗi tạo cuộc gọi nhỡ:", error);
@@ -247,9 +265,14 @@ module.exports = (io) => {
           select: { id: true, fullName: true, avatar: true },
         });
 
+        const mappedCallee = callee ? {
+          ...callee,
+          avatar: callee.avatar ? `/api/users/${callee.id}/avatar` : null
+        } : null;
+
         // Gửi sự kiện chấp nhận kèm thông tin của callee về cho caller (qua room)
         io.to(callerId).emit("call_accepted", {
-          calleeInfo: callee,
+          calleeInfo: mappedCallee,
         });
       } catch (error) {
         console.error("Lỗi lấy thông tin người nhận cuộc gọi:", error);
@@ -314,8 +337,16 @@ module.exports = (io) => {
           },
         });
 
+        const mappedRequest = {
+          ...newRequest,
+          requester: newRequest.requester ? {
+            ...newRequest.requester,
+            avatar: newRequest.requester.avatar ? `/api/users/${newRequest.requester.id}/avatar` : null
+          } : null
+        };
+
         // Gửi thông báo real-time cho người nhận (qua room)
-        io.to(receiverId).emit("new_friend_request", newRequest);
+        io.to(receiverId).emit("new_friend_request", mappedRequest);
 
         socket.emit("friend_request_sent", { receiverId });
       } catch (error) {
@@ -356,17 +387,36 @@ module.exports = (io) => {
           },
         });
 
+        // Map avatar của requester, receiver, notification sender sang URL tĩnh
+        const mappedRequester = friendship.requester ? {
+          ...friendship.requester,
+          avatar: friendship.requester.avatar ? `/api/users/${friendship.requester.id}/avatar` : null
+        } : null;
+
+        const mappedReceiver = friendship.receiver ? {
+          ...friendship.receiver,
+          avatar: friendship.receiver.avatar ? `/api/users/${friendship.receiver.id}/avatar` : null
+        } : null;
+
+        const mappedNotification = {
+          ...notification,
+          Sender: notification.Sender ? {
+            ...notification.Sender,
+            avatar: notification.Sender.avatar ? `/api/users/${notification.Sender.id}/avatar` : null
+          } : null
+        };
+
         // Phát sự kiện real-time qua room của requester
         io.to(friendship.requesterId).emit(
           "friend_request_accepted",
-          friendship.receiver,
+          mappedReceiver,
         );
         io.to(friendship.requesterId).emit(
           "new_global_notification",
-          notification,
+          mappedNotification,
         );
 
-        socket.emit("you_accepted_friend_request", friendship.requester);
+        socket.emit("you_accepted_friend_request", mappedRequester);
       } catch (error) {
         console.error("Lỗi khi chấp nhận lời mời:", error);
       }
