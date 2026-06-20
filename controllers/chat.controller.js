@@ -50,11 +50,7 @@ exports.getConversations = async (req, res) => {
                 Users: {
                   select: {
                     id: true,
-
                     fullName: true,
-
-                    avatar: true,
-
                     isOnline: true,
                   },
                 },
@@ -111,9 +107,7 @@ exports.getConversations = async (req, res) => {
       if (item.Conversations && item.Conversations.ConversationMembers) {
         item.Conversations.ConversationMembers.forEach((member) => {
           if (member.Users) {
-            member.Users.avatar = member.Users.avatar
-              ? `/api/users/${member.Users.id}/avatar`
-              : null;
+            member.Users.avatar = `/api/users/${member.Users.id}/avatar`;
           }
         });
       }
@@ -139,7 +133,7 @@ exports.getMessages = async (req, res) => {
 
       include: {
         Users: {
-          select: { id: true, fullName: true, avatar: true },
+          select: { id: true, fullName: true },
         },
       },
     });
@@ -150,7 +144,7 @@ exports.getMessages = async (req, res) => {
           ...m,
           Users: {
             ...m.Users,
-            avatar: m.Users.avatar ? `/api/users/${m.Users.id}/avatar` : null,
+            avatar: `/api/users/${m.Users.id}/avatar`,
           },
         };
       }
@@ -205,7 +199,7 @@ exports.sendMessage = async (req, res) => {
 
       include: {
         Users: {
-          select: { id: true, fullName: true, avatar: true },
+          select: { id: true, fullName: true },
         },
       },
     });
@@ -215,7 +209,7 @@ exports.sendMessage = async (req, res) => {
       ...newMessage,
       Users: newMessage.Users ? {
         ...newMessage.Users,
-        avatar: newMessage.Users.avatar ? `/api/users/${newMessage.Users.id}/avatar` : null,
+        avatar: `/api/users/${newMessage.Users.id}/avatar`,
       } : null
     };
 

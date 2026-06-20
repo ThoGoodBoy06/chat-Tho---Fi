@@ -92,10 +92,10 @@ app.get("/api/users/friends", async (req, res) => {
       },
       include: {
         requester: {
-          select: { id: true, fullName: true, avatar: true, isOnline: true },
+          select: { id: true, fullName: true, isOnline: true },
         },
         receiver: {
-          select: { id: true, fullName: true, avatar: true, isOnline: true },
+          select: { id: true, fullName: true, isOnline: true },
         },
       },
     });
@@ -104,7 +104,7 @@ app.get("/api/users/friends", async (req, res) => {
       const u = f.requesterId === userId ? f.receiver : f.requester;
       return {
         ...u,
-        avatar: u.avatar ? `/api/users/${u.id}/avatar` : null,
+        avatar: `/api/users/${u.id}/avatar`,
       };
     });
     res.json({ success: true, data: friends });
@@ -202,7 +202,7 @@ app.get("/api/users/notifications", async (req, res) => {
       where: { userId: decoded.id },
       orderBy: { createdAt: "desc" },
       include: {
-        Sender: { select: { id: true, fullName: true, avatar: true } },
+        Sender: { select: { id: true, fullName: true } },
       },
     });
     const mappedNotifications = notifications.map((n) => {
@@ -211,7 +211,7 @@ app.get("/api/users/notifications", async (req, res) => {
           ...n,
           Sender: {
             ...n.Sender,
-            avatar: n.Sender.avatar ? `/api/users/${n.Sender.id}/avatar` : null,
+            avatar: `/api/users/${n.Sender.id}/avatar`,
           },
         };
       }
@@ -257,6 +257,18 @@ app.get("/api/auth/me", async (req, res) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await prisma.users.findUnique({
       where: { id: decoded.id },
+      select: {
+        id: true,
+        username: true,
+        fullName: true,
+        email: true,
+        phone: true,
+        bio: true,
+        isOnline: true,
+        lastSeen: true,
+        createdAt: true,
+        updatedAt: true
+      }
     });
 
     if (!user)
@@ -266,8 +278,8 @@ app.get("/api/auth/me", async (req, res) => {
     // Map avatar & coverPhoto sang URL tĩnh để trả về client
     const mappedUser = {
       ...user,
-      avatar: user.avatar ? `/api/users/${user.id}/avatar` : null,
-      coverPhoto: user.coverPhoto ? `/api/users/${user.id}/cover` : null,
+      avatar: `/api/users/${user.id}/avatar`,
+      coverPhoto: `/api/users/${user.id}/cover`,
     };
     res.json({ success: true, data: mappedUser });
   } catch (error) {

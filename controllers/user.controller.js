@@ -140,17 +140,15 @@ exports.updateProfile = async (req, res) => {
         id: true,
         fullName: true,
         bio: true,
-        avatar: true,
-        coverPhoto: true,
       },
     });
 
     // Map avatar và coverPhoto sang URL tĩnh để trả về client
     const responseData = {
       ...updatedUser,
-      avatar: updatedUser.avatar ? `/api/users/${updatedUser.id}/avatar?v=${Date.now()}` : null,
-      coverPhoto: updatedUser.coverPhoto ? `/api/users/${updatedUser.id}/cover?v=${Date.now()}` : null,
-      coverImage: updatedUser.coverPhoto ? `/api/users/${updatedUser.id}/cover?v=${Date.now()}` : null
+      avatar: `/api/users/${updatedUser.id}/avatar?v=${Date.now()}`,
+      coverPhoto: `/api/users/${updatedUser.id}/cover?v=${Date.now()}`,
+      coverImage: `/api/users/${updatedUser.id}/cover?v=${Date.now()}`
     };
 
     res.status(200).json({ success: true, data: responseData });

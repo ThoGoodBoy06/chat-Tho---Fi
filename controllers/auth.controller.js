@@ -42,9 +42,10 @@ exports.register = async (req, res) => {
     // Map avatar và coverPhoto sang URL tĩnh để trả về cho client
     const mappedUser = {
       ...user,
-      avatar: user.avatar ? `/api/users/${user.id}/avatar` : null,
-      coverPhoto: user.coverPhoto ? `/api/users/${user.id}/cover` : null,
+      avatar: `/api/users/${user.id}/avatar`,
+      coverPhoto: `/api/users/${user.id}/cover`,
     };
+    delete mappedUser.password;
     const token = generateToken(user);
     res.status(201).json({ success: true, data: mappedUser, token });
   } catch (error) {
@@ -62,10 +63,23 @@ exports.login = async (req, res) => {
   try {
     const { identifier, password } = req.body; // identifier có thể là email, phone hoặc username
 
-    // 1. Tìm user
+    // 1. Tìm user (bỏ select avatar và coverPhoto để tránh load Base64 lớn vào RAM)
     const user = await prisma.users.findFirst({
       // Chỉ tìm bằng username vì đã đơn giản hóa form
       where: { username: identifier },
+      select: {
+        id: true,
+        username: true,
+        fullName: true,
+        email: true,
+        phone: true,
+        password: true,
+        bio: true,
+        isOnline: true,
+        lastSeen: true,
+        createdAt: true,
+        updatedAt: true
+      }
     });
     if (!user)
       return res.status(404).json({ message: "Tài khoản không tồn tại!" });
@@ -84,9 +98,10 @@ exports.login = async (req, res) => {
     // Map avatar và coverPhoto sang URL tĩnh để trả về cho client
     const mappedUser = {
       ...user,
-      avatar: user.avatar ? `/api/users/${user.id}/avatar` : null,
-      coverPhoto: user.coverPhoto ? `/api/users/${user.id}/cover` : null,
+      avatar: `/api/users/${user.id}/avatar`,
+      coverPhoto: `/api/users/${user.id}/cover`,
     };
+    delete mappedUser.password;
     const token = generateToken(user);
     res.status(200).json({ success: true, data: mappedUser, token });
   } catch (error) {

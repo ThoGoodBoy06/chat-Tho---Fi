@@ -33,7 +33,7 @@ module.exports = (io) => {
           where: { receiverId: userId, status: "PENDING" },
           include: {
             requester: {
-              select: { id: true, fullName: true, avatar: true },
+              select: { id: true, fullName: true },
             },
           },
         });
@@ -41,7 +41,7 @@ module.exports = (io) => {
         // Map avatar sang URL tĩnh
         const mappedPending = pendingRequests.map(r => {
           if (r.requester) {
-            r.requester.avatar = r.requester.avatar ? `/api/users/${r.requester.id}/avatar` : null;
+            r.requester.avatar = `/api/users/${r.requester.id}/avatar`;
           }
           return r;
         });
@@ -235,7 +235,7 @@ module.exports = (io) => {
               type: "missed_call",
             },
             include: {
-              Users: { select: { id: true, fullName: true, avatar: true } },
+              Users: { select: { id: true, fullName: true } },
             },
           });
 
@@ -244,7 +244,7 @@ module.exports = (io) => {
             ...missedCallMsg,
             Users: missedCallMsg.Users ? {
               ...missedCallMsg.Users,
-              avatar: missedCallMsg.Users.avatar ? `/api/users/${missedCallMsg.Users.id}/avatar` : null
+              avatar: `/api/users/${missedCallMsg.Users.id}/avatar`
             } : null
           };
 
@@ -262,12 +262,12 @@ module.exports = (io) => {
         // Lấy thông tin của người vừa chấp nhận cuộc gọi (callee) từ DB
         const callee = await prisma.users.findUnique({
           where: { id: socket.userId },
-          select: { id: true, fullName: true, avatar: true },
+          select: { id: true, fullName: true },
         });
 
         const mappedCallee = callee ? {
           ...callee,
-          avatar: callee.avatar ? `/api/users/${callee.id}/avatar` : null
+          avatar: `/api/users/${callee.id}/avatar`
         } : null;
 
         // Gửi sự kiện chấp nhận kèm thông tin của callee về cho caller (qua room)
@@ -332,7 +332,7 @@ module.exports = (io) => {
           },
           include: {
             requester: {
-              select: { id: true, fullName: true, avatar: true },
+              select: { id: true, fullName: true },
             },
           },
         });
@@ -341,7 +341,7 @@ module.exports = (io) => {
           ...newRequest,
           requester: newRequest.requester ? {
             ...newRequest.requester,
-            avatar: newRequest.requester.avatar ? `/api/users/${newRequest.requester.id}/avatar` : null
+            avatar: `/api/users/${newRequest.requester.id}/avatar`
           } : null
         };
 
@@ -369,8 +369,8 @@ module.exports = (io) => {
           where: { id: requestId },
           data: { status: "ACCEPTED" },
           include: {
-            requester: { select: { id: true, fullName: true, avatar: true } },
-            receiver: { select: { id: true, fullName: true, avatar: true } },
+            requester: { select: { id: true, fullName: true } },
+            receiver: { select: { id: true, fullName: true } },
           },
         });
 
@@ -383,26 +383,26 @@ module.exports = (io) => {
             content: "đã chấp nhận lời mời kết bạn của bạn",
           },
           include: {
-            Sender: { select: { id: true, fullName: true, avatar: true } },
+            Sender: { select: { id: true, fullName: true } },
           },
         });
 
         // Map avatar của requester, receiver, notification sender sang URL tĩnh
         const mappedRequester = friendship.requester ? {
           ...friendship.requester,
-          avatar: friendship.requester.avatar ? `/api/users/${friendship.requester.id}/avatar` : null
+          avatar: `/api/users/${friendship.requester.id}/avatar`
         } : null;
 
         const mappedReceiver = friendship.receiver ? {
           ...friendship.receiver,
-          avatar: friendship.receiver.avatar ? `/api/users/${friendship.receiver.id}/avatar` : null
+          avatar: `/api/users/${friendship.receiver.id}/avatar`
         } : null;
 
         const mappedNotification = {
           ...notification,
           Sender: notification.Sender ? {
             ...notification.Sender,
-            avatar: notification.Sender.avatar ? `/api/users/${notification.Sender.id}/avatar` : null
+            avatar: `/api/users/${notification.Sender.id}/avatar`
           } : null
         };
 
