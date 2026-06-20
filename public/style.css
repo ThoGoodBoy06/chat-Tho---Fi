@@ -18,7 +18,7 @@
   --online-color: #10B981;
   --header-bg-glass: rgba(255, 255, 255, 0.85);
   --zalo-bg-gray: #FAF9F6;
-  --zalo-header-bg: #0A8A6E;
+  --zalo-header-bg: #0068ff;
   
   --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.02);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.05);
@@ -46,7 +46,7 @@ body[data-theme="dark"] {
   --online-color: #10B981;
   --header-bg-glass: rgba(20, 20, 20, 0.85);
   --zalo-bg-gray: #121212;
-  --zalo-header-bg: #1E1E1E;
+  --zalo-header-bg: #005de5;
   
   --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -2390,7 +2390,7 @@ input:checked + .slider.round:before {
     display: flex;
     margin-right: 8px;
     font-size: 18px;
-    color: var(--text-dark);
+    color: white !important;
   }
   
   .contacts-container {
@@ -2409,11 +2409,15 @@ input:checked + .slider.round:before {
   }
   
   .chat-header {
-    padding: 10px 16px;
+    padding: 10px 16px !important;
+    background: #0068ff !important;
+    color: white !important;
+    border-bottom: none !important;
   }
   
   .chat-header-text h3 {
     font-size: 15px;
+    color: white !important;
   }
   
   .input-area {
@@ -2535,7 +2539,7 @@ input:checked + .slider.round:before {
     display: flex !important;
     align-items: center;
     justify-content: space-between;
-    background: var(--primary-color) !important;
+    background: #0068ff !important;
     padding: 10px 16px;
     padding-top: calc(10px + env(safe-area-inset-top, 0px));
     gap: 14px;
@@ -2652,8 +2656,8 @@ input:checked + .slider.round:before {
     padding: 10px 16px !important;
     padding-top: calc(10px + env(safe-area-inset-top, 0px)) !important;
     z-index: 150;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-    background: var(--primary-color) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    background: #0068ff !important;
     color: white !important;
     border-bottom: none !important;
     box-sizing: border-box;
@@ -2667,20 +2671,23 @@ input:checked + .slider.round:before {
   }
   
   .chat-header-text .status {
-    color: rgba(255, 255, 255, 0.8) !important;
+    color: rgba(255, 255, 255, 0.85) !important;
     font-size: 11.5px !important;
   }
   
   .chat-header-actions .icon-btn,
   .chat-header-actions i,
+  .chat-header-info .icon-btn,
+  .chat-header-info i,
   .back-btn {
     color: white !important;
   }
   
   .back-btn {
-    display: flex;
+    display: flex !important;
     margin-right: 12px;
     font-size: 20px;
+    color: white !important;
   }
   
   .input-area {
