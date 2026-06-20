@@ -2650,13 +2650,31 @@ input:checked + .slider.round:before {
     position: sticky;
     top: 0;
     padding: 12px 16px;
-    padding-top: calc(12px + env(safe-area-inset-top));
+    padding-top: calc(12px + env(safe-area-inset-top, 0px));
     z-index: 150;
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    background: var(--primary-color) !important;
+    color: white !important;
+    border-bottom: none !important;
+    box-sizing: border-box;
+    height: calc(56px + env(safe-area-inset-top, 0px));
   }
   
-  .chat-header-actions .icon-btn {
-    color: var(--text-dark);
+  .chat-header h3,
+  .chat-header-text h3 {
+    color: white !important;
+    font-size: 16px !important;
+  }
+  
+  .chat-header-text .status {
+    color: rgba(255, 255, 255, 0.8) !important;
+    font-size: 11.5px !important;
+  }
+  
+  .chat-header-actions .icon-btn,
+  .chat-header-actions i,
+  .back-btn {
+    color: white !important;
   }
   
   .back-btn {
