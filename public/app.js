@@ -81,6 +81,45 @@ function escapeHTML(str) {
         .replace(/'/g, "&#039;");
 }
 
+// Nén ảnh bằng Canvas ở Client-side trước khi tải lên server để tối ưu hóa RAM & băng thông
+function compressImage(file, maxWidth, maxHeight, quality) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                const canvas = document.createElement("canvas");
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > maxWidth) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    }
+                } else {
+                    if (height > maxHeight) {
+                        width = Math.round((width * maxHeight) / height);
+                        height = maxHeight;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(img, 0, 0, width, height);
+                const compressedBase64 = canvas.toDataURL("image/jpeg", quality);
+                resolve(compressedBase64);
+            };
+            img.onerror = (err) => reject(err);
+        };
+        reader.onerror = (err) => reject(err);
+    });
+}
+
 // Kiểm tra xem người dùng có đang thực sự nhìn vào khung chat không
 function isChatAreaVisible() {
     if (!document.hasFocus()) return false;
@@ -258,6 +297,25 @@ function updateReadReceiptsDOM(readInfo = null) {
         }
     } catch (error) {
         console.error("[DOM Error] Lỗi khi cập nhật avatar Đã xem:", error);
+    }
+}
+
+// Cập nhật badge chưa đọc và kiểu chữ thường của Item Chat cục bộ khi nhận sự kiện đã đọc từ Socket
+function updateConversationUnreadBadgeLocal(conversationId) {
+    try {
+        const li = document.querySelector(`li[data-conversation-id="${conversationId}"]`);
+        if (li) {
+            const badge = li.querySelector(".unread-badge");
+            if (badge) badge.remove();
+            
+            const msgEl = li.querySelector(".chat-list-msg");
+            if (msgEl) {
+                msgEl.style.fontWeight = "";
+                msgEl.style.color = "";
+            }
+        }
+    } catch (err) {
+        console.error("[DOM Error] Lỗi cập nhật badge đã xem cục bộ:", err);
     }
 }
 
@@ -601,7 +659,8 @@ function initizeChatSession(userData, userToken) {
         ) {
             updateReadReceiptsDOM(readInfo);
         }
-        loadConversations();
+        // Tối ưu hóa: Cập nhật DOM cục bộ lập tức thay vì gọi API loadConversations() dư thừa gây lag
+        updateConversationUnreadBadgeLocal(conversationId);
     });
 
     socket.on("receive_message", (msg) => {
@@ -1985,34 +2044,36 @@ if (avatarUploadInput) {
         const file = e.target.files[0];
         if (!file) return;
 
-        // Đọc file thành Base64 để lưu thẳng lên Neon DB
-        const reader = new FileReader();
-        reader.onload = async function(event) {
-            const base64String = event.target.result;
+        try {
+            showLoading("Đang xử lý và nén ảnh...");
+            // Nén ảnh avatar xuống max 150x150 JPEG quality 0.8 (~15KB)
+            const compressedBase64 = await compressImage(file, 150, 150, 0.8);
 
-            try {
-                const res = await fetch(`${API_URL}/users/avatar`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({ avatar: base64String }),
-                });
+            const res = await fetch(`${API_URL}/users/avatar`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ avatar: compressedBase64 }),
+            });
 
-                const data = await res.json();
-                if (data.success) {
-                    document.getElementById("my-avatar").src = base64String;
-                    if (document.getElementById("my-avatar-profile"))
-                        document.getElementById("my-avatar-profile").src = base64String;
-                } else {
-                    alert("Lỗi tải ảnh: " + data.message);
-                }
-            } catch (error) {
-                alert("Lỗi hệ thống khi tải ảnh lên!");
+            const data = await res.json();
+            hideLoading();
+            if (data.success) {
+                // Tải lại ảnh bằng URL tĩnh mới (với cache buster)
+                const avatarUrlWithVersion = `${data.avatarUrl}`;
+                document.getElementById("my-avatar").src = avatarUrlWithVersion;
+                if (document.getElementById("my-avatar-profile"))
+                    document.getElementById("my-avatar-profile").src = avatarUrlWithVersion;
+                showTempToast("Đã cập nhật ảnh đại diện mới thành công!");
+            } else {
+                alert("Lỗi tải ảnh: " + data.message);
             }
-        };
-        reader.readAsDataURL(file);
+        } catch (error) {
+            hideLoading();
+            alert("Lỗi hệ thống khi tải ảnh lên!");
+        }
     });
 }
 
@@ -2442,32 +2503,33 @@ if (coverUploadInput) {
         const file = e.target.files[0];
         if (!file) return;
 
-        // Đọc file thành Base64 để lưu thẳng lên Neon DB
-        const reader = new FileReader();
-        reader.onload = async function(event) {
-            const base64String = event.target.result;
+        try {
+            showLoading("Đang xử lý và nén ảnh bìa...");
+            // Nén ảnh bìa xuống max 800x400 JPEG quality 0.8 (~60KB)
+            const compressedBase64 = await compressImage(file, 800, 400, 0.8);
 
-            try {
-                const res = await fetch(`${API_URL}/users/cover`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({ coverPhoto: base64String }),
-                });
+            const res = await fetch(`${API_URL}/users/cover`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ coverPhoto: compressedBase64 }),
+            });
 
-                const data = await res.json();
-                if (data.success) {
-                    document.getElementById("my-cover").src = base64String;
-                } else {
-                    alert("Lỗi tải ảnh bìa: " + data.message);
-                }
-            } catch (error) {
-                alert("Lỗi hệ thống khi tải ảnh bìa lên!");
+            const data = await res.json();
+            hideLoading();
+            if (data.success) {
+                const coverUrlWithVersion = `${data.coverUrl}`;
+                document.getElementById("my-cover").src = coverUrlWithVersion;
+                showTempToast("Đã cập nhật ảnh bìa mới thành công!");
+            } else {
+                alert("Lỗi tải ảnh bìa: " + data.message);
             }
-        };
-        reader.readAsDataURL(file);
+        } catch (error) {
+            hideLoading();
+            alert("Lỗi hệ thống khi tải ảnh bìa lên!");
+        }
     });
 }
 
