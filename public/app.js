@@ -827,8 +827,11 @@ async function loadConversations() {
             if (otherMember) {
                 const user = otherMember.Users;
                 let lastMsg = "Bắt đầu trò chuyện!";
+                let timeStr = "";
                 if (conv.Messages.length > 0) {
                     const firstMsg = conv.Messages[0];
+                    const msgDate = firstMsg.createdAt ? new Date(firstMsg.createdAt) : new Date();
+                    timeStr = `${msgDate.getHours().toString().padStart(2, "0")}:${msgDate.getMinutes().toString().padStart(2, "0")}`;
                     if (firstMsg.isRecalled) {
                         lastMsg = "Tin nhắn đã bị thu hồi";
                     } else if (firstMsg.type === "file") {
@@ -884,7 +887,8 @@ async function loadConversations() {
               <span class="chat-list-name">${
                 user.fullName || "Người dùng"
               }</span>
-              <div class="chat-list-right" style="display: flex; align-items: center; gap: 8px;">
+              <div class="chat-list-right" style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+                <span class="chat-list-time" style="font-size: 11px; color: var(--text-light);">${timeStr}</span>
                 ${unreadBadgeHtml}
               </div>
             </div>
@@ -901,7 +905,9 @@ async function loadConversations() {
 
 // 2.5 Tìm kiếm người dùng bằng Tên
 async function searchUser() {
-    const q = document.getElementById("search-input").value.trim();
+    const searchEl = document.getElementById("search-input");
+    const mobileSearchEl = document.getElementById("mobile-search-input");
+    const q = ((mobileSearchEl && mobileSearchEl.value.trim()) || (searchEl && searchEl.value.trim()) || "").trim();
     if (!q) return alert("Xin vui lòng nhập Tên để tìm!");
 
     try {
@@ -1128,7 +1134,14 @@ function updateChatListUI(msg, isRead = false) {
             }
         }
 
-        // 3. Đẩy item lên vị trí đầu tiên của danh sách
+        // 3. Cập nhật thời gian tin nhắn cuối cùng
+        const timeEl = chatItem.querySelector(".chat-list-time");
+        if (timeEl) {
+            const date = msg.createdAt ? new Date(msg.createdAt) : new Date();
+            timeEl.innerText = `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
+        }
+
+        // 4. Đẩy item lên vị trí đầu tiên của danh sách
         userList.prepend(chatItem);
     } catch (error) {
         console.error("Lỗi trong updateChatListUI:", error);
@@ -4001,5 +4014,20 @@ async function requestNotificationPermission() {
         console.error("Lỗi trong quá trình xin quyền hoặc lấy FCM Token:", error);
     }
 }
+
+// Helper hiển thị popup tìm kiếm kết bạn trên giao diện Mobile
+function searchUserMobilePrompt() {
+    customPrompt("Tìm kiếm người dùng", "Nhập tên người dùng (Username/FullName) bạn muốn tìm kiếm để kết bạn:")
+        .then((q) => {
+            if (q && q.trim()) {
+                const mobileSearchEl = document.getElementById("mobile-search-input");
+                if (mobileSearchEl) {
+                    mobileSearchEl.value = q.trim();
+                }
+                searchUser();
+            }
+        });
+}
+
 
 
