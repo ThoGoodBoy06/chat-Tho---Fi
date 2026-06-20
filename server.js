@@ -324,6 +324,16 @@ app.post("/api/users/fcm-token", async (req, res) => {
   }
 });
 
+// Middleware xử lý lỗi chung (Global Error Handler)
+app.use((err, req, res, next) => {
+  console.error("🔥 [Global Error] Lỗi Server:", err);
+  res.status(err.status || 500).json({
+    success: false,
+    message: "Đã xảy ra lỗi hệ thống ở phía server.",
+    error: err.message
+  });
+});
+
 // Tích hợp Socket Handler
 const socketHandler = require("./sockets/socketHandler");
 socketHandler(io);

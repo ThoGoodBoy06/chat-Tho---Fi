@@ -896,6 +896,9 @@ async function searchUser() {
 
 // 3. Bắt đầu trò chuyện với ai đó
 async function startChat(receiverId, receiverName, receiverAvatar) {
+    if (!receiverId) {
+        return alert("Lỗi: Không tìm thấy ID người nhận tin nhắn.");
+    }
     try {
         document.getElementById("chat-screen").classList.add("mobile-chat-active");
         document.getElementById("chat-header-placeholder").style.display = "none";
@@ -920,10 +923,19 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
             body: JSON.stringify({ receiverId }),
         });
 
+        if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(`Không thể kết nối phòng chat (HTTP ${res.status}): ${errorText.substring(0, 100)}`);
+        }
+
         const data = await res.json();
         if (!data.success) return alert("Đã tạo phòng chat: " + data.message);
 
         currentConversationId = data.data.id;
+        if (!currentConversationId || currentConversationId === "undefined" || currentConversationId === "null") {
+            throw new Error("ID phòng chat nhận về không hợp lệ.");
+        }
+
         resetReadReceiptState(currentConversationId);
         document.getElementById("search-results").style.display = "none";
         document.getElementById("search-input").value = "";
@@ -962,6 +974,11 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
                 headers: { Authorization: `Bearer ${token}` },
             },
         );
+
+        if (!resMsg.ok) {
+            const errorText = await resMsg.text();
+            throw new Error(`Không thể tải tin nhắn (HTTP ${resMsg.status}): ${errorText.substring(0, 100)}`);
+        }
 
         const dataMsg = await resMsg.json();
         const messagesDiv = document.getElementById("messages");
@@ -1075,6 +1092,10 @@ async function reloadCurrentChat() {
                 headers: { Authorization: `Bearer ${token}` },
             },
         );
+        if (!resMsg.ok) {
+            const errorText = await resMsg.text();
+            throw new Error(`HTTP ${resMsg.status}: ${errorText.substring(0, 100)}`);
+        }
         const dataMsg = await resMsg.json();
         const messagesDiv = document.getElementById("messages");
         messagesDiv.innerHTML = "";
