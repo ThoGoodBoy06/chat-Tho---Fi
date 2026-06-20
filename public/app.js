@@ -62,7 +62,17 @@ const readReceiptState = {
 };
 
 function isSameId(a, b) {
-    return String(a || "") === String(b || "");
+    return String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+}
+
+function escapeHTML(str) {
+    if (!str) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
 // Kiểm tra xem người dùng có đang thực sự nhìn vào khung chat không
@@ -918,9 +928,14 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
             const activeItems = userList.querySelectorAll("li.active");
             activeItems.forEach((item) => item.classList.remove("active"));
 
-            const chatItem = userList.querySelector(
-                `li[data-conversation-id="${currentConversationId}"]`,
-            );
+            let chatItem = null;
+            const items = userList.querySelectorAll("li");
+            for (const item of items) {
+                if (isSameId(item.dataset.conversationId, currentConversationId)) {
+                    chatItem = item;
+                    break;
+                }
+            }
             if (chatItem) {
                 chatItem.classList.add("active");
                 const badge = chatItem.querySelector(".unread-badge");
