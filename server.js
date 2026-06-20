@@ -100,9 +100,13 @@ app.get("/api/users/friends", async (req, res) => {
       },
     });
 
-    const friends = friendships.map((f) =>
-      f.requesterId === userId ? f.receiver : f.requester,
-    );
+    const friends = friendships.map((f) => {
+      const u = f.requesterId === userId ? f.receiver : f.requester;
+      return {
+        ...u,
+        avatar: u.avatar ? `/api/users/${u.id}/avatar` : null,
+      };
+    });
     res.json({ success: true, data: friends });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -201,7 +205,19 @@ app.get("/api/users/notifications", async (req, res) => {
         Sender: { select: { id: true, fullName: true, avatar: true } },
       },
     });
-    res.json({ success: true, data: notifications });
+    const mappedNotifications = notifications.map((n) => {
+      if (n.Sender) {
+        return {
+          ...n,
+          Sender: {
+            ...n.Sender,
+            avatar: n.Sender.avatar ? `/api/users/${n.Sender.id}/avatar` : null,
+          },
+        };
+      }
+      return n;
+    });
+    res.json({ success: true, data: mappedNotifications });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -247,7 +263,13 @@ app.get("/api/auth/me", async (req, res) => {
       return res
         .status(404)
         .json({ success: false, message: "User không tồn tại." });
-    res.json({ success: true, data: user });
+    // Map avatar & coverPhoto sang URL tĩnh để trả về client
+    const mappedUser = {
+      ...user,
+      avatar: user.avatar ? `/api/users/${user.id}/avatar` : null,
+      coverPhoto: user.coverPhoto ? `/api/users/${user.id}/cover` : null,
+    };
+    res.json({ success: true, data: mappedUser });
   } catch (error) {
     res
       .status(401)
@@ -292,7 +314,7 @@ app.post("/api/users/avatar", async (req, res) => {
       data: { avatar: avatar },
     });
 
-    res.json({ success: true, avatarUrl: avatar });
+    res.json({ success: true, avatarUrl: `/api/users/${decoded.id}/avatar?v=${Date.now()}` });
   } catch (error) {
     console.error("Lỗi upload avatar:", error);
     res

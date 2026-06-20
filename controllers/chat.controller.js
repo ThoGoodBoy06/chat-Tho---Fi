@@ -106,7 +106,21 @@ exports.getConversations = async (req, res) => {
       return getLatestTime(b) - getLatestTime(a);
     });
 
-    res.status(200).json({ success: true, data: conversations });
+    // Map avatar sang URL tĩnh để giảm tải RAM cho JSON response
+    const mappedConversations = conversations.map((item) => {
+      if (item.Conversations && item.Conversations.ConversationMembers) {
+        item.Conversations.ConversationMembers.forEach((member) => {
+          if (member.Users) {
+            member.Users.avatar = member.Users.avatar
+              ? `/api/users/${member.Users.id}/avatar`
+              : null;
+          }
+        });
+      }
+      return item;
+    });
+
+    res.status(200).json({ success: true, data: mappedConversations });
   } catch (error) {
     res.status(500).json({ message: "Lỗi server", error: error.message });
   }
@@ -130,7 +144,20 @@ exports.getMessages = async (req, res) => {
       },
     });
 
-    res.status(200).json({ success: true, data: messages });
+    const mappedMessages = messages.map((m) => {
+      if (m.Users) {
+        return {
+          ...m,
+          Users: {
+            ...m.Users,
+            avatar: m.Users.avatar ? `/api/users/${m.Users.id}/avatar` : null,
+          },
+        };
+      }
+      return m;
+    });
+
+    res.status(200).json({ success: true, data: mappedMessages });
   } catch (error) {
     res.status(500).json({ message: "Lỗi server", error: error.message });
   }
@@ -183,8 +210,17 @@ exports.sendMessage = async (req, res) => {
       },
     });
 
+    // Map avatar sang URL tĩnh
+    const mappedMessage = {
+      ...newMessage,
+      Users: newMessage.Users ? {
+        ...newMessage.Users,
+        avatar: newMessage.Users.avatar ? `/api/users/${newMessage.Users.id}/avatar` : null,
+      } : null
+    };
+
     // Trả response ngay sau khi lưu DB xong (không đợi socket/FCM)
-    res.status(201).json({ success: true, data: newMessage });
+    res.status(201).json({ success: true, data: mappedMessage });
 
     // 2. Lấy danh sách thành viên và phát tin nhắn real-time (sau khi đã respond xong)
     const members = await prisma.conversationMembers.findMany({
@@ -199,26 +235,26 @@ exports.sendMessage = async (req, res) => {
     const io = req.app.get("io");
 
     members.forEach((member) => {
-      io.to(member.userId).emit("receive_message", newMessage);
+      io.to(member.userId).emit("receive_message", mappedMessage);
 
       // --- BẮN PUSH NOTIFICATION ---
       // Chỉ gửi cho người nhận (đối phương) và khi họ đã có FCM Token
       if (member.userId !== senderId && member.Users && member.Users.fcmToken) {
-        let snippet = newMessage.content;
-        if (newMessage.type === "file") {
+        let snippet = mappedMessage.content;
+        if (mappedMessage.type === "file") {
           try {
-            const fileData = JSON.parse(newMessage.content);
+            const fileData = JSON.parse(mappedMessage.content);
             snippet = `[ Tệp tin: ${fileData.fileName} ]`;
           } catch (e) {
             snippet = "[ Tệp tin ]";
           }
-        } else if (newMessage.type === "audio") {
+        } else if (mappedMessage.type === "audio") {
           snippet = "[ Tin nhắn thoại ]";
         } else if (snippet.startsWith("data:image") || snippet.match(/\.(jpeg|jpg|gif|png)$/i)) {
           snippet = "[ Hình ảnh ]";
         }
 
-        const senderAvatar = newMessage.Users.avatar;
+        const senderAvatar = mappedMessage.Users ? mappedMessage.Users.avatar : null;
         let avatarUrl = "https://chat-tho-fi.onrender.com/icon.png";
         if (senderAvatar) {
           avatarUrl = senderAvatar.startsWith("http")

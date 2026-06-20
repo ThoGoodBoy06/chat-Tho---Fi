@@ -39,9 +39,14 @@ exports.register = async (req, res) => {
       },
     });
 
-    // 4. Trả về kết quả kèm Token
+    // Map avatar và coverPhoto sang URL tĩnh để trả về cho client
+    const mappedUser = {
+      ...user,
+      avatar: user.avatar ? `/api/users/${user.id}/avatar` : null,
+      coverPhoto: user.coverPhoto ? `/api/users/${user.id}/cover` : null,
+    };
     const token = generateToken(user);
-    res.status(201).json({ success: true, data: user, token });
+    res.status(201).json({ success: true, data: mappedUser, token });
   } catch (error) {
     if (error.code === "P2002") {
       return res
@@ -76,8 +81,14 @@ exports.login = async (req, res) => {
       data: { isOnline: true },
     });
 
+    // Map avatar và coverPhoto sang URL tĩnh để trả về cho client
+    const mappedUser = {
+      ...user,
+      avatar: user.avatar ? `/api/users/${user.id}/avatar` : null,
+      coverPhoto: user.coverPhoto ? `/api/users/${user.id}/cover` : null,
+    };
     const token = generateToken(user);
-    res.status(200).json({ success: true, data: user, token });
+    res.status(200).json({ success: true, data: mappedUser, token });
   } catch (error) {
     console.error("!!! LỖI ĐĂNG NHẬP:", error);
     res.status(500).json({ message: "Lỗi server", error: error.message });

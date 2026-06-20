@@ -3,6 +3,10 @@ const router = express.Router();
 const userController = require("../controllers/user.controller");
 const authMiddleware = require("../middlewares/auth.middleware");
 
+// Lấy ảnh đại diện và ảnh bìa công khai
+router.get("/:id/avatar", userController.getUserAvatar);
+router.get("/:id/cover", userController.getUserCover);
+
 // Cập nhật profile (Tên, tiểu sử)
 router.put("/profile", authMiddleware, userController.updateProfile);
 
