@@ -2650,6 +2650,15 @@ input:checked + .slider.round:before {
     transform: translateX(0);
   }
   
+  /* Ẩn mobile-header và bottom nav khi mở màn hình chat */
+  #chat-screen.mobile-chat-active .zalo-mobile-header {
+    display: none !important;
+  }
+  
+  #chat-screen.mobile-chat-active .sidebar {
+    display: none !important;
+  }
+  
   .chat-header {
     position: sticky;
     top: 0;
