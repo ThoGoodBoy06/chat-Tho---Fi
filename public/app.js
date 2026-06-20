@@ -757,6 +757,10 @@ async function loadConversations() {
         const res = await fetch(`${API_URL}/chat/conversations`, {
             headers: { Authorization: `Bearer ${token}` },
         });
+        if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(`Không thể tải danh sách (HTTP ${res.status}): ${errorText.substring(0, 100) || "Máy chủ đang khởi động hoặc quá tải"}`);
+        }
         const data = await res.json();
         const userList = document.getElementById("user-list");
         userList.innerHTML = "";
@@ -1274,6 +1278,10 @@ async function loadFriends() {
         const res = await fetch(`${API_URL}/users/friends`, {
             headers: { Authorization: `Bearer ${token}` },
         });
+        if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(`Không thể tải bạn bè (HTTP ${res.status}): ${errorText.substring(0, 100) || "Lỗi máy chủ"}`);
+        }
         const data = await res.json();
         const listEl = document.getElementById("friends-list");
         if (!listEl) return;
@@ -3339,6 +3347,10 @@ async function loadNotifications() {
         const res = await fetch(`${API_URL}/users/notifications`, {
             headers: { Authorization: `Bearer ${token}` },
         });
+        if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(`Không thể tải thông báo (HTTP ${res.status}): ${errorText.substring(0, 100) || "Lỗi máy chủ"}`);
+        }
         const data = await res.json();
         if (data.success) {
             notificationsList = data.data;
