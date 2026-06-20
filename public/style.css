@@ -2971,3 +2971,30 @@ body[data-theme="dark"] .new-message-toast .toast-msg-text {
   }
 }
 
+/* ==========================================================================
+   MOBILE WEB & PWA EXPERIENCES (APP-LIKE OPTIMIZATIONS)
+   ========================================================================== */
+
+/* Tắt màu highlight khi nhấn (tap) vào liên kết/nút trên điện thoại */
+* {
+  -webkit-tap-highlight-color: transparent !important;
+  -webkit-touch-callout: none !important; /* Khóa menu bật lên khi nhấn giữ lâu trên iOS */
+}
+
+/* Khóa kéo để tải lại trang (Pull-to-refresh) và cuộn nảy quá mức */
+html, body {
+  overscroll-behavior-y: none !important;
+  overscroll-behavior-x: none !important;
+  overscroll-behavior: none !important;
+}
+
+/* Tạo thanh cuộn tàng hình: ẩn scrollbar hoàn toàn nhưng vẫn cho phép vuốt/cuộn bình thường */
+::-webkit-scrollbar {
+  display: none !important; /* Dành cho Chrome, Safari, và Opera */
+}
+* {
+  scrollbar-width: none !important; /* Dành cho Firefox */
+  -ms-overflow-style: none !important; /* Dành cho IE và Edge */
+}
+
+

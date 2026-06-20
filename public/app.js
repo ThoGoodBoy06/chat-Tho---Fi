@@ -3952,3 +3952,32 @@ function customPrompt(title, message, defaultValue = "", placeholder = "Nhập v
         };
     });
 }
+
+// ==========================================================================
+// MOBILE HAPTIC FEEDBACK FOR PWA (RUNG PHẢN HỒI KHI CHẠM NÚT)
+// ==========================================================================
+
+/**
+ * Tạo độ rung nhẹ phản hồi (haptic feedback) trên các thiết bị di động hỗ trợ
+ * @param {number|number[]} pattern - Thời gian rung tính bằng mili-giây (ví dụ: 15ms) hoặc mảng nhịp rung
+ */
+function triggerHapticFeedback(pattern = 15) {
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+        try {
+            navigator.vibrate(pattern);
+        } catch (e) {
+            console.warn("Trình duyệt không hỗ trợ hoặc chặn cuộc gọi rung:", e);
+        }
+    }
+}
+
+// Tự động gán phản hồi xúc giác nhẹ khi click/tap các phần tử tương tác (button, link, tab...)
+document.addEventListener("click", (e) => {
+    const interactiveElement = e.target.closest(
+        "button, .btn, .icon-btn, .nav-item, [role='button'], .sidebar-actions i, #send-btn, .chat-list-container li, .friend-action-btn"
+    );
+    if (interactiveElement) {
+        triggerHapticFeedback(15); // Rung cực nhẹ 15ms tạo cảm giác như nhấn nút thật
+    }
+});
+
