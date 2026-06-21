@@ -1740,7 +1740,7 @@ function displayMessage(msg) {
             // Sửa tin nhắn (chỉ cho tin nhắn văn bản chưa thu hồi)
             if (!msg.isRecalled && (!msg.type || msg.type === "text")) {
                 const editOption = document.createElement("div");
-                editOption.className = "menu-item";
+                editOption.className = "menu-item edit-action";
                 editOption.innerText = "Sửa tin nhắn";
                 editOption.onclick = (e) => {
                     e.stopPropagation();

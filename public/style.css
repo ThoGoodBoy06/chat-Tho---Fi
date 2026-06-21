@@ -2119,6 +2119,12 @@ input:checked + .slider.round:before {
   background: rgba(16, 185, 129, 0.15) !important;
 }
 
+.message.show-mobile-actions .menu-item.edit-action::before {
+  content: "\f304" !important;
+  color: #3b82f6 !important;
+  background: rgba(59, 130, 246, 0.15) !important;
+}
+
 /* File messages */
 .file-message-card {
   display: flex;
@@ -2894,7 +2900,7 @@ input:checked + .slider.round:before {
     background: rgba(255, 77, 79, 0.15);
   }
   
-  .message.show-mobile-actions .menu-item:not(.text-danger):not(.reply-action):not(.copy-action)::before {
+  .message.show-mobile-actions .menu-item:not(.text-danger):not(.reply-action):not(.copy-action):not(.edit-action)::before {
     content: "\f2ed";
     color: #e5e5e5;
   }
