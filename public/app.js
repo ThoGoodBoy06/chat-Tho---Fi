@@ -612,6 +612,7 @@ function initizeChatSession(userData, userToken) {
     socket.on("connect", () => {
         console.log("⚡ Kết nối Socket thành công, đang xác thực user_connected: " + myId);
         socket.emit("user_connected", myId);
+        checkUrlParamsForCall(); // Tự động kiểm tra cuộc gọi chạy ngầm khi kết nối thành công
     });
 
     // Nghe danh sách lời mời bạn bè ban đầu
@@ -3018,50 +3019,62 @@ async function startCallSession(isCaller, calleeInfo = null) {
         .setAttribute("style", "display: flex !important");
 
     try {
-        if (!localStream && !isCaller) {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                throw new Error(
-                    "Trình duyệt chặn Microphone do bạn không dùng HTTPS hoặc Localhost!",
-                );
-            }
-
+        // Stop stream cũ trước đó (ví dụ stream preview của caller lúc đang chờ đối phương nghe máy)
+        // để khởi tạo lại stream mới tinh khi cuộc gọi bắt đầu kết nối thực tế.
+        if (localStream) {
             try {
-                const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-                const mediaConstraints = {
-                    audio: {
-                        noiseSuppression: isNoiseCancellationEnabled,
-                        echoCancellation: true,
-                    },
-                    video: callTypeGlobal === "video" ?
-                        isMobile ? { facingMode: currentFacingMode } :
-                        true : false,
-                };
+                localStream.getTracks().forEach((track) => track.stop());
+            } catch (e) {}
+            localStream = null;
+        }
 
-                localStream = await navigator.mediaDevices.getUserMedia(
-                    mediaConstraints,
-                );
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error(
+                "Trình duyệt chặn Microphone do bạn không dùng HTTPS hoặc Localhost!",
+            );
+        }
 
-                if (callTypeGlobal === "video") {
-                    document.getElementById("local-video").srcObject = localStream;
+        try {
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            const mediaConstraints = {
+                audio: {
+                    noiseSuppression: isNoiseCancellationEnabled,
+                    echoCancellation: true,
+                    autoGainControl: true, // Kích hoạt tự động tăng âm lượng micro
+                },
+                video: callTypeGlobal === "video" ?
+                    isMobile ? { facingMode: currentFacingMode } :
+                    true : false,
+            };
+
+            localStream = await navigator.mediaDevices.getUserMedia(
+                mediaConstraints,
+            );
+
+            if (callTypeGlobal === "video") {
+                const localVideo = document.getElementById("local-video");
+                if (localVideo) {
+                    localVideo.srcObject = localStream;
+                    localVideo.muted = true; // Mute local video tránh tiếng vọng
                 }
-            } catch (err) {
-                const errorMsg = err.message;
-                if (
-                    err.name === "NotFoundError" ||
-                    errorMsg.includes("Requested device not found")
-                ) {
-                    console.warn("Không tìm thấy Camera/Microphone!");
-                    localStream = null;
-                } else if (
-                    err.name === "NotAllowedError" ||
-                    errorMsg.includes("Quyền bị từ chối")
-                ) {
-                    console.warn("Chưa được cấp quyền sử dụng Camera/Microphone!");
-                    localStream = null;
-                } else {
-                    console.error("Lỗi Microphone:", errorMsg);
-                    localStream = null;
-                }
+            }
+        } catch (err) {
+            const errorMsg = err.message;
+            if (
+                err.name === "NotFoundError" ||
+                errorMsg.includes("Requested device not found")
+            ) {
+                console.warn("Không tìm thấy Camera/Microphone!");
+                localStream = null;
+            } else if (
+                err.name === "NotAllowedError" ||
+                errorMsg.includes("Quyền bị từ chối")
+            ) {
+                console.warn("Chưa được cấp quyền sử dụng Camera/Microphone!");
+                localStream = null;
+            } else {
+                console.error("Lỗi Microphone:", errorMsg);
+                localStream = null;
             }
         }
 
@@ -3230,6 +3243,80 @@ async function triggerIceRestart(isCaller) {
         }
     } catch (err) {
         console.error("Lỗi khi thực hiện ICE Restart:", err);
+    }
+}
+
+// Tự động kiểm tra và chuyển tiếp sang màn hình cuộc gọi đầy đủ khi click thông báo chạy ngầm
+function checkUrlParamsForCall() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const action = urlParams.get("action");
+    if (action === "incoming_call") {
+        const callerId = urlParams.get("callerId");
+        const callerName = urlParams.get("callerName");
+        const callType = urlParams.get("callType");
+        const callerAvatar = urlParams.get("callerAvatar");
+        const autoAccept = urlParams.get("autoAccept") === "true";
+        const autoDecline = urlParams.get("autoDecline") === "true";
+
+        // Xóa các query params để tránh việc kích hoạt lại khi refresh trang
+        window.history.replaceState({}, document.title, window.location.pathname);
+
+        if (autoDecline) {
+            // Gửi từ chối cuộc gọi lập tức
+            if (socket) socket.emit("reject_call", { callerId, callType });
+            return;
+        }
+
+        // Bật giao diện cuộc gọi full màn hình
+        callTypeGlobal = callType;
+        currentCallPartnerId = callerId;
+
+        const modal = document.getElementById("call-modal");
+        if (modal) {
+            modal.classList.remove("voice-call", "video-call", "in-call", "is-caller");
+            modal.classList.add(`${callType}-call`);
+            
+            const nameEl = document.getElementById("call-name");
+            if (nameEl) nameEl.innerText = callerName;
+            
+            const avatarEl = document.getElementById("call-avatar");
+            if (avatarEl) {
+                avatarEl.src = callerAvatar ? formatUrl(callerAvatar) : `https://ui-avatars.com/api/?name=${encodeURIComponent(callerName)}&background=random`;
+            }
+
+            document.getElementById("incoming-call-actions").setAttribute("style", "display: flex !important");
+            document.getElementById("active-call-actions").setAttribute("style", "display: none !important");
+            
+            modal.style.display = "flex";
+            modal.style.zIndex = "99999";
+
+            // Phát rung & nhạc chuông
+            startVibration();
+            playRingtone();
+
+            // Gán lại các sự kiện click cho các nút Accept/Reject
+            document.getElementById("accept-call-btn").onclick = async () => {
+                stopVibration();
+                stopRingtone();
+                const success = await startCallSession(false);
+                if (success) {
+                    socket.emit("accept_call", { callerId });
+                    startCallTimer();
+                }
+            };
+
+            document.getElementById("reject-call-btn").onclick = () => {
+                stopVibration();
+                stopRingtone();
+                socket.emit("reject_call", { callerId, callType: callTypeGlobal });
+                endCall(false);
+            };
+
+            // Nếu người dùng đã bấm nút Trả lời từ Notification banner
+            if (autoAccept) {
+                document.getElementById("accept-call-btn").click();
+            }
+        }
     }
 }
 

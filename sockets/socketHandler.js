@@ -200,7 +200,14 @@ module.exports = (io) => {
           if (calleeUser && calleeUser.fcmToken) {
             const callTitle = `${callerName} đang gọi cho bạn...`;
             const callBody = `Cuộc gọi ${callType === "video" ? "Video" : "Thoại"} đến. Nhấn để trả lời.`;
-            sendPushNotification(calleeUser.fcmToken, callTitle, callBody)
+            const customData = {
+              type: "incoming_call",
+              callerId: String(callerId),
+              callerName: String(callerName),
+              callType: String(callType),
+              callerAvatar: String(callerAvatar || "")
+            };
+            sendPushNotification(calleeUser.fcmToken, callTitle, callBody, customData)
               .then(() => console.log(`📲 Đã bắn Push cuộc gọi đến cho User ${calleeId}`))
               .catch((err) => console.error("❌ Lỗi bắn Push cuộc gọi:", err.message));
           }

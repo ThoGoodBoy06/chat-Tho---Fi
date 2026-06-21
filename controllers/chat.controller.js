@@ -566,8 +566,9 @@ exports.reactToMessage = async (req, res) => {
  * @param {string} fcmToken - Token FCM của thiết bị nhận
  * @param {string} title - Tiêu đề thông báo
  * @param {string} body - Nội dung thông báo
+ * @param {object} customData - Dữ liệu tùy chỉnh gửi kèm
  */
-exports.sendPushNotification = async (fcmToken, title, body) => {
+exports.sendPushNotification = async (fcmToken, title, body, customData = null) => {
   if (getApps().length === 0) {
     console.warn("⚠️ Firebase Admin chưa được khởi tạo. Không thể gửi thông báo.");
     return;
@@ -601,7 +602,8 @@ exports.sendPushNotification = async (fcmToken, title, body) => {
         vibrate: [1000, 500, 1000, 500, 1000],
         requireInteraction: true
       }
-    }
+    },
+    data: customData || {}
   };
 
   try {
