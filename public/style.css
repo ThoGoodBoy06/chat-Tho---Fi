@@ -3486,20 +3486,65 @@ body {
 }
 
 .floating-profile-card {
-  background: var(--msg-receiver-bg);
   width: 380px;
   max-width: 90vw;
   border-radius: 20px;
   overflow: hidden;
-  /* Viền nổi bật: viền 2px màu chủ đạo và đổ bóng phát quang nhẹ */
-  border: 2px solid var(--primary-color);
-  box-shadow: var(--shadow-lg), 0 10px 30px rgba(10, 138, 110, 0.2);
   position: relative;
   transform: scale(0.9) translateY(20px);
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+  z-index: 1;
+  padding: 2px; /* Tạo khoảng trống 2px làm đường viền */
+  background: transparent;
+  border: none;
+  box-shadow: var(--shadow-lg), 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+/* Hiệu ứng viền chạy 7 màu (Rainbow border) */
+.floating-profile-card::before {
+  content: "";
+  position: absolute;
+  z-index: -2;
+  left: -50%;
+  top: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(
+    #ff0000,
+    #ff7f00,
+    #ffff00,
+    #00ff00,
+    #0000ff,
+    #4b0082,
+    #9400d3,
+    #ff0000
+  );
+  animation: rainbow-border-spin 6s linear infinite; /* chạy vừa vừa */
+}
+
+/* Lớp đè màu nền để che đi phần ruột, chỉ hở ra viền 2px */
+.floating-profile-card::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: 2px;
+  top: 2px;
+  right: 2px;
+  bottom: 2px;
+  background: var(--msg-receiver-bg);
+  border-radius: 18px;
+}
+
+@keyframes rainbow-border-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 #other-user-profile-modal.active .floating-profile-card {
