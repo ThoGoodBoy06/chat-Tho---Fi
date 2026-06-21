@@ -39,8 +39,8 @@ messaging.onBackgroundMessage((payload) => {
     icon: payload.data?.callerAvatar || payload.data?.image || "/icon.png",
     badge: "/icon.png",
     data: payload.data,
-    // Rung dồn dập kéo dài (10 chu kỳ ~ 17 giây) khi màn hình tắt/app chạy ngầm
-    vibrate: isCall ? [1200, 500, 1200, 500, 1200, 500, 1200, 500, 1200, 500, 1200, 500, 1200, 500, 1200, 500, 1200, 500, 1200, 500] : [400, 100, 400, 100, 600],
+    // Rung cực mạnh và liên tục (Rung 3s, nghỉ 0.5s, lặp lại 8 lần) khi màn hình tắt/chạy ngầm
+    vibrate: isCall ? [3000, 500, 3000, 500, 3000, 500, 3000, 500, 3000, 500, 3000, 500, 3000, 500, 3000, 500] : [400, 100, 400, 100, 600],
     tag: isCall ? "incoming-call-notification" : (payload.data?.conversationId || "tho-fi-chat-notification"),
     renotify: true,
     requireInteraction: isCall ? true : false, // Cuộc gọi thì giữ thông báo trên màn hình không tự biến mất

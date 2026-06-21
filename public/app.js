@@ -3131,17 +3131,25 @@ async function startCallSession(isCaller, calleeInfo = null) {
                     remoteAudio.muted = false;
                     remoteAudio.volume = 1.0;
 
-                    // Phát thử ngay lập tức và có dự phòng phát lại sau 300ms nếu bị Autoplay block
+                    // Thử phát ngay lập tức
                     const playPromise = remoteAudio.play();
                     if (playPromise !== undefined) {
-                        playPromise.catch((e) => {
-                            console.warn("Autoplay chặn âm thanh cuộc gọi lần đầu, thử lại sau 300ms...", e);
-                            setTimeout(() => {
-                                if (remoteAudio.srcObject === stream) {
-                                    remoteAudio.play().catch(err => console.error("Không thể phát remote audio sau retry:", err));
-                                }
-                            }, 300);
-                        });
+                        playPromise
+                            .then(() => {
+                                console.log("🔊 Phát âm thanh cuộc gọi thành công lập tức!");
+                            })
+                            .catch((e) => {
+                                console.warn("Autoplay chặn âm thanh cuộc gọi lần đầu, đăng ký chạm màn hình để mở khóa...", e);
+                                document.addEventListener("click", playRemoteAudioSafely);
+                                document.addEventListener("touchstart", playRemoteAudioSafely);
+                                
+                                // Thử lại sau 500ms
+                                setTimeout(() => {
+                                    if (remoteAudio.srcObject === stream) {
+                                        remoteAudio.play().catch(() => {});
+                                    }
+                                }, 500);
+                            });
                     }
                 }
             } else if (event.track.kind === "video") {
@@ -3286,6 +3294,28 @@ async function processIceQueue() {
     iceCandidateQueue = [];
 }
 
+// Mở khóa âm thanh cuộc gọi từ tương tác chạm màn hình của người dùng (Bypass Autoplay của trình duyệt)
+function playRemoteAudioSafely() {
+    const remoteAudio = document.getElementById("remote-audio");
+    if (remoteAudio && remoteAudio.srcObject) {
+        console.log("🔊 Kích hoạt phát âm thanh cuộc gọi từ tương tác người dùng...");
+        remoteAudio.play()
+            .then(() => {
+                console.log("🔊 Phát âm thanh cuộc gọi thành công!");
+                document.removeEventListener("click", playRemoteAudioSafely);
+                document.removeEventListener("touchstart", playRemoteAudioSafely);
+            })
+            .catch((err) => {
+                console.warn("🔊 Chưa thể phát âm thanh cuộc gọi qua tương tác:", err);
+            });
+    }
+
+    const remoteVideo = document.getElementById("remote-video");
+    if (remoteVideo && remoteVideo.srcObject) {
+        remoteVideo.play().catch(() => {});
+    }
+}
+
 // Tự động khởi động lại ICE khi gặp sự cố kết nối ở lần đầu
 async function triggerIceRestart(isCaller) {
     try {
@@ -3402,6 +3432,9 @@ function endCall(shouldEmit) {
     iceCandidateQueue = [];
     pendingSignalsQueue = [];
     currentCallPartnerId = null;
+
+    document.removeEventListener("click", playRemoteAudioSafely);
+    document.removeEventListener("touchstart", playRemoteAudioSafely);
 
     const modal = document.getElementById("call-modal");
     modal.style.display = "none";
