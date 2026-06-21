@@ -14,5 +14,6 @@ router.post("/:conversationId/messages", chatController.sendMessage);
 // API cho các tính năng Big Update
 router.patch("/messages/:messageId/recall", chatController.recallMessage);
 router.post("/messages/:messageId/react", chatController.reactToMessage);
+router.patch("/messages/:messageId/edit", chatController.editMessage);
 
 module.exports = router;

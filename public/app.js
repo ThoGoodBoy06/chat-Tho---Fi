@@ -56,6 +56,7 @@ let typingTimeout = null;
 let pendingFriendRequests = [];
 let notificationsList = [];
 let replyingToMessage = null;
+let editingMessage = null;
 let currentChatMessages = [];
 let mediaRecorder = null;
 let audioChunks = [];
@@ -793,6 +794,34 @@ function initizeChatSession(userData, userToken) {
                 }
                 const actions = msgEl.querySelector(".message-actions");
                 if (actions) actions.remove();
+            }
+        }
+        loadConversations();
+    });
+
+    // Nghe sự kiện chỉnh sửa tin nhắn
+    socket.on("message_edited", ({ messageId, conversationId, newContent }) => {
+        const msg = currentChatMessages.find((m) => m.id === messageId);
+        if (msg) {
+            msg.content = newContent;
+            msg.isEdited = true;
+        }
+
+        if (conversationId === currentConversationId) {
+            const msgEl = document.getElementById(`msg-${messageId}`);
+            if (msgEl) {
+                const content = msgEl.querySelector(".message-content");
+                if (content) {
+                    content.innerText = newContent;
+                    
+                    const editedLabel = document.createElement("span");
+                    editedLabel.className = "edited-label";
+                    editedLabel.innerText = " (đã chỉnh sửa)";
+                    editedLabel.style.fontSize = "0.75rem";
+                    editedLabel.style.color = "var(--text-light)";
+                    editedLabel.style.fontStyle = "italic";
+                    content.appendChild(editedLabel);
+                }
             }
         }
         loadConversations();
@@ -1591,6 +1620,15 @@ function displayMessage(msg) {
             messageContent.style.padding = "0";
         } else {
             messageContent.innerText = msg.content;
+            if (msg.isEdited) {
+                const editedLabel = document.createElement("span");
+                editedLabel.className = "edited-label";
+                editedLabel.innerText = " (đã chỉnh sửa)";
+                editedLabel.style.fontSize = "0.75rem";
+                editedLabel.style.color = "var(--text-light)";
+                editedLabel.style.fontStyle = "italic";
+                messageContent.appendChild(editedLabel);
+            }
         }
 
         // Nâng cấp: Hiển thị tin nhắn trích dẫn (Replied Message Preview)
@@ -1699,6 +1737,20 @@ function displayMessage(msg) {
         }
 
         if (msg.senderId === myId) {
+            // Sửa tin nhắn (chỉ cho tin nhắn văn bản chưa thu hồi)
+            if (!msg.isRecalled && (!msg.type || msg.type === "text")) {
+                const editOption = document.createElement("div");
+                editOption.className = "menu-item";
+                editOption.innerText = "Sửa tin nhắn";
+                editOption.onclick = (e) => {
+                    e.stopPropagation();
+                    startEditMode(msg.id, msg.content);
+                    moreMenu.classList.remove("show");
+                    hideMobileOverlay();
+                };
+                moreMenu.appendChild(editOption);
+            }
+
             const recallOption = document.createElement("div");
             recallOption.className = "menu-item text-danger";
             recallOption.innerText = "Thu hồi tin nhắn";
@@ -1897,6 +1949,15 @@ function sendMessage(imageContent = null) {
     }
 
     if (!content) return;
+
+    // Chặn để thực hiện sửa tin nhắn thay vì gửi mới
+    if (editingMessage && !imageContent) {
+        const messageIdToEdit = editingMessage.id;
+        input.value = "";
+        editMessageApi(messageIdToEdit, content);
+        cancelReply();
+        return;
+    }
 
     input.value = "";
 
@@ -3919,12 +3980,68 @@ function setReplyMode(msgId) {
     if (input) input.focus();
 }
 
-// Hủy chế độ trả lời tin nhắn
-function cancelReply() {
+// Bắt đầu chế độ chỉnh sửa tin nhắn
+function startEditMode(msgId, currentContent) {
     replyingToMessage = null;
+
+    const msg = currentChatMessages.find(m => m.id === msgId);
+    if (!msg) return;
+
+    editingMessage = msg;
+
+    const input = document.getElementById("message-input");
+    if (input) {
+        input.value = currentContent;
+        input.focus();
+    }
+
+    const previewContainer = document.getElementById("reply-preview-container");
+    const previewSender = document.getElementById("reply-preview-sender");
+    const previewText = document.getElementById("reply-preview-text");
+
+    if (previewContainer && previewSender && previewText) {
+        previewSender.innerHTML = '<i class="fas fa-edit" style="color: var(--primary-color); margin-right: 6px;"></i>Đang sửa tin nhắn';
+        previewText.innerText = currentContent;
+        previewContainer.style.display = "flex";
+
+        const messagesDiv = document.getElementById("messages");
+        if (messagesDiv) messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+}
+
+// Gọi API gửi nội dung tin nhắn đã sửa lên server
+async function editMessageApi(messageId, newContent) {
+    try {
+        const res = await fetch(`${API_URL}/chat/messages/${messageId}/edit`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ newContent }),
+        });
+
+        const data = await res.json();
+        if (!data.success) {
+            alert("Lỗi khi chỉnh sửa tin nhắn: " + data.message);
+        }
+    } catch (error) {
+        alert("Lỗi kết nối khi chỉnh sửa tin nhắn: " + error.message);
+    }
+}
+
+// Hủy chế độ trả lời / chỉnh sửa tin nhắn
+function cancelReply() {
+    const wasEditing = editingMessage !== null;
+    replyingToMessage = null;
+    editingMessage = null;
     const previewContainer = document.getElementById("reply-preview-container");
     if (previewContainer) {
         previewContainer.style.display = "none";
+    }
+    if (wasEditing) {
+        const input = document.getElementById("message-input");
+        if (input) input.value = "";
     }
 }
 

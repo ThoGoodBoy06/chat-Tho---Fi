@@ -53,6 +53,7 @@ model Messages {
   isDeleted      Boolean?       @default(false)
   isRecalled     Boolean?       @default(false)
   isRead         Boolean?       @default(false)
+  isEdited       Boolean?       @default(false)
   reactions      String?
   createdAt      DateTime?      @default(now())
   updatedAt      DateTime?      @default(now())

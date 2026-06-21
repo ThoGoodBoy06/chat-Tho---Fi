@@ -471,6 +471,65 @@ exports.recallMessage = async (req, res) => {
   }
 };
 
+// 5.5 Sửa tin nhắn
+exports.editMessage = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { messageId } = req.params;
+    const { newContent } = req.body;
+
+    if (!newContent || newContent.trim() === "") {
+      return res.status(400).json({ message: "Nội dung tin nhắn không được để trống" });
+    }
+
+    const message = await prisma.messages.findUnique({
+      where: { id: messageId },
+    });
+
+    if (!message) {
+      return res.status(404).json({ message: "Không tìm thấy tin nhắn" });
+    }
+
+    if (message.senderId !== userId) {
+      return res.status(403).json({
+        message: "Bạn không có quyền chỉnh sửa tin nhắn của người khác",
+      });
+    }
+
+    if (message.isRecalled) {
+      return res.status(400).json({ message: "Không thể chỉnh sửa tin nhắn đã bị thu hồi" });
+    }
+
+    const updatedMessage = await prisma.messages.update({
+      where: { id: messageId },
+      data: {
+        content: newContent,
+        isEdited: true,
+        updatedAt: new Date(),
+      },
+    });
+
+    const members = await prisma.conversationMembers.findMany({
+      where: { conversationId: message.conversationId },
+    });
+
+    const io = req.app.get("io");
+    members.forEach((member) => {
+      io.to(member.userId).emit("message_edited", {
+        messageId: messageId,
+        conversationId: message.conversationId,
+        newContent: newContent,
+        data: updatedMessage,
+      });
+    });
+
+    res.status(200).json({ success: true, data: updatedMessage });
+  } catch (error) {
+    console.error("!!! LỖI CHỈNH SỬA TIN NHẮN:", error);
+    res.status(500).json({ message: "Lỗi chỉnh sửa tin nhắn", error: error.message });
+  }
+};
+
 // 6. Thả cảm xúc vào tin nhắn
 
 exports.reactToMessage = async (req, res) => {
