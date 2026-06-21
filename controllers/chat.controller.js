@@ -41,7 +41,6 @@ exports.getConversations = async (req, res) => {
 
     const conversations = await prisma.conversationMembers.findMany({
       where: { userId },
-
       include: {
         Conversations: {
           include: {
@@ -56,32 +55,17 @@ exports.getConversations = async (req, res) => {
                 },
               },
             },
-
             // Lấy 1 tin nhắn mới nhất để hiển thị ở danh sách (giống Zalo)
-
             Messages: {
               orderBy: { createdAt: "desc" },
-
               take: 1,
-            },
-
-            // NÂNG CẤP: Đếm số lượng tin nhắn chưa đọc của đối phương gửi
-            _count: {
-              select: {
-                Messages: {
-                  where: {
-                    senderId: { not: userId },
-                    isRead: false,
-                  },
-                },
-              },
             },
           },
         },
       },
     });
 
-    // NÂNG CẤP: Sắp xếp cuộc trò chuyện có tin nhắn mới nhất lên trên cùng
+    // Sắp xếp cuộc trò chuyện có tin nhắn mới nhất lên trên cùng
     conversations.sort((a, b) => {
       const getLatestTime = (member) => {
         const conv = member.Conversations;
@@ -102,20 +86,46 @@ exports.getConversations = async (req, res) => {
       return getLatestTime(b) - getLatestTime(a);
     });
 
-    // Map avatar sang URL tĩnh để giảm tải RAM cho JSON response
-    const mappedConversations = conversations.map((item) => {
-      if (item.Conversations && item.Conversations.ConversationMembers) {
-        item.Conversations.ConversationMembers.forEach((member) => {
-          if (member.Users) {
-            member.Users.avatar = `/api/users/${member.Users.id}/avatar`;
-          }
+    // Map avatar sang URL tĩnh và đếm số lượng tin nhắn chưa đọc của đối phương gửi
+    const mappedConversations = await Promise.all(
+      conversations.map(async (item) => {
+        if (!item.Conversations) return item;
+
+        // Đếm số tin nhắn chưa đọc của người khác gửi trong hội thoại này
+        const unreadCount = await prisma.messages.count({
+          where: {
+            conversationId: item.Conversations.id,
+            senderId: { not: userId },
+            isRead: false,
+          },
         });
-      }
-      return item;
-    });
+
+        // Nhân bản object Conversations để chèn thêm avatar & count
+        const conv = {
+          ...item.Conversations,
+          _count: {
+            Messages: unreadCount,
+          },
+        };
+
+        if (conv.ConversationMembers) {
+          conv.ConversationMembers.forEach((member) => {
+            if (member.Users) {
+              member.Users.avatar = `/api/users/${member.Users.id}/avatar`;
+            }
+          });
+        }
+
+        return {
+          ...item,
+          Conversations: conv,
+        };
+      })
+    );
 
     res.status(200).json({ success: true, data: mappedConversations });
   } catch (error) {
+    console.error("!!! LỖI TẢI DANH SÁCH CUỘC TRÒ CHUYỆN:", error);
     res.status(500).json({ message: "Lỗi server", error: error.message });
   }
 };
