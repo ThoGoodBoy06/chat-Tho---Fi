@@ -557,8 +557,9 @@ function initizeChatSession(userData, userToken) {
         document.getElementById("profile-bio").innerText =
             userData.bio || "Chưa có tiểu sử";
     if (document.getElementById("my-cover")) {
-        if (userData.coverImage) {
-            document.getElementById("my-cover").src = formatUrl(userData.coverImage);
+        const coverUrl = userData.coverPhoto || userData.coverImage;
+        if (coverUrl) {
+            document.getElementById("my-cover").src = formatUrl(coverUrl);
         } else {
             document.getElementById("my-cover").src =
                 "https://ui-avatars.com/api/?name=Cover&background=e9ecef&color=333&size=800&font-size=0.1";
