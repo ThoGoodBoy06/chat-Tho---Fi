@@ -2866,34 +2866,52 @@ async function startCall(callType) {
                 echoCancellation: true,
             },
             video: callTypeGlobal === "video" ?
-                isMobile ? { facingMode: currentFacingMode } :
-                    true : false,
+                (isMobile ? { facingMode: currentFacingMode } : true) : false,
         };
 
-        localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+        } catch (error) {
+            console.warn("Lỗi khi mở luồng Media với constraints gốc:", error);
+            // Fallback 1: Nếu yêu cầu video mà không có camera, hãy thử chỉ lấy audio
+            if (callTypeGlobal === "video") {
+                try {
+                    console.log("Thử lại: Yêu cầu cuộc gọi chỉ lấy audio do thiếu camera...");
+                    localStream = await navigator.mediaDevices.getUserMedia({
+                        audio: {
+                            noiseSuppression: isNoiseCancellationEnabled,
+                            echoCancellation: true,
+                        },
+                        video: false
+                    });
+                    showTempToast("Không tìm thấy Camera. Cuộc gọi tiếp tục ở chế độ chỉ âm thanh.");
+                } catch (audioOnlyErr) {
+                    console.warn("Thử chỉ lấy audio thất bại:", audioOnlyErr);
+                }
+            }
+            
+            // Fallback 2: Thử lấy cấu hình siêu cơ bản (chỉ audio)
+            if (!localStream) {
+                try {
+                    localStream = await navigator.mediaDevices.getUserMedia({
+                        audio: true,
+                        video: false
+                    });
+                } catch (fallbackError) {
+                    console.error("Lỗi hoàn toàn khi truy cập micro:", fallbackError);
+                    showTempToast("Không thể truy cập Microphone. Vui lòng cấp quyền thiết bị!");
+                    localStream = null;
+                }
+            }
+        }
 
-        if (callTypeGlobal === "video") {
-            document.getElementById("local-video").srcObject = localStream;
+        if (localStream && callTypeGlobal === "video") {
+            const localVideo = document.getElementById("local-video");
+            if (localVideo) {
+                localVideo.srcObject = localStream;
+                localVideo.muted = true; // Tránh vọng tiếng
+            }
         }
-    } catch (error) {
-        const errorMsg = error.message;
-        if (
-            error.name === "NotFoundError" ||
-            errorMsg.includes("Không tìm thấy thiết bị được yêu cầu")
-        ) {
-            console.warn(
-                "Không tìm thấy Camera/Microphone! Cuộc gọi tiếp tục ở chế độ chỉ xem/nghe.",
-            );
-        } else if (
-            error.name === "NotAllowedError" ||
-            errorMsg.includes("Quyền bị từ chối")
-        ) {
-            console.warn("Trình duyệt đã chặn quyền truy cập Camera/Microphone!");
-        } else {
-            console.error("Lỗi truy cập thiết bị nghe nhìn: " + errorMsg);
-        }
-        localStream = null;
-    }
 
     const modal = document.getElementById("call-modal");
     modal.classList.remove("voice-call", "video-call", "in-call", "is-caller");
@@ -3140,40 +3158,57 @@ async function startCallSession(isCaller, calleeInfo = null) {
                     autoGainControl: true, // Kích hoạt tự động tăng âm lượng micro
                 },
                 video: callTypeGlobal === "video" ?
-                    isMobile ? { facingMode: currentFacingMode } :
-                        true : false,
+                    (isMobile ? { facingMode: currentFacingMode } : true) : false,
             };
 
-            localStream = await navigator.mediaDevices.getUserMedia(
-                mediaConstraints,
-            );
-
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+            } catch (err) {
+                console.warn("Lỗi khi mở luồng Media trong session với constraints gốc:", err);
+                // Fallback 1: Nếu yêu cầu video mà không có camera, hãy thử chỉ lấy audio
                 if (callTypeGlobal === "video") {
-                    const localVideo = document.getElementById("local-video");
-                    if (localVideo) {
-                        localVideo.srcObject = localStream;
-                        localVideo.muted = true; // Mute local video tránh tiếng vọng
+                    try {
+                        console.log("Thử lại trong session: Yêu cầu chỉ lấy audio do thiếu camera...");
+                        localStream = await navigator.mediaDevices.getUserMedia({
+                            audio: {
+                                noiseSuppression: isNoiseCancellationEnabled,
+                                echoCancellation: true,
+                                autoGainControl: true,
+                            },
+                            video: false
+                        });
+                        showTempToast("Không tìm thấy Camera. Thiết lập cuộc gọi ở chế độ chỉ âm thanh.");
+                    } catch (audioOnlyErr) {
+                        console.warn("Thử chỉ lấy audio trong session thất bại:", audioOnlyErr);
                     }
                 }
-            } catch (err) {
-                const errorMsg = err.message;
-                if (
-                    err.name === "NotFoundError" ||
-                    errorMsg.includes("Requested device not found")
-                ) {
-                    console.warn("Không tìm thấy Camera/Microphone!");
-                    localStream = null;
-                } else if (
-                    err.name === "NotAllowedError" ||
-                    errorMsg.includes("Quyền bị từ chối")
-                ) {
-                    console.warn("Chưa được cấp quyền sử dụng Camera/Microphone!");
-                    localStream = null;
-                } else {
-                    console.error("Lỗi Microphone:", errorMsg);
-                    localStream = null;
+                
+                // Fallback 2: Thử lấy cấu hình siêu cơ bản (chỉ audio)
+                if (!localStream) {
+                    try {
+                        localStream = await navigator.mediaDevices.getUserMedia({
+                            audio: true,
+                            video: false
+                        });
+                    } catch (fallbackErr) {
+                        console.error("Lỗi hoàn toàn khi truy cập micro trong session:", fallbackErr);
+                        showTempToast("Không thể kết nối Microphone. Vui lòng kiểm tra thiết bị!");
+                        localStream = null;
+                    }
                 }
             }
+
+            if (localStream && callTypeGlobal === "video") {
+                const localVideo = document.getElementById("local-video");
+                if (localVideo) {
+                    localVideo.srcObject = localStream;
+                    localVideo.muted = true; // Tránh vọng tiếng
+                }
+            }
+        } catch (error) {
+            console.error("Lỗi không mong muốn khi chuẩn bị phương tiện:", error);
+            localStream = null;
+        }
 
         peerConnection = new RTCPeerConnection(stunServers);
 
