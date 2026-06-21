@@ -22,7 +22,7 @@
     <meta name="apple-mobile-web-app-title" content="Chat Tho-Fi" />
     <link rel="icon" href="icon.png" type="image/png" />
     <link rel="apple-touch-icon" href="icon.png" />
-    <link rel="stylesheet" href="style.css?v=20035" />
+    <link rel="stylesheet" href="style.css?v=20040" />
   </head>
 
   <body>
@@ -330,13 +330,13 @@
               id="chat-header-container"
               style="display: none"
             >
-              <div class="chat-header-info">
+              <div class="chat-header-info chat-partner-info">
                 <!-- Nút Back cho mobile -->
                 <i
                   class="fas fa-arrow-left icon-btn back-btn"
                   onclick="closeChatMobile()"
                 ></i>
-                <div class="avatar">
+                <div class="avatar" style="cursor: pointer;" onclick="if (currentChatPartnerId) showUserProfile(currentChatPartnerId)">
                   <img src="" alt="Avatar" id="current-chat-avatar" />
                   <div class="online-dot"></div>
                 </div>
@@ -850,12 +850,46 @@
       </div>
     </div>
 
+    <!-- Giao diện xem Hồ sơ người dùng (User Profile Modal) -->
+    <div id="user-profile-modal" class="modal-overlay">
+      <div class="profile-modal-card">
+        <button class="profile-modal-close" onclick="closeUserProfile()">&times;</button>
+        <div class="profile-cover">
+          <img src="https://ui-avatars.com/api/?name=Cover&background=e9ecef&color=333&size=800&font-size=0.1" alt="Cover" />
+        </div>
+        <div class="profile-header">
+          <div class="profile-avatar">
+            <img src="https://ui-avatars.com/api/?name=User&background=random" alt="Avatar" />
+            <div class="profile-status-dot"></div>
+          </div>
+        </div>
+        <div class="profile-info">
+          <h2>Tên người dùng</h2>
+          <p class="profile-bio">Tiểu sử/Bio...</p>
+        </div>
+        <div class="profile-actions">
+          <button class="profile-action-btn btn-chat" title="Nhắn tin">
+            <i class="fas fa-comment-dots"></i>
+            <span>Nhắn tin</span>
+          </button>
+          <button class="profile-action-btn btn-call" title="Gọi thoại">
+            <i class="fas fa-phone-alt"></i>
+            <span>Gọi thoại</span>
+          </button>
+          <button class="profile-action-btn btn-video" title="Gọi video">
+            <i class="fas fa-video"></i>
+            <span>Gọi video</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Import Firebase Web SDK (Compat mode) -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
 
     <!-- Import Socket.IO và file xử lý logic -->
     <script src="/socket.io/socket.io.js"></script>
-    <script src="app.js?v=20038"></script>
+    <script src="app.js?v=20040"></script>
   </body>
 </html>

@@ -17,4 +17,7 @@ router.post(
   userController.updateCoverImage,
 );
 
+// Lấy thông tin hồ sơ người dùng
+router.get("/:id", authMiddleware, userController.getUserProfile);
+
 module.exports = router;

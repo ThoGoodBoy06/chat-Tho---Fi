@@ -179,3 +179,42 @@ exports.updateCoverImage = async (req, res) => {
       .json({ message: "Lỗi upload ảnh bìa", error: error.message });
   }
 };
+
+// 3. Lấy thông tin Hồ sơ người dùng an toàn dựa trên ID
+exports.getUserProfile = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id || id === "null" || id === "undefined") {
+      return res.status(400).json({ message: "ID người dùng không hợp lệ" });
+    }
+
+    const user = await prisma.users.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        fullName: true,
+        bio: true,
+        isOnline: true,
+        lastSeen: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
+    }
+
+    return res.status(200).json({
+      id: user.id,
+      name: user.fullName,
+      avatarUrl: `/api/users/${user.id}/avatar`,
+      coverUrl: `/api/users/${user.id}/cover`,
+      bio: user.bio || "Chưa có tiểu sử",
+      status: user.isOnline ? "online" : "offline",
+      lastSeen: user.lastSeen,
+    });
+  } catch (error) {
+    console.error("Lỗi khi lấy hồ sơ người dùng:", error.message);
+    return res.status(500).json({ message: "Lỗi server", error: error.message });
+  }
+};
+

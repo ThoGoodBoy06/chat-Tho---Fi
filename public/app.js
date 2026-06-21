@@ -920,13 +920,14 @@ async function loadConversations() {
                     unreadCount > 0 ? "font-weight: 600; color: var(--text-dark);" : "";
 
                 const li = document.createElement("li");
+                li.className = "conversation-item";
                 li.dataset.conversationId = conv.id;
                 if (isSameId(conv.id, currentConversationId))
                     li.classList.add("active");
                 li.onclick = () =>
                     startChat(user.id, user.fullName || user.username, avatarUrl);
                 li.innerHTML = `
-          <div class="avatar">
+          <div class="avatar" style="cursor: pointer;" onclick="event.stopPropagation(); showUserProfile('${user.id}')">
             <img src="${avatarUrl}" alt="Avatar">
             ${user.isOnline ? '<div class="online-dot"></div>' : ""}
           </div>
@@ -987,8 +988,8 @@ async function searchUser() {
             div.className = "search-result-item";
             div.innerHTML = `
         <div style="display: flex; align-items: center; gap: 12px;">
-          <div class="avatar" style="width:40px;height:40px;"><img src="${avatarUrl}" style="width:100%;height:100%;border-radius:50%;"></div>
-          <span style="font-weight:600;">${user.fullName}</span>
+          <div class="avatar" style="width:40px;height:40px;cursor:pointer;" onclick="showUserProfile('${user.id}')"><img src="${avatarUrl}" style="width:100%;height:100%;border-radius:50%;"></div>
+          <span style="font-weight:600;cursor:pointer;" onclick="showUserProfile('${user.id}')">${user.fullName}</span>
         </div>
         <button onclick="startChat('${user.id}', '${user.fullName}', '${avatarUrl}')" style="margin-top:12px;padding:8px;width:100%;background:var(--primary-color);color:white;border:none;border-radius:6px;cursor:pointer;">Nhắn tin</button>
       `;
@@ -1295,8 +1296,8 @@ function renderFriendRequests() {
         itemEl.id = `request-${req.id}`;
         itemEl.innerHTML = `
       <div class="friend-request-info">
-        <div class="avatar"><img src="${avatarUrl}" alt="Avatar"></div>
-        <span>${user.fullName}</span>
+        <div class="avatar" style="cursor: pointer;" onclick="showUserProfile('${user.id}')"><img src="${avatarUrl}" alt="Avatar"></div>
+        <span style="cursor: pointer;" onclick="showUserProfile('${user.id}')">${user.fullName}</span>
       </div>
       <div class="friend-request-actions">
         <button class="btn-decline" onclick="rejectFriendRequest('${req.id}')">Từ chối</button>
@@ -1338,8 +1339,8 @@ async function searchUserForFriend() {
             div.className = "search-result-item";
             div.innerHTML = `
         <div class="friend-request-info">
-          <div class="avatar" style="width:40px;height:40px;"><img src="${avatarUrl}" style="width:100%;height:100%;border-radius:50%;"></div>
-          <span>${user.fullName}</span>
+          <div class="avatar" style="width:40px;height:40px;cursor:pointer;" onclick="showUserProfile('${user.id}')"><img src="${avatarUrl}" style="width:100%;height:100%;border-radius:50%;"></div>
+          <span style="cursor:pointer;" onclick="showUserProfile('${user.id}')">${user.fullName}</span>
         </div>
         <button class="btn-send-request" id="send-req-btn-${user.id}" onclick="sendFriendRequest('${user.id}')">Gửi lời mời</button>
       `;
@@ -1411,9 +1412,11 @@ async function loadFriends() {
             itemEl.className = "friend-request-item";
             itemEl.innerHTML = `
         <div class="friend-request-info">
-          <div class="avatar"><img src="${avatarUrl}" alt="Avatar">${user.isOnline ? '<div class="online-dot"></div>' : ""
-                }</div>
-          <span>${user.fullName}</span>
+          <div class="avatar" style="cursor: pointer;" onclick="showUserProfile('${user.id}')">
+            <img src="${avatarUrl}" alt="Avatar">
+            ${user.isOnline ? '<div class="online-dot"></div>' : ""}
+          </div>
+          <span style="cursor: pointer;" onclick="showUserProfile('${user.id}')">${user.fullName}</span>
         </div>
         <div class="friend-request-actions">
           <button class="btn-chat-friend btn-outline" onclick="startChat('${user.id}', '${user.fullName
@@ -2456,6 +2459,16 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     tryAutoLogin();
+
+    // Click outside profile modal to close it
+    const profileModal = document.getElementById("user-profile-modal");
+    if (profileModal) {
+        profileModal.addEventListener("click", (e) => {
+            if (e.target === profileModal) {
+                closeUserProfile();
+            }
+        });
+    }
 });
 
 async function tryAutoLogin() {
@@ -2530,6 +2543,87 @@ function closeLightbox() {
         }, 300);
     }
 }
+
+// --- XỬ LÝ HỒ SƠ NGƯỜI DÙNG (USER PROFILE MODAL) ---
+async function showUserProfile(userId) {
+    if (!userId) return;
+    try {
+        showLoading("Đang tải hồ sơ...");
+        const res = await fetch(`${API_URL}/users/${userId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.message || "Không thể tải thông tin hồ sơ.");
+        }
+        const user = await res.json();
+
+        const modal = document.getElementById("user-profile-modal");
+        if (!modal) return;
+
+        // Cập nhật DOM
+        const coverImg = modal.querySelector(".profile-cover img");
+        const avatarImg = modal.querySelector(".profile-avatar img");
+        const statusDot = modal.querySelector(".profile-status-dot");
+        const nameEl = modal.querySelector(".profile-info h2");
+        const bioEl = modal.querySelector(".profile-bio");
+
+        if (coverImg) coverImg.src = formatUrl(user.coverUrl) + `?v=${Date.now()}`;
+        if (avatarImg) avatarImg.src = formatUrl(user.avatarUrl) + `?v=${Date.now()}`;
+        
+        if (statusDot) {
+            statusDot.className = `profile-status-dot ${user.status}`;
+            statusDot.title = user.status === "online" ? "Đang hoạt động" : "Ngoại tuyến";
+        }
+
+        if (nameEl) nameEl.innerText = user.name || "Người dùng";
+        if (bioEl) bioEl.innerText = user.bio || "Chưa có tiểu sử";
+
+        // Gán sự kiện click cho các nút hành động
+        const chatBtn = modal.querySelector(".profile-action-btn.btn-chat");
+        const callBtn = modal.querySelector(".profile-action-btn.btn-call");
+        const videoBtn = modal.querySelector(".profile-action-btn.btn-video");
+
+        if (chatBtn) {
+            chatBtn.onclick = () => {
+                closeUserProfile();
+                startChat(user.id, user.name, formatUrl(user.avatarUrl));
+                const messagesTabNav = document.querySelector('.nav-item[title="Tin nhắn"]');
+                if (messagesTabNav) switchTab("tab-messages", messagesTabNav);
+            };
+        }
+
+        if (callBtn) {
+            callBtn.onclick = async () => {
+                closeUserProfile();
+                await startChat(user.id, user.name, formatUrl(user.avatarUrl));
+                startCall("voice");
+            };
+        }
+
+        if (videoBtn) {
+            videoBtn.onclick = async () => {
+                closeUserProfile();
+                await startChat(user.id, user.name, formatUrl(user.avatarUrl));
+                startCall("video");
+            };
+        }
+
+        modal.classList.add("active");
+    } catch (error) {
+        alert("Lỗi tải hồ sơ người dùng: " + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+function closeUserProfile() {
+    const modal = document.getElementById("user-profile-modal");
+    if (modal) {
+        modal.classList.remove("active");
+    }
+}
+
 
 // Chuyển đổi giữa các Tab
 function switchTab(tabId, navElement) {
