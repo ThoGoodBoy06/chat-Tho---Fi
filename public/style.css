@@ -1433,15 +1433,16 @@ p {
   background: var(--header-bg-glass);
 }
 
-.profile-header {
+.profile-tab-cover {
   position: relative;
   width: 100%;
   height: 200px;
   cursor: pointer;
   background: var(--border-color);
+  flex-shrink: 0;
 }
 
-.profile-header img {
+.profile-tab-cover img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -1463,7 +1464,7 @@ p {
   transition: opacity var(--transition-fast);
 }
 
-.profile-header:hover .cover-overlay {
+.profile-tab-cover:hover .cover-overlay {
   opacity: 1;
 }
 
@@ -2875,8 +2876,9 @@ input:checked+.slider.round:before {
     color: white;
   }
 
-  .profile-header {
-    height: 180px;
+  .profile-tab-cover {
+    height: 150px;
+    flex-shrink: 0;
   }
 
   .profile-info-card {
@@ -2886,6 +2888,7 @@ input:checked+.slider.round:before {
     padding: 16px;
     margin-bottom: 8px;
     border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
   }
 
   .profile-info-card .profile-avatar-wrapper {
@@ -2895,20 +2898,26 @@ input:checked+.slider.round:before {
     height: 60px;
     border: none;
     margin-right: 16px;
+    flex-shrink: 0;
   }
 
   .profile-text-info {
     text-align: left;
+    flex: 1;
+    min-width: 0;
   }
 
   .profile-text-info #profile-name {
     margin: 0 0 4px 0;
-    font-size: 20px;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-dark);
   }
 
   .profile-text-info #profile-bio {
     margin: 0;
-    font-size: 14px;
+    font-size: 13px;
+    color: var(--text-light);
   }
 
   /* Long-press bubble actions for mobile (iOS sheet style) */
@@ -3311,7 +3320,7 @@ body {
   object-fit: cover;
 }
 
-.profile-header {
+.profile-modal-avatar-header {
   display: flex;
   justify-content: center;
   position: relative;
@@ -3519,7 +3528,7 @@ body {
   }
 
   /* 4. Vùng chứa avatar (đè lên cover) */
-  .profile-header {
+  .profile-modal-avatar-header {
     display: flex;
     justify-content: center;
     position: relative;
