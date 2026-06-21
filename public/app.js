@@ -2685,20 +2685,55 @@ function stopCallTimer() {
 // QUẢN LÝ HIỆU ỨNG RUNG TRÊN ĐIỆN THOẠI
 // ==========================================
 
-function startVibration() {
+let callVibrationActive = false;
+
+function triggerCallVibration() {
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     if (isMobile && navigator.vibrate) {
-        navigator.vibrate([1000, 500, 1000, 500, 1000]);
-        vibrateInterval = setInterval(() => {
-            navigator.vibrate([1000, 500, 1000, 500, 1000]);
-        }, 4500);
+        try {
+            // Rung dồn dập hơn: rung 1.2s, nghỉ 0.5s, rung 1.2s, nghỉ 0.5s
+            navigator.vibrate([1200, 500, 1200, 500]);
+        } catch (e) {
+            console.warn("Lỗi gọi navigator.vibrate:", e);
+        }
     }
 }
 
-function stopVibration() {
+function handleUserInteractionVibrate() {
+    if (callVibrationActive) {
+        triggerCallVibration();
+    }
+}
+
+function startVibration() {
+    callVibrationActive = true;
+    triggerCallVibration();
+
+    // Đăng ký sự kiện chạm màn hình để giải phóng Gesture Lock của trình duyệt và kích hoạt rung ngay lập tức
+    document.addEventListener("click", handleUserInteractionVibrate);
+    document.addEventListener("touchstart", handleUserInteractionVibrate);
+
     if (vibrateInterval) clearInterval(vibrateInterval);
-    vibrateInterval = null;
-    if (navigator.vibrate) navigator.vibrate(0);
+    vibrateInterval = setInterval(() => {
+        if (callVibrationActive) {
+            triggerCallVibration();
+        }
+    }, 4000); // Lặp lại mỗi 4s cho chu kỳ rung ~3.4s
+}
+
+function stopVibration() {
+    callVibrationActive = false;
+    document.removeEventListener("click", handleUserInteractionVibrate);
+    document.removeEventListener("touchstart", handleUserInteractionVibrate);
+    if (vibrateInterval) {
+        clearInterval(vibrateInterval);
+        vibrateInterval = null;
+    }
+    if (navigator.vibrate) {
+        try {
+            navigator.vibrate(0);
+        } catch (e) {}
+    }
 }
 
 function playRingtone() {
