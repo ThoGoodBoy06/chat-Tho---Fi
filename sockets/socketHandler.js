@@ -190,6 +190,7 @@ module.exports = (io) => {
         const calleeRoom = io.sockets.adapter.rooms.get(calleeId);
         const isCalleeOnline = calleeRoom && calleeRoom.size > 0;
 
+        let hasFcmToken = false;
         // Bắn Push Notification cuộc gọi chạy ngầm (để khi tắt máy/thoát màn hình chính vẫn nhận được)
         try {
           const calleeUser = await prisma.users.findUnique({
@@ -198,6 +199,7 @@ module.exports = (io) => {
           });
 
           if (calleeUser && calleeUser.fcmToken) {
+            hasFcmToken = true;
             const callTitle = `${callerName} đang gọi cho bạn...`;
             const callBody = `Cuộc gọi ${callType === "video" ? "Video" : "Thoại"} đến. Nhấn để trả lời.`;
             const customData = {
@@ -207,9 +209,25 @@ module.exports = (io) => {
               callType: String(callType),
               callerAvatar: String(callerAvatar || "")
             };
-            sendPushNotification(calleeUser.fcmToken, callTitle, callBody, customData)
-              .then(() => console.log(`📲 Đã bắn Push cuộc gọi đến cho User ${calleeId}`))
-              .catch((err) => console.error("❌ Lỗi bắn Push cuộc gọi:", err.message));
+            
+            try {
+              await sendPushNotification(calleeUser.fcmToken, callTitle, callBody, customData);
+              console.log(`📲 Đã bắn Push cuộc gọi đến thành công cho User ${calleeId}`);
+            } catch (pushErr) {
+              console.error("❌ Lỗi bắn Push cuộc gọi:", pushErr.message);
+              hasFcmToken = false; // Đánh dấu không có Token hợp lệ để lập tức trả offline
+              
+              // Xóa token hết hạn/lỗi khỏi database để tránh spam push vô ích
+              if (pushErr.code === "messaging/registration-token-not-registered" || 
+                  pushErr.message.includes("not registered") ||
+                  pushErr.message.includes("registration token")) {
+                await prisma.users.update({
+                  where: { id: calleeId },
+                  data: { fcmToken: null }
+                });
+                console.log(`🗑️ Đã xóa FCM Token lỗi của user ${calleeId}`);
+              }
+            }
           }
         } catch (dbErr) {
           console.error("Lỗi truy vấn FCM Token khi gọi điện:", dbErr.message);
@@ -224,8 +242,11 @@ module.exports = (io) => {
             callerAvatar,
             callType,
           });
+        } else if (hasFcmToken) {
+          console.log(`📞 ${callerName} đang gọi qua Push cho ${calleeId} (tạm thời offline socket)`);
+          // Không bắn call_rejected về cho Caller, cho phép đổ chuông chờ người nhận bấm push notification để vào app.
         } else {
-          // Trả trực tiếp phản hồi từ chối do offline về cho caller
+          // Trả trực tiếp phản hồi từ chối do offline về cho caller (do không kết nối socket và không có FCM token/FCM hỏng)
           socket.emit("call_rejected", { reason: "offline" });
         }
       },

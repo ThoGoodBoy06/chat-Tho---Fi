@@ -357,6 +357,7 @@ let currentFacingMode = "user";
 let callTimerInterval = null;
 let callStartTime = 0;
 let vibrateInterval = null;
+let callTimeoutTimer = null;
 
 // --- BIẾN TOÀN CỤC CHO CÁC TÍNH NĂNG TÙY CHỌN ---
 let isScreenSharing = false;
@@ -564,48 +565,19 @@ function initizeChatSession(userData, userToken) {
         }
     }
 
-    // Yêu cầu quyền gửi thông báo trên Trình duyệt Web (Nếu chưa cấp)
-    if ("Notification" in window && Notification.permission === "default") {
-        Notification.requestPermission();
-    }
-
-    // --- CÀI ĐẶT FIREBASE CLOUD MESSAGING (Lấy FCM Token) ---
-    if (typeof firebase !== "undefined") {
-        try {
-            // TODO 1: Dán firebaseConfig của bạn vào đây (Giống hệt file sw.js)
-            const firebaseConfig = {
-                apiKey: "AIzaSyDk6fayVDs0YbbhwldYxgHcN4nnjnPwmRc",
-                authDomain: "chat-tho-fi.firebaseapp.com",
-                projectId: "chat-tho-fi",
-                storageBucket: "chat-tho-fi.firebasestorage.app",
-                messagingSenderId: "513501588929",
-                appId: "1:513501588929:web:54fd6c5fab227868bfd340",
-            };
-
-            if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-            const messaging = firebase.messaging();
-
-            // TODO 2: Dán VAPID Key của bạn vào đây
-            messaging
-                .getToken({
-                    vapidKey: "BBtraQSvar7RExe_T8aVhoA3TebgLw0S-ucoMcuV-Oef-H7ULkJGWyBctnxfY5tLnawpWQ9Wn8Aihi-wJaLiGu0",
-                })
-                .then((currentToken) => {
-                    if (currentToken) {
-                        console.log("🔥 Đã lấy được FCM Token:", currentToken);
-                        fetch(`${API_URL}/users/fcm-token`, {
-                            method: "POST",
-                            headers: {
-                                "Content-Type": "application/json",
-                                Authorization: `Bearer ${token}`,
-                            },
-                            body: JSON.stringify({ fcmToken: currentToken }),
-                        });
-                    }
-                })
-                .catch((err) => console.log("Lỗi khi lấy FCM token:", err));
-        } catch (error) {
-            console.error("Lỗi khởi tạo Firebase Frontend:", error);
+    // Yêu cầu quyền gửi thông báo trên Trình duyệt Web (Nếu chưa cấp) và khởi tạo FCM
+    if ("Notification" in window) {
+        if (Notification.permission === "default") {
+            Notification.requestPermission().then((permission) => {
+                if (permission === "granted") {
+                    console.log("🔔 Quyền thông báo đã được cấp phép.");
+                    setupFirebaseMessaging(userToken);
+                } else {
+                    console.warn("🔔 Quyền thông báo bị từ chối.");
+                }
+            });
+        } else if (Notification.permission === "granted") {
+            setupFirebaseMessaging(userToken);
         }
     }
 
@@ -846,6 +818,81 @@ function initizeChatSession(userData, userToken) {
     loadConversations();
     loadFriends();
     loadNotifications();
+}
+
+// --- ĐĂNG KÝ VÀ CẤU HÌNH FIREBASE CLOUD MESSAGING (LẤY FCM TOKEN) ---
+function setupFirebaseMessaging(userToken) {
+    if (typeof firebase !== "undefined") {
+        try {
+            const firebaseConfig = {
+                apiKey: "AIzaSyDk6fayVDs0YbbhwldYxgHcN4nnjnPwmRc",
+                authDomain: "chat-tho-fi.firebaseapp.com",
+                projectId: "chat-tho-fi",
+                storageBucket: "chat-tho-fi.firebasestorage.app",
+                messagingSenderId: "513501588929",
+                appId: "1:513501588929:web:54fd6c5fab227868bfd340",
+            };
+
+            if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+            const messaging = firebase.messaging();
+
+            // Đăng ký Service Worker tường minh
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/firebase-messaging-sw.js')
+                    .then((registration) => {
+                        console.log("🔥 Service Worker FCM đã được đăng ký thành công!");
+                        return messaging.getToken({
+                            serviceWorkerRegistration: registration,
+                            vapidKey: "BBtraQSvar7RExe_T8aVhoA3TebgLw0S-ucoMcuV-Oef-H7ULkJGWyBctnxfY5tLnawpWQ9Wn8Aihi-wJaLiGu0",
+                        });
+                    })
+                    .then((currentToken) => {
+                        if (currentToken) {
+                            console.log("🔥 Đã lấy được FCM Token:", currentToken);
+                            fetch(`${API_URL}/users/fcm-token`, {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                    Authorization: `Bearer ${userToken}`,
+                                },
+                                body: JSON.stringify({ fcmToken: currentToken }),
+                            })
+                            .then(res => res.json())
+                            .then(data => {
+                                console.log("💾 Đã lưu thành công FCM Token lên server:", data);
+                            })
+                            .catch(err => console.error("❌ Lỗi gửi FCM Token lên Server:", err));
+                        } else {
+                            console.warn("⚠️ Không lấy được token FCM. Vui lòng kiểm tra cấu hình.");
+                        }
+                    })
+                    .catch((err) => {
+                        console.error("❌ Lỗi khi đăng ký Service Worker hoặc lấy token FCM:", err);
+                    });
+            } else {
+                // Fallback nếu trình duyệt không hỗ trợ Service Worker
+                messaging.getToken({
+                    vapidKey: "BBtraQSvar7RExe_T8aVhoA3TebgLw0S-ucoMcuV-Oef-H7ULkJGWyBctnxfY5tLnawpWQ9Wn8Aihi-wJaLiGu0",
+                })
+                .then((currentToken) => {
+                    if (currentToken) {
+                        console.log("🔥 Đã lấy được FCM Token (fallback):", currentToken);
+                        fetch(`${API_URL}/users/fcm-token`, {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                Authorization: `Bearer ${userToken}`,
+                            },
+                            body: JSON.stringify({ fcmToken: currentToken }),
+                        });
+                    }
+                })
+                .catch((err) => console.error("❌ Lỗi khi lấy FCM token fallback:", err));
+            }
+        } catch (error) {
+            console.error("Lỗi cấu hình Firebase Frontend:", error);
+        }
+    }
 }
 
 // 2. Tải danh sách cuộc trò chuyện gần đây
@@ -3066,6 +3113,17 @@ async function startCall(callType) {
         callType,
     });
 
+    // Thiết lập timeout tự động hủy cuộc gọi sau 30 giây nếu đối phương không bắt máy
+    if (callTimeoutTimer) clearTimeout(callTimeoutTimer);
+    callTimeoutTimer = setTimeout(() => {
+        const callModal = document.getElementById("call-modal");
+        if (callModal && callModal.style.display === "flex" && !callModal.classList.contains("in-call")) {
+            console.log("⏱️ Cuộc gọi hết thời gian chờ phản hồi (30s). Tự động ngắt.");
+            showTempToast("Không có phản hồi từ người nhận.");
+            endCall(true);
+        }
+    }, 30000);
+
     playOutgoingRingtone();
     } catch (err) {
         console.error("Lỗi trong startCall:", err);
@@ -3172,6 +3230,11 @@ function handleCallRejected(data) {
 async function handleCallAccepted(data) {
     try {
         stopOutgoingRingtone();
+
+        if (callTimeoutTimer) {
+            clearTimeout(callTimeoutTimer);
+            callTimeoutTimer = null;
+        }
 
         const calleeInfo = data ? data.calleeInfo : null;
 
@@ -3635,6 +3698,11 @@ function endCall(shouldEmit) {
     stopVibration();
     stopRingtone();
     stopOutgoingRingtone();
+
+    if (callTimeoutTimer) {
+        clearTimeout(callTimeoutTimer);
+        callTimeoutTimer = null;
+    }
 
     if (shouldEmit && currentCallPartnerId) {
         socket.emit("end_call", { connectedUserId: currentCallPartnerId });
@@ -4557,18 +4625,8 @@ async function requestNotificationPermission() {
         const permission = await Notification.requestPermission();
         if (permission === "granted") {
             console.log("Quyền thông báo đã được chấp thuận.");
-
-            if (typeof firebase !== "undefined") {
-                const messaging = firebase.messaging();
-                const currentToken = await messaging.getToken({
-                    vapidKey: "BBtraQSvar7RExe_T8aVhoA3TebgLw0S-ucoMcuV-Oef-H7ULkJGWyBctnxfY5tLnawpWQ9Wn8Aihi-wJaLiGu0" // VAPID Key của bạn
-                });
-
-                if (currentToken) {
-                    console.log("🔥 FCM Token lấy thành công:", currentToken);
-                } else {
-                    console.warn("Không thể sinh ra Token. Hãy kiểm tra lại cấu hình Firebase.");
-                }
+            if (token) {
+                setupFirebaseMessaging(token);
             }
         } else {
             console.warn("Người dùng từ chối cấp quyền thông báo.");
