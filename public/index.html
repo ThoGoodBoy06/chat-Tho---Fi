@@ -22,7 +22,7 @@
     <meta name="apple-mobile-web-app-title" content="Chat Tho-Fi" />
     <link rel="icon" href="icon.png" type="image/png" />
     <link rel="apple-touch-icon" href="icon.png" />
-    <link rel="stylesheet" href="style.css?v=20034" />
+    <link rel="stylesheet" href="style.css?v=20035" />
   </head>
 
   <body>
@@ -800,6 +800,21 @@
       </div>
     </div>
 
+    <!-- Hộp thoại thông báo Custom (Alert Modal) -->
+    <div id="custom-alert-modal" class="custom-modal-overlay" style="display: none;">
+      <div class="custom-modal-card">
+        <div class="custom-modal-header">
+          <h3 id="custom-alert-title">Thông báo</h3>
+        </div>
+        <div class="custom-modal-body">
+          <p id="custom-alert-message">Nội dung thông báo</p>
+        </div>
+        <div class="custom-modal-footer">
+          <button id="custom-alert-ok-btn" class="custom-btn btn-primary">Đồng ý</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Hộp thoại nhập liệu Custom (Prompt Modal) -->
     <div id="custom-prompt-modal" class="custom-modal-overlay" style="display: none;">
       <div class="custom-modal-card">
@@ -823,6 +838,6 @@
 
     <!-- Import Socket.IO và file xử lý logic -->
     <script src="/socket.io/socket.io.js"></script>
-    <script src="app.js?v=20034"></script>
+    <script src="app.js?v=20035"></script>
   </body>
 </html>

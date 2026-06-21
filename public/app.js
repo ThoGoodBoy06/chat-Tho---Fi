@@ -1431,8 +1431,8 @@ async function loadFriends() {
 
 // --- XÓA BẠN BÈ ---
 async function removeFriend(friendId) {
-    if (!confirm("Bạn có chắc chắn muốn xóa người này khỏi danh sách bạn bè?"))
-        return;
+    const consent = await customConfirm("Xóa bạn bè", "Bạn có chắc chắn muốn xóa người này khỏi danh sách bạn bè?", "Xóa bạn", "Hủy", true);
+    if (!consent) return;
 
     try {
         const res = await fetch(`${API_URL}/users/friends/${friendId}`, {
@@ -2156,7 +2156,8 @@ if (avatarUploadInput) {
 
 // 11. Thu hồi tin nhắn
 async function recallMessage(messageId) {
-    if (!confirm("Bạn có chắc chắn muốn thu hồi tin nhắn này?")) return;
+    const consent = await customConfirm("Thu hồi tin nhắn", "Bạn có chắc chắn muốn thu hồi tin nhắn này không?", "Thu hồi", "Hủy", true);
+    if (!consent) return;
 
     try {
         const res = await fetch(`${API_URL}/chat/messages/${messageId}/recall`, {
@@ -4233,6 +4234,42 @@ function toggleVoiceRecording() {
 // ==========================================
 // CUSTOM DIALOG SYSTEM (MODALS)
 // ==========================================
+
+// Override window.alert globally to use custom in-app alert modal
+window.alert = function(message) {
+    customAlert("Thông báo", message);
+};
+
+function customAlert(title, message) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById("custom-alert-modal");
+        const titleEl = document.getElementById("custom-alert-title");
+        const msgEl = document.getElementById("custom-alert-message");
+        const okBtn = document.getElementById("custom-alert-ok-btn");
+
+        if (!modal || !titleEl || !msgEl || !okBtn) {
+            console.warn("Custom alert DOM elements not found. Message: ", message);
+            return resolve();
+        }
+
+        titleEl.innerText = title;
+        msgEl.innerText = message;
+
+        modal.style.display = "flex";
+        setTimeout(() => modal.classList.add("show"), 10);
+
+        function cleanup() {
+            modal.classList.remove("show");
+            setTimeout(() => {
+                modal.style.display = "none";
+            }, 300);
+            okBtn.onclick = null;
+            resolve();
+        }
+
+        okBtn.onclick = () => cleanup();
+    });
+}
 
 function customConfirm(title, message, okText = "Xác nhận", cancelText = "Hủy", isDanger = true) {
     return new Promise((resolve) => {
