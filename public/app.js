@@ -3005,6 +3005,8 @@ function handleUpgradeToVideo() {
 
 // 4. Bắt đầu phiên bản WebRTC
 async function startCallSession(isCaller, calleeInfo = null) {
+    // Reset hàng đợi candidates khi bắt đầu cuộc gọi mới tránh lẫn candidates cũ
+    iceCandidateQueue = [];
     document.getElementById("call-modal").classList.add("in-call");
     document.getElementById("call-status").innerText = "Trong cuộc gọi...";
 
@@ -3082,17 +3084,36 @@ async function startCallSession(isCaller, calleeInfo = null) {
                 if (remoteAudio) {
                     remoteAudio.srcObject = stream;
                     remoteAudio.muted = false;
-                    remoteAudio
-                        .play()
-                        .catch((e) => console.error("Lỗi phát âm thanh từ xa:", e));
+                    remoteAudio.volume = 1.0;
+                    
+                    // Phát thử ngay lập tức và có dự phòng phát lại sau 300ms nếu bị Autoplay block
+                    const playPromise = remoteAudio.play();
+                    if (playPromise !== undefined) {
+                        playPromise.catch((e) => {
+                            console.warn("Autoplay chặn âm thanh cuộc gọi lần đầu, thử lại sau 300ms...", e);
+                            setTimeout(() => {
+                                if (remoteAudio.srcObject === stream) {
+                                    remoteAudio.play().catch(err => console.error("Không thể phát remote audio sau retry:", err));
+                                }
+                            }, 300);
+                        });
+                    }
                 }
             } else if (event.track.kind === "video") {
                 const remoteVideo = document.getElementById("remote-video");
                 if (remoteVideo) {
                     remoteVideo.srcObject = stream;
-                    remoteVideo
-                        .play()
-                        .catch((e) => console.error("Lỗi phát video từ xa:", e));
+                    const playPromise = remoteVideo.play();
+                    if (playPromise !== undefined) {
+                        playPromise.catch((e) => {
+                            console.warn("Autoplay chặn video cuộc gọi lần đầu, thử lại sau 300ms...", e);
+                            setTimeout(() => {
+                                if (remoteVideo.srcObject === stream) {
+                                    remoteVideo.play().catch(() => {});
+                                }
+                            }, 300);
+                        });
+                    }
                 }
             }
         };
@@ -3103,6 +3124,20 @@ async function startCallSession(isCaller, calleeInfo = null) {
                     connectedUserId: currentCallPartnerId,
                     signal: { ice: event.candidate },
                 });
+            }
+        };
+
+        // Lắng nghe trạng thái kết nối ICE để tự động Restart ICE khi bị fail lần đầu
+        peerConnection.oniceconnectionstatechange = () => {
+            if (peerConnection) {
+                console.log("ICE Connection State:", peerConnection.iceConnectionState);
+                if (
+                    peerConnection.iceConnectionState === "failed" ||
+                    peerConnection.iceConnectionState === "disconnected"
+                ) {
+                    console.warn("Kết nối cuộc gọi gặp trục trặc! Tự động kết nối lại (ICE Restart)...");
+                    triggerIceRestart(isCaller);
+                }
             }
         };
 
@@ -3179,6 +3214,23 @@ async function processIceQueue() {
         }
     }
     iceCandidateQueue = [];
+}
+
+// Tự động khởi động lại ICE khi gặp sự cố kết nối ở lần đầu
+async function triggerIceRestart(isCaller) {
+    try {
+        if (peerConnection && isCaller) {
+            const offer = await peerConnection.createOffer({ iceRestart: true });
+            await peerConnection.setLocalDescription(offer);
+            socket.emit("webrtc_signal", {
+                connectedUserId: currentCallPartnerId,
+                signal: { offer },
+            });
+            console.log("✈️ Đã kích hoạt và gửi yêu cầu kết nối lại (ICE Restart) sang đối phương!");
+        }
+    } catch (err) {
+        console.error("Lỗi khi thực hiện ICE Restart:", err);
+    }
 }
 
 // 6. Kết thúc cuộc gọi

@@ -1,5 +1,6 @@
 const prisma = require("../prisma");
 const { v4: uuidv4 } = require("uuid");
+const { sendPushNotification } = require("../controllers/chat.controller");
 
 module.exports = (io) => {
   // Biến này để lưu trữ id người dùng và socket id của họ (để biết gửi tin nhắn cho ai)
@@ -184,10 +185,28 @@ module.exports = (io) => {
     // 5. User A gửi yêu cầu gọi (request_call) cho User B
     socket.on(
       "request_call",
-      ({ callerId, callerName, calleeId, callType, callerAvatar }) => {
+      async ({ callerId, callerName, calleeId, callType, callerAvatar }) => {
         // Kiểm tra trạng thái online thời gian thực của callee qua room Socket.IO
         const calleeRoom = io.sockets.adapter.rooms.get(calleeId);
         const isCalleeOnline = calleeRoom && calleeRoom.size > 0;
+
+        // Bắn Push Notification cuộc gọi chạy ngầm (để khi tắt máy/thoát màn hình chính vẫn nhận được)
+        try {
+          const calleeUser = await prisma.users.findUnique({
+            where: { id: calleeId },
+            select: { fcmToken: true },
+          });
+
+          if (calleeUser && calleeUser.fcmToken) {
+            const callTitle = `${callerName} đang gọi cho bạn...`;
+            const callBody = `Cuộc gọi ${callType === "video" ? "Video" : "Thoại"} đến. Nhấn để trả lời.`;
+            sendPushNotification(calleeUser.fcmToken, callTitle, callBody)
+              .then(() => console.log(`📲 Đã bắn Push cuộc gọi đến cho User ${calleeId}`))
+              .catch((err) => console.error("❌ Lỗi bắn Push cuộc gọi:", err.message));
+          }
+        } catch (dbErr) {
+          console.error("Lỗi truy vấn FCM Token khi gọi điện:", dbErr.message);
+        }
 
         if (isCalleeOnline) {
           console.log(`📞 ${callerName} đang gọi cho ${calleeId}`);
