@@ -3102,6 +3102,7 @@ html, body {
   left: 0;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -3321,6 +3322,7 @@ html, body {
     border-bottom: none;
     border-left: none;
     border-right: none;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
   }
   
   #user-profile-modal.active .profile-modal-card {
