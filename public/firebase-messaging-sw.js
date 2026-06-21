@@ -29,7 +29,7 @@ messaging.onBackgroundMessage((payload) => {
     icon: payload.notification?.image || payload.notification?.icon || "/icon.png",
     badge: "/icon.png",
     data: payload.data,
-    vibrate: [200, 100, 200],
+    vibrate: [400, 100, 400, 100, 600],
     tag: payload.data?.conversationId || "tho-fi-chat-notification",
     renotify: true
   };

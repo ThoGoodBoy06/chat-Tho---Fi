@@ -170,6 +170,24 @@ function unlockBrowserAudio() {
 document.addEventListener("click", unlockBrowserAudio);
 document.addEventListener("touchstart", unlockBrowserAudio);
 
+// Cơ chế unlock rung (Vibration Gesture Lock) cho thiết bị di động
+let isVibrationUnlocked = false;
+function unlockBrowserVibration() {
+    if (isVibrationUnlocked) return;
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+        try {
+            navigator.vibrate(10); // Rung nhẹ 10ms để giải phóng Gesture Lock của trình duyệt
+            isVibrationUnlocked = true;
+        } catch (e) {
+            console.warn("Lỗi unlock rung điện thoại:", e);
+        }
+    }
+    document.removeEventListener("click", unlockBrowserVibration);
+    document.removeEventListener("touchstart", unlockBrowserVibration);
+}
+document.addEventListener("click", unlockBrowserVibration);
+document.addEventListener("touchstart", unlockBrowserVibration);
+
 function resetReadReceiptState(conversationId = currentConversationId) {
     readReceiptState.conversationId = conversationId || null;
     readReceiptState.readBy = null;
@@ -690,10 +708,10 @@ function initizeChatSession(userData, userToken) {
                 console.warn("DOMException: Chính sách Auto-play của trình duyệt chặn phát âm thanh:", err.message);
             });
 
-            // Rung phản hồi nhịp kép (Rung 200ms, nghỉ 100ms, rung 200ms) trên các thiết bị hỗ trợ
+            // Rung phản hồi nhịp mạnh và lâu hơn (Rung 400ms, nghỉ 100ms, rung 400ms, nghỉ 100ms, rung 600ms)
             if (navigator.vibrate) {
                 try {
-                    navigator.vibrate([200, 100, 200]);
+                    navigator.vibrate([400, 100, 400, 100, 600]);
                 } catch (err) {
                     console.warn("Trình duyệt hoặc hệ điều hành từ chối cấp quyền rung:", err.message);
                 }
