@@ -2692,7 +2692,7 @@ function triggerCallVibration() {
     if (isMobile && navigator.vibrate) {
         try {
             // Rung dồn dập hơn: rung 1.2s, nghỉ 0.5s, rung 1.2s, nghỉ 0.5s
-            navigator.vibrate([1200, 500, 1200, 500]);
+            navigator.vibrate([1200, 4000, 1200, 1200]);
         } catch (e) {
             console.warn("Lỗi gọi navigator.vibrate:", e);
         }
@@ -2732,7 +2732,7 @@ function stopVibration() {
     if (navigator.vibrate) {
         try {
             navigator.vibrate(0);
-        } catch (e) {}
+        } catch (e) { }
     }
 }
 
