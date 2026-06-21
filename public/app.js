@@ -2517,6 +2517,15 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     }
+
+    const otherProfileModal = document.getElementById("other-user-profile-modal");
+    if (otherProfileModal) {
+        otherProfileModal.addEventListener("click", (e) => {
+            if (e.target === otherProfileModal) {
+                closeOtherUserProfileModal();
+            }
+        });
+    }
 });
 
 async function tryAutoLogin() {
@@ -2594,10 +2603,14 @@ function closeLightbox() {
 
 // --- XỬ LÝ HỒ SƠ NGƯỜI DÙNG (USER PROFILE MODAL) ---
 async function showUserProfile(userId) {
+    return openOtherUserProfileModal(userId);
+}
+
+async function openOtherUserProfileModal(userId) {
     if (!userId) return;
     try {
         showLoading("Đang tải hồ sơ...");
-        const res = await fetch(`${API_URL}/users/${userId}`, {
+        const res = await fetch(`${API_URL}/users/${userId}/profile`, {
             headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) {
@@ -2606,18 +2619,18 @@ async function showUserProfile(userId) {
         }
         const user = await res.json();
 
-        const modal = document.getElementById("user-profile-modal");
+        const modal = document.getElementById("other-user-profile-modal");
         if (!modal) return;
 
         // Cập nhật DOM
-        const coverImg = modal.querySelector(".profile-cover img");
-        const avatarImg = modal.querySelector(".profile-avatar img");
-        const statusDot = modal.querySelector(".profile-status-dot");
-        const nameEl = modal.querySelector(".profile-info h2");
-        const bioEl = modal.querySelector(".profile-bio");
+        const coverImg = modal.querySelector(".profile-cover-banner img");
+        const avatarImg = modal.querySelector(".profile-avatar-circle img");
+        const statusDot = modal.querySelector(".profile-avatar-circle .profile-status-dot");
+        const nameEl = modal.querySelector(".profile-name");
+        const bioEl = modal.querySelector(".profile-status-text");
 
-        if (coverImg) coverImg.src = formatUrl(user.coverUrl) + `?v=${Date.now()}`;
-        if (avatarImg) avatarImg.src = formatUrl(user.avatarUrl) + `?v=${Date.now()}`;
+        if (coverImg) coverImg.src = formatUrl(user.coverPhotoGroupUrl) + `?v=${Date.now()}`;
+        if (avatarImg) avatarImg.src = formatUrl(user.profileAvatarUrl) + `?v=${Date.now()}`;
         
         if (statusDot) {
             statusDot.className = `profile-status-dot ${user.status}`;
@@ -2628,14 +2641,14 @@ async function showUserProfile(userId) {
         if (bioEl) bioEl.innerText = user.bio || "Chưa có tiểu sử";
 
         // Gán sự kiện click cho các nút hành động
-        const chatBtn = modal.querySelector(".profile-action-btn.btn-chat");
-        const callBtn = modal.querySelector(".profile-action-btn.btn-call");
-        const videoBtn = modal.querySelector(".profile-action-btn.btn-video");
+        const chatBtn = modal.querySelector(".profile-action-item.btn-chat");
+        const callBtn = modal.querySelector(".profile-action-item.btn-call");
+        const videoBtn = modal.querySelector(".profile-action-item.btn-video");
 
         if (chatBtn) {
             chatBtn.onclick = () => {
-                closeUserProfile();
-                startChat(user.id, user.name, formatUrl(user.avatarUrl));
+                closeOtherUserProfileModal();
+                startChat(user.id, user.name, formatUrl(user.profileAvatarUrl));
                 const messagesTabNav = document.querySelector('.nav-item[title="Tin nhắn"]');
                 if (messagesTabNav) switchTab("tab-messages", messagesTabNav);
             };
@@ -2643,16 +2656,16 @@ async function showUserProfile(userId) {
 
         if (callBtn) {
             callBtn.onclick = async () => {
-                closeUserProfile();
-                await startChat(user.id, user.name, formatUrl(user.avatarUrl));
+                closeOtherUserProfileModal();
+                await startChat(user.id, user.name, formatUrl(user.profileAvatarUrl));
                 startCall("voice");
             };
         }
 
         if (videoBtn) {
             videoBtn.onclick = async () => {
-                closeUserProfile();
-                await startChat(user.id, user.name, formatUrl(user.avatarUrl));
+                closeOtherUserProfileModal();
+                await startChat(user.id, user.name, formatUrl(user.profileAvatarUrl));
                 startCall("video");
             };
         }
@@ -2662,6 +2675,13 @@ async function showUserProfile(userId) {
         alert("Lỗi tải hồ sơ người dùng: " + error.message);
     } finally {
         hideLoading();
+    }
+}
+
+function closeOtherUserProfileModal() {
+    const modal = document.getElementById("other-user-profile-modal");
+    if (modal) {
+        modal.classList.remove("active");
     }
 }
 

@@ -336,7 +336,7 @@
                   class="fas fa-arrow-left icon-btn back-btn"
                   onclick="closeChatMobile()"
                 ></i>
-                <div class="avatar" style="cursor: pointer;" onclick="if (currentChatPartnerId) showUserProfile(currentChatPartnerId)">
+                <div class="avatar" style="cursor: pointer;" onclick="if (currentChatPartnerId) openOtherUserProfileModal(currentChatPartnerId)">
                   <img src="" alt="Avatar" id="current-chat-avatar" />
                   <div class="online-dot"></div>
                 </div>
@@ -877,6 +877,36 @@
             <span>Gọi thoại</span>
           </button>
           <button class="profile-action-btn btn-video" title="Gọi video">
+            <i class="fas fa-video"></i>
+            <span>Gọi video</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Giao diện xem Hồ sơ người dùng khác mới (Floating Modal) -->
+    <div id="other-user-profile-modal" class="modal-overlay">
+      <div class="floating-profile-card">
+        <button class="modal-close-btn" onclick="closeOtherUserProfileModal()">&times;</button>
+        <div class="profile-cover-banner">
+          <img src="" alt="Banner" />
+        </div>
+        <div class="profile-avatar-circle">
+          <img src="" alt="Avatar" />
+          <div class="profile-status-dot"></div>
+        </div>
+        <h2 class="profile-name"></h2>
+        <p class="profile-status-text"></p>
+        <div class="profile-actions-grid">
+          <button class="profile-action-item btn-chat" title="Nhắn tin">
+            <i class="fas fa-comment-dots"></i>
+            <span>Nhắn tin</span>
+          </button>
+          <button class="profile-action-item btn-call" title="Gọi thoại">
+            <i class="fas fa-phone-alt"></i>
+            <span>Gọi thoại</span>
+          </button>
+          <button class="profile-action-item btn-video" title="Gọi video">
             <i class="fas fa-video"></i>
             <span>Gọi video</span>
           </button>

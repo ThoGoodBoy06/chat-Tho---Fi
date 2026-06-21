@@ -17,6 +17,9 @@ router.post(
   userController.updateCoverImage,
 );
 
+// Lấy thông tin chi tiết hồ sơ người dùng khác
+router.get("/:id/profile", authMiddleware, userController.getOtherUserProfile);
+
 // Lấy thông tin hồ sơ người dùng
 router.get("/:id", authMiddleware, userController.getUserProfile);
 

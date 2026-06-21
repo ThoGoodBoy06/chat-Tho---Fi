@@ -3462,6 +3462,209 @@ body {
 }
 
 /* ==========================================================================
+   OTHER USER PROFILE FLOATING MODAL (DESKTOP & MOBILE CENTERED)
+   ========================================================================== */
+#other-user-profile-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 100000;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+#other-user-profile-modal.active {
+  display: flex;
+  opacity: 1;
+}
+
+.floating-profile-card {
+  background: var(--msg-receiver-bg);
+  width: 380px;
+  max-width: 90vw;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-color);
+  position: relative;
+  transform: scale(0.9) translateY(20px);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+#other-user-profile-modal.active .floating-profile-card {
+  transform: scale(1) translateY(0);
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.4);
+  color: white;
+  border: none;
+  font-size: 20px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.modal-close-btn:hover {
+  background: rgba(0, 0, 0, 0.6);
+  transform: scale(1.05);
+}
+
+.profile-cover-banner {
+  width: 100%;
+  height: 160px;
+  position: relative;
+  background: #e9ecef;
+}
+
+.profile-cover-banner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-avatar-circle {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  margin: -50px auto 0 auto;
+  border-radius: 50%;
+  border: 4px solid var(--msg-receiver-bg);
+  box-shadow: var(--shadow-md);
+  background: var(--bg-color);
+  z-index: 2;
+}
+
+.profile-avatar-circle img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.profile-avatar-circle .profile-status-dot {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--msg-receiver-bg);
+  background: var(--text-light);
+  z-index: 3;
+}
+
+.profile-avatar-circle .profile-status-dot.online {
+  background: var(--online-color);
+}
+
+.profile-name {
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin: 12px 0 4px;
+  text-align: center;
+}
+
+.profile-status-text {
+  font-size: 13px;
+  color: var(--text-light);
+  margin: 0 24px 20px;
+  text-align: center;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.profile-actions-grid {
+  display: flex;
+  justify-content: center;
+  gap: 28px;
+  padding: 0 24px 24px;
+}
+
+.profile-action-item {
+  flex: 1;
+  max-width: 90px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  outline: none;
+  transition: transform var(--transition-fast);
+  padding: 0;
+}
+
+.profile-action-item:hover {
+  transform: translateY(-2px);
+}
+
+.profile-action-item i {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: white;
+  box-shadow: var(--shadow-sm);
+  transition: background var(--transition-fast);
+}
+
+.profile-action-item.btn-chat i {
+  background: #0068ff;
+}
+
+.profile-action-item.btn-chat:hover i {
+  background: #005de5;
+}
+
+.profile-action-item.btn-call i {
+  background: #0a8a6e;
+}
+
+.profile-action-item.btn-call:hover i {
+  background: #087059;
+}
+
+.profile-action-item.btn-video i {
+  background: #eab308;
+}
+
+.profile-action-item.btn-video:hover i {
+  background: #ca8a04;
+}
+
+.profile-action-item span {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-dark);
+}
+
+/* ==========================================================================
    USER PROFILE MODAL - RESPONSIVE MOBILE BOTTOM SHEET (ĐÃ FIX)
    ========================================================================== */
 
@@ -3630,5 +3833,27 @@ body {
     cursor: pointer;
     z-index: 10;
     backdrop-filter: blur(4px);
+  }
+
+  /* Thay thế UI Mobile cũ của hồ sơ người khác thành Floating Modal */
+  #other-user-profile-modal {
+    align-items: center !important;
+    justify-content: center !important;
+    background: rgba(0, 0, 0, 0.6) !important;
+  }
+
+  #other-user-profile-modal .floating-profile-card {
+    width: 340px !important;
+    max-width: 88vw !important;
+    border-radius: 20px !important;
+    transform: scale(0.95) translateY(0);
+    overflow: hidden !important;
+    max-height: 90vh !important;
+    margin: auto !important;
+    padding-bottom: 0 !important;
+  }
+
+  #other-user-profile-modal.active .floating-profile-card {
+    transform: scale(1) translateY(0) !important;
   }
 }

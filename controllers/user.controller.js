@@ -218,3 +218,39 @@ exports.getUserProfile = async (req, res) => {
   }
 };
 
+// 4. Lấy thông tin Hồ sơ người dùng khác đầy đủ cho modal mới
+exports.getOtherUserProfile = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id || id === "null" || id === "undefined") {
+      return res.status(400).json({ message: "ID người dùng không hợp lệ" });
+    }
+
+    const user = await prisma.users.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        fullName: true,
+        bio: true,
+        isOnline: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
+    }
+
+    return res.status(200).json({
+      id: user.id,
+      name: user.fullName,
+      profileAvatarUrl: `/api/users/${user.id}/avatar`,
+      coverPhotoGroupUrl: `/api/users/${user.id}/cover`,
+      bio: user.bio || "Chưa có tiểu sử",
+      status: user.isOnline ? "online" : "offline",
+    });
+  } catch (error) {
+    console.error("Lỗi khi lấy thông tin hồ sơ chi tiết:", error.message);
+    return res.status(500).json({ message: "Lỗi server", error: error.message });
+  }
+};
+
