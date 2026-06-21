@@ -3052,35 +3052,39 @@ async function startCallSession(isCaller, calleeInfo = null) {
         .setAttribute("style", "display: flex !important");
 
     try {
-        // Nếu đã có localStream (người gọi đã lấy preview), đảm bảo các track hoạt động tốt
+        // Để tránh xung đột âm thanh với nhạc chuông (dialtone/ringtone) làm micro bị ngắt/tắt tiếng trên thiết bị di động,
+        // chúng tôi luôn tắt và xin cấp lại một localStream mới sạch sẽ ngay khi bắt đầu kết nối.
         if (localStream) {
-            localStream.getTracks().forEach((track) => {
-                track.enabled = true;
-            });
-        } else {
-            // Chỉ xin quyền media mới nếu chưa có (người nhận chấp nhận cuộc gọi)
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                throw new Error(
-                    "Trình duyệt chặn Microphone do bạn không dùng HTTPS hoặc Localhost!",
-                );
-            }
-
             try {
-                const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-                const mediaConstraints = {
-                    audio: {
-                        noiseSuppression: isNoiseCancellationEnabled,
-                        echoCancellation: true,
-                        autoGainControl: true, // Kích hoạt tự động tăng âm lượng micro
-                    },
-                    video: callTypeGlobal === "video" ?
-                        isMobile ? { facingMode: currentFacingMode } :
-                            true : false,
-                };
+                localStream.getTracks().forEach((track) => track.stop());
+            } catch (e) {
+                console.warn("Lỗi dừng stream cũ:", e);
+            }
+            localStream = null;
+        }
 
-                localStream = await navigator.mediaDevices.getUserMedia(
-                    mediaConstraints,
-                );
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error(
+                "Trình duyệt chặn Microphone do bạn không dùng HTTPS hoặc Localhost!",
+            );
+        }
+
+        try {
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            const mediaConstraints = {
+                audio: {
+                    noiseSuppression: isNoiseCancellationEnabled,
+                    echoCancellation: true,
+                    autoGainControl: true, // Kích hoạt tự động tăng âm lượng micro
+                },
+                video: callTypeGlobal === "video" ?
+                    isMobile ? { facingMode: currentFacingMode } :
+                        true : false,
+            };
+
+            localStream = await navigator.mediaDevices.getUserMedia(
+                mediaConstraints,
+            );
 
                 if (callTypeGlobal === "video") {
                     const localVideo = document.getElementById("local-video");
@@ -3108,7 +3112,6 @@ async function startCallSession(isCaller, calleeInfo = null) {
                     localStream = null;
                 }
             }
-        }
 
         peerConnection = new RTCPeerConnection(stunServers);
 
@@ -4212,6 +4215,7 @@ function customPrompt(title, message, defaultValue = "", placeholder = "Nhập v
  * @param {number|number[]} pattern - Thời gian rung tính bằng mili-giây (ví dụ: 15ms) hoặc mảng nhịp rung
  */
 function triggerHapticFeedback(pattern = 30) {
+    if (callVibrationActive) return; // KHÔNG ĐƯỢC RUNG PHẢN HỒI KHI ĐANG CÓ CUỘC GỌI ĐẾN (tránh ghi đè rung cuộc gọi)
     if (typeof navigator !== "undefined" && navigator.vibrate) {
         try {
             navigator.vibrate(pattern);
