@@ -351,6 +351,7 @@ let localStream;
 let callTypeGlobal;
 let currentCallPartnerId = null;
 let iceCandidateQueue = [];
+let pendingSignalsQueue = [];
 let currentFacingMode = "user";
 let callTimerInterval = null;
 let callStartTime = 0;
@@ -2691,8 +2692,12 @@ function triggerCallVibration() {
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     if (isMobile && navigator.vibrate) {
         try {
-            // Rung dồn dập hơn: rung 1.2s, nghỉ 0.5s, rung 1.2s, nghỉ 0.5s
-            navigator.vibrate([1200, 4000, 1200, 1200]);
+            // Rung liên tục dài 30 giây (rung 1.2s, nghỉ 0.8s, lặp lại 15 lần)
+            navigator.vibrate([
+                1200, 800, 1200, 800, 1200, 800, 1200, 800, 1200, 800,
+                1200, 800, 1200, 800, 1200, 800, 1200, 800, 1200, 800,
+                1200, 800, 1200, 800, 1200, 800, 1200, 800, 1200, 800
+            ]);
         } catch (e) {
             console.warn("Lỗi gọi navigator.vibrate:", e);
         }
@@ -2718,7 +2723,7 @@ function startVibration() {
         if (callVibrationActive) {
             triggerCallVibration();
         }
-    }, 4000); // Lặp lại mỗi 4s cho chu kỳ rung ~3.4s
+    }, 25000); // Lặp lại sau mỗi 25s để phủ kín thời gian đổ chuông nếu chưa bắt máy
 }
 
 function stopVibration() {
@@ -3195,6 +3200,10 @@ async function startCallSession(isCaller, calleeInfo = null) {
                 connectedUserId: currentCallPartnerId,
                 signal: { offer },
             });
+        } else {
+            // Đối với người nhận, sau khi khởi tạo peerConnection thành công,
+            // xử lý tất cả các tín hiệu (offer/ICE) đang chờ trong hàng đợi.
+            await processPendingSignals();
         }
 
         return true;
@@ -3207,39 +3216,60 @@ async function startCallSession(isCaller, calleeInfo = null) {
 }
 
 // 5. Xử lý tín hiệu WebRTC nhận được
+async function processSignal(signal) {
+    if (!peerConnection) return;
+    try {
+        if (signal.offer) {
+            console.log("Xử lý offer WebRTC nhận được...");
+            await peerConnection.setRemoteDescription(
+                new RTCSessionDescription(signal.offer),
+            );
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            socket.emit("webrtc_signal", {
+                connectedUserId: currentCallPartnerId,
+                signal: { answer },
+            });
+            processIceQueue();
+        } else if (signal.answer) {
+            console.log("Xử lý answer WebRTC nhận được...");
+            await peerConnection.setRemoteDescription(
+                new RTCSessionDescription(signal.answer),
+            );
+            processIceQueue();
+        } else if (signal.ice) {
+            if (peerConnection.remoteDescription) {
+                await peerConnection.addIceCandidate(new RTCIceCandidate(signal.ice));
+            } else {
+                iceCandidateQueue.push(signal.ice);
+            }
+        }
+    } catch (error) {
+        console.error("Lỗi khi xử lý tín hiệu WebRTC cụ thể:", error);
+    }
+}
+
 async function handleWebRTCSignal({ signal, senderId }) {
     if (senderId) {
         currentCallPartnerId = senderId;
     }
 
     if (!peerConnection) {
-        if (signal.ice) {
-            iceCandidateQueue.push(signal.ice);
-        }
+        console.log("RTCPeerConnection chưa sẵn sàng, đưa tín hiệu vào hàng đợi:", signal);
+        pendingSignalsQueue.push(signal);
         return;
     }
 
-    if (signal.offer) {
-        await peerConnection.setRemoteDescription(
-            new RTCSessionDescription(signal.offer),
-        );
-        const answer = await peerConnection.createAnswer();
-        await peerConnection.setLocalDescription(answer);
-        socket.emit("webrtc_signal", {
-            connectedUserId: currentCallPartnerId,
-            signal: { answer },
-        });
-        processIceQueue();
-    } else if (signal.answer) {
-        await peerConnection.setRemoteDescription(
-            new RTCSessionDescription(signal.answer),
-        );
-        processIceQueue();
-    } else if (signal.ice) {
-        if (peerConnection.remoteDescription) {
-            await peerConnection.addIceCandidate(new RTCIceCandidate(signal.ice));
-        } else {
-            iceCandidateQueue.push(signal.ice);
+    await processSignal(signal);
+}
+
+async function processPendingSignals() {
+    if (pendingSignalsQueue.length > 0) {
+        console.log(`Đang xử lý ${pendingSignalsQueue.length} tín hiệu WebRTC trong hàng đợi...`);
+        const queueToProcess = [...pendingSignalsQueue];
+        pendingSignalsQueue = [];
+        for (const signal of queueToProcess) {
+            await processSignal(signal);
         }
     }
 }
@@ -3370,6 +3400,7 @@ function endCall(shouldEmit) {
 
     stopScreenShare();
     iceCandidateQueue = [];
+    pendingSignalsQueue = [];
     currentCallPartnerId = null;
 
     const modal = document.getElementById("call-modal");
