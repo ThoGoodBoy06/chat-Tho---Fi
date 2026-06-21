@@ -607,6 +607,24 @@
                   <span class="slider round"></span>
                 </label>
               </div>
+
+              <div class="zalo-menu-item" style="flex-direction: column; align-items: stretch; gap: 8px; border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 12px;">
+                <div class="menu-left" style="font-weight: 500; font-size: 13px;">
+                  <i class="fas fa-microphone menu-icon" style="color: #3b82f6; width: 16px;"></i> Thiết bị Microphone (Micro)
+                </div>
+                <select id="setting-mic-select" style="width: 100%; padding: 8px 12px; border-radius: 6px; background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); font-size: 12px; cursor: pointer; outline: none; margin-top: 4px;">
+                  <option value="">Thiết bị mặc định</option>
+                </select>
+              </div>
+
+              <div class="zalo-menu-item" style="flex-direction: column; align-items: stretch; gap: 8px; border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 12px;">
+                <div class="menu-left" style="font-weight: 500; font-size: 13px;">
+                  <i class="fas fa-video menu-icon" style="color: #10b981; width: 16px;"></i> Thiết bị Camera (Máy ảnh)
+                </div>
+                <select id="setting-cam-select" style="width: 100%; padding: 8px 12px; border-radius: 6px; background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); font-size: 12px; cursor: pointer; outline: none; margin-top: 4px;">
+                  <option value="">Thiết bị mặc định</option>
+                </select>
+              </div>
             </div>
 
             <div class="zalo-menu-list mt-3" style="border: none; background: transparent; box-shadow: none;">
@@ -838,6 +856,6 @@
 
     <!-- Import Socket.IO và file xử lý logic -->
     <script src="/socket.io/socket.io.js"></script>
-    <script src="app.js?v=20036"></script>
+    <script src="app.js?v=20037"></script>
   </body>
 </html>

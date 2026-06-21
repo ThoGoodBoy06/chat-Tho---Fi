@@ -2536,6 +2536,9 @@ function switchTab(tabId, navElement) {
     if (tabId === "tab-contacts") {
         navElement.classList.remove("shake");
     }
+    if (tabId === "tab-settings") {
+        updateMediaDevicesList();
+    }
 
     document
         .querySelectorAll(".tab-pane")
@@ -2860,13 +2863,18 @@ async function startCall(callType) {
             );
         }
 
+        const selectedMicId = document.getElementById("setting-mic-select")?.value;
+        const selectedCamId = document.getElementById("setting-cam-select")?.value;
+
         const mediaConstraints = {
             audio: {
                 noiseSuppression: isNoiseCancellationEnabled,
                 echoCancellation: true,
+                ...(selectedMicId ? { deviceId: { exact: selectedMicId } } : {})
             },
             video: callTypeGlobal === "video" ?
-                (isMobile ? { facingMode: currentFacingMode } : true) : false,
+                (selectedCamId ? { deviceId: { exact: selectedCamId } } :
+                 (isMobile ? { facingMode: currentFacingMode } : true)) : false,
         };
 
         try {
@@ -3154,14 +3162,19 @@ async function startCallSession(isCaller, calleeInfo = null) {
 
         try {
             const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            const selectedMicId = document.getElementById("setting-mic-select")?.value;
+            const selectedCamId = document.getElementById("setting-cam-select")?.value;
+
             const mediaConstraints = {
                 audio: {
                     noiseSuppression: isNoiseCancellationEnabled,
                     echoCancellation: true,
                     autoGainControl: true, // Kích hoạt tự động tăng âm lượng micro
+                    ...(selectedMicId ? { deviceId: { exact: selectedMicId } } : {})
                 },
                 video: callTypeGlobal === "video" ?
-                    (isMobile ? { facingMode: currentFacingMode } : true) : false,
+                    (selectedCamId ? { deviceId: { exact: selectedCamId } } :
+                     (isMobile ? { facingMode: currentFacingMode } : true)) : false,
             };
 
             try {
@@ -4471,6 +4484,62 @@ function searchUserMobilePrompt() {
                 searchUser();
             }
         });
+}
+
+// Cập nhật danh sách thiết bị âm thanh/hình ảnh khả dụng
+async function updateMediaDevicesList() {
+    try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+        
+        // Xin quyền trước để lấy được đầy đủ tên thiết bị thay vì nhãn rỗng
+        try {
+            const tempStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: callTypeGlobal === "video" });
+            tempStream.getTracks().forEach(track => track.stop());
+        } catch (e) {
+            console.warn("Xin quyền thiết bị tạm thời để liệt kê nhãn thất bại:", e);
+        }
+
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const micSelect = document.getElementById("setting-mic-select");
+        const camSelect = document.getElementById("setting-cam-select");
+
+        if (micSelect) {
+            // Lưu lại thiết bị đã chọn trước đó (nếu có)
+            const prevSelected = micSelect.value;
+            micSelect.innerHTML = '<option value="">Thiết bị mặc định (Default)</option>';
+            
+            const micDevices = devices.filter((device) => device.kind === "audioinput");
+            micDevices.forEach((device) => {
+                const option = document.createElement("option");
+                option.value = device.deviceId;
+                option.innerText = device.label || `Microphone ${micSelect.options.length}`;
+                micSelect.appendChild(option);
+            });
+            
+            if (prevSelected && Array.from(micSelect.options).some(o => o.value === prevSelected)) {
+                micSelect.value = prevSelected;
+            }
+        }
+
+        if (camSelect) {
+            const prevSelected = camSelect.value;
+            camSelect.innerHTML = '<option value="">Thiết bị mặc định (Default)</option>';
+            
+            const camDevices = devices.filter((device) => device.kind === "videoinput");
+            camDevices.forEach((device) => {
+                const option = document.createElement("option");
+                option.value = device.deviceId;
+                option.innerText = device.label || `Camera ${camSelect.options.length}`;
+                camSelect.appendChild(option);
+            });
+            
+            if (prevSelected && Array.from(camSelect.options).some(o => o.value === prevSelected)) {
+                camSelect.value = prevSelected;
+            }
+        }
+    } catch (err) {
+        console.error("Lỗi khi tải danh sách thiết bị phần cứng:", err);
+    }
 }
 
 
