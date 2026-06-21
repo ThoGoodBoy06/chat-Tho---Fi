@@ -2907,7 +2907,13 @@ async function startCall(callType) {
                     });
                 } catch (fallbackError) {
                     console.error("Lỗi hoàn toàn khi truy cập micro:", fallbackError);
-                    showTempToast("Không thể truy cập Microphone. Vui lòng cấp quyền thiết bị!");
+                    if (fallbackError.name === "NotFoundError" || fallbackError.name === "DevicesNotFoundError") {
+                        showTempToast("Không tìm thấy Microphone trên máy tính này. Cuộc gọi ở chế độ chỉ nghe.");
+                    } else if (fallbackError.name === "NotAllowedError" || fallbackError.name === "PermissionDeniedError") {
+                        showTempToast("Trình duyệt bị chặn quyền truy cập Microphone. Vui lòng cấp quyền ở ô địa chỉ!");
+                    } else {
+                        showTempToast("Không thể kết nối Microphone. Cuộc gọi ở chế độ chỉ nghe.");
+                    }
                     localStream = null;
                 }
             }
@@ -3208,7 +3214,13 @@ async function startCallSession(isCaller, calleeInfo = null) {
                         });
                     } catch (fallbackErr) {
                         console.error("Lỗi hoàn toàn khi truy cập micro trong session:", fallbackErr);
-                        showTempToast("Không thể kết nối Microphone. Vui lòng kiểm tra thiết bị!");
+                        if (fallbackErr.name === "NotFoundError" || fallbackErr.name === "DevicesNotFoundError") {
+                            showTempToast("Không tìm thấy Microphone trên máy tính này. Bạn ở chế độ chỉ nghe.");
+                        } else if (fallbackErr.name === "NotAllowedError" || fallbackErr.name === "PermissionDeniedError") {
+                            showTempToast("Vui lòng cho phép quyền truy cập Microphone trên trình duyệt để nói!");
+                        } else {
+                            showTempToast("Không thể kết nối Microphone. Bạn ở chế độ chỉ nghe.");
+                        }
                         localStream = null;
                     }
                 }
