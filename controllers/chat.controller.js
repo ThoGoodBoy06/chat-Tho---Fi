@@ -279,9 +279,15 @@ exports.sendMessage = async (req, res) => {
             },
           },
           webpush: {
+            headers: {
+              Urgency: "high",
+            },
             notification: {
               icon: avatarUrl,
               badge: "https://chat-tho-fi.onrender.com/icon.png",
+              vibrate: [400, 100, 400, 100, 600],
+              tag: String(conversationId),
+              renotify: true,
             },
           },
           data: {
@@ -583,6 +589,17 @@ exports.sendPushNotification = async (fcmToken, title, body) => {
           sound: "default", // Đổ chuông trên iOS
           badge: 1
         }
+      }
+    },
+    webpush: {
+      headers: {
+        Urgency: "high"
+      },
+      notification: {
+        icon: "https://chat-tho-fi.onrender.com/icon.png",
+        badge: "https://chat-tho-fi.onrender.com/icon.png",
+        vibrate: [1000, 500, 1000, 500, 1000],
+        requireInteraction: true
       }
     }
   };

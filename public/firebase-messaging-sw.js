@@ -21,12 +21,19 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log("[firebase-messaging-sw.js] Đã nhận tin nhắn chạy ngầm", payload);
 
-  const title = payload.notification?.title || "Tin nhắn mới";
-  const body = payload.notification?.body || "Bạn có một tin nhắn mới trên Tho-Fi Chat";
+  // Nếu payload đã có trường notification, Firebase SDK sẽ tự động hiển thị thông báo.
+  // Chúng ta không gọi showNotification() để tránh bị trùng lặp (hiển thị 2 lần).
+  if (payload.notification) {
+    console.log("[firebase-messaging-sw.js] Trình duyệt tự động hiển thị thông báo từ payload.notification");
+    return;
+  }
+
+  const title = payload.data?.title || "Tin nhắn mới";
+  const body = payload.data?.body || "Bạn có một tin nhắn mới trên Tho-Fi Chat";
 
   const options = {
     body: body,
-    icon: payload.notification?.image || payload.notification?.icon || "/icon.png",
+    icon: payload.data?.image || "/icon.png",
     badge: "/icon.png",
     data: payload.data,
     vibrate: [400, 100, 400, 100, 600],
