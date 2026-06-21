@@ -2959,6 +2959,9 @@ async function startCall(callType) {
     });
 
     playOutgoingRingtone();
+    } catch (err) {
+        console.error("Lỗi trong startCall:", err);
+    }
 }
 
 // 2. Xử lý khi có cuộc gọi đến (Callee)
