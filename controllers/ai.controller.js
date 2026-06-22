@@ -1,4 +1,5 @@
 const { GoogleGenAI } = require("@google/genai");
+const prisma = require("../prisma");
 
 /**
  * ===== Khởi tạo client Gemini =====
@@ -57,14 +58,56 @@ function buildChatConfig() {
   };
 }
 
-function getOrCreateChatSession(userId) {
+// Tìm hoặc tạo cuộc hội thoại AI dành riêng cho User trong DB (không có thành viên khác, type='ai')
+async function getOrCreateAiConversation(userId) {
+  let conversation = await prisma.conversations.findFirst({
+    where: {
+      type: "ai",
+      createdBy: userId,
+    },
+  });
+
+  if (!conversation) {
+    conversation = await prisma.conversations.create({
+      data: {
+        type: "ai",
+        createdBy: userId,
+        name: "Trợ lý AI Tho-Fi",
+      },
+    });
+  }
+  return conversation;
+}
+
+// Lấy hoặc khởi tạo phiên chat với Gemini, tự động nạp lịch sử từ DB
+async function getOrCreateChatSession(userId) {
   const existing = sessions.get(userId);
   if (existing) {
     existing.lastActive = Date.now();
     return existing.chat;
   }
+
+  // Tải lịch sử chat từ DB để nạp làm ngữ cảnh cho Gemini
+  let history = [];
+  try {
+    const conversation = await getOrCreateAiConversation(userId);
+    const dbMessages = await prisma.messages.findMany({
+      where: { conversationId: conversation.id },
+      orderBy: { createdAt: "asc" },
+      take: 40, // Lấy tối đa 40 tin nhắn gần nhất để tránh tràn Token
+    });
+
+    history = dbMessages.map((msg) => ({
+      role: msg.senderId ? "user" : "model",
+      parts: [{ text: msg.content }],
+    }));
+  } catch (err) {
+    console.error("⚠️ Không thể tải lịch sử AI từ database để làm ngữ cảnh:", err);
+  }
+
   const chat = ai.chats.create({
     model: MODEL_NAME,
+    history: history,
     config: buildChatConfig(),
   });
   sessions.set(userId, { chat, lastActive: Date.now() });
@@ -113,6 +156,36 @@ function resolveUserId(req) {
 }
 
 /**
+ * GET /api/ai/chat/history
+ * Lấy toàn bộ lịch sử hội thoại của user hiện tại từ Database
+ */
+exports.getHistory = async (req, res) => {
+  try {
+    const userId = resolveUserId(req);
+    const conversation = await getOrCreateAiConversation(userId);
+    const messages = await prisma.messages.findMany({
+      where: { conversationId: conversation.id },
+      orderBy: { createdAt: "asc" },
+    });
+
+    return res.json({
+      success: true,
+      messages: messages.map((msg) => ({
+        role: msg.senderId ? "user" : "model",
+        content: msg.content,
+        createdAt: msg.createdAt,
+      })),
+    });
+  } catch (error) {
+    console.error("❌ Lỗi lấy lịch sử AI từ database:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Không thể tải lịch sử cuộc trò chuyện AI.",
+    });
+  }
+};
+
+/**
  * POST /api/ai/chat
  * Trò chuyện có NHỚ NGỮ CẢNH (multi-turn), trả về 1 lần (không stream).
  */
@@ -140,7 +213,18 @@ exports.chat = async (req, res) => {
     }
 
     const userId = resolveUserId(req);
-    const chat = getOrCreateChatSession(userId);
+    const conversation = await getOrCreateAiConversation(userId);
+
+    // 1. Lưu tin nhắn của User vào Database
+    await prisma.messages.create({
+      data: {
+        conversationId: conversation.id,
+        senderId: userId,
+        content: prompt.trim(),
+      },
+    });
+
+    const chat = await getOrCreateChatSession(userId);
 
     console.log(`🤖 [${MODEL_NAME}] Đang xử lý yêu cầu cho user ${req.user?.username || "Unknown"}...`);
 
@@ -148,9 +232,20 @@ exports.chat = async (req, res) => {
       chat.sendMessage({ message: prompt.trim() })
     );
 
+    const aiText = response.text || "";
+
+    // 2. Lưu tin nhắn phản hồi của AI vào Database
+    await prisma.messages.create({
+      data: {
+        conversationId: conversation.id,
+        senderId: null, // senderId = null là AI gửi
+        content: aiText,
+      },
+    });
+
     trimHistoryIfNeeded(userId, chat);
 
-    return res.json({ success: true, text: response.text });
+    return res.json({ success: true, text: aiText });
   } catch (error) {
     console.error("❌ Lỗi gọi Gemini API:", error);
     return res.status(500).json({
@@ -183,14 +278,38 @@ exports.chatStream = async (req, res) => {
 
   try {
     const userId = resolveUserId(req);
-    const chat = getOrCreateChatSession(userId);
+    const conversation = await getOrCreateAiConversation(userId);
+
+    // 1. Lưu tin nhắn của User vào Database
+    await prisma.messages.create({
+      data: {
+        conversationId: conversation.id,
+        senderId: userId,
+        content: prompt.trim(),
+      },
+    });
+
+    const chat = await getOrCreateChatSession(userId);
 
     const stream = await chat.sendMessageStream({ message: prompt.trim() });
 
+    let fullAiText = "";
     for await (const chunk of stream) {
       if (chunk.text) {
+        fullAiText += chunk.text;
         res.write(`data: ${JSON.stringify({ text: chunk.text })}\n\n`);
       }
+    }
+
+    // 2. Lưu tin nhắn phản hồi của AI vào Database khi stream kết thúc
+    if (fullAiText.trim() !== "") {
+      await prisma.messages.create({
+        data: {
+          conversationId: conversation.id,
+          senderId: null, // senderId = null đại diện cho AI
+          content: fullAiText,
+        },
+      });
     }
 
     trimHistoryIfNeeded(userId, chat);
@@ -209,7 +328,19 @@ exports.chatStream = async (req, res) => {
  * Xoá "bộ nhớ" hội thoại của user hiện tại -> bắt đầu cuộc trò chuyện mới.
  */
 exports.resetHistory = async (req, res) => {
-  const userId = resolveUserId(req);
-  sessions.delete(userId);
-  return res.json({ success: true, message: "Đã xoá lịch sử trò chuyện. Bắt đầu cuộc hội thoại mới!" });
+  try {
+    const userId = resolveUserId(req);
+    sessions.delete(userId);
+
+    const conversation = await getOrCreateAiConversation(userId);
+    // Xoá tất cả tin nhắn AI của user trong DB
+    await prisma.messages.deleteMany({
+      where: { conversationId: conversation.id },
+    });
+
+    return res.json({ success: true, message: "Đã xoá lịch sử trò chuyện. Bắt đầu cuộc hội thoại mới!" });
+  } catch (error) {
+    console.error("❌ Lỗi xoá lịch sử chat AI:", error);
+    return res.status(500).json({ success: false, error: "Không thể xoá lịch sử trò chuyện." });
+  }
 };

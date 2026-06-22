@@ -2790,6 +2790,7 @@ function switchTab(tabId, navElement) {
         if (welcomeTitle) {
             welcomeTitle.innerText = `Hôm nay bạn thế nào, ${myUsername || "bạn"}?`;
         }
+        loadAiChatHistory();
     }
 
     // Xử lý ẩn/hiển thị mobile-header (thanh tìm kiếm trên mobile) khi đổi tab
@@ -2800,6 +2801,60 @@ function switchTab(tabId, navElement) {
         } else {
             mobileHeader.style.setProperty("display", "none", "important");
         }
+    }
+}
+
+// Tải lịch sử chat AI lưu trữ từ Database
+async function loadAiChatHistory() {
+    const welcomeEl = document.getElementById("ai-welcome-screen");
+    const wrapperEl = document.getElementById("ai-chat-messages-wrapper");
+    if (!wrapperEl) return;
+
+    try {
+        const res = await fetch("/api/ai/chat/history", {
+            method: "GET",
+            headers: {
+                "Authorization": `Bearer ${token}`
+            }
+        });
+        const data = res.ok ? await res.json() : null;
+
+        if (res.ok && data && data.success && data.messages && data.messages.length > 0) {
+            if (welcomeEl) welcomeEl.style.display = "none";
+            wrapperEl.style.display = "flex";
+            wrapperEl.innerHTML = "";
+
+            data.messages.forEach(msg => {
+                const isUser = msg.role === "user";
+                const avatarHtml = isUser 
+                    ? "" 
+                    : `<div class="ai-avatar">
+                         <img src="tho_fi_logo.png" alt="Logo" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='logo.jpg'" />
+                       </div>`;
+
+                const bubbleHtml = isUser 
+                    ? escapeHTML(msg.content) 
+                    : formatAiResponse(msg.content);
+
+                const msgHtml = `
+                  <div class="ai-message ${isUser ? 'ai-user' : 'ai-bot'}">
+                    ${avatarHtml}
+                    <div class="ai-bubble">${bubbleHtml}</div>
+                  </div>
+                `;
+                wrapperEl.insertAdjacentHTML("beforeend", msgHtml);
+            });
+
+            // Cuộn xuống cuối
+            const historyEl = document.getElementById("ai-chat-history");
+            if (historyEl) historyEl.scrollTop = historyEl.scrollHeight;
+        } else {
+            if (welcomeEl) welcomeEl.style.display = "flex";
+            wrapperEl.style.display = "none";
+            wrapperEl.innerHTML = "";
+        }
+    } catch (err) {
+        console.error("Lỗi khi tải lịch sử chat AI:", err);
     }
 }
 
