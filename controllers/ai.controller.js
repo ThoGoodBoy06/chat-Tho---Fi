@@ -27,8 +27,8 @@ exports.chat = async (req, res) => {
     // Khởi tạo GoogleGenerativeAI với api key
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // Sử dụng model gemini-1.5-flash để phản hồi nhanh nhất
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // Sử dụng model gemini-2.5-flash để phản hồi nhanh nhất
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     console.log(`🤖 Đang gửi yêu cầu tới Gemini AI cho user ${req.user ? req.user.username : 'Unknown'}...`);
     const result = await model.generateContent(prompt);
