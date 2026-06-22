@@ -5071,5 +5071,61 @@ async function updateMediaDevicesList() {
     }
 }
 
+/**
+ * AI SCROLL FIX v3
+ * Thêm vào app.js hoặc paste vào cuối <script> trong HTML
+ * Dùng JS để đảm bảo scroll dọc luôn hoạt động trong tab AI
+ */
+(function() {
+  function initAiScrollFix() {
+    const history = document.getElementById('ai-chat-history');
+    if (!history) return;
+
+    let startY = 0;
+    let startScrollTop = 0;
+
+    // Khi bắt đầu chạm
+    history.addEventListener('touchstart', function(e) {
+      startY = e.touches[0].clientY;
+      startScrollTop = history.scrollTop;
+    }, { passive: true });
+
+    // Khi di chuyển ngón tay - forward scroll lên container nếu cần
+    history.addEventListener('touchmove', function(e) {
+      const currentY = e.touches[0].clientY;
+      const deltaY = startY - currentY; // dương = kéo lên (scroll xuống)
+
+      // Nếu đang chạm vào code block, tự tay scroll container AI
+      const target = e.target;
+      const isInCodeBlock = target.closest('.ai-code-block') || target.closest('pre');
+
+      if (isInCodeBlock) {
+        // Ngăn code block chiếm gesture
+        history.scrollTop = startScrollTop + deltaY;
+      }
+    }, { passive: true });
+
+    // Theo dõi khi tab AI được mở, khởi động lại fix
+    const observer = new MutationObserver(function() {
+      const aiTab = document.getElementById('tab-ai');
+      if (aiTab && aiTab.classList.contains('active')) {
+        // Re-attach nếu cần
+      }
+    });
+
+    const tabAi = document.getElementById('tab-ai');
+    if (tabAi) {
+      observer.observe(tabAi, { attributes: true, attributeFilter: ['class'] });
+    }
+  }
+
+  // Chạy khi DOM sẵn sàng
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAiScrollFix);
+  } else {
+    initAiScrollFix();
+  }
+})();
+
 
 
