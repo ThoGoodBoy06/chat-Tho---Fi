@@ -3852,6 +3852,8 @@ body[data-theme="dark"] .ai-welcome-logo {
   flex-direction: column;
   gap: 24px;
   width: 100%;
+  overflow-x: hidden;
+  min-width: 0;
 }
 
 /* Chat bubble styling */
@@ -3877,6 +3879,8 @@ body[data-theme="dark"] .ai-welcome-logo {
   align-self: flex-start;
   width: 100%;
   max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .ai-message .ai-avatar {
@@ -3904,7 +3908,11 @@ body[data-theme="dark"] .ai-message.ai-bot .ai-avatar {
   font-size: 15px;
   line-height: 1.6;
   word-break: break-word;
+  overflow-wrap: break-word;
   box-shadow: none;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .ai-message.ai-user .ai-bubble {
@@ -4239,7 +4247,15 @@ body[data-theme="dark"] .ai-typing-indicator span {
   }
 
   .ai-message {
-    max-width: 85%;
+    max-width: 95%;
+  }
+
+  .ai-message.ai-bot {
+    max-width: 100%;
+  }
+
+  .ai-message .ai-bubble {
+    font-size: 14px;
   }
 
   .ai-chat-input-area {
@@ -4256,6 +4272,7 @@ body[data-theme="dark"] .ai-typing-indicator span {
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(0, 0, 0, 0.25);
   overflow: hidden;
+  max-width: 100%;
 }
 
 body[data-theme="light"] .ai-code-wrapper {
