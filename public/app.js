@@ -49,6 +49,7 @@ document.addEventListener("visibilitychange", () => {
 let token = "";
 let myId = "";
 let myName = "";
+let myUsername = "";
 let currentConversationId = "";
 let currentChatPartnerId = null;
 let socket = null;
@@ -546,6 +547,13 @@ function initizeChatSession(userData, userToken) {
     token = userToken;
     myId = userData.id;
     myName = userData.fullName || userData.username;
+    myUsername = userData.username || "";
+
+    // Cập nhật lời chào Trợ lý AI khi khởi tạo session
+    const welcomeTitle = document.getElementById("ai-welcome-title");
+    if (welcomeTitle) {
+        welcomeTitle.innerText = `Hôm nay bạn thế nào, ${myUsername || "bạn"}?`;
+    }
 
     document.getElementById("my-name").innerText = myName;
     document.getElementById("my-avatar").src = userData.avatar ?
@@ -2780,7 +2788,7 @@ function switchTab(tabId, navElement) {
     if (tabId === "tab-ai") {
         const welcomeTitle = document.getElementById("ai-welcome-title");
         if (welcomeTitle) {
-            welcomeTitle.innerText = `Hôm nay bạn thế nào, ${myName || "bạn"}?`;
+            welcomeTitle.innerText = `Hôm nay bạn thế nào, ${myUsername || "bạn"}?`;
         }
     }
 
@@ -2947,6 +2955,7 @@ async function logout() {
     token = "";
     myId = "";
     myName = "";
+    myUsername = "";
     currentConversationId = "";
     currentChatPartnerId = null;
 
