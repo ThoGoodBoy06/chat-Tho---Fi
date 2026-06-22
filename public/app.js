@@ -2775,6 +2775,143 @@ function switchTab(tabId, navElement) {
 
     document.getElementById(tabId).classList.add("active");
     navElement.classList.add("active");
+
+    // Xử lý ẩn/hiển thị mobile-header (thanh tìm kiếm trên mobile) khi đổi tab
+    const mobileHeader = document.getElementById("mobile-header");
+    if (mobileHeader) {
+        if (tabId === "tab-messages") {
+            mobileHeader.style.setProperty("display", "", "important");
+        } else {
+            mobileHeader.style.setProperty("display", "none", "important");
+        }
+    }
+}
+
+// Gửi tin nhắn đến Gemini AI
+async function sendAiMessage() {
+    const inputEl = document.getElementById("ai-message-input");
+    if (!inputEl) return;
+    const prompt = inputEl.value.trim();
+    if (!prompt) return;
+
+    inputEl.value = "";
+    
+    const historyEl = document.getElementById("ai-chat-history");
+    if (!historyEl) return;
+
+    // Hiển thị tin nhắn người dùng
+    const userMsgHtml = `
+      <div class="ai-message ai-user">
+        <div class="ai-avatar">
+          <i class="fas fa-user"></i>
+        </div>
+        <div class="ai-bubble">${escapeHTML(prompt)}</div>
+      </div>
+    `;
+    historyEl.insertAdjacentHTML("beforeend", userMsgHtml);
+    historyEl.scrollTop = historyEl.scrollHeight;
+
+    // Hiển thị bong bóng "Đang suy nghĩ..." tạm thời
+    const typingHtml = `
+      <div class="ai-message ai-bot" id="ai-typing-temp">
+        <div class="ai-avatar">
+          <i class="fas fa-robot"></i>
+        </div>
+        <div class="ai-bubble">
+          <div class="ai-typing-indicator">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
+      </div>
+    `;
+    historyEl.insertAdjacentHTML("beforeend", typingHtml);
+    historyEl.scrollTop = historyEl.scrollHeight;
+
+    try {
+        const response = await fetch("/api/ai/chat", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({ prompt })
+        });
+
+        const data = await response.ok ? await response.json() : null;
+        
+        // Xóa bong bóng suy nghĩ
+        const tempEl = document.getElementById("ai-typing-temp");
+        if (tempEl) tempEl.remove();
+
+        if (response.ok && data && data.success) {
+            const aiMsgHtml = `
+              <div class="ai-message ai-bot">
+                <div class="ai-avatar">
+                  <i class="fas fa-robot"></i>
+                </div>
+                <div class="ai-bubble">${formatAiResponse(data.text)}</div>
+              </div>
+            `;
+            historyEl.insertAdjacentHTML("beforeend", aiMsgHtml);
+        } else {
+            const errMsg = (data && data.error) ? data.error : "Không thể tải phản hồi từ Gemini.";
+            const errorHtml = `
+              <div class="ai-message ai-bot">
+                <div class="ai-avatar">
+                  <i class="fas fa-robot"></i>
+                </div>
+                <div class="ai-bubble" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.2);">
+                  ❌ Lỗi: ${escapeHTML(errMsg)}
+                </div>
+              </div>
+            `;
+            historyEl.insertAdjacentHTML("beforeend", errorHtml);
+        }
+    } catch (error) {
+        const tempEl = document.getElementById("ai-typing-temp");
+        if (tempEl) tempEl.remove();
+
+        const errorHtml = `
+          <div class="ai-message ai-bot">
+            <div class="ai-avatar">
+              <i class="fas fa-robot"></i>
+            </div>
+            <div class="ai-bubble" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.2);">
+              ❌ Lỗi kết nối: Không thể gửi yêu cầu đến máy chủ. Vui lòng kiểm tra lại mạng!
+            </div>
+          </div>
+        `;
+        historyEl.insertAdjacentHTML("beforeend", errorHtml);
+    }
+    
+    historyEl.scrollTop = historyEl.scrollHeight;
+}
+
+// Định dạng văn bản trả về từ AI (chuyển đổi code, bold, list, newline thành HTML)
+function formatAiResponse(text) {
+    if (!text) return "";
+    let formatted = escapeHTML(text);
+    
+    // Convert code blocks
+    formatted = formatted.replace(/```([\s\S]*?)```/g, (match, p1) => {
+        return `<pre style="background: rgba(0,0,0,0.05); padding: 10px; border-radius: 6px; overflow-x: auto; font-family: monospace; font-size: 13px; margin: 8px 0; border: 1px solid rgba(0,0,0,0.08);">${p1.trim()}</pre>`;
+    });
+
+    // Convert inline code
+    formatted = formatted.replace(/`([^`]+)`/g, '<code style="background: rgba(0,0,0,0.05); padding: 2px 6px; border-radius: 4px; font-family: monospace;">$1</code>');
+
+    // Convert bold
+    formatted = formatted.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+    // Convert lists
+    formatted = formatted.replace(/^\s*[\-\*]\s+(.+)$/gm, '<li style="margin-left: 20px; list-style-type: disc;">$1</li>');
+
+    // Convert newlines to breaks
+    formatted = formatted.replace(/\n/g, "<br>");
+    
+    return formatted;
 }
 
 // Đăng xuất

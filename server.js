@@ -34,6 +34,7 @@ app.use(express.static("public"));
 const authRoutes = require("./routes/auth.routes");
 const chatRoutes = require("./routes/chat.routes");
 const userRoutes = require("./routes/user.routes");
+const aiRoutes = require("./routes/ai.routes");
 
 // Tạo một API test thử xem server chạy chưa
 app.get("/", async (req, res) => {
@@ -293,6 +294,7 @@ app.get("/api/auth/me", async (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/users", userRoutes); // Mount các API user (profile, cover) vào đây
+app.use("/api/ai", aiRoutes);
 
 // --- TÍNH NĂNG UPLOAD AVATAR ---
 // Đảm bảo thư mục lưu trữ tồn tại

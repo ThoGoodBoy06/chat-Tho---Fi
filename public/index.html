@@ -263,6 +263,14 @@
         </div>
         <div
           class="nav-item"
+          onclick="switchTab('tab-ai', this)"
+          title="Trợ lý AI"
+        >
+          <i class="fas fa-star"></i>
+          <span class="nav-label">Trợ lý AI</span>
+        </div>
+        <div
+          class="nav-item"
           onclick="switchTab('tab-settings', this)"
           title="Cài đặt"
         >
@@ -635,6 +643,42 @@
           </div>
         </div>
         <!-- Kết thúc tab-settings -->
+
+        <!-- TAB AI: TRỢ LÝ AI GEMINI -->
+        <div id="tab-ai" class="tab-pane tab-content" style="display: none;">
+          <div class="ai-container">
+            <div class="zalo-profile-header ai-header">
+              <div class="ai-header-info">
+                <i class="fas fa-star sparkle-icon"></i>
+                <h3>Trợ lý AI Gemini</h3>
+              </div>
+            </div>
+            <div class="ai-chat-history" id="ai-chat-history">
+              <!-- Tin nhắn khởi tạo mặc định -->
+              <div class="ai-message ai-bot">
+                <div class="ai-avatar">
+                  <i class="fas fa-robot"></i>
+                </div>
+                <div class="ai-bubble">
+                  Xin chào! Tôi là Trợ lý AI Gemini. Bạn cần tôi trợ giúp điều gì hôm nay?
+                </div>
+              </div>
+            </div>
+            <div class="ai-chat-input-area">
+              <input
+                type="text"
+                id="ai-message-input"
+                placeholder="Nhập câu hỏi cho Gemini..."
+                onkeyup="if (event.key === 'Enter') sendAiMessage();"
+                autocomplete="off"
+              />
+              <button id="ai-send-btn" onclick="sendAiMessage()">
+                <i class="fas fa-paper-plane"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+        <!-- Kết thúc tab-ai -->
       </div>
       <!-- Kết thúc tab-content-container -->
 
