@@ -741,7 +741,7 @@ function initizeChatSession(userData, userToken) {
     function handleStopTyping() {
         const indicator = document.getElementById("typing-indicator");
         if (indicator) indicator.remove();
-        
+
         try {
             typingSound.pause();
             typingSound.currentTime = 0;
@@ -753,9 +753,9 @@ function initizeChatSession(userData, userToken) {
     // Nghe sự kiện "Đang gõ..." (typing)
     socket.on("typing", (info) => {
         // Kiểm tra xem có đúng là người nhận hoặc cuộc trò chuyện hiện tại đang mở không
-        const isCurrentChat = (info.senderId && info.senderId === currentChatPartnerId) || 
-                              (info.conversationId && info.conversationId === currentConversationId);
-        
+        const isCurrentChat = (info.senderId && info.senderId === currentChatPartnerId) ||
+            (info.conversationId && info.conversationId === currentConversationId);
+
         if (!isCurrentChat) return;
 
         let indicator = document.getElementById("typing-indicator");
@@ -840,7 +840,7 @@ function initizeChatSession(userData, userToken) {
                 const content = msgEl.querySelector(".message-content");
                 if (content) {
                     content.innerText = newContent;
-                    
+
                     const editedLabel = document.createElement("span");
                     editedLabel.className = "edited-label";
                     editedLabel.innerText = " (đã chỉnh sửa)";
@@ -912,11 +912,11 @@ function setupFirebaseMessaging(userToken) {
                                 },
                                 body: JSON.stringify({ fcmToken: currentToken }),
                             })
-                            .then(res => res.json())
-                            .then(data => {
-                                console.log("💾 Đã lưu thành công FCM Token lên server:", data);
-                            })
-                            .catch(err => console.error("❌ Lỗi gửi FCM Token lên Server:", err));
+                                .then(res => res.json())
+                                .then(data => {
+                                    console.log("💾 Đã lưu thành công FCM Token lên server:", data);
+                                })
+                                .catch(err => console.error("❌ Lỗi gửi FCM Token lên Server:", err));
                         } else {
                             console.warn("⚠️ Không lấy được token FCM. Vui lòng kiểm tra cấu hình.");
                         }
@@ -929,20 +929,20 @@ function setupFirebaseMessaging(userToken) {
                 messaging.getToken({
                     vapidKey: "BBtraQSvar7RExe_T8aVhoA3TebgLw0S-ucoMcuV-Oef-H7ULkJGWyBctnxfY5tLnawpWQ9Wn8Aihi-wJaLiGu0",
                 })
-                .then((currentToken) => {
-                    if (currentToken) {
-                        console.log("🔥 Đã lấy được FCM Token (fallback):", currentToken);
-                        fetch(`${API_URL}/users/fcm-token`, {
-                            method: "POST",
-                            headers: {
-                                "Content-Type": "application/json",
-                                Authorization: `Bearer ${userToken}`,
-                            },
-                            body: JSON.stringify({ fcmToken: currentToken }),
-                        });
-                    }
-                })
-                .catch((err) => console.error("❌ Lỗi khi lấy FCM token fallback:", err));
+                    .then((currentToken) => {
+                        if (currentToken) {
+                            console.log("🔥 Đã lấy được FCM Token (fallback):", currentToken);
+                            fetch(`${API_URL}/users/fcm-token`, {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                    Authorization: `Bearer ${userToken}`,
+                                },
+                                body: JSON.stringify({ fcmToken: currentToken }),
+                            });
+                        }
+                    })
+                    .catch((err) => console.error("❌ Lỗi khi lấy FCM token fallback:", err));
             }
         } catch (error) {
             console.error("Lỗi cấu hình Firebase Frontend:", error);
@@ -2703,7 +2703,7 @@ async function openOtherUserProfileModal(userId) {
 
         if (coverImg) coverImg.src = formatUrl(user.coverPhotoGroupUrl) + `?v=${Date.now()}`;
         if (avatarImg) avatarImg.src = formatUrl(user.profileAvatarUrl) + `?v=${Date.now()}`;
-        
+
         if (statusDot) {
             statusDot.className = `profile-status-dot ${user.status}`;
             statusDot.title = user.status === "online" ? "Đang hoạt động" : "Ngoại tuyến";
@@ -2826,14 +2826,14 @@ async function loadAiChatHistory() {
 
             data.messages.forEach(msg => {
                 const isUser = msg.role === "user";
-                const avatarHtml = isUser 
-                    ? "" 
+                const avatarHtml = isUser
+                    ? ""
                     : `<div class="ai-avatar">
                          <img src="tho_fi_logo.png" alt="Logo" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='logo.jpg'" />
                        </div>`;
 
-                const bubbleHtml = isUser 
-                    ? escapeHTML(msg.content) 
+                const bubbleHtml = isUser
+                    ? escapeHTML(msg.content)
                     : formatAiResponse(msg.content);
 
                 const msgHtml = `
@@ -2863,7 +2863,7 @@ function resetAiChat() {
     const welcomeEl = document.getElementById("ai-welcome-screen");
     const wrapperEl = document.getElementById("ai-chat-messages-wrapper");
     const inputEl = document.getElementById("ai-message-input");
-    
+
     if (welcomeEl) welcomeEl.style.display = "flex";
     if (wrapperEl) {
         wrapperEl.style.display = "none";
@@ -2888,7 +2888,7 @@ async function sendAiMessage() {
     if (!prompt) return;
 
     inputEl.value = "";
-    
+
     const welcomeEl = document.getElementById("ai-welcome-screen");
     const wrapperEl = document.getElementById("ai-chat-messages-wrapper");
     if (welcomeEl) welcomeEl.style.display = "none";
@@ -2945,16 +2945,16 @@ async function sendAiMessage() {
         const decoder = new TextDecoder();
         let buffer = "";
         let fullText = "";
-        
+
         // Nhận stream dữ liệu từ server
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-            
+
             buffer += decoder.decode(value, { stream: true });
             const lines = buffer.split("\n\n");
             buffer = lines.pop(); // giữ phần tin nhắn chưa đầy đủ
-            
+
             for (const line of lines) {
                 if (!line.startsWith("data: ")) continue;
                 try {
@@ -2963,7 +2963,7 @@ async function sendAiMessage() {
                         // Xóa typing indicator ở chunk đầu tiên nhận được
                         const indicator = document.getElementById(`${botMsgId}-indicator`);
                         if (indicator) indicator.remove();
-                        
+
                         fullText += data.text;
                         const bubbleEl = document.getElementById(`${botMsgId}-bubble`);
                         if (bubbleEl) {
@@ -2993,7 +2993,7 @@ async function sendAiMessage() {
             `;
         }
     }
-    
+
     historyEl.scrollTop = historyEl.scrollHeight;
 }
 
@@ -3001,12 +3001,12 @@ async function sendAiMessage() {
 function formatAiResponse(text) {
     if (!text) return "";
     let formatted = escapeHTML(text);
-    
+
     // Convert code blocks with copy option & language header
     formatted = formatted.replace(/```(\w+)?\s*\n([\s\S]*?)```/g, (match, lang, code) => {
         const language = lang ? lang.trim() : "code";
         const displayCode = code.trim();
-        
+
         return `
         <div class="ai-code-wrapper">
           <div class="ai-code-header">
@@ -3032,7 +3032,7 @@ function formatAiResponse(text) {
 
     // Convert newlines to breaks
     formatted = formatted.replace(/\n/g, "<br>");
-    
+
     return formatted;
 }
 
@@ -3042,9 +3042,9 @@ function copyCodeText(btn) {
     if (!wrapper) return;
     const pre = wrapper.querySelector("pre");
     if (!pre) return;
-    
+
     const codeText = pre.textContent || pre.innerText;
-    
+
     navigator.clipboard.writeText(codeText).then(() => {
         const origHtml = btn.innerHTML;
         btn.innerHTML = `<i class="fa-solid fa-check" style="color: #10B981;"></i> Đã chép`;
@@ -3380,7 +3380,7 @@ async function startCall(callType) {
             },
             video: callTypeGlobal === "video" ?
                 (selectedCamId ? { deviceId: { exact: selectedCamId } } :
-                 (isMobile ? { facingMode: currentFacingMode } : true)) : false,
+                    (isMobile ? { facingMode: currentFacingMode } : true)) : false,
         };
 
         try {
@@ -3403,7 +3403,7 @@ async function startCall(callType) {
                     console.warn("Thử chỉ lấy audio thất bại:", audioOnlyErr);
                 }
             }
-            
+
             // Fallback 2: Thử lấy cấu hình siêu cơ bản (chỉ audio)
             if (!localStream) {
                 try {
@@ -3433,63 +3433,63 @@ async function startCall(callType) {
             }
         }
 
-    const modal = document.getElementById("call-modal");
-    modal.classList.remove("voice-call", "video-call", "in-call", "is-caller");
-    modal.classList.add(`${callType}-call`, "is-caller");
+        const modal = document.getElementById("call-modal");
+        modal.classList.remove("voice-call", "video-call", "in-call", "is-caller");
+        modal.classList.add(`${callType}-call`, "is-caller");
 
-    const partnerName = document.getElementById("chat-header-name").innerText;
-    document.getElementById("call-name").innerText = partnerName;
+        const partnerName = document.getElementById("chat-header-name").innerText;
+        document.getElementById("call-name").innerText = partnerName;
 
-    const currentChatAvatarEl = document.getElementById("current-chat-avatar");
-    let partnerAvatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-        partnerName,
-    )}&background=random`;
+        const currentChatAvatarEl = document.getElementById("current-chat-avatar");
+        let partnerAvatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+            partnerName,
+        )}&background=random`;
 
-    if (currentChatAvatarEl && currentChatAvatarEl.src) {
-        partnerAvatarUrl = currentChatAvatarEl.src;
-    }
-
-    document.getElementById("call-avatar").src = partnerAvatarUrl;
-    document.getElementById("call-status").innerText = "Đang gọi...";
-
-    const flipBtn = document.getElementById("flip-cam-btn");
-    if (flipBtn)
-        flipBtn.style.display = callType === "video" && isMobile ? "block" : "none";
-
-    document
-        .getElementById("incoming-call-actions")
-        .setAttribute("style", "display: none !important");
-    document
-        .getElementById("active-call-actions")
-        .setAttribute("style", "display: flex !important");
-
-    modal.style.display = "flex";
-
-    let myAvatarUrl = document.getElementById("my-avatar").src;
-    if (myAvatarUrl && myAvatarUrl.startsWith(window.location.origin)) {
-        myAvatarUrl = myAvatarUrl.replace(window.location.origin, "");
-    }
-
-    socket.emit("request_call", {
-        callerId: myId,
-        callerName: myName,
-        calleeId: currentChatPartnerId,
-        callerAvatar: myAvatarUrl,
-        callType,
-    });
-
-    // Thiết lập timeout tự động hủy cuộc gọi sau 30 giây nếu đối phương không bắt máy
-    if (callTimeoutTimer) clearTimeout(callTimeoutTimer);
-    callTimeoutTimer = setTimeout(() => {
-        const callModal = document.getElementById("call-modal");
-        if (callModal && callModal.style.display === "flex" && !callModal.classList.contains("in-call")) {
-            console.log("⏱️ Cuộc gọi hết thời gian chờ phản hồi (30s). Tự động ngắt.");
-            showTempToast("Không có phản hồi từ người nhận.");
-            endCall(true);
+        if (currentChatAvatarEl && currentChatAvatarEl.src) {
+            partnerAvatarUrl = currentChatAvatarEl.src;
         }
-    }, 30000);
 
-    playOutgoingRingtone();
+        document.getElementById("call-avatar").src = partnerAvatarUrl;
+        document.getElementById("call-status").innerText = "Đang gọi...";
+
+        const flipBtn = document.getElementById("flip-cam-btn");
+        if (flipBtn)
+            flipBtn.style.display = callType === "video" && isMobile ? "block" : "none";
+
+        document
+            .getElementById("incoming-call-actions")
+            .setAttribute("style", "display: none !important");
+        document
+            .getElementById("active-call-actions")
+            .setAttribute("style", "display: flex !important");
+
+        modal.style.display = "flex";
+
+        let myAvatarUrl = document.getElementById("my-avatar").src;
+        if (myAvatarUrl && myAvatarUrl.startsWith(window.location.origin)) {
+            myAvatarUrl = myAvatarUrl.replace(window.location.origin, "");
+        }
+
+        socket.emit("request_call", {
+            callerId: myId,
+            callerName: myName,
+            calleeId: currentChatPartnerId,
+            callerAvatar: myAvatarUrl,
+            callType,
+        });
+
+        // Thiết lập timeout tự động hủy cuộc gọi sau 30 giây nếu đối phương không bắt máy
+        if (callTimeoutTimer) clearTimeout(callTimeoutTimer);
+        callTimeoutTimer = setTimeout(() => {
+            const callModal = document.getElementById("call-modal");
+            if (callModal && callModal.style.display === "flex" && !callModal.classList.contains("in-call")) {
+                console.log("⏱️ Cuộc gọi hết thời gian chờ phản hồi (30s). Tự động ngắt.");
+                showTempToast("Không có phản hồi từ người nhận.");
+                endCall(true);
+            }
+        }, 30000);
+
+        playOutgoingRingtone();
     } catch (err) {
         console.error("Lỗi trong startCall:", err);
     }
@@ -3702,7 +3702,7 @@ async function startCallSession(isCaller, calleeInfo = null) {
                 },
                 video: callTypeGlobal === "video" ?
                     (selectedCamId ? { deviceId: { exact: selectedCamId } } :
-                     (isMobile ? { facingMode: currentFacingMode } : true)) : false,
+                        (isMobile ? { facingMode: currentFacingMode } : true)) : false,
             };
 
             try {
@@ -3726,7 +3726,7 @@ async function startCallSession(isCaller, calleeInfo = null) {
                         console.warn("Thử chỉ lấy audio trong session thất bại:", audioOnlyErr);
                     }
                 }
-                
+
                 // Fallback 2: Thử lấy cấu hình siêu cơ bản (chỉ audio)
                 if (!localStream) {
                     try {
@@ -3792,11 +3792,11 @@ async function startCallSession(isCaller, calleeInfo = null) {
                                 console.warn("Autoplay chặn âm thanh cuộc gọi lần đầu, đăng ký chạm màn hình để mở khóa...", e);
                                 document.addEventListener("click", playRemoteAudioSafely);
                                 document.addEventListener("touchstart", playRemoteAudioSafely);
-                                
+
                                 // Thử lại sau 500ms
                                 setTimeout(() => {
                                     if (remoteAudio.srcObject === stream) {
-                                        remoteAudio.play().catch(() => {});
+                                        remoteAudio.play().catch(() => { });
                                     }
                                 }, 500);
                             });
@@ -3962,7 +3962,7 @@ function playRemoteAudioSafely() {
 
     const remoteVideo = document.getElementById("remote-video");
     if (remoteVideo && remoteVideo.srcObject) {
-        remoteVideo.play().catch(() => {});
+        remoteVideo.play().catch(() => { });
     }
 }
 
@@ -4826,7 +4826,7 @@ function toggleVoiceRecording() {
 // ==========================================
 
 // Override window.alert globally to use custom in-app alert modal
-window.alert = function(message) {
+window.alert = function (message) {
     customAlert("Thông báo", message);
 };
 
@@ -5019,7 +5019,7 @@ function searchUserMobilePrompt() {
 async function updateMediaDevicesList() {
     try {
         if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
-        
+
         // Xin quyền trước để lấy được đầy đủ tên thiết bị thay vì nhãn rỗng
         try {
             const tempStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: callTypeGlobal === "video" });
@@ -5036,7 +5036,7 @@ async function updateMediaDevicesList() {
             // Lưu lại thiết bị đã chọn trước đó (nếu có)
             const prevSelected = micSelect.value;
             micSelect.innerHTML = '<option value="">Thiết bị mặc định (Default)</option>';
-            
+
             const micDevices = devices.filter((device) => device.kind === "audioinput");
             micDevices.forEach((device) => {
                 const option = document.createElement("option");
@@ -5044,7 +5044,7 @@ async function updateMediaDevicesList() {
                 option.innerText = device.label || `Microphone ${micSelect.options.length}`;
                 micSelect.appendChild(option);
             });
-            
+
             if (prevSelected && Array.from(micSelect.options).some(o => o.value === prevSelected)) {
                 micSelect.value = prevSelected;
             }
@@ -5053,7 +5053,7 @@ async function updateMediaDevicesList() {
         if (camSelect) {
             const prevSelected = camSelect.value;
             camSelect.innerHTML = '<option value="">Thiết bị mặc định (Default)</option>';
-            
+
             const camDevices = devices.filter((device) => device.kind === "videoinput");
             camDevices.forEach((device) => {
                 const option = document.createElement("option");
@@ -5061,7 +5061,7 @@ async function updateMediaDevicesList() {
                 option.innerText = device.label || `Camera ${camSelect.options.length}`;
                 camSelect.appendChild(option);
             });
-            
+
             if (prevSelected && Array.from(camSelect.options).some(o => o.value === prevSelected)) {
                 camSelect.value = prevSelected;
             }
@@ -5076,56 +5076,171 @@ async function updateMediaDevicesList() {
  * Thêm vào app.js hoặc paste vào cuối <script> trong HTML
  * Dùng JS để đảm bảo scroll dọc luôn hoạt động trong tab AI
  */
-(function() {
-  function initAiScrollFix() {
-    const history = document.getElementById('ai-chat-history');
-    if (!history) return;
+(function () {
+    function initAiScrollFix() {
+        const history = document.getElementById('ai-chat-history');
+        if (!history) return;
 
-    let startY = 0;
-    let startScrollTop = 0;
+        let startX = 0;
+        let startY = 0;
+        let startScrollTop = 0;
+        let isScrollingY = false;
+        let isScrollingChecked = false;
 
-    // Khi bắt đầu chạm
-    history.addEventListener('touchstart', function(e) {
-      startY = e.touches[0].clientY;
-      startScrollTop = history.scrollTop;
-    }, { passive: true });
+        // Khi bắt đầu chạm
+        history.addEventListener('touchstart', function (e) {
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+            startScrollTop = history.scrollTop;
+            isScrollingY = false;
+            isScrollingChecked = false;
+        }, { passive: true });
 
-    // Khi di chuyển ngón tay - forward scroll lên container nếu cần
-    history.addEventListener('touchmove', function(e) {
-      const currentY = e.touches[0].clientY;
-      const deltaY = startY - currentY; // dương = kéo lên (scroll xuống)
+        // Khi di chuyển ngón tay - forward scroll lên container nếu cần
+        history.addEventListener('touchmove', function (e) {
+            const currentX = e.touches[0].clientX;
+            const currentY = e.touches[0].clientY;
+            const deltaX = startX - currentX;
+            const deltaY = startY - currentY; // dương = kéo lên (scroll xuống)
 
-      // Nếu đang chạm vào code block, tự tay scroll container AI
-      const target = e.target;
-      const isInCodeBlock = target.closest('.ai-code-block') || target.closest('pre');
+            const target = e.target;
+            const isInCodeBlock = target.closest('.ai-code-block') || target.closest('pre');
 
-      if (isInCodeBlock) {
-        // Ngăn code block chiếm gesture
-        history.scrollTop = startScrollTop + deltaY;
-      }
-    }, { passive: true });
+            if (isInCodeBlock) {
+                if (!isScrollingChecked) {
+                    // Nếu vuốt dọc nhiều hơn vuốt ngang, kích hoạt cuộn dọc
+                    if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 5) {
+                        isScrollingY = true;
+                    }
+                    isScrollingChecked = true;
+                }
 
-    // Theo dõi khi tab AI được mở, khởi động lại fix
-    const observer = new MutationObserver(function() {
-      const aiTab = document.getElementById('tab-ai');
-      if (aiTab && aiTab.classList.contains('active')) {
-        // Re-attach nếu cần
-      }
-    });
+                if (isScrollingY) {
+                    // Chỉ cuộn dọc container AI nếu di chuyển ngón tay theo chiều dọc
+                    history.scrollTop = startScrollTop + deltaY;
+                }
+            }
+        }, { passive: true });
 
-    const tabAi = document.getElementById('tab-ai');
-    if (tabAi) {
-      observer.observe(tabAi, { attributes: true, attributeFilter: ['class'] });
+        // Theo dõi khi tab AI được mở, khởi động lại fix
+        const observer = new MutationObserver(function () {
+            const aiTab = document.getElementById('tab-ai');
+            if (aiTab && aiTab.classList.contains('active')) {
+                // Re-attach nếu cần
+            }
+        });
+
+        const tabAi = document.getElementById('tab-ai');
+        if (tabAi) {
+            observer.observe(tabAi, { attributes: true, attributeFilter: ['class'] });
+        }
     }
-  }
 
-  // Chạy khi DOM sẵn sàng
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initAiScrollFix);
-  } else {
-    initAiScrollFix();
-  }
+    // Chạy khi DOM sẵn sàng
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initAiScrollFix);
+    } else {
+        initAiScrollFix();
+    }
 })();
+
+//thooooooooooooo
+/* Paste vào cuối app.js */
+(function () {
+    const MIN_LINES = 8;
+
+    function initWrapper(wrapper) {
+        if (wrapper.dataset.init) return;
+        wrapper.dataset.init = '1';
+
+        const pre = wrapper.querySelector('pre');
+        if (!pre) return;
+
+        const lines = (pre.textContent.match(/\n/g) || []).length + 1;
+        if (lines < MIN_LINES) {
+            // Code ngắn: không thu gọn, chỉ để mở rộng hoàn toàn
+            wrapper.classList.add('expanded');
+            return;
+        }
+
+        wrapper.classList.add('collapsed');
+
+        // Thêm nút toggle vào header
+        const header = wrapper.querySelector('.ai-code-header');
+        if (header) {
+            const left = document.createElement('div');
+            left.className = 'ai-code-header-left';
+            const lang = header.querySelector('.ai-code-header-lang');
+            const copy = header.querySelector('.ai-code-copy-btn');
+            if (lang) left.appendChild(lang);
+
+            const btn = document.createElement('button');
+            btn.className = 'ai-code-toggle-btn';
+            btn.innerHTML = '<span class="toggle-icon">▼</span>&nbsp;<span class="toggle-label">Xem thêm</span>';
+            btn.onclick = function (e) { e.stopPropagation(); toggle(wrapper); };
+            left.appendChild(btn);
+
+            header.innerHTML = '';
+            header.appendChild(left);
+            if (copy) header.appendChild(copy);
+            header.onclick = function (e) {
+                if (!e.target.closest('.ai-code-copy-btn')) toggle(wrapper);
+            };
+        }
+
+        // Nút ở dưới
+        const expandBtn = document.createElement('button');
+        expandBtn.className = 'ai-code-expand-btn';
+        expandBtn.textContent = '▼  Xem thêm  (' + lines + ' dòng)';
+        expandBtn.onclick = function () { toggle(wrapper); };
+        wrapper.appendChild(expandBtn);
+    }
+
+    function toggle(wrapper) {
+        const collapsed = wrapper.classList.contains('collapsed');
+        const label = wrapper.querySelector('.toggle-label');
+        const expandBtn = wrapper.querySelector('.ai-code-expand-btn');
+        const pre = wrapper.querySelector('pre');
+        const lines = pre ? (pre.textContent.match(/\n/g) || []).length + 1 : 0;
+
+        if (collapsed) {
+            wrapper.classList.replace('collapsed', 'expanded');
+            if (label) label.textContent = 'Thu gọn';
+            if (expandBtn) expandBtn.textContent = '▲  Thu gọn';
+        } else {
+            wrapper.classList.replace('expanded', 'collapsed');
+            if (label) label.textContent = 'Xem thêm';
+            if (expandBtn) expandBtn.textContent = '▼  Xem thêm  (' + lines + ' dòng)';
+            setTimeout(function () {
+                wrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 320);
+        }
+    }
+
+    function scan(root) {
+        (root || document).querySelectorAll('.ai-code-wrapper').forEach(initWrapper);
+    }
+
+    function start() {
+        scan();
+        const hist = document.getElementById('ai-chat-history');
+        if (!hist) return;
+        new MutationObserver(function (muts) {
+            muts.forEach(function (m) {
+                m.addedNodes.forEach(function (n) {
+                    if (n.nodeType !== 1) return;
+                    if (n.classList && n.classList.contains('ai-code-wrapper')) initWrapper(n);
+                    else n.querySelectorAll && n.querySelectorAll('.ai-code-wrapper').forEach(initWrapper);
+                });
+            });
+        }).observe(hist, { childList: true, subtree: true });
+    }
+
+    document.readyState === 'loading'
+        ? document.addEventListener('DOMContentLoaded', start)
+        : start();
+})();
+
 
 
 
