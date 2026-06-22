@@ -2947,9 +2947,23 @@ function formatAiResponse(text) {
     if (!text) return "";
     let formatted = escapeHTML(text);
     
-    // Convert code blocks
-    formatted = formatted.replace(/```([\s\S]*?)```/g, (match, p1) => {
-        return `<pre style="background: rgba(255,255,255,0.06); color: #e4e4e7; padding: 12px; border-radius: 8px; overflow-x: auto; font-family: monospace; font-size: 13px; margin: 12px 0; border: 1px solid rgba(255,255,255,0.08);">${p1.trim()}</pre>`;
+    // Convert code blocks with copy option & language header
+    formatted = formatted.replace(/```(\w+)?\s*\n([\s\S]*?)```/g, (match, lang, code) => {
+        const language = lang ? lang.trim() : "code";
+        const displayCode = code.trim();
+        
+        return `
+        <div class="ai-code-wrapper">
+          <div class="ai-code-header">
+            <span class="ai-code-header-lang">${language}</span>
+            <button class="ai-code-copy-btn" onclick="copyCodeText(this)">
+              <i class="fa-regular fa-copy"></i> Sao chép
+            </button>
+          </div>
+          <div class="ai-code-block">
+            <pre>${displayCode}</pre>
+          </div>
+        </div>`;
     });
 
     // Convert inline code
@@ -2965,6 +2979,26 @@ function formatAiResponse(text) {
     formatted = formatted.replace(/\n/g, "<br>");
     
     return formatted;
+}
+
+// Hàm sao chép code vào clipboard
+function copyCodeText(btn) {
+    const wrapper = btn.closest(".ai-code-wrapper");
+    if (!wrapper) return;
+    const pre = wrapper.querySelector("pre");
+    if (!pre) return;
+    
+    const codeText = pre.textContent || pre.innerText;
+    
+    navigator.clipboard.writeText(codeText).then(() => {
+        const origHtml = btn.innerHTML;
+        btn.innerHTML = `<i class="fa-solid fa-check" style="color: #10B981;"></i> Đã chép`;
+        setTimeout(() => {
+            btn.innerHTML = origHtml;
+        }, 2000);
+    }).catch(err => {
+        console.error("Lỗi sao chép code:", err);
+    });
 }
 
 // Đăng xuất
