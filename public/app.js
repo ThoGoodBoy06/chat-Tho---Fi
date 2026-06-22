@@ -755,7 +755,7 @@ function initizeChatSession(userData, userToken) {
             indicator = document.createElement("div");
             indicator.id = "typing-indicator";
             indicator.className = "typing-indicator";
-            const displayName = info.senderName || "Đối phương";
+            const displayName = info.senderName || (document.getElementById("chat-header-name") ? document.getElementById("chat-header-name").innerText : "Đối phương");
             indicator.innerHTML = `<span><b>${displayName}</b> đang gõ</span><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
             const messagesContainer = document.getElementById("messages");
             if (messagesContainer) {
@@ -2200,7 +2200,7 @@ if (messageInput) {
 
         // Gửi sự kiện typing mới (1-1)
         if (currentChatPartnerId) {
-            socket.emit("typing", { receiverId: currentChatPartnerId });
+            socket.emit("typing", { receiverId: currentChatPartnerId, senderName: myName });
         }
 
         // Gửi sự kiện typing cũ (Phòng/Group)

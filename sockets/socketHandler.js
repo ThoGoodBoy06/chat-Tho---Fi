@@ -99,8 +99,11 @@ module.exports = (io) => {
     // 3. Lắng nghe trạng thái Đang gõ...
     socket.on("typing", async (payload) => {
       if (payload && payload.receiverId) {
-        // Chuyển tiếp trực tiếp cho người nhận
-        socket.to(payload.receiverId).emit("typing", { senderId: socket.userId || payload.senderId });
+        // Chuyển tiếp trực tiếp cho người nhận kèm tên người gửi
+        socket.to(payload.receiverId).emit("typing", { 
+          senderId: socket.userId || payload.senderId,
+          senderName: payload.senderName || "" 
+        });
       } else if (payload && payload.conversationId) {
         // Tìm những người trong cuộc trò chuyện này để phát tín hiệu (Group/Room cũ)
         const members = await prisma.conversationMembers.findMany({
