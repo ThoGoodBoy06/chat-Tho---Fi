@@ -2776,6 +2776,14 @@ function switchTab(tabId, navElement) {
     document.getElementById(tabId).classList.add("active");
     navElement.classList.add("active");
 
+    // Khởi tạo/cập nhật thông tin chào mừng của tab AI
+    if (tabId === "tab-ai") {
+        const welcomeTitle = document.getElementById("ai-welcome-title");
+        if (welcomeTitle) {
+            welcomeTitle.innerText = `Hôm nay bạn thế nào, ${myName || "bạn"}?`;
+        }
+    }
+
     // Xử lý ẩn/hiển thị mobile-header (thanh tìm kiếm trên mobile) khi đổi tab
     const mobileHeader = document.getElementById("mobile-header");
     if (mobileHeader) {
@@ -2787,6 +2795,20 @@ function switchTab(tabId, navElement) {
     }
 }
 
+// Reset cuộc hội thoại AI về màn hình chào mừng ban đầu
+function resetAiChat() {
+    const welcomeEl = document.getElementById("ai-welcome-screen");
+    const wrapperEl = document.getElementById("ai-chat-messages-wrapper");
+    const inputEl = document.getElementById("ai-message-input");
+    
+    if (welcomeEl) welcomeEl.style.display = "flex";
+    if (wrapperEl) {
+        wrapperEl.style.display = "none";
+        wrapperEl.innerHTML = "";
+    }
+    if (inputEl) inputEl.value = "";
+}
+
 // Gửi tin nhắn đến Gemini AI
 async function sendAiMessage() {
     const inputEl = document.getElementById("ai-message-input");
@@ -2796,26 +2818,28 @@ async function sendAiMessage() {
 
     inputEl.value = "";
     
+    const welcomeEl = document.getElementById("ai-welcome-screen");
+    const wrapperEl = document.getElementById("ai-chat-messages-wrapper");
+    if (welcomeEl) welcomeEl.style.display = "none";
+    if (wrapperEl) wrapperEl.style.display = "flex";
+
     const historyEl = document.getElementById("ai-chat-history");
     if (!historyEl) return;
 
-    // Hiển thị tin nhắn người dùng
+    // Hiển thị tin nhắn người dùng (phong cách tối giản/không avatar giống mockup)
     const userMsgHtml = `
       <div class="ai-message ai-user">
-        <div class="ai-avatar">
-          <i class="fas fa-user"></i>
-        </div>
         <div class="ai-bubble">${escapeHTML(prompt)}</div>
       </div>
     `;
-    historyEl.insertAdjacentHTML("beforeend", userMsgHtml);
+    wrapperEl.insertAdjacentHTML("beforeend", userMsgHtml);
     historyEl.scrollTop = historyEl.scrollHeight;
 
-    // Hiển thị bong bóng "Đang suy nghĩ..." tạm thời
+    // Hiển thị bong bóng "Đang suy nghĩ..." với ảnh logo làm avatar
     const typingHtml = `
       <div class="ai-message ai-bot" id="ai-typing-temp">
         <div class="ai-avatar">
-          <i class="fas fa-robot"></i>
+          <img src="tho_fi_logo.png" alt="Logo" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='logo.jpg'" />
         </div>
         <div class="ai-bubble">
           <div class="ai-typing-indicator">
@@ -2826,7 +2850,7 @@ async function sendAiMessage() {
         </div>
       </div>
     `;
-    historyEl.insertAdjacentHTML("beforeend", typingHtml);
+    wrapperEl.insertAdjacentHTML("beforeend", typingHtml);
     historyEl.scrollTop = historyEl.scrollHeight;
 
     try {
@@ -2849,25 +2873,25 @@ async function sendAiMessage() {
             const aiMsgHtml = `
               <div class="ai-message ai-bot">
                 <div class="ai-avatar">
-                  <i class="fas fa-robot"></i>
+                  <img src="tho_fi_logo.png" alt="Logo" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='logo.jpg'" />
                 </div>
                 <div class="ai-bubble">${formatAiResponse(data.text)}</div>
               </div>
             `;
-            historyEl.insertAdjacentHTML("beforeend", aiMsgHtml);
+            wrapperEl.insertAdjacentHTML("beforeend", aiMsgHtml);
         } else {
             const errMsg = (data && data.error) ? data.error : "Không thể tải phản hồi từ Gemini.";
             const errorHtml = `
               <div class="ai-message ai-bot">
                 <div class="ai-avatar">
-                  <i class="fas fa-robot"></i>
+                  <img src="tho_fi_logo.png" alt="Logo" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='logo.jpg'" />
                 </div>
-                <div class="ai-bubble" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.2);">
+                <div class="ai-bubble" style="color: #ef4444;">
                   ❌ Lỗi: ${escapeHTML(errMsg)}
                 </div>
               </div>
             `;
-            historyEl.insertAdjacentHTML("beforeend", errorHtml);
+            wrapperEl.insertAdjacentHTML("beforeend", errorHtml);
         }
     } catch (error) {
         const tempEl = document.getElementById("ai-typing-temp");
@@ -2876,14 +2900,14 @@ async function sendAiMessage() {
         const errorHtml = `
           <div class="ai-message ai-bot">
             <div class="ai-avatar">
-              <i class="fas fa-robot"></i>
+              <img src="tho_fi_logo.png" alt="Logo" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='logo.jpg'" />
             </div>
-            <div class="ai-bubble" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.2);">
+            <div class="ai-bubble" style="color: #ef4444;">
               ❌ Lỗi kết nối: Không thể gửi yêu cầu đến máy chủ. Vui lòng kiểm tra lại mạng!
             </div>
           </div>
         `;
-        historyEl.insertAdjacentHTML("beforeend", errorHtml);
+        wrapperEl.insertAdjacentHTML("beforeend", errorHtml);
     }
     
     historyEl.scrollTop = historyEl.scrollHeight;
@@ -2896,17 +2920,17 @@ function formatAiResponse(text) {
     
     // Convert code blocks
     formatted = formatted.replace(/```([\s\S]*?)```/g, (match, p1) => {
-        return `<pre style="background: rgba(0,0,0,0.05); padding: 10px; border-radius: 6px; overflow-x: auto; font-family: monospace; font-size: 13px; margin: 8px 0; border: 1px solid rgba(0,0,0,0.08);">${p1.trim()}</pre>`;
+        return `<pre style="background: rgba(255,255,255,0.06); color: #e4e4e7; padding: 12px; border-radius: 8px; overflow-x: auto; font-family: monospace; font-size: 13px; margin: 12px 0; border: 1px solid rgba(255,255,255,0.08);">${p1.trim()}</pre>`;
     });
 
     // Convert inline code
-    formatted = formatted.replace(/`([^`]+)`/g, '<code style="background: rgba(0,0,0,0.05); padding: 2px 6px; border-radius: 4px; font-family: monospace;">$1</code>');
+    formatted = formatted.replace(/`([^`]+)`/g, '<code style="background: rgba(255,255,255,0.08); color: #f4f4f5; padding: 2px 6px; border-radius: 4px; font-family: monospace;">$1</code>');
 
     // Convert bold
     formatted = formatted.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
 
     // Convert lists
-    formatted = formatted.replace(/^\s*[\-\*]\s+(.+)$/gm, '<li style="margin-left: 20px; list-style-type: disc;">$1</li>');
+    formatted = formatted.replace(/^\s*[\-\*]\s+(.+)$/gm, '<li style="margin-left: 20px; list-style-type: disc; margin-bottom: 4px;">$1</li>');
 
     // Convert newlines to breaks
     formatted = formatted.replace(/\n/g, "<br>");

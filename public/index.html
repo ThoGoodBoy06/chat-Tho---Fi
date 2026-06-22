@@ -22,7 +22,7 @@
     <meta name="apple-mobile-web-app-title" content="Chat Tho-Fi" />
     <link rel="icon" href="icon.png" type="image/png" />
     <link rel="apple-touch-icon" href="icon.png" />
-    <link rel="stylesheet" href="style.css?v=20043" />
+    <link rel="stylesheet" href="style.css?v=20044" />
   </head>
 
   <body>
@@ -647,34 +647,42 @@
         <!-- TAB AI: TRỢ LÝ AI GEMINI -->
         <div id="tab-ai" class="tab-pane tab-content">
           <div class="ai-container">
-            <div class="zalo-profile-header ai-header">
-              <div class="ai-header-info">
-                <i class="fas fa-star sparkle-icon"></i>
-                <h3>Trợ lý AI Gemini</h3>
+            <div class="ai-header">
+              <div class="ai-header-left">
+                <i class="fas fa-bars"></i>
+                <span class="ai-header-model">Gemini Pro <i class="fas fa-chevron-down" style="font-size: 10px; margin-left: 4px;"></i></span>
+              </div>
+              <div class="ai-header-right">
+                <i class="fas fa-edit" onclick="resetAiChat()"></i>
               </div>
             </div>
             <div class="ai-chat-history" id="ai-chat-history">
-              <!-- Tin nhắn khởi tạo mặc định -->
-              <div class="ai-message ai-bot">
-                <div class="ai-avatar">
-                  <i class="fas fa-robot"></i>
+              <!-- Màn hình chào mừng chính giữa -->
+              <div class="ai-welcome-screen" id="ai-welcome-screen">
+                <div class="ai-welcome-logo-container">
+                  <img src="tho_fi_logo.png" alt="Logo" class="ai-welcome-logo" onerror="this.src='logo.jpg'" />
                 </div>
-                <div class="ai-bubble">
-                  Xin chào! Tôi là Trợ lý AI Gemini. Bạn cần tôi trợ giúp điều gì hôm nay?
-                </div>
+                <h1 class="ai-welcome-title" id="ai-welcome-title">Hôm nay bạn thế nào, ?</h1>
               </div>
+              
+              <!-- Khung chứa tin nhắn chat thực tế -->
+              <div class="ai-chat-messages-wrapper" id="ai-chat-messages-wrapper" style="display: none;"></div>
             </div>
             <div class="ai-chat-input-area">
-              <input
-                type="text"
-                id="ai-message-input"
-                placeholder="Nhập câu hỏi cho Gemini..."
-                onkeyup="if (event.key === 'Enter') sendAiMessage();"
-                autocomplete="off"
-              />
-              <button id="ai-send-btn" onclick="sendAiMessage()">
-                <i class="fas fa-paper-plane"></i>
-              </button>
+              <div class="ai-input-pill">
+                <i class="fas fa-plus ai-input-plus" onclick="alert('Tính năng tải tài liệu đính kèm đang phát triển')"></i>
+                <input
+                  type="text"
+                  id="ai-message-input"
+                  placeholder="Hỏi Gemini..."
+                  onkeyup="if (event.key === 'Enter') sendAiMessage();"
+                  autocomplete="off"
+                />
+                <i class="fas fa-microphone ai-input-mic" onclick="alert('Tính năng nhập giọng nói đang phát triển')"></i>
+                <button id="ai-send-btn" onclick="sendAiMessage()">
+                  <i class="fas fa-paper-plane"></i>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -964,6 +972,6 @@
 
     <!-- Import Socket.IO và file xử lý logic -->
     <script src="/socket.io/socket.io.js"></script>
-    <script src="app.js?v=20043"></script>
+    <script src="app.js?v=20044"></script>
   </body>
 </html>
