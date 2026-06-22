@@ -3112,13 +3112,14 @@ input:checked+.slider.round:before {
   .ai-code-wrapper {
     max-width: calc(100vw - 32px);
     width: 100%;
+    touch-action: pan-x pan-y !important;
   }
 
   .ai-code-block pre {
     font-size: 12px !important;
     overflow-x: auto;
     overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x pan-y !important;
     white-space: pre;
     word-break: normal;
     word-wrap: normal;
@@ -3989,6 +3990,7 @@ body[data-theme="dark"] .ai-message.ai-bot .ai-avatar {
   /* FIX: Bot bubble phải full width và không overflow */
   width: 100%;
   max-width: 100%;
+  touch-action: pan-x pan-y !important;
 }
 
 /* FIX: Markdown text trong AI bubble không bị overflow */
@@ -4326,6 +4328,7 @@ body[data-theme="dark"] .ai-typing-indicator span {
   max-width: 100%;
   width: 100%;
   box-sizing: border-box;
+  touch-action: pan-x pan-y !important;
 }
 
 body[data-theme="light"] .ai-code-wrapper {
@@ -4393,7 +4396,7 @@ body[data-theme="light"] .ai-code-copy-btn:hover {
   /* FIX: Scroll ngang chỉ trong pre, không ảnh hưởng layout cha */
   overflow-x: auto;
   overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y !important;
   font-family: 'Fira Code', Consolas, Monaco, monospace;
   font-size: 13px !important;
   line-height: 1.5;
