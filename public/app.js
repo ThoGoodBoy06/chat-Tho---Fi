@@ -2815,6 +2815,14 @@ function resetAiChat() {
         wrapperEl.innerHTML = "";
     }
     if (inputEl) inputEl.value = "";
+
+    // Gửi yêu cầu xóa lịch sử lưu trên RAM của server
+    fetch("/api/ai/chat/history", {
+        method: "DELETE",
+        headers: {
+            "Authorization": `Bearer ${token}`
+        }
+    }).catch(err => console.error("Lỗi khi xóa lịch sử chat AI:", err));
 }
 
 // Gửi tin nhắn đến Gemini AI
@@ -2843,14 +2851,17 @@ async function sendAiMessage() {
     wrapperEl.insertAdjacentHTML("beforeend", userMsgHtml);
     historyEl.scrollTop = historyEl.scrollHeight;
 
+    // Tạo ID duy nhất cho bong bóng tin nhắn của AI bot này
+    const botMsgId = "ai-msg-" + Date.now();
+
     // Hiển thị bong bóng "Đang suy nghĩ..." với ảnh logo làm avatar
     const typingHtml = `
-      <div class="ai-message ai-bot" id="ai-typing-temp">
+      <div class="ai-message ai-bot" id="${botMsgId}">
         <div class="ai-avatar">
           <img src="tho_fi_logo.png" alt="Logo" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='logo.jpg'" />
         </div>
-        <div class="ai-bubble">
-          <div class="ai-typing-indicator">
+        <div class="ai-bubble" id="${botMsgId}-bubble">
+          <div class="ai-typing-indicator" id="${botMsgId}-indicator">
             <span></span>
             <span></span>
             <span></span>
@@ -2862,7 +2873,7 @@ async function sendAiMessage() {
     historyEl.scrollTop = historyEl.scrollHeight;
 
     try {
-        const response = await fetch("/api/ai/chat", {
+        const response = await fetch("/api/ai/chat/stream", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -2871,51 +2882,61 @@ async function sendAiMessage() {
             body: JSON.stringify({ prompt })
         });
 
-        const data = await response.ok ? await response.json() : null;
-        
-        // Xóa bong bóng suy nghĩ
-        const tempEl = document.getElementById("ai-typing-temp");
-        if (tempEl) tempEl.remove();
+        if (!response.ok) {
+            throw new Error(`Server returned ${response.status}`);
+        }
 
-        if (response.ok && data && data.success) {
-            const aiMsgHtml = `
-              <div class="ai-message ai-bot">
-                <div class="ai-avatar">
-                  <img src="tho_fi_logo.png" alt="Logo" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='logo.jpg'" />
-                </div>
-                <div class="ai-bubble">${formatAiResponse(data.text)}</div>
-              </div>
-            `;
-            wrapperEl.insertAdjacentHTML("beforeend", aiMsgHtml);
-        } else {
-            const errMsg = (data && data.error) ? data.error : "Không thể tải phản hồi từ Gemini.";
-            const errorHtml = `
-              <div class="ai-message ai-bot">
-                <div class="ai-avatar">
-                  <img src="tho_fi_logo.png" alt="Logo" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='logo.jpg'" />
-                </div>
-                <div class="ai-bubble" style="color: #ef4444;">
-                  ❌ Lỗi: ${escapeHTML(errMsg)}
-                </div>
-              </div>
-            `;
-            wrapperEl.insertAdjacentHTML("beforeend", errorHtml);
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let fullText = "";
+        
+        // Nhận stream dữ liệu từ server
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n\n");
+            buffer = lines.pop(); // giữ phần tin nhắn chưa đầy đủ
+            
+            for (const line of lines) {
+                if (!line.startsWith("data: ")) continue;
+                try {
+                    const data = JSON.parse(line.slice(6));
+                    if (data.text) {
+                        // Xóa typing indicator ở chunk đầu tiên nhận được
+                        const indicator = document.getElementById(`${botMsgId}-indicator`);
+                        if (indicator) indicator.remove();
+                        
+                        fullText += data.text;
+                        const bubbleEl = document.getElementById(`${botMsgId}-bubble`);
+                        if (bubbleEl) {
+                            bubbleEl.innerHTML = formatAiResponse(fullText);
+                        }
+                        historyEl.scrollTop = historyEl.scrollHeight;
+                    }
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+                } catch (e) {
+                    console.error("Lỗi xử lý chunk stream:", e);
+                }
+            }
         }
     } catch (error) {
-        const tempEl = document.getElementById("ai-typing-temp");
-        if (tempEl) tempEl.remove();
+        // Xóa indicator nếu có lỗi xảy ra
+        const indicator = document.getElementById(`${botMsgId}-indicator`);
+        if (indicator) indicator.remove();
 
-        const errorHtml = `
-          <div class="ai-message ai-bot">
-            <div class="ai-avatar">
-              <img src="tho_fi_logo.png" alt="Logo" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='logo.jpg'" />
-            </div>
-            <div class="ai-bubble" style="color: #ef4444;">
-              ❌ Lỗi kết nối: Không thể gửi yêu cầu đến máy chủ. Vui lòng kiểm tra lại mạng!
-            </div>
-          </div>
-        `;
-        wrapperEl.insertAdjacentHTML("beforeend", errorHtml);
+        const bubbleEl = document.getElementById(`${botMsgId}-bubble`);
+        if (bubbleEl) {
+            bubbleEl.innerHTML = `
+                <span style="color: #ef4444;">
+                    ❌ Lỗi: Không thể kết nối hoặc tải phản hồi từ Gemini. Vui lòng thử lại sau!
+                </span>
+            `;
+        }
     }
     
     historyEl.scrollTop = historyEl.scrollHeight;
