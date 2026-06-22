@@ -429,6 +429,7 @@ p {
   display: flex;
   overflow: hidden;
   background: var(--bg-color);
+  min-width: 0;
 }
 
 .tab-pane {
@@ -436,6 +437,7 @@ p {
   display: none;
   width: 100%;
   height: 100%;
+  min-width: 0;
 }
 
 .tab-pane.active {
@@ -712,6 +714,7 @@ p {
   flex-direction: column;
   background: var(--chat-bg);
   position: relative;
+  min-width: 0;
 }
 
 .chat-header {
@@ -1429,7 +1432,6 @@ p {
 
 .zalo-profile-header {
   padding: 24px 20px 16px;
-  /* Added padding-top (Image 2) */
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1558,21 +1560,18 @@ p {
 .zalo-menu-item:hover {
   background: var(--hover-bg);
   padding-left: 24px;
-  /* subtle slide visual state */
 }
 
 .menu-left {
   display: flex;
   align-items: center;
   gap: 16px;
-  /* increased spacing */
   font-size: 15.5px;
   font-weight: 500;
 }
 
 .menu-icon {
   font-size: 20px;
-  /* larger icons */
   width: 28px;
   text-align: center;
   color: var(--text-light);
@@ -1736,7 +1735,6 @@ p {
 
 input:checked+.slider.round {
   background-color: #34C759;
-  /* native iOS switch green */
 }
 
 input:checked+.slider.round:before {
@@ -2629,7 +2627,6 @@ input:checked+.slider.round:before {
     z-index: 90;
     box-sizing: border-box;
     box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05) !important;
-    /* Viền ranh giới đổ bóng nhẹ */
   }
 
   .nav-item {
@@ -2658,13 +2655,11 @@ input:checked+.slider.round:before {
   .nav-item.active i,
   .nav-item.active .nav-label {
     color: var(--primary-color) !important;
-    /* Biểu tượng Active đổi màu chủ đạo */
   }
 
   .nav-label {
     display: block;
     font-size: 10px !important;
-    /* Text nhỏ siêu nét dưới icon */
     font-weight: 500;
   }
 
@@ -2761,7 +2756,6 @@ input:checked+.slider.round:before {
     padding: 14px 16px;
     border-bottom: 1px solid var(--border-color);
     gap: 8px !important;
-    /* Giảm gap giữa Avatar và Tên */
   }
 
   .chat-list-time {
@@ -2772,9 +2766,7 @@ input:checked+.slider.round:before {
   .chat-list-msg,
   .last-message {
     font-size: 14px !important;
-    /* To hơn một chút */
     color: #707070 !important;
-    /* Màu xám chuẩn */
   }
 
   /* Slide-in animation for chat window on mobile */
@@ -3083,6 +3075,55 @@ input:checked+.slider.round:before {
     margin-top: 0 !important;
     margin-bottom: 8px !important;
   }
+
+  /* AI tab mobile adjustments */
+  .ai-container {
+    max-width: 100vw;
+    border-left: none;
+    border-right: none;
+    height: 100%;
+    width: 100%;
+  }
+
+  .ai-chat-history {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .ai-message {
+    max-width: 95%;
+  }
+
+  .ai-message.ai-bot {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .ai-message .ai-bubble {
+    font-size: 14px;
+  }
+
+  .ai-chat-input-area {
+    padding: 12px 16px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* FIX: Code block mobile overflow */
+  .ai-code-wrapper {
+    max-width: calc(100vw - 32px);
+    width: 100%;
+  }
+
+  .ai-code-block pre {
+    font-size: 12px !important;
+    max-height: 220px;
+    overflow-x: auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: pre;
+    word-break: normal;
+    word-wrap: normal;
+  }
 }
 
 @media (max-width: 768px) {
@@ -3221,14 +3262,11 @@ body[data-theme="dark"] .new-message-toast .toast-msg-text {
    MOBILE WEB & PWA EXPERIENCES (APP-LIKE OPTIMIZATIONS)
    ========================================================================== */
 
-/* Tắt màu highlight khi nhấn (tap) vào liên kết/nút trên điện thoại */
 * {
   -webkit-tap-highlight-color: transparent !important;
   -webkit-touch-callout: none !important;
-  /* Khóa menu bật lên khi nhấn giữ lâu trên iOS */
 }
 
-/* Khóa kéo để tải lại trang (Pull-to-refresh) và cuộn nảy quá mức */
 html,
 body {
   overscroll-behavior-y: none !important;
@@ -3236,17 +3274,13 @@ body {
   overscroll-behavior: none !important;
 }
 
-/* Tạo thanh cuộn tàng hình: ẩn scrollbar hoàn toàn nhưng vẫn cho phép vuốt/cuộn bình thường */
 ::-webkit-scrollbar {
   display: none !important;
-  /* Dành cho Chrome, Safari, và Opera */
 }
 
 * {
   scrollbar-width: none !important;
-  /* Dành cho Firefox */
   -ms-overflow-style: none !important;
-  /* Dành cho IE và Edge */
 }
 
 /* ==========================================================================
@@ -3335,13 +3369,11 @@ body {
   justify-content: center;
   position: relative;
   height: 50px;
-  /* To allow half overlap of 100px avatar */
 }
 
 .profile-avatar {
   position: absolute;
   top: -50px;
-  /* Moves half of avatar over the cover */
   width: 100px;
   height: 100px;
   border-radius: 50%;
@@ -3366,7 +3398,6 @@ body {
   border-radius: 50%;
   border: 2px solid var(--msg-receiver-bg);
   background: var(--text-light);
-  /* Default offline */
 }
 
 .profile-avatar .profile-status-dot.online {
@@ -3503,7 +3534,7 @@ body {
   flex-direction: column;
   box-sizing: border-box;
   z-index: 1;
-  padding: 2px; /* Tạo khoảng trống 2px làm đường viền */
+  padding: 2px;
   background: transparent;
   border: none;
   box-shadow: var(--shadow-lg), 0 10px 30px rgba(0, 0, 0, 0.3);
@@ -3518,17 +3549,15 @@ body {
   top: -50%;
   width: 200%;
   height: 200%;
-  background: conic-gradient(
-    #ff0000,
-    #ff7f00,
-    #ffff00,
-    #00ff00,
-    #0000ff,
-    #4b0082,
-    #9400d3,
-    #ff0000
-  );
-  animation: rainbow-border-spin 6s linear infinite; /* chạy vừa vừa */
+  background: conic-gradient(#ff0000,
+      #ff7f00,
+      #ffff00,
+      #00ff00,
+      #0000ff,
+      #4b0082,
+      #9400d3,
+      #ff0000);
+  animation: rainbow-border-spin 6s linear infinite;
 }
 
 /* Lớp đè màu nền để che đi phần ruột, chỉ hở ra viền 2px */
@@ -3548,6 +3577,7 @@ body {
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -3726,6 +3756,8 @@ body {
   height: 100%;
   justify-content: center;
   background: var(--bg-color);
+  min-width: 0;
+  overflow: hidden;
 }
 
 #tab-ai.active {
@@ -3742,6 +3774,9 @@ body {
   position: relative;
   border-left: 1px solid var(--border-color);
   border-right: 1px solid var(--border-color);
+  /* FIX: Ngăn container tràn ngang */
+  overflow: hidden;
+  min-width: 0;
 }
 
 /* Premium dark theme border sync in dark mode */
@@ -3796,11 +3831,16 @@ body[data-theme="dark"] .ai-header {
   flex: 1;
   padding: 24px;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: 20px;
   scroll-behavior: smooth;
   background: transparent;
+  /* FIX: Quan trọng - ngăn tràn ngang */
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /* Welcome Screen */
@@ -3852,8 +3892,10 @@ body[data-theme="dark"] .ai-welcome-logo {
   flex-direction: column;
   gap: 24px;
   width: 100%;
+  /* FIX: Ngăn wrapper tràn ngang */
   overflow-x: hidden;
   min-width: 0;
+  box-sizing: border-box;
 }
 
 /* Chat bubble styling */
@@ -3863,11 +3905,21 @@ body[data-theme="dark"] .ai-welcome-logo {
   gap: 12px;
   max-width: 85%;
   animation: fadeInMsg 0.25s ease-out forwards;
+  /* FIX: Ngăn message tràn ngang */
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 @keyframes fadeInMsg {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .ai-message.ai-user {
@@ -3907,12 +3959,15 @@ body[data-theme="dark"] .ai-message.ai-bot .ai-avatar {
   padding: 0;
   font-size: 15px;
   line-height: 1.6;
+  /* FIX: Xử lý text dài và overflow */
   word-break: break-word;
   overflow-wrap: break-word;
+  word-wrap: break-word;
   box-shadow: none;
   min-width: 0;
   max-width: 100%;
   overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 .ai-message.ai-user .ai-bubble {
@@ -3922,12 +3977,50 @@ body[data-theme="dark"] .ai-message.ai-bot .ai-avatar {
   border-radius: 20px;
   border-bottom-right-radius: 4px;
   box-shadow: 0 2px 8px rgba(0, 104, 255, 0.2);
+  /* FIX: User bubble cũng cần wrap text */
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .ai-message.ai-bot .ai-bubble {
   background: transparent;
   color: var(--text-dark);
   border: none;
+  /* FIX: Bot bubble phải full width và không overflow */
+  width: 100%;
+  max-width: 100%;
+}
+
+/* FIX: Markdown text trong AI bubble không bị overflow */
+.ai-bubble p,
+.ai-bubble h1,
+.ai-bubble h2,
+.ai-bubble h3,
+.ai-bubble h4,
+.ai-bubble h5,
+.ai-bubble h6,
+.ai-bubble li,
+.ai-bubble blockquote {
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+  white-space: normal;
+}
+
+/* FIX: Inline code không tràn ngang */
+.ai-bubble code:not(pre code) {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--primary-color);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Fira Code', Consolas, Monaco, monospace;
+  font-size: 13px;
+  word-break: break-all;
+}
+
+body[data-theme="dark"] .ai-bubble code:not(pre code) {
+  background: rgba(255, 255, 255, 0.08);
+  color: #6ee7b7;
 }
 
 .ai-chat-input-area {
@@ -3946,6 +4039,7 @@ body[data-theme="dark"] .ai-message.ai-bot .ai-avatar {
   display: flex;
   align-items: center;
   gap: 12px;
+  box-sizing: border-box;
 }
 
 body[data-theme="dark"] .ai-input-pill {
@@ -3953,14 +4047,17 @@ body[data-theme="dark"] .ai-input-pill {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.ai-input-plus, .ai-input-mic {
+.ai-input-plus,
+.ai-input-mic {
   color: var(--text-light);
   font-size: 18px;
   cursor: pointer;
   transition: color var(--transition-fast);
+  flex-shrink: 0;
 }
 
-.ai-input-plus:hover, .ai-input-mic:hover {
+.ai-input-plus:hover,
+.ai-input-mic:hover {
   color: var(--text-dark);
 }
 
@@ -3974,6 +4071,7 @@ body[data-theme="dark"] .ai-input-pill {
   font-size: 15px !important;
   outline: none !important;
   box-shadow: none !important;
+  min-width: 0;
 }
 
 .ai-input-pill input::placeholder {
@@ -3996,6 +4094,7 @@ body[data-theme="dark"] .ai-input-pill input::placeholder {
   align-items: center;
   justify-content: center;
   transition: all var(--transition-fast);
+  flex-shrink: 0;
 }
 
 .ai-input-pill button:hover {
@@ -4032,71 +4131,58 @@ body[data-theme="dark"] .ai-typing-indicator span {
 }
 
 @keyframes ai-bounce {
-  0%, 80%, 100% { 
+
+  0%,
+  80%,
+  100% {
     transform: scale(0);
-  } 
-  40% { 
+  }
+
+  40% {
     transform: scale(1.0);
   }
 }
 
 /* ==========================================================================
-   USER PROFILE MODAL - RESPONSIVE MOBILE BOTTOM SHEET (ĐÃ FIX)
+   USER PROFILE MODAL - RESPONSIVE MOBILE BOTTOM SHEET
    ========================================================================== */
 
 @media (max-width: 768px) {
 
-  /* 1. Overlay: canh dưới màn hình để card trượt lên từ phía dưới */
   #user-profile-modal {
     align-items: flex-end;
     background: rgba(0, 0, 0, 0.55);
   }
 
-  /* 2. Card: bottom sheet trượt từ dưới lên, giới hạn chiều cao hợp lý */
   .profile-modal-card {
     width: 100%;
     max-width: 100%;
-    /* Bo tròn chỉ góc trên */
     border-radius: 20px 20px 0 0;
     border-bottom: none;
     border-left: none;
     border-right: none;
-
-    /* Animation: bắt đầu ở dưới, trượt lên khi .active */
     transform: translateY(100%);
     transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
-
-    /* Chiều cao tối đa = 88% viewport để không che toàn bộ màn hình */
     max-height: 88vh;
     max-height: 88dvh;
-
-    /* Quan trọng: cuộn dọc bên trong card nếu nội dung quá dài */
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
-
-    /* Padding dưới cho safe area (iPhone notch, home indicator) */
     padding-bottom: calc(32px + env(safe-area-inset-bottom, 0px));
     box-sizing: border-box;
-
-    /* Card không bị co lại */
     flex-shrink: 0;
   }
 
-  /* Khi modal active: card trượt lên đúng vị trí */
   #user-profile-modal.active .profile-modal-card {
     transform: translateY(0);
   }
 
-  /* 3. Ảnh bìa (Cover): chiều cao cố định, không bị đen hay co */
   .profile-cover {
     height: 150px;
     min-height: 150px;
     width: 100%;
     position: relative;
-    /* Đảm bảo không co lại khi flexbox stretch */
     flex-shrink: 0;
-    /* Màu nền dự phòng khi ảnh chưa load */
     background: #c9d6df;
     overflow: hidden;
   }
@@ -4106,21 +4192,17 @@ body[data-theme="dark"] .ai-typing-indicator span {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    /* Buộc browser render ảnh ngay lập tức, không lazy */
     content-visibility: visible;
   }
 
-  /* 4. Vùng chứa avatar (đè lên cover) */
   .profile-modal-avatar-header {
     display: flex;
     justify-content: center;
     position: relative;
-    /* Chiều cao = nửa avatar để avatar đè lên cover */
     height: 45px;
     flex-shrink: 0;
   }
 
-  /* 5. Avatar tròn */
   .profile-avatar {
     position: absolute;
     top: -45px;
@@ -4142,7 +4224,6 @@ body[data-theme="dark"] .ai-typing-indicator span {
     object-fit: cover;
   }
 
-  /* 6. Tên & bio */
   .profile-info {
     display: flex;
     flex-direction: column;
@@ -4165,7 +4246,6 @@ body[data-theme="dark"] .ai-typing-indicator span {
     margin: 0;
   }
 
-  /* 7. Nút hành động */
   .profile-actions {
     display: flex;
     justify-content: center;
@@ -4190,7 +4270,6 @@ body[data-theme="dark"] .ai-typing-indicator span {
     color: var(--text-dark);
   }
 
-  /* 8. Nút đóng X */
   .profile-modal-close {
     position: absolute;
     top: 10px;
@@ -4211,7 +4290,6 @@ body[data-theme="dark"] .ai-typing-indicator span {
     backdrop-filter: blur(4px);
   }
 
-  /* Thay thế UI Mobile cũ của hồ sơ người khác thành Floating Modal */
   #other-user-profile-modal {
     align-items: center !important;
     justify-content: center !important;
@@ -4232,47 +4310,22 @@ body[data-theme="dark"] .ai-typing-indicator span {
   #other-user-profile-modal.active .floating-profile-card {
     transform: scale(1) translateY(0) !important;
   }
-
-  /* AI tab mobile adjustments */
-  .ai-container {
-    max-width: 100vw;
-    border-left: none;
-    border-right: none;
-    height: 100%;
-  }
-
-  .ai-chat-history {
-    padding: 16px;
-    gap: 12px;
-  }
-
-  .ai-message {
-    max-width: 95%;
-  }
-
-  .ai-message.ai-bot {
-    max-width: 100%;
-  }
-
-  .ai-message .ai-bubble {
-    font-size: 14px;
-  }
-
-  .ai-chat-input-area {
-    padding: 12px 16px;
-    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-  }
 }
 
-/* AI Code Block Styling with Copy Button & Height Limit */
+/* ==========================================================================
+   AI CODE BLOCK STYLING WITH COPY BUTTON & HEIGHT LIMIT
+   ========================================================================== */
 .ai-code-wrapper {
   position: relative;
   margin: 12px 0;
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(0, 0, 0, 0.25);
+  /* FIX: Ngăn code wrapper tràn ngang, quan trọng nhất */
   overflow: hidden;
   max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 body[data-theme="light"] .ai-code-wrapper {
@@ -4328,18 +4381,31 @@ body[data-theme="light"] .ai-code-copy-btn:hover {
   color: #18181b;
 }
 
+.ai-code-block {
+  /* FIX: Cho phép scroll ngang chỉ trong code block, không tràn ra ngoài */
+  overflow: hidden;
+  max-width: 100%;
+}
+
 .ai-code-block pre {
   margin: 0;
   padding: 12px;
+  /* FIX: Scroll ngang chỉ trong pre, không ảnh hưởng layout cha */
   overflow-x: auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   font-family: 'Fira Code', Consolas, Monaco, monospace;
   font-size: 13px !important;
   line-height: 1.5;
   max-height: 280px;
-  overflow-y: auto;
   color: #e4e4e7;
+  /* FIX: white-space: pre để giữ format code nhưng scroll thay vì tràn */
   white-space: pre;
-  text-align: left;
+  word-break: normal;
+  word-wrap: normal;
+  /* FIX: Chiều rộng fit nội dung nhưng bị crop bởi container cha */
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 body[data-theme="light"] .ai-code-block pre {
