@@ -4419,3 +4419,102 @@ body[data-theme="light"] .ai-code-block pre {
     font-size: 12px !important;
   }
 }
+
+
+
+
+
+/* ==========================================================================
+   FIX: AI CHAT SCROLL BỊ KẸT KHI CÓ CODE BLOCK
+   Thêm đoạn này vào CUỐI file style.css
+   ========================================================================== */
+
+/* FIX 1: ai-chat-history phải scroll được bình thường theo chiều dọc */
+.ai-chat-history {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  /* Cho phép scroll dọc trên mobile, chặn scroll ngang */
+  touch-action: pan-y !important;
+  /* Ngăn scroll thoát ra ngoài container */
+  overscroll-behavior: contain !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+/* FIX 2: code wrapper chỉ scroll ngang bên trong, không nuốt scroll dọc */
+.ai-code-wrapper {
+  overflow: hidden !important;
+  touch-action: pan-x pan-y !important;
+  overscroll-behavior-x: contain !important;
+}
+
+/* FIX 3: pre trong code block chỉ scroll ngang, KHÔNG chặn scroll dọc của trang */
+.ai-code-block {
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  touch-action: pan-x !important;
+  overscroll-behavior-x: contain !important;
+}
+
+.ai-code-block pre {
+  touch-action: pan-x !important;
+  overscroll-behavior-x: contain !important;
+  /* Giữ format code nhưng scroll ngang thay vì tràn */
+  white-space: pre !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  /* Đảm bảo không block scroll dọc của container cha */
+  pointer-events: auto;
+}
+
+/* FIX 4: ai-chat-messages-wrapper không được block scroll */
+.ai-chat-messages-wrapper {
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
+  /* Không dùng touch-action ở đây để scroll dọc hoạt động bình thường */
+}
+
+/* FIX 5: ai-message và ai-bubble không block scroll dọc */
+.ai-message,
+.ai-message.ai-bot,
+.ai-bubble,
+.ai-message.ai-bot .ai-bubble {
+  touch-action: pan-y !important;
+  overflow-x: hidden !important;
+}
+
+/* FIX 6: tab-ai container cho phép scroll đúng */
+#tab-ai,
+#tab-ai.active {
+  overflow: hidden !important;
+  touch-action: pan-y !important;
+}
+
+/* FIX 7: Mobile - code block chỉ scroll ngang, trang vẫn scroll dọc */
+@media (max-width: 768px) {
+  .ai-code-wrapper {
+    /* Cho phép cả pan-x (scroll ngang code) và pan-y (scroll trang dọc) */
+    touch-action: pan-x pan-y !important;
+    overscroll-behavior: contain !important;
+    max-width: calc(100vw - 32px) !important;
+    width: 100% !important;
+  }
+
+  .ai-code-block {
+    touch-action: pan-x !important;
+    overflow-x: auto !important;
+  }
+
+  .ai-code-block pre {
+    font-size: 12px !important;
+    touch-action: pan-x !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+  }
+
+  /* Đảm bảo ai-chat-history scroll bình thường trên mobile */
+  .ai-chat-history {
+    touch-action: pan-y !important;
+    -webkit-overflow-scrolling: touch !important;
+    overflow-y: auto !important;
+  }
+}
