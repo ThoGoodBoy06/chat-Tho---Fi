@@ -16,7 +16,7 @@ if (apiKey) {
 }
 
 // Model dùng cho chat - có thể đổi qua .env, không cần sửa code
-const MODEL_NAME = process.env.GEMINI_MODEL || "gemini-3.5-flash";
+const MODEL_NAME = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 // Mức độ "suy nghĩ sâu" của model: minimal | low | medium | high
 // "high" thông minh hơn nhưng chậm/tốn hơn. "medium" là cân bằng tốt cho chat thường ngày.
 const THINKING_LEVEL = process.env.GEMINI_THINKING_LEVEL || "high";
@@ -50,12 +50,21 @@ const sessions = new Map(); // userId -> { chat, lastActive }
 const SESSION_TTL_MS = 30 * 60 * 1000; // 30 phút không hoạt động -> dọn session
 const MAX_HISTORY_TURNS = 30; // số lượt hỏi-đáp tối đa giữ trong ngữ cảnh
 
+// ============================================================
+// FIX: Chỉ thêm thinkingConfig khi model thực sự hỗ trợ.
+// gemini-2.5-flash, gemini-1.5-*, gemini-pro, v.v. sẽ trả về
+// lỗi 400 InvalidArgument nếu nhận thinkingConfig.
+// Chỉ các model có tên chứa "thinking" mới dùng tham số này.
+// ============================================================
 function buildChatConfig() {
-  return {
+  const config = {
     systemInstruction: SYSTEM_INSTRUCTION,
     maxOutputTokens: 2048,
-    thinkingConfig: { thinkingLevel: THINKING_LEVEL },
   };
+  if (MODEL_NAME && MODEL_NAME.toLowerCase().includes("thinking")) {
+    config.thinkingConfig = { thinkingLevel: THINKING_LEVEL };
+  }
+  return config;
 }
 
 // Tìm hoặc tạo cuộc hội thoại AI dành riêng cho User trong DB (không có thành viên khác, type='ai')

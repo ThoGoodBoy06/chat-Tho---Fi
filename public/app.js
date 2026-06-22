@@ -3001,13 +3001,15 @@ async function sendAiMessage() {
 function formatAiResponse(text) {
     if (!text) return "";
     let formatted = escapeHTML(text);
+    const codeBlocks = [];
 
-    // Convert code blocks with copy option & language header
+    // 1. Trích xuất và định dạng các khối code blocks trước
     formatted = formatted.replace(/```(\w+)?\s*\n([\s\S]*?)```/g, (match, lang, code) => {
         const language = lang ? lang.trim() : "code";
         const displayCode = code.trim();
+        const placeholder = `__CODE_BLOCK_PLACEHOLDER_${codeBlocks.length}__`;
 
-        return `
+        const codeBlockHtml = `
         <div class="ai-code-wrapper">
           <div class="ai-code-header">
             <span class="ai-code-header-lang">${language}</span>
@@ -3018,9 +3020,13 @@ function formatAiResponse(text) {
           <div class="ai-code-block">
             <pre>${displayCode}</pre>
           </div>
-        </div>`;
+        </div>`.trim();
+
+        codeBlocks.push(codeBlockHtml);
+        return placeholder;
     });
 
+    // 2. Định dạng các phần text khác (inline code, bold, list, newline)
     // Convert inline code
     formatted = formatted.replace(/`([^`]+)`/g, '<code style="background: rgba(255,255,255,0.08); color: #f4f4f5; padding: 2px 6px; border-radius: 4px; font-family: monospace;">$1</code>');
 
@@ -3032,6 +3038,12 @@ function formatAiResponse(text) {
 
     // Convert newlines to breaks
     formatted = formatted.replace(/\n/g, "<br>");
+
+    // 3. Khôi phục lại các khối code blocks đã trích xuất vào đúng vị trí
+    codeBlocks.forEach((codeBlockHtml, index) => {
+        const placeholder = `__CODE_BLOCK_PLACEHOLDER_${index}__`;
+        formatted = formatted.split(placeholder).join(codeBlockHtml);
+    });
 
     return formatted;
 }
