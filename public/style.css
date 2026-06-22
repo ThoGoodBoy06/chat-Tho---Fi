@@ -3116,9 +3116,8 @@ input:checked+.slider.round:before {
 
   .ai-code-block pre {
     font-size: 12px !important;
-    max-height: 220px;
     overflow-x: auto;
-    overflow-y: auto;
+    overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
     white-space: pre;
     word-break: normal;
@@ -3832,6 +3831,7 @@ body[data-theme="dark"] .ai-header {
   padding: 24px;
   overflow-y: auto;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -4392,12 +4392,11 @@ body[data-theme="light"] .ai-code-copy-btn:hover {
   padding: 12px;
   /* FIX: Scroll ngang chỉ trong pre, không ảnh hưởng layout cha */
   overflow-x: auto;
-  overflow-y: auto;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   font-family: 'Fira Code', Consolas, Monaco, monospace;
   font-size: 13px !important;
   line-height: 1.5;
-  max-height: 280px;
   color: #e4e4e7;
   /* FIX: white-space: pre để giữ format code nhưng scroll thay vì tràn */
   white-space: pre;
@@ -4415,6 +4414,5 @@ body[data-theme="light"] .ai-code-block pre {
 @media (max-width: 768px) {
   .ai-code-block pre {
     font-size: 12px !important;
-    max-height: 220px;
   }
 }
