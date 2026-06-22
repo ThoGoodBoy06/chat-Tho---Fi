@@ -97,19 +97,31 @@ module.exports = (io) => {
     });
 
     // 3. Lắng nghe trạng thái Đang gõ...
-    socket.on("typing", async ({ conversationId, senderId, senderName }) => {
-      // Tìm những người trong cuộc trò chuyện này để phát tín hiệu
-      const members = await prisma.conversationMembers.findMany({
-        where: { conversationId },
-      });
-      members.forEach((m) => {
-        if (m.userId !== senderId) {
-          io.to(m.userId).emit("typing", { conversationId, senderName });
-        }
-      });
+    socket.on("typing", async (payload) => {
+      if (payload && payload.receiverId) {
+        // Chuyển tiếp trực tiếp cho người nhận
+        socket.to(payload.receiverId).emit("typing", { senderId: socket.userId || payload.senderId });
+      } else if (payload && payload.conversationId) {
+        // Tìm những người trong cuộc trò chuyện này để phát tín hiệu (Group/Room cũ)
+        const members = await prisma.conversationMembers.findMany({
+          where: { conversationId: payload.conversationId },
+        });
+        members.forEach((m) => {
+          if (m.userId !== payload.senderId) {
+            io.to(m.userId).emit("typing", { conversationId: payload.conversationId, senderName: payload.senderName });
+          }
+        });
+      }
     });
 
-    // 4. Lắng nghe trạng thái Dừng gõ
+    // 4. Lắng nghe trạng thái Dừng gõ (stop-typing mới)
+    socket.on("stop-typing", ({ receiverId }) => {
+      if (receiverId) {
+        socket.to(receiverId).emit("stop-typing", { senderId: socket.userId });
+      }
+    });
+
+    // Lắng nghe trạng thái Dừng gõ (stop_typing cũ)
     socket.on("stop_typing", async ({ conversationId, senderId }) => {
       const members = await prisma.conversationMembers.findMany({
         where: { conversationId },

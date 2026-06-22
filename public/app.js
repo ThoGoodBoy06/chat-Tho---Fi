@@ -62,6 +62,10 @@ let mediaRecorder = null;
 let audioChunks = [];
 let isRecording = false;
 
+const typingSound = new Audio('/sounds/typing.mp3');
+typingSound.loop = true;
+typingSound.volume = 0.5;
+
 const readReceiptState = {
     conversationId: null,
     readBy: null,
@@ -674,6 +678,11 @@ function initizeChatSession(userData, userToken) {
                 emitMarkMessagesRead();
                 shouldMarkAsRead = true;
             }
+
+            // Xóa UI Typing và dừng âm thanh khi nhận được tin nhắn mới từ đối phương
+            if (!isFromMe) {
+                handleStopTyping();
+            }
         }
 
         // 4. Phát âm thanh và Rung điện thoại khi có tin nhắn mới từ người khác (Foreground)
@@ -720,26 +729,63 @@ function initizeChatSession(userData, userToken) {
         console.log(`Người dùng ${userId} đã từ chối lời mời của bạn.`);
     });
 
-    // Nghe sự kiện "Đang gõ..."
+    // Hàm xử lý dừng gõ phím, ẩn UI và dừng nhạc
+    function handleStopTyping() {
+        const indicator = document.getElementById("typing-indicator");
+        if (indicator) indicator.remove();
+        
+        try {
+            typingSound.pause();
+            typingSound.currentTime = 0;
+        } catch (error) {
+            console.error("Lỗi khi dừng phát nhạc typing:", error);
+        }
+    }
+
+    // Nghe sự kiện "Đang gõ..." (typing)
     socket.on("typing", (info) => {
-        if (info.conversationId !== currentConversationId) return;
+        // Kiểm tra xem có đúng là người nhận hoặc cuộc trò chuyện hiện tại đang mở không
+        const isCurrentChat = (info.senderId && info.senderId === currentChatPartnerId) || 
+                              (info.conversationId && info.conversationId === currentConversationId);
+        
+        if (!isCurrentChat) return;
+
         let indicator = document.getElementById("typing-indicator");
         if (!indicator) {
             indicator = document.createElement("div");
             indicator.id = "typing-indicator";
             indicator.className = "typing-indicator";
-            indicator.innerHTML = `<span><b>${info.senderName}</b> đang gõ</span><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
-            document.getElementById("messages").appendChild(indicator);
-            document.getElementById("messages").scrollTop =
-                document.getElementById("messages").scrollHeight;
+            const displayName = info.senderName || "Đối phương";
+            indicator.innerHTML = `<span><b>${displayName}</b> đang gõ</span><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+            const messagesContainer = document.getElementById("messages");
+            if (messagesContainer) {
+                messagesContainer.appendChild(indicator);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+        }
+
+        // Phát nhạc soạn tin nhắn
+        try {
+            typingSound.play().catch(err => {
+                console.warn("DOMException: Trình duyệt chặn tự động phát âm thanh typing:", err.message);
+            });
+        } catch (error) {
+            console.error("DOMException typingSound.play():", error);
         }
     });
 
-    // Nghe sự kiện "Dừng gõ"
+    // Nghe sự kiện "Dừng gõ" mới (stop-typing)
+    socket.on("stop-typing", (info) => {
+        if (info.senderId === currentChatPartnerId) {
+            handleStopTyping();
+        }
+    });
+
+    // Nghe sự kiện "Dừng gõ" cũ (stop_typing)
     socket.on("stop_typing", (info) => {
-        if (info.conversationId !== currentConversationId) return;
-        const indicator = document.getElementById("typing-indicator");
-        if (indicator) indicator.remove();
+        if (info.conversationId === currentConversationId) {
+            handleStopTyping();
+        }
     });
 
     // Nghe các sự kiện WebRTC
@@ -2013,6 +2059,9 @@ function sendMessage(imageContent = null) {
     input.value = "";
 
     if (!imageContent && socket) {
+        if (currentChatPartnerId) {
+            socket.emit("stop-typing", { receiverId: currentChatPartnerId });
+        }
         socket.emit("stop_typing", {
             conversationId: currentConversationId,
             senderId: myId,
@@ -2147,20 +2196,35 @@ if (fileUploadInput) {
 // 8. Sự kiện Nhập phím "Đang gõ..."
 if (messageInput) {
     messageInput.addEventListener("input", () => {
-        if (!currentConversationId || !socket) return;
+        if (!socket) return;
 
-        socket.emit("typing", {
-            conversationId: currentConversationId,
-            senderId: myId,
-            senderName: myName,
-        });
+        // Gửi sự kiện typing mới (1-1)
+        if (currentChatPartnerId) {
+            socket.emit("typing", { receiverId: currentChatPartnerId });
+        }
+
+        // Gửi sự kiện typing cũ (Phòng/Group)
+        if (currentConversationId) {
+            socket.emit("typing", {
+                conversationId: currentConversationId,
+                senderId: myId,
+                senderName: myName,
+            });
+        }
 
         clearTimeout(typingTimeout);
         typingTimeout = setTimeout(() => {
-            socket.emit("stop_typing", {
-                conversationId: currentConversationId,
-                senderId: myId,
-            });
+            // Gửi sự kiện stop-typing mới (1-1)
+            if (currentChatPartnerId) {
+                socket.emit("stop-typing", { receiverId: currentChatPartnerId });
+            }
+            // Gửi sự kiện stop_typing cũ (Phòng/Group)
+            if (currentConversationId) {
+                socket.emit("stop_typing", {
+                    conversationId: currentConversationId,
+                    senderId: myId,
+                });
+            }
         }, 1500);
     });
 }
