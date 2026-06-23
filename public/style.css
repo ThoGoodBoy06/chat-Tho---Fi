@@ -4569,3 +4569,56 @@ body:not([data-theme="dark"]) .ai-code-expand-btn:hover {
     -webkit-overflow-scrolling: touch !important;
   }
 }
+
+/* ==========================================================================
+   AI QUOTA PROGRESS BAR STYLING
+   ========================================================================== */
+.ai-quota-bar-container {
+  padding: 8px 20px;
+  background: rgba(0, 0, 0, 0.02);
+  border-bottom: 1px solid var(--border-color);
+  font-size: 11px;
+  color: var(--text-dark);
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
+body[data-theme="dark"] .ai-quota-bar-container {
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: #a1a1aa; /* text-zinc-400 */
+}
+
+.ai-quota-bar-label {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.ai-quota-bar-bg {
+  height: 6px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+body[data-theme="dark"] .ai-quota-bar-bg {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.ai-quota-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #10B981, #3B82F6); /* Green to Blue */
+  border-radius: 3px;
+  transition: width 0.5s ease-in-out, background 0.3s ease;
+}
+
+.ai-quota-bar-fill.warning {
+  background: linear-gradient(90deg, #F59E0B, #EF4444) !important; /* Orange to Red */
+}
+
+.ai-quota-bar-fill.danger {
+  background: #EF4444 !important; /* Pure Red */
+}

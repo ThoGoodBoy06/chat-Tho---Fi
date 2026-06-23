@@ -2791,6 +2791,7 @@ function switchTab(tabId, navElement) {
             welcomeTitle.innerText = `Hôm nay bạn thế nào, ${myUsername || "bạn"}?`;
         }
         loadAiChatHistory();
+        updateAiQuotaBar(); // Cập nhật thanh hạn ngạch AI
     }
 
     // Xử lý ẩn/hiển thị mobile-header (thanh tìm kiếm trên mobile) khi đổi tab
@@ -2992,6 +2993,9 @@ async function sendAiMessage() {
                 }
             }
         }
+        
+        // Tăng số lượt gọi AI thành công lên 1
+        incrementAiRequestCount();
     } catch (error) {
         // Xóa indicator nếu có lỗi xảy ra
         const indicator = document.getElementById(`${botMsgId}-indicator`);
@@ -3005,6 +3009,11 @@ async function sendAiMessage() {
                     ❌ ${msg.startsWith("Lỗi:") || msg.startsWith("⚠️") ? msg : `Lỗi: ${msg}`}
                 </span>
             `;
+
+            // Nếu lỗi do hết hạn ngạch hoặc token
+            if (msg.includes("hạn ngạch") || msg.includes("Token") || msg.includes("429") || msg.includes("limit") || msg.includes("quota")) {
+                updateAiQuotaBar(true); // Bắt buộc set thanh quota lên 100%
+            }
         }
     }
 
@@ -5266,6 +5275,48 @@ async function updateMediaDevicesList() {
         ? document.addEventListener('DOMContentLoaded', start)
         : start();
 })();
+
+// Cập nhật thanh hạn ngạch sử dụng AI (Token progress bar)
+function updateAiQuotaBar(forceMax = false) {
+    const fillEl = document.getElementById("ai-quota-bar-fill");
+    const percentageEl = document.getElementById("ai-quota-bar-percentage");
+    if (!fillEl || !percentageEl) return;
+
+    const limit = 20; // Giới hạn số lượt gọi miễn phí trong ngày (Google AI Studio free tier)
+    const todayStr = new Date().toISOString().split('T')[0]; // Định dạng YYYY-MM-DD
+    const countKey = `ai_request_count_${todayStr}`;
+
+    let count = parseInt(localStorage.getItem(countKey) || "0", 10);
+
+    if (forceMax) {
+        count = limit;
+        localStorage.setItem(countKey, String(limit));
+    }
+
+    const percentage = Math.min(Math.round((count / limit) * 100), 100);
+
+    // Cập nhật UI
+    fillEl.style.width = `${percentage}%`;
+    percentageEl.innerText = `${percentage}%`;
+
+    // Cập nhật màu sắc cảnh báo
+    fillEl.classList.remove("warning", "danger");
+    if (percentage >= 100) {
+        fillEl.classList.add("danger");
+        percentageEl.innerHTML = `<span style="color: #ef4444; font-weight: bold;">Hết Token (100%)</span>`;
+    } else if (percentage >= 70) {
+        fillEl.classList.add("warning");
+    }
+}
+
+// Tăng số lượt gọi AI thành công khi hoàn thành stream
+function incrementAiRequestCount() {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const countKey = `ai_request_count_${todayStr}`;
+    let count = parseInt(localStorage.getItem(countKey) || "0", 10);
+    localStorage.setItem(countKey, String(count + 1));
+    updateAiQuotaBar();
+}
 
 
 
