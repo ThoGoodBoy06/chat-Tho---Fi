@@ -335,7 +335,7 @@ exports.chatStream = async (req, res) => {
     const status = error.status || error.code || (error.error && error.error.code);
     let errorMessage = "Không thể kết nối đến AI. Vui lòng thử lại sau!";
     if (status === 429 || error.message?.includes("quota") || error.message?.includes("RESOURCE_EXHAUSTED") || error.message?.includes("Quota")) {
-      errorMessage = "⚠️ Tài khoản AI đã hết hạn ngạch (Token) hôm nay. Vui lòng thử lại sau hoặc cấu hình API Key mới!";
+      errorMessage = "⚠️ Tài khoản đã hết token rồi!!!";
     }
     res.write(`data: ${JSON.stringify({ error: errorMessage })}\n\n`);
     res.end();
