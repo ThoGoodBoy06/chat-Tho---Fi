@@ -257,9 +257,14 @@ exports.chat = async (req, res) => {
     return res.json({ success: true, text: aiText });
   } catch (error) {
     console.error("❌ Lỗi gọi Gemini API:", error);
-    return res.status(500).json({
+    const status = error.status || error.code || (error.error && error.error.code);
+    let errorMessage = "Không thể kết nối đến AI. Vui lòng thử lại sau!";
+    if (status === 429 || error.message?.includes("quota") || error.message?.includes("RESOURCE_EXHAUSTED") || error.message?.includes("Quota")) {
+      errorMessage = "⚠️ Tài khoản AI đã hết hạn ngạch (Token) hôm nay. Vui lòng thử lại sau hoặc cấu hình API Key mới!";
+    }
+    return res.status(status === 429 ? 429 : 500).json({
       success: false,
-      error: "Không thể kết nối đến AI. Vui lòng thử lại sau!",
+      error: errorMessage,
       details: error.message,
     });
   }
@@ -327,7 +332,12 @@ exports.chatStream = async (req, res) => {
     res.end();
   } catch (error) {
     console.error("❌ Lỗi stream Gemini API:", error);
-    res.write(`data: ${JSON.stringify({ error: "Không thể kết nối đến AI. Vui lòng thử lại sau!" })}\n\n`);
+    const status = error.status || error.code || (error.error && error.error.code);
+    let errorMessage = "Không thể kết nối đến AI. Vui lòng thử lại sau!";
+    if (status === 429 || error.message?.includes("quota") || error.message?.includes("RESOURCE_EXHAUSTED") || error.message?.includes("Quota")) {
+      errorMessage = "⚠️ Tài khoản AI đã hết hạn ngạch (Token) hôm nay. Vui lòng thử lại sau hoặc cấu hình API Key mới!";
+    }
+    res.write(`data: ${JSON.stringify({ error: errorMessage })}\n\n`);
     res.end();
   }
 };

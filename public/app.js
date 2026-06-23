@@ -2938,7 +2938,16 @@ async function sendAiMessage() {
         });
 
         if (!response.ok) {
-            throw new Error(`Server returned ${response.status}`);
+            let errorMsg = "Không thể kết nối hoặc tải phản hồi từ Gemini. Vui lòng thử lại sau!";
+            if (response.status === 429) {
+                errorMsg = "Tài khoản AI đã hết hạn ngạch (Token) hôm nay. Vui lòng thử lại sau hoặc cấu hình API Key mới!";
+            } else {
+                try {
+                    const errData = await response.json();
+                    if (errData && errData.error) errorMsg = errData.error;
+                } catch (e) {}
+            }
+            throw new Error(errorMsg);
         }
 
         const reader = response.body.getReader();
@@ -2975,6 +2984,10 @@ async function sendAiMessage() {
                         throw new Error(data.error);
                     }
                 } catch (e) {
+                    // Nếu lỗi do throw Error(data.error) tự định nghĩa ở trên thì chuyển tiếp ra ngoài catch chính
+                    if (e.message && (e.message.includes("⚠️") || e.message.includes("hạn ngạch") || e.message.includes("Lỗi:"))) {
+                        throw e;
+                    }
                     console.error("Lỗi xử lý chunk stream:", e);
                 }
             }
@@ -2986,9 +2999,10 @@ async function sendAiMessage() {
 
         const bubbleEl = document.getElementById(`${botMsgId}-bubble`);
         if (bubbleEl) {
+            const msg = error.message || "Không thể kết nối hoặc tải phản hồi từ Gemini. Vui lòng thử lại sau!";
             bubbleEl.innerHTML = `
-                <span style="color: #ef4444;">
-                    ❌ Lỗi: Không thể kết nối hoặc tải phản hồi từ Gemini. Vui lòng thử lại sau!
+                <span style="color: #ef4444; font-weight: 500;">
+                    ❌ ${msg.startsWith("Lỗi:") || msg.startsWith("⚠️") ? msg : `Lỗi: ${msg}`}
                 </span>
             `;
         }
