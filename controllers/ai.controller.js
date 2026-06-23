@@ -1,27 +1,33 @@
 const { GoogleGenAI } = require("@google/genai");
+const { OpenAI } = require("openai");
 const prisma = require("../prisma");
 
 /**
- * ===== Khởi tạo client Gemini =====
- * Lưu ý: SDK cũ "@google/generative-ai" đã bị Google EOL (31/08/2025).
- * Phải dùng SDK mới "@google/genai".
+ * ===== Khởi tạo client Gemini & OpenAI =====
  */
-const apiKey = process.env.GEMINI_API_KEY;
+const geminiApiKey = process.env.GEMINI_API_KEY;
 let ai = null;
 
-if (apiKey) {
-  ai = new GoogleGenAI({ apiKey });
+if (geminiApiKey) {
+  ai = new GoogleGenAI({ apiKey: geminiApiKey });
 } else {
   console.error("❌ Lỗi: GEMINI_API_KEY chưa được cấu hình trong file .env!");
 }
 
-// Model dùng cho chat - có thể đổi qua .env, không cần sửa code
+// Khởi tạo OpenAI Client cho tính năng "Thanh tra gọt giũa"
+const openaiApiKey = process.env.OPENAI_API_KEY;
+let openai = null;
+if (openaiApiKey) {
+  openai = new OpenAI({ apiKey: openaiApiKey });
+} else {
+  console.warn("⚠️ Cảnh báo: OPENAI_API_KEY chưa có, hệ thống sẽ chỉ dùng Gemini.");
+}
+
+// Model dùng cho chat 
 const MODEL_NAME = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-// Mức độ "suy nghĩ sâu" của model: minimal | low | medium | high
-// "high" thông minh hơn nhưng chậm/tốn hơn. "medium" là cân bằng tốt cho chat thường ngày.
 const THINKING_LEVEL = process.env.GEMINI_THINKING_LEVEL || "high";
 
-// ====== System Instruction "Trợ lý AI Tho-Fi" (giữ nguyên từ bản gốc) ======
+// ====== System Instruction "Trợ lý AI Tho-Fi" ======
 const SYSTEM_INSTRUCTION = `Bạn là "Trợ lý AI Tho-Fi" - một trí tuệ nhân tạo bậc cao được tích hợp độc quyền trong ứng dụng Chat Tho-Fi.
 Người sáng lập hệ sinh thái này là Tho. Bạn đóng vai trò như một chuyên gia cấp cao, có khả năng suy luận logic sâu sắc, giải quyết vấn đề phức tạp và thấu hiểu ngữ cảnh nội bộ.
 [HỆ SINH THÁI & NGỮ CẢNH NỘI BỘ]
@@ -32,30 +38,18 @@ Người sáng lập hệ sinh thái này là Tho. Bạn đóng vai trò như m�
 - Tính năng nổi bật: Chat realtime, Gọi thoại/video WebRTC, Trạng thái gõ phím sinh động (Typing indicator), Quản lý hồ sơ chuẩn xác, và Dark/Light mode.
 [QUY TẮC TƯ DUY & TRÌNH BÀY (CẤP ĐỘ PRO)]
 1. Tư duy phân tích (Chain of Thought): Với các câu hỏi phức tạp (code, kiến trúc, chiến lược), hãy luôn phân tích vấn đề thành các bước nhỏ trước khi đưa ra kết luận.
-2. Trực diện & Rõ ràng: Bỏ qua mọi câu rào trước đón sau dư thừa (VD: "Tuyệt vời, tôi sẽ giúp bạn...", "Dưới đây là..."). Đi thẳng vào trọng tâm.
+2. Trực diện & Rõ ràng: Bỏ qua mọi câu rào trước đón sau dư thừa. Đi thẳng vào trọng tâm.
 3. Định dạng Markdown nghiêm ngặt: Bắt buộc sử dụng các thẻ Heading (##, ###) để chia bố cục, sử dụng Bullet points (*) cho danh sách, và Bold (**) cho từ khóa quan trọng. Code block phải có ngôn ngữ rõ ràng.
 4. Xưng hô & Thái độ: Xưng "mình" và gọi "bạn". Thái độ tự tin, khiêm tốn, lịch sự. Tôn trọng tuyệt đối nhà sáng lập Tho.
 5. Sự thật & Tính chính xác: Nếu không biết hoặc không chắc chắn, hãy thẳng thắn thừa nhận, tuyệt đối không bịa đặt thông tin (hallucination).`;
 
 /**
  * ===== Quản lý phiên chat theo user (lưu trong RAM) =====
- * Mỗi user có 1 "Chat session" riêng, session này tự lưu lịch sử hội thoại
- * bên trong nó -> AI sẽ NHỚ những gì đã nói trước đó trong cùng phiên.
- *
- * Hạn chế: mất hết khi restart server. Nếu muốn lưu vĩnh viễn, lưu
- * chat.getHistory() vào DB (Prisma) sau mỗi lượt và truyền lại vào
- * `history` khi tạo lại session lúc server khởi động lại.
  */
-const sessions = new Map(); // userId -> { chat, lastActive }
-const SESSION_TTL_MS = 30 * 60 * 1000; // 30 phút không hoạt động -> dọn session
-const MAX_HISTORY_TURNS = 30; // số lượt hỏi-đáp tối đa giữ trong ngữ cảnh
+const sessions = new Map();
+const SESSION_TTL_MS = 30 * 60 * 1000;
+const MAX_HISTORY_TURNS = 30;
 
-// ============================================================
-// FIX: Chỉ thêm thinkingConfig khi model thực sự hỗ trợ.
-// gemini-2.5-flash, gemini-1.5-*, gemini-pro, v.v. sẽ trả về
-// lỗi 400 InvalidArgument nếu nhận thinkingConfig.
-// Chỉ các model có tên chứa "thinking" mới dùng tham số này.
-// ============================================================
 function buildChatConfig() {
   const config = {
     systemInstruction: SYSTEM_INSTRUCTION,
@@ -67,28 +61,19 @@ function buildChatConfig() {
   return config;
 }
 
-// Tìm hoặc tạo cuộc hội thoại AI dành riêng cho User trong DB (không có thành viên khác, type='ai')
 async function getOrCreateAiConversation(userId) {
   let conversation = await prisma.conversations.findFirst({
-    where: {
-      type: "ai",
-      createdBy: userId,
-    },
+    where: { type: "ai", createdBy: userId },
   });
 
   if (!conversation) {
     conversation = await prisma.conversations.create({
-      data: {
-        type: "ai",
-        createdBy: userId,
-        name: "Trợ lý AI Tho-Fi",
-      },
+      data: { type: "ai", createdBy: userId, name: "Trợ lý AI Tho-Fi" },
     });
   }
   return conversation;
 }
 
-// Lấy hoặc khởi tạo phiên chat với Gemini, tự động nạp lịch sử từ DB
 async function getOrCreateChatSession(userId) {
   const existing = sessions.get(userId);
   if (existing) {
@@ -96,14 +81,13 @@ async function getOrCreateChatSession(userId) {
     return existing.chat;
   }
 
-  // Tải lịch sử chat từ DB để nạp làm ngữ cảnh cho Gemini
   let history = [];
   try {
     const conversation = await getOrCreateAiConversation(userId);
     const dbMessages = await prisma.messages.findMany({
       where: { conversationId: conversation.id },
       orderBy: { createdAt: "asc" },
-      take: 40, // Lấy tối đa 40 tin nhắn gần nhất để tránh tràn Token
+      take: 40,
     });
 
     history = dbMessages.map((msg) => ({
@@ -111,7 +95,7 @@ async function getOrCreateChatSession(userId) {
       parts: [{ text: msg.content }],
     }));
   } catch (err) {
-    console.error("⚠️ Không thể tải lịch sử AI từ database để làm ngữ cảnh:", err);
+    console.error("⚠️ Không thể tải lịch sử AI từ database:", err);
   }
 
   const chat = ai.chats.create({
@@ -123,10 +107,9 @@ async function getOrCreateChatSession(userId) {
   return chat;
 }
 
-// Cắt lịch sử nếu quá dài để tránh tốn token / chi phí leo thang theo thời gian
 function trimHistoryIfNeeded(userId, chat) {
   const history = chat.getHistory();
-  const maxMessages = MAX_HISTORY_TURNS * 2; // user + model mỗi lượt
+  const maxMessages = MAX_HISTORY_TURNS * 2;
   if (history.length > maxMessages) {
     const trimmed = history.slice(history.length - maxMessages);
     const newChat = ai.chats.create({
@@ -138,7 +121,6 @@ function trimHistoryIfNeeded(userId, chat) {
   }
 }
 
-// Dọn các session không hoạt động để tránh phình RAM
 setInterval(() => {
   const now = Date.now();
   for (const [key, session] of sessions.entries()) {
@@ -146,7 +128,6 @@ setInterval(() => {
   }
 }, 10 * 60 * 1000);
 
-// Gọi API có retry khi gặp lỗi tạm thời (quá tải / rate limit)
 async function callWithRetry(fn, retries = 2, delayMs = 800) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
@@ -164,9 +145,76 @@ function resolveUserId(req) {
   return req.user?.id || req.user?.username || "guest";
 }
 
+// Lấy lịch sử và định dạng lại cho OpenAI
+async function getChatMessagesForOpenAi(userId, currentPrompt) {
+  const conversation = await getOrCreateAiConversation(userId);
+  const dbMessages = await prisma.messages.findMany({
+    where: { conversationId: conversation.id },
+    orderBy: { createdAt: "asc" },
+    take: 40,
+  });
+
+  const messages = [
+    { role: "system", content: SYSTEM_INSTRUCTION }
+  ];
+
+  dbMessages.forEach((msg) => {
+    messages.push({
+      role: msg.senderId ? "user" : "assistant",
+      content: msg.content,
+    });
+  });
+
+  messages.push({ role: "user", content: currentPrompt });
+  return messages;
+}
+
+// Gọi OpenAI thường (Dự phòng)
+async function callOpenAi(userId, prompt) {
+  if (!openai) throw new Error("OpenAI client is not initialized.");
+
+  const messages = await getChatMessagesForOpenAi(userId, prompt);
+  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
+
+  console.log(`🤖 Fallback: Đang gọi OpenAI (${model}) cho user ${userId}...`);
+
+  const response = await openai.chat.completions.create({
+    model: model,
+    messages: messages,
+  });
+
+  return response.choices[0]?.message?.content || "";
+}
+
+// Gọi OpenAI stream (Dự phòng)
+async function callOpenAiStream(userId, prompt, res) {
+  if (!openai) throw new Error("OpenAI client is not initialized.");
+
+  const messages = await getChatMessagesForOpenAi(userId, prompt);
+  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
+
+  console.log(`🤖 Fallback: Đang gọi OpenAI Stream (${model}) cho user ${userId}...`);
+
+  const stream = await openai.chat.completions.create({
+    model: model,
+    messages: messages,
+    stream: true,
+  });
+
+  let fullAiText = "";
+  for await (const chunk of stream) {
+    const text = chunk.choices[0]?.delta?.content || "";
+    if (text) {
+      fullAiText += text;
+      res.write(`data: ${JSON.stringify({ text })}\n\n`);
+    }
+  }
+
+  return fullAiText;
+}
+
 /**
  * GET /api/ai/chat/history
- * Lấy toàn bộ lịch sử hội thoại của user hiện tại từ Database
  */
 exports.getHistory = async (req, res) => {
   try {
@@ -187,102 +235,116 @@ exports.getHistory = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Lỗi lấy lịch sử AI từ database:", error);
-    return res.status(500).json({
-      success: false,
-      error: "Không thể tải lịch sử cuộc trò chuyện AI.",
-    });
+    return res.status(500).json({ success: false, error: "Không thể tải lịch sử AI." });
   }
 };
 
 /**
  * POST /api/ai/chat
- * Trò chuyện có NHỚ NGỮ CẢNH (multi-turn), trả về 1 lần (không stream).
+ * Cấu trúc Multi-LLM: Gemini (Draft) -> ChatGPT (Polish) -> Database
  */
 exports.chat = async (req, res) => {
   try {
     const { prompt } = req.body;
 
     if (!prompt || typeof prompt !== "string" || prompt.trim() === "") {
-      return res.status(400).json({
-        success: false,
-        error: "Câu hỏi (prompt) không được để trống.",
-      });
+      return res.status(400).json({ success: false, error: "Câu hỏi không được để trống." });
     }
     if (prompt.length > 8000) {
-      return res.status(400).json({
-        success: false,
-        error: "Câu hỏi quá dài, vui lòng rút ngắn lại (tối đa 8000 ký tự).",
-      });
+      return res.status(400).json({ success: false, error: "Câu hỏi quá dài (tối đa 8000 ký tự)." });
     }
     if (!ai) {
-      return res.status(500).json({
-        success: false,
-        error: "Chưa cấu hình API Key của Gemini trên Server. Vui lòng liên hệ Admin!",
-      });
+      return res.status(500).json({ success: false, error: "Chưa cấu hình API Key của Gemini!" });
     }
 
     const userId = resolveUserId(req);
     const conversation = await getOrCreateAiConversation(userId);
 
-    // 1. Lưu tin nhắn của User vào Database
+    // 1. Lưu DB User Message
     await prisma.messages.create({
-      data: {
-        conversationId: conversation.id,
-        senderId: userId,
-        content: prompt.trim(),
-      },
+      data: { conversationId: conversation.id, senderId: userId, content: prompt.trim() },
     });
 
-    const chat = await getOrCreateChatSession(userId);
+    let finalAiText = "";
+    let chat = null;
 
-    console.log(`🤖 [${MODEL_NAME}] Đang xử lý yêu cầu cho user ${req.user?.username || "Unknown"}...`);
+    try {
+      chat = await getOrCreateChatSession(userId);
+      console.log(`🤖 [BƯỚC 1 - DRAFT] Gemini đang xử lý cho user ${req.user?.username || "Unknown"}...`);
+      const response = await callWithRetry(() => chat.sendMessage({ message: prompt.trim() }));
+      const geminiDraft = response.text || "";
+      finalAiText = geminiDraft;
 
-    const response = await callWithRetry(() =>
-      chat.sendMessage({ message: prompt.trim() })
-    );
-
-    const aiText = response.text || "";
-
-    // 2. Lưu tin nhắn phản hồi của AI vào Database
-    await prisma.messages.create({
-      data: {
-        conversationId: conversation.id,
-        senderId: null, // senderId = null là AI gửi
-        content: aiText,
-      },
-    });
-
-    trimHistoryIfNeeded(userId, chat);
-
-    return res.json({ success: true, text: aiText });
-  } catch (error) {
-    console.error("❌ Lỗi gọi Gemini API:", error);
-    const status = error.status || error.code || (error.error && error.error.code);
-    let errorMessage = "Không thể kết nối đến AI. Vui lòng thử lại sau!";
-    if (status === 429 || error.message?.includes("quota") || error.message?.includes("RESOURCE_EXHAUSTED") || error.message?.includes("Quota")) {
-      errorMessage = "⚠️ Tài khoản AI đã hết hạn ngạch (Token) hôm nay. Vui lòng thử lại sau hoặc cấu hình API Key mới!";
+      // 2. ChatGPT gọt giũa (Nếu có Key)
+      if (openai) {
+        try {
+          console.log(`🧠 [BƯỚC 2 - POLISH] Đẩy sang ChatGPT gọt giũa...`);
+          const chatGptResponse = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [
+              {
+                role: "system",
+                content: "Bạn là chuyên gia biên tập cấp cao. Nhiệm vụ: Nhận bản nháp từ AI khác, sửa lỗi hành văn cho tự nhiên, cấu trúc lại bằng Markdown (Heading, Bullet points). Tuyệt đối KHÔNG cắt xén dữ liệu hoặc thay đổi sự thật."
+              },
+              {
+                role: "user",
+                content: `Câu hỏi gốc: "${prompt}"\n\n--- BẢN NHÁP ---\n${geminiDraft}`
+              }
+            ],
+            temperature: 0.7
+          });
+          finalAiText = chatGptResponse.choices[0].message.content;
+        } catch (openAiError) {
+          console.error("⚠️ Lỗi ChatGPT, kích hoạt khiên bất tử dùng bản nháp Gemini:", openAiError.message);
+        }
+      }
+    } catch (geminiError) {
+      console.warn("⚠️ Gemini gặp sự cố, thử chuyển sang OpenAI làm dự phòng...", geminiError.message);
+      if (openai) {
+        try {
+          finalAiText = await callOpenAi(userId, prompt.trim());
+        } catch (openaiError) {
+          console.error("❌ Cả Gemini và OpenAI đều thất bại:", openaiError.message);
+          throw geminiError;
+        }
+      } else {
+        throw geminiError;
+      }
     }
-    return res.status(status === 429 ? 429 : 500).json({
-      success: false,
-      error: errorMessage,
-      details: error.message,
+
+    // 3. Lưu DB AI Message
+    await prisma.messages.create({
+      data: { conversationId: conversation.id, senderId: null, content: finalAiText },
     });
+
+    if (chat) {
+      trimHistoryIfNeeded(userId, chat);
+    }
+
+    return res.json({ success: true, text: finalAiText });
+  } catch (error) {
+    console.error("❌ Lỗi hệ thống AI:", error);
+    const status = error.status || error.code || (error.error && error.error.code);
+    let errorMessage = "Hệ thống AI đang bảo trì. Vui lòng thử lại sau!";
+    if (status === 429 || error.message?.includes("quota") || error.message?.includes("RESOURCE_EXHAUSTED") || error.message?.includes("Quota")) {
+      errorMessage = "⚠️ Tài khoản đã hết token rồi!!!";
+    }
+    return res.status(status === 429 ? 429 : 500).json({ success: false, error: errorMessage });
   }
 };
 
 /**
  * POST /api/ai/chat/stream
- * Trả lời theo từng khúc (Server-Sent Events) -> hiệu ứng "đang gõ chữ"
- * giống Claude/Gemini thật. Frontend dùng fetch + ReadableStream để đọc.
+ * Giữ nguyên Stream bằng Gemini để đảm bảo tốc độ phản hồi real-time.
  */
 exports.chatStream = async (req, res) => {
   const { prompt } = req.body;
 
   if (!prompt || typeof prompt !== "string" || prompt.trim() === "") {
-    return res.status(400).json({ success: false, error: "Câu hỏi (prompt) không được để trống." });
+    return res.status(400).json({ success: false, error: "Câu hỏi không được để trống." });
   }
   if (!ai) {
-    return res.status(500).json({ success: false, error: "Chưa cấu hình API Key của Gemini trên Server." });
+    return res.status(500).json({ success: false, error: "Chưa cấu hình API Key của Gemini." });
   }
 
   res.setHeader("Content-Type", "text/event-stream");
@@ -294,46 +356,51 @@ exports.chatStream = async (req, res) => {
     const userId = resolveUserId(req);
     const conversation = await getOrCreateAiConversation(userId);
 
-    // 1. Lưu tin nhắn của User vào Database
     await prisma.messages.create({
-      data: {
-        conversationId: conversation.id,
-        senderId: userId,
-        content: prompt.trim(),
-      },
+      data: { conversationId: conversation.id, senderId: userId, content: prompt.trim() },
     });
 
-    const chat = await getOrCreateChatSession(userId);
-
-    const stream = await chat.sendMessageStream({ message: prompt.trim() });
-
     let fullAiText = "";
-    for await (const chunk of stream) {
-      if (chunk.text) {
-        fullAiText += chunk.text;
-        res.write(`data: ${JSON.stringify({ text: chunk.text })}\n\n`);
+    let chat = null;
+
+    try {
+      chat = await getOrCreateChatSession(userId);
+      const stream = await chat.sendMessageStream({ message: prompt.trim() });
+
+      for await (const chunk of stream) {
+        if (chunk.text) {
+          fullAiText += chunk.text;
+          res.write(`data: ${JSON.stringify({ text: chunk.text })}\n\n`);
+        }
+      }
+      
+      trimHistoryIfNeeded(userId, chat);
+    } catch (geminiError) {
+      console.warn("⚠️ Gemini stream gặp sự cố, thử chuyển sang OpenAI làm dự phòng...", geminiError.message);
+      if (openai) {
+        try {
+          fullAiText = await callOpenAiStream(userId, prompt.trim(), res);
+        } catch (openaiError) {
+          console.error("❌ Cả Gemini và OpenAI stream đều thất bại:", openaiError.message);
+          throw geminiError;
+        }
+      } else {
+        throw geminiError;
       }
     }
 
-    // 2. Lưu tin nhắn phản hồi của AI vào Database khi stream kết thúc
     if (fullAiText.trim() !== "") {
       await prisma.messages.create({
-        data: {
-          conversationId: conversation.id,
-          senderId: null, // senderId = null đại diện cho AI
-          content: fullAiText,
-        },
+        data: { conversationId: conversation.id, senderId: null, content: fullAiText },
       });
     }
-
-    trimHistoryIfNeeded(userId, chat);
 
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     res.end();
   } catch (error) {
-    console.error("❌ Lỗi stream Gemini API:", error);
+    console.error("❌ Lỗi stream API:", error);
     const status = error.status || error.code || (error.error && error.error.code);
-    let errorMessage = "Không thể kết nối đến AI. Vui lòng thử lại sau!";
+    let errorMessage = "Tài khoản AI có thể đã hết Token, vui lòng thử lại sau!";
     if (status === 429 || error.message?.includes("quota") || error.message?.includes("RESOURCE_EXHAUSTED") || error.message?.includes("Quota")) {
       errorMessage = "⚠️ Tài khoản đã hết token rồi!!!";
     }
@@ -344,7 +411,6 @@ exports.chatStream = async (req, res) => {
 
 /**
  * DELETE /api/ai/chat/history
- * Xoá "bộ nhớ" hội thoại của user hiện tại -> bắt đầu cuộc trò chuyện mới.
  */
 exports.resetHistory = async (req, res) => {
   try {
@@ -352,7 +418,6 @@ exports.resetHistory = async (req, res) => {
     sessions.delete(userId);
 
     const conversation = await getOrCreateAiConversation(userId);
-    // Xoá tất cả tin nhắn AI của user trong DB
     await prisma.messages.deleteMany({
       where: { conversationId: conversation.id },
     });

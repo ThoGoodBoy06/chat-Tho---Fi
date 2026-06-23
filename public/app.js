@@ -5360,7 +5360,3 @@ function startAiQuotaCountdown() {
     updateCountdown();
     aiQuotaTimerInterval = setInterval(updateCountdown, 1000);
 }
-
-
-
-
