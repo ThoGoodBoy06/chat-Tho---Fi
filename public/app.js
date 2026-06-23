@@ -5307,6 +5307,9 @@ function updateAiQuotaBar(forceMax = false) {
     } else if (percentage >= 70) {
         fillEl.classList.add("warning");
     }
+
+    // Khởi động đồng hồ đếm ngược đến giờ reset
+    startAiQuotaCountdown();
 }
 
 // Tăng số lượt gọi AI thành công khi hoàn thành stream
@@ -5316,6 +5319,46 @@ function incrementAiRequestCount() {
     let count = parseInt(localStorage.getItem(countKey) || "0", 10);
     localStorage.setItem(countKey, String(count + 1));
     updateAiQuotaBar();
+}
+
+// Lấy mốc thời gian 7:00 AM tiếp theo (Giờ reset của Google AI Studio)
+function getNextResetTime() {
+    const now = new Date();
+    const resetTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 7, 0, 0); // 7:00 AM hôm nay
+    if (now >= resetTime) {
+        resetTime.setDate(resetTime.getDate() + 1); // 7:00 AM ngày mai
+    }
+    return resetTime;
+}
+
+// Quản lý interval và cập nhật đồng hồ đếm ngược
+let aiQuotaTimerInterval = null;
+function startAiQuotaCountdown() {
+    if (aiQuotaTimerInterval) clearInterval(aiQuotaTimerInterval);
+    
+    function updateCountdown() {
+        const countdownEl = document.getElementById("ai-quota-countdown");
+        if (!countdownEl) return;
+        
+        const now = new Date();
+        const nextReset = getNextResetTime();
+        const diffMs = nextReset - now;
+        
+        if (diffMs <= 0) {
+            updateAiQuotaBar();
+            return;
+        }
+        
+        const hours = Math.floor(diffMs / (1000 * 60 * 60));
+        const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+        
+        const pad = (num) => String(num).padStart(2, "0");
+        countdownEl.innerText = `Tự động reset sau: ${pad(hours)}h ${pad(minutes)}m ${pad(seconds)}s`;
+    }
+    
+    updateCountdown();
+    aiQuotaTimerInterval = setInterval(updateCountdown, 1000);
 }
 
 

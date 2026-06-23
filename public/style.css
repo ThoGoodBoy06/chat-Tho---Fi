@@ -4622,3 +4622,16 @@ body[data-theme="dark"] .ai-quota-bar-bg {
 .ai-quota-bar-fill.danger {
   background: #EF4444 !important; /* Pure Red */
 }
+
+.ai-quota-bar-footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 10px;
+  color: var(--text-muted);
+  opacity: 0.85;
+}
+
+body[data-theme="dark"] .ai-quota-bar-footer {
+  color: #71717a; /* text-zinc-500 */
+}
