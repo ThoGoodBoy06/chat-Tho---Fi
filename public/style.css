@@ -1064,6 +1064,109 @@ p {
 }
 
 .input-wrapper {
+
+  /* Input Area for Chat */
+  .input-area {
+    padding: 12px 16px;
+    background: var(--msg-receiver-bg);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  }
+
+  .input-actions-left-wrapper {
+    display: flex;
+    overflow: hidden;
+    transition: max-width 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.2s ease, margin 0.3s ease;
+    max-width: 150px;
+    opacity: 1;
+  }
+
+  .input-area.is-typing .input-actions-left-wrapper {
+    max-width: 0;
+    opacity: 0;
+    margin-right: -12px;
+  }
+
+  .input-actions-left,
+  .input-actions-right {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding-bottom: 8px;
+  }
+
+  .expand-actions-btn {
+    color: var(--primary-color) !important;
+    padding-bottom: 8px;
+    transition: transform 0.2s;
+    cursor: pointer;
+  }
+
+  .input-wrapper {
+    flex: 1;
+    background: #ffffff;
+    border: 1.5px solid #e4e6eb;
+    border-radius: 20px;
+    padding: 8px 16px;
+    min-height: 40px;
+    display: flex;
+    align-items: flex-end;
+    transition: all var(--transition-normal);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  }
+
+  .input-wrapper:focus-within {
+    border-color: var(--primary-color);
+    background: var(--msg-receiver-bg);
+    box-shadow: 0 0 0 3px rgba(10, 138, 110, 0.1);
+  }
+
+  #message-input {
+    width: 100%;
+    border: none;
+    background: transparent;
+    outline: none;
+    font-size: 15px;
+    font-family: inherit;
+    color: var(--text-dark);
+    resize: none;
+    max-height: 100px;
+    overflow-y: auto;
+    line-height: 1.4;
+    padding: 0;
+    margin: 0;
+    margin-bottom: 2px;
+  }
+
+  #message-input::-webkit-scrollbar {
+    display: none;
+  }
+
+  .face-icon {
+    margin-left: 8px;
+    color: var(--text-light);
+    font-size: 20px;
+    cursor: pointer;
+    margin-bottom: 2px;
+  }
+
+  .send-btn {
+    color: #0084ff;
+    font-size: 20px;
+    transition: transform var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .send-btn:hover {
+    color: var(--primary-hover);
+    transform: scale(1.1);
+  }
+
   flex: 1;
   background: #ffffff;
   border: 1.5px solid #e4e6eb;
@@ -2559,9 +2662,7 @@ input:checked+.slider.round:before {
     gap: 6px;
   }
 
-  .input-actions-left {
-    display: none !important;
-  }
+
 
   .input-wrapper {
     flex: 1 !important;

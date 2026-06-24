@@ -10,7 +10,7 @@ function formatUrl(url) {
 // TỰ ĐỘNG THAY THẾ ẢNH LỖI (404) BẰNG ẢNH MẶC ĐỊNH
 document.addEventListener(
     "error",
-    function(e) {
+    function (e) {
         if (e.target.tagName && e.target.tagName.toLowerCase() === "img") {
             const fallback =
                 "https://ui-avatars.com/api/?name=User&background=random";
@@ -166,7 +166,7 @@ function unlockBrowserAudio() {
                     el.pause();
                     el.currentTime = 0;
                 })
-                .catch(() => {});
+                .catch(() => { });
         }
     });
     isAudioUnlocked = true;
@@ -257,8 +257,8 @@ function getReadReceiptTarget(myMessages) {
     // Fallback: tìm tin nhắn của mình được đọc cuối cùng theo data attribute
     return (
         [...myMessages]
-        .reverse()
-        .find((message) => message.dataset.isRead === "true") || null
+            .reverse()
+            .find((message) => message.dataset.isRead === "true") || null
     );
 }
 
@@ -473,7 +473,7 @@ function showMobileOverlay(messageEl) {
 }
 
 // Hệ thống gài quét lỗi toàn cục
-window.onerror = function(msg, url, lineNo, columnNo, error) {
+window.onerror = function (msg, url, lineNo, columnNo, error) {
     if (
         typeof msg === "string" &&
         (msg.includes("ResizeObserver") ||
@@ -565,10 +565,10 @@ function initizeChatSession(userData, userToken) {
     document.getElementById("profile-name").innerText = myName;
     if (document.getElementById("my-avatar-profile"))
         document.getElementById("my-avatar-profile").src =
-        document.getElementById("my-avatar").src;
+            document.getElementById("my-avatar").src;
     if (document.getElementById("profile-bio"))
         document.getElementById("profile-bio").innerText =
-        userData.bio || "Chưa có tiểu sử";
+            userData.bio || "Chưa có tiểu sử";
     if (document.getElementById("my-cover")) {
         const coverUrl = userData.coverPhoto || userData.coverImage;
         if (coverUrl) {
@@ -618,7 +618,7 @@ function initizeChatSession(userData, userToken) {
     });
 
     // Nghe khi mình chấp nhận lời mời của ai đó
-    socket.on("you_accepted_friend_request", async(newFriend) => {
+    socket.on("you_accepted_friend_request", async (newFriend) => {
         alert(`Bạn và ${newFriend.fullName} đã trở thành bạn bè!`);
         try {
             await fetch(`${API_URL}/chat/conversations`, {
@@ -629,13 +629,13 @@ function initizeChatSession(userData, userToken) {
                 },
                 body: JSON.stringify({ receiverId: newFriend.id }),
             });
-        } catch (e) {}
+        } catch (e) { }
         loadConversations();
         loadFriends();
     });
 
     // Nghe khi lời mời của mình được chấp nhận
-    socket.on("friend_request_accepted", async(userWhoAccepted) => {
+    socket.on("friend_request_accepted", async (userWhoAccepted) => {
         alert(`${userWhoAccepted.fullName} đã chấp nhận lời mời của bạn!`);
         try {
             await fetch(`${API_URL}/chat/conversations`, {
@@ -646,7 +646,7 @@ function initizeChatSession(userData, userToken) {
                 },
                 body: JSON.stringify({ receiverId: userWhoAccepted.id }),
             });
-        } catch (e) {}
+        } catch (e) { }
         loadConversations();
     });
 
@@ -906,13 +906,13 @@ function setupFirebaseMessaging(userToken) {
                         if (currentToken) {
                             console.log("🔥 Đã lấy được FCM Token:", currentToken);
                             fetch(`${API_URL}/users/fcm-token`, {
-                                    method: "POST",
-                                    headers: {
-                                        "Content-Type": "application/json",
-                                        Authorization: `Bearer ${userToken}`,
-                                    },
-                                    body: JSON.stringify({ fcmToken: currentToken }),
-                                })
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                    Authorization: `Bearer ${userToken}`,
+                                },
+                                body: JSON.stringify({ fcmToken: currentToken }),
+                            })
                                 .then(res => res.json())
                                 .then(data => {
                                     console.log("💾 Đã lưu thành công FCM Token lên server:", data);
@@ -928,8 +928,8 @@ function setupFirebaseMessaging(userToken) {
             } else {
                 // Fallback nếu trình duyệt không hỗ trợ Service Worker
                 messaging.getToken({
-                        vapidKey: "BBtraQSvar7RExe_T8aVhoA3TebgLw0S-ucoMcuV-Oef-H7ULkJGWyBctnxfY5tLnawpWQ9Wn8Aihi-wJaLiGu0",
-                    })
+                    vapidKey: "BBtraQSvar7RExe_T8aVhoA3TebgLw0S-ucoMcuV-Oef-H7ULkJGWyBctnxfY5tLnawpWQ9Wn8Aihi-wJaLiGu0",
+                })
                     .then((currentToken) => {
                         if (currentToken) {
                             console.log("🔥 Đã lấy được FCM Token (fallback):", currentToken);
@@ -1016,9 +1016,9 @@ async function loadConversations() {
                     conv._count && conv._count.Messages ? conv._count.Messages : 0;
                 const unreadBadgeHtml =
                     unreadCount > 0 ?
-                    `<span class="unread-badge">${unreadCount > 99 ? "99+" : unreadCount
+                        `<span class="unread-badge">${unreadCount > 99 ? "99+" : unreadCount
                         }</span>` :
-                    "";
+                        "";
                 const msgStyle =
                     unreadCount > 0 ? "font-weight: 600; color: var(--text-dark);" : "";
 
@@ -1180,8 +1180,8 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
 
         const resMsg = await fetch(
             `${API_URL}/chat/${currentConversationId}/messages`, {
-                headers: { Authorization: `Bearer ${token}` },
-            },
+            headers: { Authorization: `Bearer ${token}` },
+        },
         );
 
         if (!resMsg.ok) {
@@ -1304,8 +1304,8 @@ async function reloadCurrentChat() {
     try {
         const resMsg = await fetch(
             `${API_URL}/chat/${currentConversationId}/messages`, {
-                headers: { Authorization: `Bearer ${token}` },
-            },
+            headers: { Authorization: `Bearer ${token}` },
+        },
         );
         if (!resMsg.ok) {
             const errorText = await resMsg.text();
@@ -1970,7 +1970,7 @@ function displayMessage(msg) {
                 if (navigator.vibrate) {
                     try {
                         navigator.vibrate(30);
-                    } catch (err) {}
+                    } catch (err) { }
                 }
             }
         });
@@ -2041,16 +2041,13 @@ function displayMessage(msg) {
     // (trong startChat / reloadCurrentChat / socket receive_message). Không gọi ở đây để tránh flicker.
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
-
 // 5. Gửi tin nhắn bất đồng bộ
 function sendMessage(imageContent = null) {
     const input = document.getElementById("message-input");
     const content = imageContent || input.value.trim();
 
     if (!currentConversationId) {
-        return alert(
-            "Bạn quên chưa chọn người để trò chuyện rồi (Cột danh sách bên trái)!",
-        );
+        return alert("Bạn quên chưa chọn người để trò chuyện rồi (Cột danh sách bên trái)!");
     }
 
     if (!content) return;
@@ -2059,12 +2056,27 @@ function sendMessage(imageContent = null) {
     if (editingMessage && !imageContent) {
         const messageIdToEdit = editingMessage.id;
         input.value = "";
+        input.style.height = 'auto'; // Reset chiều cao sau khi sửa
+        // Reset UI Messenger
+        document.getElementById('input-area').classList.remove('is-typing');
+        document.getElementById('voice-record-btn').style.display = 'flex';
+        document.getElementById('send-btn').style.display = 'none';
+        document.getElementById('expand-btn').style.display = 'none';
+
         editMessageApi(messageIdToEdit, content);
         cancelReply();
         return;
     }
 
     input.value = "";
+    if (!imageContent) {
+        // Reset chiều cao Textarea và nhả các nút Messenger lại trạng thái ban đầu
+        input.style.height = 'auto';
+        document.getElementById('input-area').classList.remove('is-typing');
+        document.getElementById('voice-record-btn').style.display = 'flex';
+        document.getElementById('send-btn').style.display = 'none';
+        document.getElementById('expand-btn').style.display = 'none';
+    }
 
     if (!imageContent && socket) {
         if (currentChatPartnerId) {
@@ -2091,10 +2103,7 @@ function sendMessage(imageContent = null) {
     };
     currentChatMessages.push(optimisticMsg);
     displayMessage(optimisticMsg);
-
-    // Cập nhật sidebar ngay không chờ server
     updateChatListUI(optimisticMsg, true);
-
     cancelReply();
 
     const payload = { content };
@@ -2103,30 +2112,25 @@ function sendMessage(imageContent = null) {
     }
 
     fetch(`${API_URL}/chat/${currentConversationId}/messages`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(payload),
-        })
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+    })
         .then((response) => response.json())
         .then((data) => {
             if (data.success) {
-                // Thay thế tin nhắn optimistic bằng tin nhắn thật từ server
                 const optimisticEl = document.getElementById(`msg-${optimisticId}`);
                 if (optimisticEl) {
-                    // Cập nhật id để khớp với id thật và socket sẽ nhận biết không hiển thị trùng
                     optimisticEl.id = `msg-${data.data.id}`;
                     optimisticEl.dataset.messageId = data.data.id;
-                    // ✨ Xóa dấu chấm spinner - tin nhắn đã gửi xong
                     optimisticEl.style.opacity = "1";
                 }
-                // Cập nhật trong mảng currentChatMessages
                 const idx = currentChatMessages.findIndex(m => m.id === optimisticId);
                 if (idx !== -1) currentChatMessages[idx] = data.data;
             } else {
-                // Nếu gửi thất bại, xóa tin nhắn optimistic
                 alert("Server từ chối gửi tin nhắn: " + data.message);
                 const optimisticEl = document.getElementById(`msg-${optimisticId}`);
                 if (optimisticEl) optimisticEl.remove();
@@ -2143,13 +2147,78 @@ function sendMessage(imageContent = null) {
         });
 }
 
-// 6. Bấm phím Enter để gửi tin nhắn
+// 6. Bấm phím Enter để gửi tin nhắn (Tự co giãn khung)
 const messageInput = document.getElementById("message-input");
 if (messageInput) {
-    messageInput.addEventListener("keypress", function(e) {
-        if (e.key === "Enter") {
+    // Cho phép Shift+Enter để xuống dòng, Enter thường để gửi
+    messageInput.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
             sendMessage();
         }
+    });
+
+    messageInput.addEventListener("input", function () {
+        // Tự động giãn chiều cao textarea
+        this.style.height = 'auto';
+        this.style.height = (this.scrollHeight) + 'px';
+        if (this.value === '') {
+            this.style.height = 'auto';
+        }
+
+        // Xử lý UI Messenger: Trượt ẩn/hiện nút tiện ích
+        const inputArea = document.getElementById('input-area');
+        const voiceBtn = document.getElementById('voice-record-btn');
+        const sendBtn = document.getElementById('send-btn');
+        const expandBtn = document.getElementById('expand-btn');
+
+        if (this.value.trim().length > 0) {
+            if (inputArea) inputArea.classList.add('is-typing');
+            if (voiceBtn) voiceBtn.style.display = 'none';
+            if (sendBtn) sendBtn.style.display = 'flex';
+            if (expandBtn) expandBtn.style.display = 'flex';
+        } else {
+            if (inputArea) inputArea.classList.remove('is-typing');
+            if (voiceBtn) voiceBtn.style.display = 'flex';
+            if (sendBtn) sendBtn.style.display = 'none';
+            if (expandBtn) expandBtn.style.display = 'none';
+        }
+
+        // Phát sự kiện Socket Typing
+        if (!socket) return;
+        if (currentChatPartnerId) {
+            socket.emit("typing", { receiverId: currentChatPartnerId, senderName: myName });
+        }
+        if (currentConversationId) {
+            socket.emit("typing", {
+                conversationId: currentConversationId,
+                senderId: myId,
+                senderName: myName,
+            });
+        }
+
+        clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(() => {
+            if (currentChatPartnerId) {
+                socket.emit("stop-typing", { receiverId: currentChatPartnerId });
+            }
+            if (currentConversationId) {
+                socket.emit("stop_typing", {
+                    conversationId: currentConversationId,
+                    senderId: myId,
+                });
+            }
+        }, 1500);
+    });
+}
+
+// Xử lý nút mũi tên mở rộng lại cụm ảnh/file khi đang gõ
+const expandBtnUI = document.getElementById('expand-btn');
+if (expandBtnUI) {
+    expandBtnUI.addEventListener('click', function () {
+        const inputArea = document.getElementById('input-area');
+        if (inputArea) inputArea.classList.remove('is-typing');
+        this.style.display = 'none';
     });
 }
 
@@ -2161,12 +2230,12 @@ function closeChatMobile() {
 // 7. Sự kiện Gửi Hình ảnh
 const imageUploadInput = document.getElementById("image-upload");
 if (imageUploadInput) {
-    imageUploadInput.addEventListener("change", function(e) {
+    imageUploadInput.addEventListener("change", function (e) {
         const file = e.target.files[0];
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = function(event) {
+        reader.onload = function (event) {
             const base64Image = event.target.result;
             sendMessage(base64Image);
         };
@@ -2177,7 +2246,7 @@ if (imageUploadInput) {
 // Sự kiện Gửi Tệp tin (File/Document)
 const fileUploadInput = document.getElementById("file-upload");
 if (fileUploadInput) {
-    fileUploadInput.addEventListener("change", function(e) {
+    fileUploadInput.addEventListener("change", function (e) {
         const file = e.target.files[0];
         if (!file) return;
 
@@ -2187,7 +2256,7 @@ if (fileUploadInput) {
         }
 
         const reader = new FileReader();
-        reader.onload = function(event) {
+        reader.onload = function (event) {
             const base64Data = event.target.result;
             const filePayload = {
                 fileName: file.name,
@@ -2200,47 +2269,10 @@ if (fileUploadInput) {
         reader.readAsDataURL(file);
     });
 }
-
-// 8. Sự kiện Nhập phím "Đang gõ..."
-if (messageInput) {
-    messageInput.addEventListener("input", () => {
-        if (!socket) return;
-
-        // Gửi sự kiện typing mới (1-1)
-        if (currentChatPartnerId) {
-            socket.emit("typing", { receiverId: currentChatPartnerId, senderName: myName });
-        }
-
-        // Gửi sự kiện typing cũ (Phòng/Group)
-        if (currentConversationId) {
-            socket.emit("typing", {
-                conversationId: currentConversationId,
-                senderId: myId,
-                senderName: myName,
-            });
-        }
-
-        clearTimeout(typingTimeout);
-        typingTimeout = setTimeout(() => {
-            // Gửi sự kiện stop-typing mới (1-1)
-            if (currentChatPartnerId) {
-                socket.emit("stop-typing", { receiverId: currentChatPartnerId });
-            }
-            // Gửi sự kiện stop_typing cũ (Phòng/Group)
-            if (currentConversationId) {
-                socket.emit("stop_typing", {
-                    conversationId: currentConversationId,
-                    senderId: myId,
-                });
-            }
-        }, 1500);
-    });
-}
-
 // 9. Sự kiện Tải lên Avatar Mới
 const avatarUploadInput = document.getElementById("avatar-upload");
 if (avatarUploadInput) {
-    avatarUploadInput.addEventListener("change", async function(e) {
+    avatarUploadInput.addEventListener("change", async function (e) {
         const file = e.target.files[0];
         if (!file) return;
 
@@ -2360,7 +2392,7 @@ function renderReactions(messageElement, reactions) {
 // 1. Chống chụm ngón tay (Pinch Zoom)
 document.addEventListener(
     "touchmove",
-    function(e) {
+    function (e) {
         if (e.touches.length > 1) {
             e.preventDefault();
         }
@@ -2725,7 +2757,7 @@ async function openOtherUserProfileModal(userId) {
         }
 
         if (callBtn) {
-            callBtn.onclick = async() => {
+            callBtn.onclick = async () => {
                 closeOtherUserProfileModal();
                 await startChat(user.id, user.name, formatUrl(user.profileAvatarUrl));
                 startCall("voice");
@@ -2733,7 +2765,7 @@ async function openOtherUserProfileModal(userId) {
         }
 
         if (videoBtn) {
-            videoBtn.onclick = async() => {
+            videoBtn.onclick = async () => {
                 closeOtherUserProfileModal();
                 await startChat(user.id, user.name, formatUrl(user.profileAvatarUrl));
                 startCall("video");
@@ -2944,7 +2976,7 @@ async function sendAiMessage() {
                 try {
                     const errData = await response.json();
                     if (errData && errData.error) errorMsg = errData.error;
-                } catch (e) {}
+                } catch (e) { }
             }
             throw new Error(errorMsg);
         }
@@ -5333,28 +5365,28 @@ function getNextResetTime() {
 let aiQuotaTimerInterval = null;
 function startAiQuotaCountdown() {
     if (aiQuotaTimerInterval) clearInterval(aiQuotaTimerInterval);
-    
+
     function updateCountdown() {
         const countdownEl = document.getElementById("ai-quota-countdown");
         if (!countdownEl) return;
-        
+
         const now = new Date();
         const nextReset = getNextResetTime();
         const diffMs = nextReset - now;
-        
+
         if (diffMs <= 0) {
             updateAiQuotaBar();
             return;
         }
-        
+
         const hours = Math.floor(diffMs / (1000 * 60 * 60));
         const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
-        
+
         const pad = (num) => String(num).padStart(2, "0");
         countdownEl.innerText = `Tự động reset sau: ${pad(hours)}h ${pad(minutes)}m ${pad(seconds)}s`;
     }
-    
+
     updateCountdown();
     aiQuotaTimerInterval = setInterval(updateCountdown, 1000);
 }

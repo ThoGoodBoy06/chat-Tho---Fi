@@ -301,20 +301,25 @@
           </div>
 
           <div class="input-area" id="input-area" style="display: none">
-            <div class="input-actions-left">
-              <i class="fas fa-image icon-btn" onclick="document.getElementById('image-upload').click()"></i>
-              <input type="file" id="image-upload" accept="image/*" hidden />
-              <i class="fas fa-paperclip icon-btn" onclick="document.getElementById('file-upload').click()"></i>
-              <input type="file" id="file-upload" hidden />
-              <i class="fas fa-smile icon-btn"></i>
+            <div class="input-actions-left-wrapper" id="action-left-wrapper">
+              <div class="input-actions-left">
+                <i class="fas fa-image icon-btn" onclick="document.getElementById('image-upload').click()"></i>
+                <input type="file" id="image-upload" accept="image/*" hidden />
+                <i class="fas fa-paperclip icon-btn" onclick="document.getElementById('file-upload').click()"></i>
+                <input type="file" id="file-upload" hidden />
+              </div>
             </div>
+            
+            <i class="fas fa-chevron-right icon-btn expand-actions-btn" id="expand-btn" style="display: none;"></i>
+
             <div class="input-wrapper">
-              <input type="text" id="message-input" placeholder="Nhập tin nhắn..." />
+              <textarea id="message-input" rows="1" placeholder="Nhập tin nhắn..."></textarea>
+              <i class="fas fa-smile icon-btn face-icon"></i>
             </div>
+            
             <div class="input-actions-right">
-              <i class="fas fa-microphone icon-btn" id="voice-record-btn" onclick="toggleVoiceRecording()"
-                style="margin-right: 8px;"></i>
-              <i class="fas fa-paper-plane icon-btn send-btn" onclick="sendMessage()"></i>
+              <i class="fas fa-microphone icon-btn" id="voice-record-btn" onclick="toggleVoiceRecording()"></i>
+              <i class="fas fa-paper-plane icon-btn send-btn" id="send-btn" onclick="sendMessage()" style="display: none;"></i>
             </div>
           </div>
         </main>
