@@ -1057,7 +1057,7 @@ p {
   background: var(--msg-receiver-bg);
   border-top: 1px solid var(--border-color);
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: 12px;
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
@@ -1070,12 +1070,6 @@ p {
   opacity: 1;
 }
 
-/* Khi có class "is-typing" (đang gõ), thu gọn cụm menu trái */
-.input-area.is-typing .input-actions-left-wrapper {
-  max-width: 0;
-  opacity: 0;
-  margin: 0;
-}
 
 .input-actions-left {
   display: flex;
@@ -1107,14 +1101,15 @@ p {
 }
 
 /* Khung bọc Textarea (thay cho input cũ) */
+/* Khung bọc Textarea (thay cho input cũ) */
 .input-wrapper {
   flex: 1;
   background: var(--bg-color);
   border-radius: 20px;
-  padding: 8px 12px 8px 16px;
+  padding: 6px 12px 6px 16px;
   min-height: 36px;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   transition: all var(--transition-normal);
   border: 1.5px solid var(--border-color);
 }
@@ -1141,7 +1136,6 @@ p {
   line-height: 1.4;
   padding: 0;
   margin: 0;
-  margin-bottom: 2px;
 }
 
 #message-input::placeholder {
@@ -1158,7 +1152,7 @@ p {
 .face-icon {
   margin-left: 8px;
   font-size: 22px !important;
-  margin-bottom: 2px;
+  margin-bottom: 0;
   color: var(--text-light);
   cursor: pointer;
 }
@@ -2932,7 +2926,7 @@ input:checked+.slider.round:before {
     padding: 8px 12px;
     padding-bottom: calc(8px + env(safe-area-inset-bottom));
     background: var(--msg-receiver-bg) !important;
-    align-items: flex-end;
+    align-items: center;
     border-top: 1px solid var(--border-color) !important;
   }
 
@@ -2943,11 +2937,6 @@ input:checked+.slider.round:before {
     opacity: 1;
   }
 
-  .input-area.is-typing .input-actions-left-wrapper {
-    max-width: 0 !important;
-    opacity: 0 !important;
-    margin: 0 !important;
-  }
 
   .expand-actions-btn {
     display: none;
