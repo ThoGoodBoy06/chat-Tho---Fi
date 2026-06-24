@@ -2052,33 +2052,34 @@ function sendMessage(imageContent = null) {
 
     if (!content) return;
 
-    // Chặn để thực hiện sửa tin nhắn thay vì gửi mới
-    if (editingMessage && !imageContent) {
+    // Chặn để thực hiện sửa tin nhắn thay vì gửi mới (không áp dụng cho gửi Like)
+    if (editingMessage && !imageContent && content !== '👍') {
         const messageIdToEdit = editingMessage.id;
         input.value = "";
-        input.style.height = 'auto'; // Reset chiều cao sau khi sửa
-        // Reset UI Messenger
-        document.getElementById('input-area').classList.remove('is-typing');
-        document.getElementById('voice-record-btn').style.display = 'flex';
-        document.getElementById('send-btn').style.display = 'none';
-        document.getElementById('expand-btn').style.display = 'none';
-
+        input.style.height = 'auto'; // Reset chiều cao
+        
+        // Trả UI về mặc định
+        const inputArea = document.getElementById('input-area');
+        if(inputArea) inputArea.classList.remove('is-typing');
+        if(document.getElementById('like-btn')) document.getElementById('like-btn').style.display = 'block';
+        if(document.getElementById('send-btn')) document.getElementById('send-btn').style.display = 'none';
+        
         editMessageApi(messageIdToEdit, content);
         cancelReply();
         return;
     }
 
     input.value = "";
-    if (!imageContent) {
-        // Reset chiều cao Textarea và nhả các nút Messenger lại trạng thái ban đầu
+    if (!imageContent || imageContent === '👍') {
+        // Trả UI về mặc định
         input.style.height = 'auto';
-        document.getElementById('input-area').classList.remove('is-typing');
-        document.getElementById('voice-record-btn').style.display = 'flex';
-        document.getElementById('send-btn').style.display = 'none';
-        document.getElementById('expand-btn').style.display = 'none';
+        const inputArea = document.getElementById('input-area');
+        if(inputArea) inputArea.classList.remove('is-typing');
+        if(document.getElementById('like-btn')) document.getElementById('like-btn').style.display = 'block';
+        if(document.getElementById('send-btn')) document.getElementById('send-btn').style.display = 'none';
     }
 
-    if (!imageContent && socket) {
+    if ((!imageContent || imageContent === '👍') && socket) {
         if (currentChatPartnerId) {
             socket.emit("stop-typing", { receiverId: currentChatPartnerId });
         }
@@ -2088,14 +2089,14 @@ function sendMessage(imageContent = null) {
         });
     }
 
-    // ✨ OPTIMISTIC UI: Hiển thị tin nhắn ngay lập tức, không chờ server
+    // ✨ OPTIMISTIC UI: Hiển thị tin nhắn ngay lập tức
     const optimisticId = `optimistic-${Date.now()}`;
     const optimisticMsg = {
         id: optimisticId,
         conversationId: currentConversationId,
         senderId: myId,
         content: content,
-        type: imageContent && imageContent.startsWith("data:image") ? "image" : "text",
+        type: (imageContent && imageContent.startsWith("data:image")) ? "image" : "text",
         isRecalled: false,
         createdAt: new Date().toISOString(),
         replyMessageId: replyingToMessage ? replyingToMessage.id : null,
@@ -2119,38 +2120,37 @@ function sendMessage(imageContent = null) {
         },
         body: JSON.stringify(payload),
     })
-        .then((response) => response.json())
-        .then((data) => {
-            if (data.success) {
-                const optimisticEl = document.getElementById(`msg-${optimisticId}`);
-                if (optimisticEl) {
-                    optimisticEl.id = `msg-${data.data.id}`;
-                    optimisticEl.dataset.messageId = data.data.id;
-                    optimisticEl.style.opacity = "1";
-                }
-                const idx = currentChatMessages.findIndex(m => m.id === optimisticId);
-                if (idx !== -1) currentChatMessages[idx] = data.data;
-            } else {
-                alert("Server từ chối gửi tin nhắn: " + data.message);
-                const optimisticEl = document.getElementById(`msg-${optimisticId}`);
-                if (optimisticEl) optimisticEl.remove();
-                const idx = currentChatMessages.findIndex(m => m.id === optimisticId);
-                if (idx !== -1) currentChatMessages.splice(idx, 1);
+    .then((response) => response.json())
+    .then((data) => {
+        if (data.success) {
+            const optimisticEl = document.getElementById(`msg-${optimisticId}`);
+            if (optimisticEl) {
+                optimisticEl.id = `msg-${data.data.id}`;
+                optimisticEl.dataset.messageId = data.data.id;
+                optimisticEl.style.opacity = "1";
             }
-        })
-        .catch((err) => {
-            alert("Lỗi kết nối mạng: " + err.message);
+            const idx = currentChatMessages.findIndex(m => m.id === optimisticId);
+            if (idx !== -1) currentChatMessages[idx] = data.data;
+        } else {
+            alert("Server từ chối gửi tin nhắn: " + data.message);
             const optimisticEl = document.getElementById(`msg-${optimisticId}`);
             if (optimisticEl) optimisticEl.remove();
             const idx = currentChatMessages.findIndex(m => m.id === optimisticId);
             if (idx !== -1) currentChatMessages.splice(idx, 1);
-        });
+        }
+    })
+    .catch((err) => {
+        alert("Lỗi kết nối mạng: " + err.message);
+        const optimisticEl = document.getElementById(`msg-${optimisticId}`);
+        if (optimisticEl) optimisticEl.remove();
+        const idx = currentChatMessages.findIndex(m => m.id === optimisticId);
+        if (idx !== -1) currentChatMessages.splice(idx, 1);
+    });
 }
 
-// 6. Bấm phím Enter để gửi tin nhắn (Tự co giãn khung)
+// 6. Bấm phím Enter để gửi & Sự kiện gõ phím
 const messageInput = document.getElementById("message-input");
 if (messageInput) {
-    // Cho phép Shift+Enter để xuống dòng, Enter thường để gửi
     messageInput.addEventListener("keydown", function (e) {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
@@ -2159,29 +2159,26 @@ if (messageInput) {
     });
 
     messageInput.addEventListener("input", function () {
-        // Tự động giãn chiều cao textarea
+        // Tự động giãn dòng
         this.style.height = 'auto';
         this.style.height = (this.scrollHeight) + 'px';
         if (this.value === '') {
             this.style.height = 'auto';
         }
 
-        // Xử lý UI Messenger: Trượt ẩn/hiện nút tiện ích
+        // Logic của Messenger: Thay Like thành Gửi, thu gọn menu trái
         const inputArea = document.getElementById('input-area');
-        const voiceBtn = document.getElementById('voice-record-btn');
+        const likeBtn = document.getElementById('like-btn');
         const sendBtn = document.getElementById('send-btn');
-        const expandBtn = document.getElementById('expand-btn');
 
         if (this.value.trim().length > 0) {
             if (inputArea) inputArea.classList.add('is-typing');
-            if (voiceBtn) voiceBtn.style.display = 'none';
-            if (sendBtn) sendBtn.style.display = 'flex';
-            if (expandBtn) expandBtn.style.display = 'flex';
+            if (likeBtn) likeBtn.style.display = 'none';
+            if (sendBtn) sendBtn.style.display = 'block';
         } else {
             if (inputArea) inputArea.classList.remove('is-typing');
-            if (voiceBtn) voiceBtn.style.display = 'flex';
+            if (likeBtn) likeBtn.style.display = 'block';
             if (sendBtn) sendBtn.style.display = 'none';
-            if (expandBtn) expandBtn.style.display = 'none';
         }
 
         // Phát sự kiện Socket Typing
@@ -2218,7 +2215,6 @@ if (expandBtnUI) {
     expandBtnUI.addEventListener('click', function () {
         const inputArea = document.getElementById('input-area');
         if (inputArea) inputArea.classList.remove('is-typing');
-        this.style.display = 'none';
     });
 }
 

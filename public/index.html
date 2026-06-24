@@ -301,25 +301,31 @@
           </div>
 
           <div class="input-area" id="input-area" style="display: none">
+            <i class="fas fa-chevron-right icon-btn expand-actions-btn" id="expand-btn"></i>
+
             <div class="input-actions-left-wrapper" id="action-left-wrapper">
               <div class="input-actions-left">
+                <i class="fas fa-plus-circle icon-btn" onclick="document.getElementById('file-upload').click()"></i>
+                <input type="file" id="file-upload" hidden />
+
+                <i class="fas fa-camera icon-btn" onclick="alert('Tính năng Camera đang phát triển')"></i>
+
                 <i class="fas fa-image icon-btn" onclick="document.getElementById('image-upload').click()"></i>
                 <input type="file" id="image-upload" accept="image/*" hidden />
-                <i class="fas fa-paperclip icon-btn" onclick="document.getElementById('file-upload').click()"></i>
-                <input type="file" id="file-upload" hidden />
+
+                <i class="fas fa-microphone icon-btn" id="voice-record-btn" onclick="toggleVoiceRecording()"></i>
               </div>
             </div>
-            
-            <i class="fas fa-chevron-right icon-btn expand-actions-btn" id="expand-btn" style="display: none;"></i>
 
             <div class="input-wrapper">
-              <textarea id="message-input" rows="1" placeholder="Nhập tin nhắn..."></textarea>
+              <textarea id="message-input" rows="1" placeholder="Aa"></textarea>
               <i class="fas fa-smile icon-btn face-icon"></i>
             </div>
-            
+
             <div class="input-actions-right">
-              <i class="fas fa-microphone icon-btn" id="voice-record-btn" onclick="toggleVoiceRecording()"></i>
-              <i class="fas fa-paper-plane icon-btn send-btn" id="send-btn" onclick="sendMessage()" style="display: none;"></i>
+              <i class="fas fa-thumbs-up icon-btn send-like-btn" id="like-btn" onclick="sendMessage('👍')"></i>
+              <i class="fas fa-paper-plane icon-btn send-btn" id="send-btn" onclick="sendMessage()"
+                style="display: none;"></i>
             </div>
           </div>
         </main>
@@ -507,9 +513,9 @@
               <i class="fas fa-edit" onclick="resetAiChat()"></i>
             </div>
           </div>
-          
+
           <!-- Thanh hạn ngạch sử dụng AI (Token quota bar) -->
-          <div class="ai-quota-bar-container" id="ai-quota-bar-container">
+          <!-- <div class="ai-quota-bar-container" id="ai-quota-bar-container">
             <div class="ai-quota-bar-label">
               <span>Hạn ngạch sử dụng AI trong ngày</span>
               <span id="ai-quota-bar-percentage">0%</span>
@@ -521,7 +527,7 @@
               <span id="ai-quota-reset-text">Reset hằng ngày lúc 07:00 sáng</span>
               <span id="ai-quota-countdown">--:--:--</span>
             </div>
-          </div>
+          </div> -->
 
           <div class="ai-chat-history" id="ai-chat-history">
             <!-- Màn hình chào mừng chính giữa -->
