@@ -1122,6 +1122,21 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
                 receiverName,
             )}&background=random`;
         document.getElementById("input-area").style.display = "flex";
+        
+        // Reset ô nhập và trạng thái UI (thu gọn/Like) khi chuyển phòng chat
+        const messageInput = document.getElementById("message-input");
+        if (messageInput) {
+            messageInput.value = "";
+            messageInput.style.height = "auto";
+        }
+        const inputArea = document.getElementById("input-area");
+        if (inputArea) {
+            inputArea.classList.remove("is-typing");
+        }
+        const likeBtn = document.getElementById('like-btn');
+        const sendBtn = document.getElementById('send-btn');
+        if (likeBtn) likeBtn.style.display = 'block';
+        if (sendBtn) sendBtn.style.display = 'none';
 
         const res = await fetch(`${API_URL}/chat/conversations`, {
             method: "POST",
@@ -2176,7 +2191,11 @@ if (messageInput) {
             if (likeBtn) likeBtn.style.display = 'none';
             if (sendBtn) sendBtn.style.display = 'block';
         } else {
-            if (inputArea) inputArea.classList.remove('is-typing');
+            if (document.activeElement === messageInput) {
+                if (inputArea) inputArea.classList.add('is-typing');
+            } else {
+                if (inputArea) inputArea.classList.remove('is-typing');
+            }
             if (likeBtn) likeBtn.style.display = 'block';
             if (sendBtn) sendBtn.style.display = 'none';
         }
@@ -2207,6 +2226,20 @@ if (messageInput) {
             }
         }, 1500);
     });
+
+    // Khi người dùng bấm click vào ô nhập (Focus) -> thu gọn menu trái để nhường chỗ
+    messageInput.addEventListener("focus", function () {
+        const inputArea = document.getElementById('input-area');
+        if (inputArea) inputArea.classList.add('is-typing');
+    });
+
+    // Khi người dùng bấm ra ngoài (Blur) -> hiển thị lại menu trái nếu ô nhập trống
+    messageInput.addEventListener("blur", function () {
+        const inputArea = document.getElementById('input-area');
+        if (this.value.trim().length === 0) {
+            if (inputArea) inputArea.classList.remove('is-typing');
+        }
+    });
 }
 
 // Xử lý nút mũi tên mở rộng lại cụm ảnh/file khi đang gõ
@@ -2214,7 +2247,9 @@ const expandBtnUI = document.getElementById('expand-btn');
 if (expandBtnUI) {
     expandBtnUI.addEventListener('click', function () {
         const inputArea = document.getElementById('input-area');
-        if (inputArea) inputArea.classList.remove('is-typing');
+        if (inputArea) {
+            inputArea.classList.remove('is-typing');
+        }
     });
 }
 
