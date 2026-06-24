@@ -305,15 +305,10 @@
 
             <div class="input-actions-left-wrapper" id="action-left-wrapper">
               <div class="input-actions-left">
-                <i class="fas fa-plus-circle icon-btn" onclick="document.getElementById('file-upload').click()"></i>
-                <input type="file" id="file-upload" hidden />
-
                 <i class="fas fa-camera icon-btn" onclick="alert('Tính năng Camera đang phát triển')"></i>
 
                 <i class="fas fa-image icon-btn" onclick="document.getElementById('image-upload').click()"></i>
                 <input type="file" id="image-upload" accept="image/*" hidden />
-
-                <i class="fas fa-microphone icon-btn" id="voice-record-btn" onclick="toggleVoiceRecording()"></i>
               </div>
             </div>
 
@@ -323,6 +318,7 @@
             </div>
 
             <div class="input-actions-right">
+              <i class="fas fa-microphone icon-btn voice-record-btn-always" id="voice-record-btn" onclick="toggleVoiceRecording()"></i>
               <i class="fas fa-thumbs-up icon-btn send-like-btn" id="like-btn" onclick="sendMessage('👍')"></i>
               <i class="fas fa-paper-plane icon-btn send-btn" id="send-btn" onclick="sendMessage()"
                 style="display: none;"></i>

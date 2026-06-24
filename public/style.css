@@ -1116,10 +1116,13 @@ p {
   display: flex;
   align-items: flex-end;
   transition: all var(--transition-normal);
+  border: 1.5px solid var(--border-color);
 }
 
 .input-wrapper:focus-within {
-  background: var(--hover-bg);
+  background: var(--msg-receiver-bg);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(0, 132, 255, 0.15);
 }
 
 /* Textarea tự động giãn */
@@ -1141,6 +1144,13 @@ p {
   margin-bottom: 2px;
 }
 
+#message-input::placeholder {
+  color: #8E8E93;
+  opacity: 1 !important;
+  -webkit-text-fill-color: #8E8E93;
+  font-weight: 500;
+}
+
 #message-input::-webkit-scrollbar {
   display: none;
 }
@@ -1156,7 +1166,25 @@ p {
 .input-actions-right {
   display: flex;
   align-items: center;
+  gap: 4px;
   padding-bottom: 6px;
+}
+
+/* Nút ghi âm luôn hiện bên phải (không bị thu gọn khi is-typing) */
+.voice-record-btn-always {
+  font-size: 22px;
+  color: var(--primary-color) !important;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.voice-record-btn-always:active {
+  transform: scale(0.9);
+}
+
+/* Ẩn nút ghi âm khi đang có nút Gửi (có chữ trong ô nhập) */
+.input-area.is-typing .voice-record-btn-always {
+  display: inline-flex;
 }
 
 .send-btn {
@@ -2903,8 +2931,9 @@ input:checked+.slider.round:before {
     width: 100%;
     padding: 8px 12px;
     padding-bottom: calc(8px + env(safe-area-inset-bottom));
-    background: var(--bg-color);
+    background: var(--msg-receiver-bg) !important;
     align-items: flex-end;
+    border-top: 1px solid var(--border-color) !important;
   }
 
   .input-actions-left-wrapper {
@@ -2932,6 +2961,14 @@ input:checked+.slider.round:before {
   .input-wrapper {
     flex: 1 !important;
     min-width: 0 !important;
+    background: var(--bg-color) !important;
+    border: 1.5px solid var(--border-color) !important;
+  }
+
+  .input-wrapper:focus-within {
+    background: var(--msg-receiver-bg) !important;
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 0 0 2px rgba(0, 132, 255, 0.15) !important;
   }
 
   #messages {
