@@ -2154,7 +2154,7 @@ if (messageInput) {
     messageInput.addEventListener("keydown", function (e) {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
-            sendMessage();
+            sendMessage();  
         }
     });
 
