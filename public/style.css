@@ -445,6 +445,24 @@ p {
 .tab-pane.active {
     display: flex;
     flex-direction: row;
+    /* Thêm hiệu ứng trượt và hiện dần khi chuyển tab */
+    animation: tabContentFadeIn 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+
+/* Khai báo khung hình chuyển động (Animation) */
+
+@keyframes tabContentFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.98);
+        /* Bắt đầu từ dưới một chút và hơi nhỏ */
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        /* Trượt lên vị trí gốc và rõ nét */
+    }
 }
 
 
@@ -2746,29 +2764,21 @@ input:checked+.slider.round:before {
         flex: 1;
         height: 56px;
         flex-direction: column;
-        gap: 4px;
-        border-radius: 12px;
-        /* Tạo bo góc nhẹ khi nhấn giữ */
+        gap: 2px;
         display: flex;
         align-items: center;
         justify-content: center;
-        box-sizing: border-box;
         cursor: pointer;
-        transition: transform 0.15s ease, background-color 0.15s ease;
-        /* Tạo độ mượt khi nhấn */
         -webkit-tap-highlight-color: transparent;
-        /* Xóa bỏ vệt highlight màu đen mặc định của trình duyệt mobile */
+        /* Hiệu ứng nảy mượt khi nhấn */
+        transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
     }
-    /* 1. HIỆU ỨNG KHI ĐÈ NGÓN TAY VÀO (PRESS EFFECT) */
+    /* Hiệu ứng "Nhấn sâu" */
     .nav-item:active {
-        transform: scale(0.9);
-        /* Thu nhỏ nút lại 10% tạo cảm giác đàn hồi */
-        background: rgba(0, 0, 0, 0.03);
-        /* Phủ một lớp tối cực kỳ nhẹ */
+        transform: translateY(4px) scale(0.9);
     }
     body[data-theme="dark"] .nav-item:active {
-        background: rgba(255, 255, 255, 0.04);
-        /* Phủ lớp sáng nhẹ đối với Dark Mode */
+        background: transparent;
     }
     .nav-item:hover {
         transform: none;
@@ -2778,32 +2788,35 @@ input:checked+.slider.round:before {
         background: transparent;
         box-shadow: none;
     }
-    /* Chuẩn bị thuộc tính transition cho Icon */
     .nav-item i {
         padding: 4px 16px;
         border-radius: 16px;
         background: transparent;
-        transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-        /* cubic-bezier giúp tạo độ nảy đàn hồi (bounce) */
+        transition: all 0.35s ease;
     }
-    /* 2. HIỆU ỨNG VIÊN THUỐC NẢY RA KHI ĐƯỢC CHỌN (ACTIVE) */
+    /* Hiệu ứng Viên thuốc Gradient & Nảy */
     .nav-item.active i {
-        background: var(--active-bg);
-        color: var(--primary-color) !important;
-        transform: scale(1.06);
-        /* Phình nhẹ icon ra một chút so với bình thường */
+        background: linear-gradient(135deg, var(--primary-color), #5eafff) !important;
+        color: white !important;
+        padding: 6px 24px !important;
+        border-radius: 20px !important;
+        transform: scale(1.15) translateY(-2px);
+        /* Bay lên và to ra */
+        box-shadow: 0 4px 10px rgba(0, 132, 255, 0.4) !important;
+        transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
     }
+    /* Hiệu ứng chữ đổi màu mượt */
     .nav-item.active .nav-label {
         color: var(--primary-color) !important;
-        font-weight: 600;
-        /* Làm chữ đậm lên khi được chọn */
+        font-weight: 800 !important;
+        transform: translateY(-2px);
     }
     .nav-label {
         display: block;
-        font-size: 11px !important;
+        font-size: 10px !important;
         font-weight: 500;
-        margin-top: 2px;
-        transition: color 0.2s ease, font-weight 0.2s ease;
+        margin-top: 4px;
+        transition: all 0.3s ease;
     }
     .nav-badge {
         top: 6px;
