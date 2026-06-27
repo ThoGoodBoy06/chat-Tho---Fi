@@ -729,7 +729,7 @@ exports.reactToMessage = async (req, res) => {
  * @param {string} body - Nội dung thông báo
  * @param {object} customData - Dữ liệu tùy chỉnh gửi kèm
  */
-exports.sendPushNotification = async (fcmToken, title, body, customData = null) => {
+exports.sendPushNotification = async (fcmToken, title, body, customData = null, dataOnly = false) => {
   if (getApps().length === 0) {
     console.warn("⚠️ Firebase Admin chưa được khởi tạo. Không thể gửi thông báo.");
     return;
@@ -737,22 +737,17 @@ exports.sendPushNotification = async (fcmToken, title, body, customData = null) 
 
   const payload = {
     token: fcmToken,
-    notification: {
-      title: title,
-      body: body,
-      image: "https://chat-tho-fi.onrender.com/icon.png"
-    },
     android: {
-      priority: "high" // Hiện banner Head-up trên Android
+      priority: "high"
     },
     apns: {
       headers: {
-        "apns-push-type": "alert",
-        "apns-priority": "10",
+        "apns-push-type": dataOnly ? "background" : "alert",
+        "apns-priority": dataOnly ? "5" : "10",
       },
       payload: {
         aps: {
-          sound: "default", // Đổ chuông trên iOS
+          sound: "default",
           badge: 1
         }
       }
@@ -760,16 +755,31 @@ exports.sendPushNotification = async (fcmToken, title, body, customData = null) 
     webpush: {
       headers: {
         Urgency: "high"
-      },
-      notification: {
-        icon: "https://chat-tho-fi.onrender.com/icon.png",
-        badge: "https://chat-tho-fi.onrender.com/icon.png",
-        vibrate: [1000, 500, 1000, 500, 1000],
-        requireInteraction: true
       }
     },
-    data: customData || {}
+    data: {
+      ...(customData || {}),
+      title: title,
+      body: body
+    }
   };
+
+  if (!dataOnly) {
+    payload.notification = {
+      title: title,
+      body: body,
+      image: "https://chat-tho-fi.onrender.com/icon.png"
+    };
+    payload.webpush.notification = {
+      icon: "https://chat-tho-fi.onrender.com/icon.png",
+      badge: "https://chat-tho-fi.onrender.com/icon.png",
+      vibrate: [1000, 500, 1000, 500, 1000],
+      requireInteraction: true
+    };
+  } else {
+    // Trên iOS, để APNs cho phép chạy nền nhận dữ liệu Web Push, cần thêm content-available: 1
+    payload.apns.payload.aps["content-available"] = 1;
+  }
 
   try {
     const response = await getMessaging().send(payload);

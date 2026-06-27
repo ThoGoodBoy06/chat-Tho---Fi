@@ -14,7 +14,7 @@
     <meta name="apple-mobile-web-app-title" content="Chat Tho-Fi" />
     <link rel="icon" href="icon.png" type="image/png" />
     <link rel="apple-touch-icon" href="icon.png" />
-    <link rel="stylesheet" href="style.css?v=27000" />
+    <link rel="stylesheet" href="style.css?v=28000" />
 </head>
 
 <body>
@@ -445,6 +445,15 @@
               </label>
                         </div>
 
+                        <div class="zalo-menu-item" style="border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 12px; display: flex; justify-content: space-between; align-items: center;">
+                            <div class="menu-left" style="font-weight: 500; font-size: 13px;">
+                                <i class="fas fa-bell menu-icon" style="color: #f59e0b; width: 16px;"></i> Thông báo hệ thống (Web Push)
+                            </div>
+                            <button id="notification-permission-btn" class="custom-btn btn-primary" onclick="requestNotificationPermission()" style="padding: 6px 14px; font-size: 12px; border-radius: 6px; margin: 0; min-height: unset; height: 32px; display: inline-flex; align-items: center; justify-content: center;">
+                                Bật
+                            </button>
+                        </div>
+
                         <div class="zalo-menu-item" style="flex-direction: column; align-items: stretch; gap: 8px; border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 12px;">
                             <div class="menu-left" style="font-weight: 500; font-size: 13px;">
                                 <i class="fas fa-microphone menu-icon" style="color: #3b82f6; width: 16px;"></i> Thiết bị Microphone (Micro)
@@ -866,7 +875,7 @@
 
     <!-- Import Socket.IO và file xử lý logic -->
     <script src="/socket.io/socket.io.js"></script>
-    <script src="app.js?v=26000"></script>
+    <script src="app.js?v=28000"></script>
 </body>
 
 </html>

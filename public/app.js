@@ -919,6 +919,7 @@ function initizeChatSession(userData, userToken) {
     loadConversations();
     loadFriends();
     loadNotifications();
+    updateNotificationPermissionUI();
 }
 
 // --- ĐĂNG KÝ VÀ CẤU HÌNH FIREBASE CLOUD MESSAGING (LẤY FCM TOKEN) ---
@@ -3154,6 +3155,7 @@ function switchTab(tabId, navElement) {
     }
     if (tabId === "tab-settings") {
         updateMediaDevicesList();
+        updateNotificationPermissionUI();
     }
 
     document
@@ -5405,6 +5407,7 @@ document.addEventListener("click", (e) => {
 async function requestNotificationPermission() {
     if (!("Notification" in window)) {
         console.warn("Trình duyệt này không hỗ trợ hiển thị thông báo.");
+        updateNotificationPermissionUI();
         return;
     }
 
@@ -5418,8 +5421,50 @@ async function requestNotificationPermission() {
         } else {
             console.warn("Người dùng từ chối cấp quyền thông báo.");
         }
+        updateNotificationPermissionUI();
     } catch (error) {
         console.error("Lỗi trong quá trình xin quyền hoặc lấy FCM Token:", error);
+        updateNotificationPermissionUI();
+    }
+}
+
+// Cập nhật trạng thái giao diện nút xin quyền thông báo
+function updateNotificationPermissionUI() {
+    const btn = document.getElementById("notification-permission-btn");
+    if (!btn) return;
+
+    if (!("Notification" in window)) {
+        btn.innerText = "Không hỗ trợ";
+        btn.disabled = true;
+        btn.style.background = "var(--border-color)";
+        btn.style.color = "var(--text-light)";
+        btn.style.border = "none";
+        return;
+    }
+
+    if (Notification.permission === "granted") {
+        btn.innerHTML = `<i class="fas fa-check"></i> Đã bật`;
+        btn.disabled = true;
+        btn.style.background = "rgba(16, 185, 129, 0.1)";
+        btn.style.color = "#10b981";
+        btn.style.border = "1px solid #10b981";
+        btn.style.cursor = "default";
+        btn.style.transform = "none";
+    } else if (Notification.permission === "denied") {
+        btn.innerText = "Bị từ chối";
+        btn.disabled = true;
+        btn.style.background = "rgba(239, 68, 68, 0.1)";
+        btn.style.color = "#ef4444";
+        btn.style.border = "1px solid #ef4444";
+        btn.style.cursor = "default";
+        btn.style.transform = "none";
+    } else {
+        btn.innerText = "Bật";
+        btn.disabled = false;
+        btn.style.background = "var(--primary-color)";
+        btn.style.color = "white";
+        btn.style.border = "none";
+        btn.style.cursor = "pointer";
     }
 }
 

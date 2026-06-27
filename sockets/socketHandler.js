@@ -226,7 +226,7 @@ module.exports = (io) => {
             };
             
             try {
-              await sendPushNotification(calleeUser.fcmToken, callTitle, callBody, customData);
+              await sendPushNotification(calleeUser.fcmToken, callTitle, callBody, customData, true);
               console.log(`📲 Đã bắn Push cuộc gọi đến thành công cho User ${calleeId}`);
             } catch (pushErr) {
               console.error("❌ Lỗi bắn Push cuộc gọi:", pushErr.message);
