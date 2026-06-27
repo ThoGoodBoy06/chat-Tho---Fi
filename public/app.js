@@ -63,6 +63,10 @@ let mediaRecorder = null;
 let audioChunks = [];
 let isRecording = false;
 
+// --- PAGINATION STATE (Tối ưu hiệu năng) ---
+let hasMoreMessages = false;
+let isLoadingMoreMessages = false;
+
 const typingSound = new Audio('/sounds/typing.mp3');
 typingSound.loop = true;
 typingSound.volume = 0.5;
@@ -1194,7 +1198,7 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
         }
 
         const resMsg = await fetch(
-            `${API_URL}/chat/${currentConversationId}/messages`, {
+            `${API_URL}/chat/${currentConversationId}/messages?limit=50`, {
                 headers: { Authorization: `Bearer ${token}` },
             },
         );
@@ -1208,11 +1212,26 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
         const messagesDiv = document.getElementById("messages");
         messagesDiv.innerHTML = "";
 
+        // Cập nhật state phân trang
+        hasMoreMessages = dataMsg.hasMore || false;
+        isLoadingMoreMessages = false;
+
         if (dataMsg.data) {
             currentChatMessages = dataMsg.data;
-            dataMsg.data.forEach((msg) => displayMessage(msg));
+
+            // ⚡ BATCH RENDER: Dùng DocumentFragment để gom tất cả DOM nodes
+            // rồi chèn 1 lần duy nhất → giảm reflow/repaint từ N lần xuống 1 lần
+            const fragment = document.createDocumentFragment();
+            dataMsg.data.forEach((msg) => displayMessage(msg, fragment));
+            messagesDiv.appendChild(fragment);
+
             updateReadReceiptsDOM();
             emitMarkMessagesRead();
+
+            // Scroll xuống cuối 1 lần duy nhất sau khi render xong
+            requestAnimationFrame(() => {
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            });
 
             // Tự động đồng bộ tin nhắn cuối cùng vào sidebar khi mở phòng chat để tránh lệch giao diện
             if (dataMsg.data.length > 0) {
@@ -1220,6 +1239,9 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
                 updateChatListUI(lastMsg, true);
             }
         }
+
+        // Gắn scroll listener cho infinite scroll ngược
+        setupInfiniteScroll(messagesDiv);
     } catch (error) {
         alert("Lỗi khi mở phòng trò chuyện: " + error.message);
     }
@@ -1318,7 +1340,7 @@ async function reloadCurrentChat() {
     if (!currentConversationId) return;
     try {
         const resMsg = await fetch(
-            `${API_URL}/chat/${currentConversationId}/messages`, {
+            `${API_URL}/chat/${currentConversationId}/messages?limit=50`, {
                 headers: { Authorization: `Bearer ${token}` },
             },
         );
@@ -1329,13 +1351,104 @@ async function reloadCurrentChat() {
         const dataMsg = await resMsg.json();
         const messagesDiv = document.getElementById("messages");
         messagesDiv.innerHTML = "";
+
+        // Cập nhật state phân trang
+        hasMoreMessages = dataMsg.hasMore || false;
+        isLoadingMoreMessages = false;
+
         if (dataMsg.data) {
             currentChatMessages = dataMsg.data;
-            dataMsg.data.forEach((msg) => displayMessage(msg));
+
+            // ⚡ BATCH RENDER
+            const fragment = document.createDocumentFragment();
+            dataMsg.data.forEach((msg) => displayMessage(msg, fragment));
+            messagesDiv.appendChild(fragment);
+
+            updateReadReceiptsDOM();
+
+            // Scroll xuống cuối 1 lần duy nhất
+            requestAnimationFrame(() => {
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            });
+        }
+
+        // Gắn scroll listener cho infinite scroll ngược
+        setupInfiniteScroll(messagesDiv);
+    } catch (error) {
+        console.error("Lỗi reload chat:", error);
+    }
+}
+
+// --- INFINITE SCROLL: Tải thêm tin nhắn cũ khi cuộn lên đầu ---
+let _scrollListenerAttached = false;
+
+function setupInfiniteScroll(messagesDiv) {
+    if (_scrollListenerAttached) return; // Chỉ gắn 1 lần
+    _scrollListenerAttached = true;
+
+    messagesDiv.addEventListener("scroll", debounce(function() {
+        // Khi cuộn gần đến đầu khung chat (cách top < 80px)
+        if (messagesDiv.scrollTop < 80 && hasMoreMessages && !isLoadingMoreMessages) {
+            loadOlderMessages();
+        }
+    }, 200));
+}
+
+function debounce(fn, delay) {
+    let timer;
+    return function(...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), delay);
+    };
+}
+
+async function loadOlderMessages() {
+    if (!currentConversationId || !hasMoreMessages || isLoadingMoreMessages) return;
+    isLoadingMoreMessages = true;
+
+    try {
+        // Lấy ID tin nhắn cũ nhất hiện tại làm cursor
+        const oldestMsg = currentChatMessages[0];
+        if (!oldestMsg) return;
+
+        const messagesDiv = document.getElementById("messages");
+
+        // Ghi nhớ chiều cao scroll hiện tại trước khi thêm tin nhắn cũ
+        const prevScrollHeight = messagesDiv.scrollHeight;
+
+        const res = await fetch(
+            `${API_URL}/chat/${currentConversationId}/messages?limit=50&before=${oldestMsg.id}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            },
+        );
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const data = await res.json();
+        hasMoreMessages = data.hasMore || false;
+
+        if (data.data && data.data.length > 0) {
+            // Chèn tin nhắn cũ vào ĐẦU mảng
+            currentChatMessages = [...data.data, ...currentChatMessages];
+
+            // ⚡ BATCH RENDER: Gom tất cả vào DocumentFragment
+            const fragment = document.createDocumentFragment();
+            data.data.forEach((msg) => displayMessage(msg, fragment));
+
+            // Chèn lên đầu khung chat (prepend)
+            messagesDiv.insertBefore(fragment, messagesDiv.firstChild);
+
+            // Giữ nguyên vị trí scroll (không nhảy lung tung)
+            requestAnimationFrame(() => {
+                messagesDiv.scrollTop = messagesDiv.scrollHeight - prevScrollHeight;
+            });
+
             updateReadReceiptsDOM();
         }
     } catch (error) {
-        console.error("Lỗi reload chat:", error);
+        console.error("Lỗi tải thêm tin nhắn cũ:", error);
+    } finally {
+        isLoadingMoreMessages = false;
     }
 }
 
@@ -1584,7 +1697,7 @@ async function removeFriend(friendId) {
 }
 
 // 4. Hiển thị tin nhắn lên màn hình
-function displayMessage(msg) {
+function displayMessage(msg, targetContainer = null) {
     // CHỐT CHẶN: Nếu tin nhắn đã được render (bởi Socket) thì bỏ qua để tránh trùng lặp
     if (document.getElementById(`msg-${msg.id}`)) return;
 
@@ -2051,10 +2164,19 @@ function displayMessage(msg) {
 
     messageElement.appendChild(messageBody);
     messageElement.appendChild(metaElement);
-    messagesDiv.appendChild(messageElement);
-    // updateReadReceiptsDOM() được gọi một lần duy nhất sau khi toàn bộ tin nhắn đã render xong
-    // (trong startChat / reloadCurrentChat / socket receive_message). Không gọi ở đây để tránh flicker.
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+    // Nếu có targetContainer (batch render) → chèn vào fragment, không chèn trực tiếp vào DOM
+    if (targetContainer) {
+        targetContainer.appendChild(messageElement);
+    } else {
+        // Render đơn lẻ (realtime socket) → chèn trực tiếp và scroll
+        messagesDiv.appendChild(messageElement);
+        // updateReadReceiptsDOM() được gọi một lần duy nhất sau khi toàn bộ tin nhắn đã render xong
+        // (trong startChat / reloadCurrentChat / socket receive_message). Không gọi ở đây để tránh flicker.
+        requestAnimationFrame(() => {
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        });
+    }
 }
 // 5. Gửi tin nhắn bất đồng bộ
 function sendMessage(imageContent = null) {

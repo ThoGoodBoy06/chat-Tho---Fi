@@ -130,23 +130,50 @@ exports.getConversations = async (req, res) => {
   }
 };
 
-// 2. Lấy nội dung toàn bộ tin nhắn trong 1 đoạn chat
+// 2. Lấy tin nhắn trong 1 đoạn chat (Hỗ trợ phân trang cursor-based)
+// Query params:
+//   - limit: số lượng tin nhắn tối đa (mặc định 50)
+//   - before: ID tin nhắn cũ nhất hiện tại → load thêm tin nhắn CŨ HƠN
 
 exports.getMessages = async (req, res) => {
   try {
     const { conversationId } = req.params;
+    const limit = Math.min(parseInt(req.query.limit) || 50, 100); // Giới hạn tối đa 100
+    const before = req.query.before; // ID tin nhắn cursor (optional)
 
+    // Xây dựng điều kiện where
+    const whereClause = { conversationId };
+
+    // Nếu có cursor "before" → tìm tin nhắn có thời gian tạo TRƯỚC tin nhắn đó
+    if (before) {
+      const cursorMessage = await prisma.messages.findUnique({
+        where: { id: before },
+        select: { createdAt: true },
+      });
+
+      if (cursorMessage) {
+        whereClause.createdAt = { lt: cursorMessage.createdAt };
+      }
+    }
+
+    // Lấy (limit + 1) để biết có còn tin nhắn cũ hơn hay không
     const messages = await prisma.messages.findMany({
-      where: { conversationId },
-
-      orderBy: { createdAt: "asc" }, // Cũ nhất xếp trước, mới nhất xếp sau
-
+      where: whereClause,
+      orderBy: { createdAt: "desc" }, // Mới nhất trước → lấy N tin mới nhất
+      take: limit + 1,
       include: {
         Users: {
           select: { id: true, fullName: true },
         },
       },
     });
+
+    // Kiểm tra có còn trang tiếp không
+    const hasMore = messages.length > limit;
+    if (hasMore) messages.pop(); // Bỏ phần tử thừa
+
+    // Đảo ngược lại thứ tự: cũ nhất trước, mới nhất sau (để frontend render đúng)
+    messages.reverse();
 
     const mappedMessages = messages.map((m) => {
       if (m.Users) {
@@ -161,7 +188,7 @@ exports.getMessages = async (req, res) => {
       return m;
     });
 
-    res.status(200).json({ success: true, data: mappedMessages });
+    res.status(200).json({ success: true, data: mappedMessages, hasMore });
   } catch (error) {
     res.status(500).json({ message: "Lỗi server", error: error.message });
   }
