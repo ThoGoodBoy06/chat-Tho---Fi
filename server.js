@@ -1,4 +1,15 @@
 require("dotenv").config();
+
+// Tự động đồng bộ hóa cấu trúc Database khi khởi chạy ứng dụng (ví dụ trên Render)
+try {
+  const { execSync } = require("child_process");
+  console.log("🔄 Đang tiến hành đồng bộ hóa cấu trúc Database (Prisma db push)...");
+  execSync("npx prisma db push --accept-data-loss", { stdio: "inherit" });
+  console.log("✅ Đồng bộ hóa Database thành công!");
+} catch (err) {
+  console.error("⚠️ Cảnh báo: Lỗi tự động đồng bộ hóa Database:", err.message);
+}
+
 require("./firebaseConfig");
 const express = require("express");
 const cors = require("cors");
