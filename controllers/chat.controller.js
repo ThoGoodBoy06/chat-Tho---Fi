@@ -670,6 +670,8 @@ exports.reactToMessage = async (req, res) => {
       where: { conversationId: message.conversationId },
     });
 
+    const isRemoved = currentReactions[userId] === undefined;
+
     // Phát tín hiệu socket đến tất cả thành viên trong phòng chat
 
     const io = req.app.get("io");
@@ -681,6 +683,9 @@ exports.reactToMessage = async (req, res) => {
         conversationId: message.conversationId,
 
         reactions: currentReactions,
+        reaction: reaction,
+        userId: userId,
+        isRemoved: isRemoved,
 
         data: updatedMessage,
       });

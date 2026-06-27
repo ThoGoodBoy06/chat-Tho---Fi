@@ -860,10 +860,14 @@ function initizeChatSession(userData, userToken) {
     });
 
     // Nghe sự kiện cảm xúc
-    socket.on("message_reacted", ({ messageId, reactions }) => {
+    socket.on("message_reacted", ({ messageId, reactions, reaction, isRemoved }) => {
         const msgEl = document.getElementById(`msg-${messageId}`);
         if (msgEl) {
             renderReactions(msgEl, reactions);
+            // Chỉ nổ hiệu ứng nếu không phải là hành động gỡ cảm xúc
+            if (reaction && !isRemoved) {
+                createReactionBurst(messageId, reaction);
+            }
         }
     });
 
@@ -2544,6 +2548,54 @@ function renderReactions(messageElement, reactions) {
     const uniqueEmojis = [...new Set(Object.values(reactions))];
     const count = Object.keys(reactions).length;
     reactionsContainer.innerText = `${uniqueEmojis.join("")} ${count}`;
+}
+
+// --- HIỆU ỨNG NỔ CẢM XÚC GIỐNG MESSENGER ---
+function createReactionBurst(messageId, emoji) {
+    const msgEl = document.getElementById(`msg-${messageId}`);
+    if (!msgEl) return;
+
+    const contentEl = msgEl.querySelector(".message-content");
+    if (!contentEl) return;
+
+    // Lấy toạ độ bong bóng chat
+    const rect = contentEl.getBoundingClientRect();
+    const messagesContainer = document.getElementById("messages");
+    if (!messagesContainer) return;
+    const containerRect = messagesContainer.getBoundingClientRect();
+
+    // Tính toạ độ xuất phát (ở giữa bong bóng chat) tương đối với khung cuộn tin nhắn
+    const startX = rect.left + rect.width / 2 - containerRect.left + messagesContainer.scrollLeft;
+    const startY = rect.top + rect.height / 2 - containerRect.top + messagesContainer.scrollTop;
+
+    const PARTICLE_COUNT = 8;
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+        const particle = document.createElement("div");
+        particle.className = "reaction-particle";
+        particle.innerText = emoji;
+
+        // Định vị toạ độ ban đầu
+        particle.style.left = `${startX}px`;
+        particle.style.top = `${startY}px`;
+
+        // Tính toán góc và quãng đường bay ngẫu nhiên (dạng nổ hình tròn)
+        const angle = (i * (360 / PARTICLE_COUNT) + Math.random() * 20) * (Math.PI / 180);
+        const distance = 40 + Math.random() * 60; // Quãng đường bay xa từ 40px -> 100px
+        const dx = Math.cos(angle) * distance;
+        const dy = Math.sin(angle) * distance - 10; // Có xu hướng bay lên cao một chút
+        const rot = -30 + Math.random() * 60; // Góc tự xoay nhẹ
+
+        particle.style.setProperty("--dx", `${dx}px`);
+        particle.style.setProperty("--dy", `${dy}px`);
+        particle.style.setProperty("--rot", `${rot}deg`);
+
+        messagesContainer.appendChild(particle);
+
+        // Giải phóng thẻ khỏi DOM sau khi chạy xong animation (750ms)
+        setTimeout(() => {
+            particle.remove();
+        }, 750);
+    }
 }
 
 // ===========================================
