@@ -141,6 +141,13 @@ exports.getMessages = async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit) || 50, 100); // Giới hạn tối đa 100
     const before = req.query.before; // ID tin nhắn cursor (optional)
 
+    // Lấy thông tin chủ đề của cuộc hội thoại
+    const conversation = await prisma.conversations.findUnique({
+      where: { id: conversationId },
+      select: { theme: true },
+    });
+    const theme = conversation ? conversation.theme : "default";
+
     // Xây dựng điều kiện where
     const whereClause = { conversationId };
 
@@ -188,7 +195,7 @@ exports.getMessages = async (req, res) => {
       return m;
     });
 
-    res.status(200).json({ success: true, data: mappedMessages, hasMore });
+    res.status(200).json({ success: true, data: mappedMessages, hasMore, theme });
   } catch (error) {
     res.status(500).json({ message: "Lỗi server", error: error.message });
   }
@@ -759,6 +766,167 @@ exports.sendPushNotification = async (fcmToken, title, body, customData = null) 
   } catch (error) {
     console.error("❌ Lỗi gửi Push Notification qua Firebase Admin:", error.message);
     throw error;
+  }
+};
+
+// 15. Thay đổi chủ đề cuộc trò chuyện (Chat Theme)
+exports.changeConversationTheme = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const { theme } = req.body;
+    const userId = req.user.id;
+
+    if (!theme) {
+      return res.status(400).json({ success: false, message: "Thiếu tên chủ đề." });
+    }
+
+    // 1. Kiểm tra quyền thành viên
+    const membership = await prisma.conversationMembers.findFirst({
+      where: {
+        conversationId,
+        userId,
+      },
+    });
+
+    if (!membership) {
+      return res.status(403).json({
+        success: false,
+        message: "Bạn không có quyền thay đổi chủ đề cuộc trò chuyện này.",
+      });
+    }
+
+    // 2. Cập nhật chủ đề trong database
+    await prisma.conversations.update({
+      where: { id: conversationId },
+      data: { theme },
+    });
+
+    // 3. Tạo tin nhắn hệ thống ghi nhận việc đổi chủ đề
+    const themeNames = {
+      default: "Tho-Fi Classic",
+      ocean: "Đại dương",
+      sunset: "Hoàng hôn",
+      lavender: "Oải hương",
+      forest: "Rừng già",
+      rose: "Hoa hồng",
+      cyberpunk: "Tương lai",
+      midnight: "Nửa đêm",
+    };
+    const themeName = themeNames[theme] || theme;
+
+    const user = await prisma.users.findUnique({
+      where: { id: userId },
+      select: { fullName: true },
+    });
+    const userName = user ? user.fullName : "Người dùng";
+    const systemContent = `${userName} đã thay đổi chủ đề cuộc trò chuyện thành ${themeName}.`;
+
+    const systemMessage = await prisma.messages.create({
+      data: {
+        id: uuidv4(),
+        conversationId,
+        senderId: userId,
+        content: systemContent,
+        type: "system",
+      },
+      include: {
+        Users: {
+          select: { id: true, fullName: true },
+        },
+      },
+    });
+
+    // Map avatar tĩnh cho systemMessage (nếu có user)
+    const mappedSystemMessage = {
+      ...systemMessage,
+      Users: systemMessage.Users ? {
+        ...systemMessage.Users,
+        avatar: `/api/users/${systemMessage.Users.id}/avatar`,
+      } : null
+    };
+
+    // 4. Phát tín hiệu socket tới tất cả thành viên trong phòng chat
+    const members = await prisma.conversationMembers.findMany({
+      where: { conversationId },
+      select: { userId: true },
+    });
+
+    const io = req.app.get("io");
+    members.forEach((m) => {
+      io.to(m.userId).emit("conversation_theme_changed", {
+        conversationId,
+        theme,
+        systemMessage: mappedSystemMessage,
+      });
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Thay đổi chủ đề cuộc trò chuyện thành công.",
+      theme,
+      systemMessage: mappedSystemMessage,
+    });
+  } catch (error) {
+    console.error("❌ Lỗi khi thay đổi chủ đề chat:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi hệ thống khi thay đổi chủ đề chat.",
+      error: error.message,
+    });
+  }
+};
+
+// 14. Xoá cuộc hội thoại (xoá tất cả tin nhắn, thành viên, và phòng chat)
+exports.deleteConversation = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const userId = req.user.id;
+
+    // 1. Kiểm tra quyền sở hữu/thành viên
+    const membership = await prisma.conversationMembers.findFirst({
+      where: {
+        conversationId,
+        userId,
+      },
+    });
+
+    if (!membership) {
+      return res.status(403).json({
+        success: false,
+        message: "Bạn không có quyền xoá cuộc hội thoại này.",
+      });
+    }
+
+    // 2. Lấy danh sách thành viên trước khi xoá để báo hiệu qua socket
+    const members = await prisma.conversationMembers.findMany({
+      where: { conversationId },
+      select: { userId: true },
+    });
+
+    // 3. Xoá trong Transaction
+    await prisma.$transaction([
+      prisma.messages.deleteMany({ where: { conversationId } }),
+      prisma.conversationMembers.deleteMany({ where: { conversationId } }),
+      prisma.conversations.delete({ where: { id: conversationId } }),
+    ]);
+
+    // 4. Phát tín hiệu socket tới các thành viên để tự động xoá trên giao diện
+    const io = req.app.get("io");
+    members.forEach((m) => {
+      io.to(m.userId).emit("conversation_deleted", { conversationId });
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Đã xoá cuộc hội thoại thành công.",
+    });
+  } catch (error) {
+    console.error("❌ Lỗi khi xoá cuộc hội thoại:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi hệ thống khi xoá cuộc hội thoại.",
+      error: error.message,
+    });
   }
 };
 

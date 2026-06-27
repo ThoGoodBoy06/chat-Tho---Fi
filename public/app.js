@@ -10,7 +10,7 @@ function formatUrl(url) {
 // TỰ ĐỘNG THAY THẾ ẢNH LỖI (404) BẰNG ẢNH MẶC ĐỊNH
 document.addEventListener(
     "error",
-    function(e) {
+    function (e) {
         if (e.target.tagName && e.target.tagName.toLowerCase() === "img") {
             const fallback =
                 "https://ui-avatars.com/api/?name=User&background=random";
@@ -170,7 +170,7 @@ function unlockBrowserAudio() {
                     el.pause();
                     el.currentTime = 0;
                 })
-                .catch(() => {});
+                .catch(() => { });
         }
     });
     isAudioUnlocked = true;
@@ -261,8 +261,8 @@ function getReadReceiptTarget(myMessages) {
     // Fallback: tìm tin nhắn của mình được đọc cuối cùng theo data attribute
     return (
         [...myMessages]
-        .reverse()
-        .find((message) => message.dataset.isRead === "true") || null
+            .reverse()
+            .find((message) => message.dataset.isRead === "true") || null
     );
 }
 
@@ -477,7 +477,7 @@ function showMobileOverlay(messageEl) {
 }
 
 // Hệ thống gài quét lỗi toàn cục
-window.onerror = function(msg, url, lineNo, columnNo, error) {
+window.onerror = function (msg, url, lineNo, columnNo, error) {
     if (
         typeof msg === "string" &&
         (msg.includes("ResizeObserver") ||
@@ -569,10 +569,10 @@ function initizeChatSession(userData, userToken) {
     document.getElementById("profile-name").innerText = myName;
     if (document.getElementById("my-avatar-profile"))
         document.getElementById("my-avatar-profile").src =
-        document.getElementById("my-avatar").src;
+            document.getElementById("my-avatar").src;
     if (document.getElementById("profile-bio"))
         document.getElementById("profile-bio").innerText =
-        userData.bio || "Chưa có tiểu sử";
+            userData.bio || "Chưa có tiểu sử";
     if (document.getElementById("my-cover")) {
         const coverUrl = userData.coverPhoto || userData.coverImage;
         if (coverUrl) {
@@ -622,7 +622,7 @@ function initizeChatSession(userData, userToken) {
     });
 
     // Nghe khi mình chấp nhận lời mời của ai đó
-    socket.on("you_accepted_friend_request", async(newFriend) => {
+    socket.on("you_accepted_friend_request", async (newFriend) => {
         alert(`Bạn và ${newFriend.fullName} đã trở thành bạn bè!`);
         try {
             await fetch(`${API_URL}/chat/conversations`, {
@@ -633,13 +633,13 @@ function initizeChatSession(userData, userToken) {
                 },
                 body: JSON.stringify({ receiverId: newFriend.id }),
             });
-        } catch (e) {}
+        } catch (e) { }
         loadConversations();
         loadFriends();
     });
 
     // Nghe khi lời mời của mình được chấp nhận
-    socket.on("friend_request_accepted", async(userWhoAccepted) => {
+    socket.on("friend_request_accepted", async (userWhoAccepted) => {
         alert(`${userWhoAccepted.fullName} đã chấp nhận lời mời của bạn!`);
         try {
             await fetch(`${API_URL}/chat/conversations`, {
@@ -650,7 +650,7 @@ function initizeChatSession(userData, userToken) {
                 },
                 body: JSON.stringify({ receiverId: userWhoAccepted.id }),
             });
-        } catch (e) {}
+        } catch (e) { }
         loadConversations();
     });
 
@@ -871,6 +871,29 @@ function initizeChatSession(userData, userToken) {
         }
     });
 
+    // Nghe sự kiện xoá cuộc trò chuyện
+    socket.on("conversation_deleted", ({ conversationId }) => {
+        if (isSameId(conversationId, currentConversationId)) {
+            currentConversationId = "";
+            currentChatPartnerId = null;
+            document.getElementById("chat-header-container").style.display = "none";
+            document.getElementById("input-area").style.display = "none";
+            document.getElementById("chat-header-placeholder").style.display = "flex";
+            document.getElementById("messages").innerHTML = "";
+        }
+        loadConversations();
+    });
+
+    // Nghe sự kiện thay đổi chủ đề chat
+    socket.on("conversation_theme_changed", ({ conversationId, theme, systemMessage }) => {
+        if (isSameId(conversationId, currentConversationId)) {
+            applyChatTheme(theme);
+            if (systemMessage) {
+                displayMessage(systemMessage);
+            }
+        }
+    });
+
     // Gắn sự kiện cho các nút trong cuộc gọi
     document.getElementById("reject-call-btn").onclick = () => endCall(true);
     document.getElementById("end-call-btn").onclick = () => endCall(true);
@@ -916,13 +939,13 @@ function setupFirebaseMessaging(userToken) {
                         if (currentToken) {
                             console.log("🔥 Đã lấy được FCM Token:", currentToken);
                             fetch(`${API_URL}/users/fcm-token`, {
-                                    method: "POST",
-                                    headers: {
-                                        "Content-Type": "application/json",
-                                        Authorization: `Bearer ${userToken}`,
-                                    },
-                                    body: JSON.stringify({ fcmToken: currentToken }),
-                                })
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                    Authorization: `Bearer ${userToken}`,
+                                },
+                                body: JSON.stringify({ fcmToken: currentToken }),
+                            })
                                 .then(res => res.json())
                                 .then(data => {
                                     console.log("💾 Đã lưu thành công FCM Token lên server:", data);
@@ -938,8 +961,8 @@ function setupFirebaseMessaging(userToken) {
             } else {
                 // Fallback nếu trình duyệt không hỗ trợ Service Worker
                 messaging.getToken({
-                        vapidKey: "BBtraQSvar7RExe_T8aVhoA3TebgLw0S-ucoMcuV-Oef-H7ULkJGWyBctnxfY5tLnawpWQ9Wn8Aihi-wJaLiGu0",
-                    })
+                    vapidKey: "BBtraQSvar7RExe_T8aVhoA3TebgLw0S-ucoMcuV-Oef-H7ULkJGWyBctnxfY5tLnawpWQ9Wn8Aihi-wJaLiGu0",
+                })
                     .then((currentToken) => {
                         if (currentToken) {
                             console.log("🔥 Đã lấy được FCM Token (fallback):", currentToken);
@@ -1026,9 +1049,9 @@ async function loadConversations() {
                     conv._count && conv._count.Messages ? conv._count.Messages : 0;
                 const unreadBadgeHtml =
                     unreadCount > 0 ?
-                    `<span class="unread-badge">${unreadCount > 99 ? "99+" : unreadCount
+                        `<span class="unread-badge">${unreadCount > 99 ? "99+" : unreadCount
                         }</span>` :
-                    "";
+                        "";
                 const msgStyle =
                     unreadCount > 0 ? "font-weight: 600; color: var(--text-dark);" : "";
 
@@ -1046,14 +1069,21 @@ async function loadConversations() {
           </div>
           <div class="chat-list-content">
             <div class="chat-list-header">
-              <span class="chat-list-name">${user.fullName || "Người dùng"
-                    }</span>
+              <span class="chat-list-name">${user.fullName || "Người dùng"}</span>
               <div class="chat-list-right" style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
                 <span class="chat-list-time" style="font-size: 11px; color: var(--text-light);">${timeStr}</span>
                 ${unreadBadgeHtml}
               </div>
             </div>
             <div class="chat-list-msg" style="${msgStyle}">${lastMsg}</div>
+          </div>
+          <div class="conv-actions-wrapper" onclick="event.stopPropagation();">
+            <i class="fas fa-ellipsis-v conv-options-btn" onclick="toggleConversationMenu(event, '${conv.id}')"></i>
+            <div class="conv-dropdown-menu" id="conv-menu-${conv.id}">
+              <div class="conv-menu-item text-danger" onclick="confirmDeleteConversation(event, '${conv.id}')">
+                <i class="fas fa-trash-alt"></i> Xóa cuộc trò chuyện
+              </div>
+            </div>
           </div>
         `;
                 userList.appendChild(li);
@@ -1205,8 +1235,8 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
 
         const resMsg = await fetch(
             `${API_URL}/chat/${currentConversationId}/messages?limit=50`, {
-                headers: { Authorization: `Bearer ${token}` },
-            },
+            headers: { Authorization: `Bearer ${token}` },
+        },
         );
 
         if (!resMsg.ok) {
@@ -1217,6 +1247,9 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
         const dataMsg = await resMsg.json();
         const messagesDiv = document.getElementById("messages");
         messagesDiv.innerHTML = "";
+
+        // Áp dụng chủ đề trò chuyện
+        applyChatTheme(dataMsg.theme || "default");
 
         // Cập nhật state phân trang
         hasMoreMessages = dataMsg.hasMore || false;
@@ -1347,8 +1380,8 @@ async function reloadCurrentChat() {
     try {
         const resMsg = await fetch(
             `${API_URL}/chat/${currentConversationId}/messages?limit=50`, {
-                headers: { Authorization: `Bearer ${token}` },
-            },
+            headers: { Authorization: `Bearer ${token}` },
+        },
         );
         if (!resMsg.ok) {
             const errorText = await resMsg.text();
@@ -1357,6 +1390,9 @@ async function reloadCurrentChat() {
         const dataMsg = await resMsg.json();
         const messagesDiv = document.getElementById("messages");
         messagesDiv.innerHTML = "";
+
+        // Áp dụng chủ đề trò chuyện
+        applyChatTheme(dataMsg.theme || "default");
 
         // Cập nhật state phân trang
         hasMoreMessages = dataMsg.hasMore || false;
@@ -1392,7 +1428,7 @@ function setupInfiniteScroll(messagesDiv) {
     if (_scrollListenerAttached) return; // Chỉ gắn 1 lần
     _scrollListenerAttached = true;
 
-    messagesDiv.addEventListener("scroll", debounce(function() {
+    messagesDiv.addEventListener("scroll", debounce(function () {
         // Khi cuộn gần đến đầu khung chat (cách top < 80px)
         if (messagesDiv.scrollTop < 80 && hasMoreMessages && !isLoadingMoreMessages) {
             loadOlderMessages();
@@ -1402,7 +1438,7 @@ function setupInfiniteScroll(messagesDiv) {
 
 function debounce(fn, delay) {
     let timer;
-    return function(...args) {
+    return function (...args) {
         clearTimeout(timer);
         timer = setTimeout(() => fn.apply(this, args), delay);
     };
@@ -1424,8 +1460,8 @@ async function loadOlderMessages() {
 
         const res = await fetch(
             `${API_URL}/chat/${currentConversationId}/messages?limit=50&before=${oldestMsg.id}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            },
+            headers: { Authorization: `Bearer ${token}` },
+        },
         );
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1746,6 +1782,28 @@ function displayMessage(msg, targetContainer = null) {
     messageElement.dataset.messageId = msg.id;
     messageElement.dataset.senderId = msg.senderId || "";
     messageElement.dataset.isRead = msg.isRead ? "true" : "false";
+
+    // Hiển thị Tin nhắn hệ thống (System message như thông báo đổi chủ đề)
+    if (msg.type === "system") {
+        messageElement.className = "message system-message";
+        const messageBody = document.createElement("div");
+        messageBody.className = "message-body";
+        const messageContent = document.createElement("div");
+        messageContent.className = "message-content";
+
+        messageContent.innerText = msg.content;
+
+        messageBody.appendChild(messageContent);
+        messageElement.appendChild(messageBody);
+
+        if (targetContainer) {
+            targetContainer.appendChild(messageElement);
+        } else {
+            messagesDiv.appendChild(messageElement);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        return;
+    }
 
     // Hiển thị giao diện Cuộc gọi nhỡ (Tin nhắn hệ thống)
     if (msg.type === "missed_call") {
@@ -2110,7 +2168,7 @@ function displayMessage(msg, targetContainer = null) {
                 if (navigator.vibrate) {
                     try {
                         navigator.vibrate(30);
-                    } catch (err) {}
+                    } catch (err) { }
                 }
             }
         });
@@ -2262,13 +2320,13 @@ function sendMessage(imageContent = null) {
     }
 
     fetch(`${API_URL}/chat/${currentConversationId}/messages`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(payload),
-        })
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+    })
         .then((response) => response.json())
         .then((data) => {
             if (data.success) {
@@ -2300,14 +2358,14 @@ function sendMessage(imageContent = null) {
 // 6. Bấm phím Enter để gửi & Sự kiện gõ phím
 const messageInput = document.getElementById("message-input");
 if (messageInput) {
-    messageInput.addEventListener("keydown", function(e) {
+    messageInput.addEventListener("keydown", function (e) {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             sendMessage();
         }
     });
 
-    messageInput.addEventListener("input", function() {
+    messageInput.addEventListener("input", function () {
         // Tự động giãn dòng nhưng giới hạn tối đa
         this.style.height = 'auto';
         const newHeight = Math.min(this.scrollHeight, 80); // Giới hạn max 80px
@@ -2360,13 +2418,13 @@ if (messageInput) {
     });
 
     // Khi người dùng bấm click vào ô nhập (Focus) -> thu gọn menu trái để nhường chỗ
-    messageInput.addEventListener("focus", function() {
+    messageInput.addEventListener("focus", function () {
         const inputArea = document.getElementById('input-area');
         if (inputArea) inputArea.classList.add('is-typing');
     });
 
     // Khi người dùng bấm ra ngoài (Blur) -> hiển thị lại menu trái nếu ô nhập trống
-    messageInput.addEventListener("blur", function() {
+    messageInput.addEventListener("blur", function () {
         const inputArea = document.getElementById('input-area');
         if (this.value.trim().length === 0) {
             if (inputArea) inputArea.classList.remove('is-typing');
@@ -2377,7 +2435,7 @@ if (messageInput) {
 // Xử lý nút mũi tên mở rộng lại cụm ảnh/file khi đang gõ
 const expandBtnUI = document.getElementById('expand-btn');
 if (expandBtnUI) {
-    expandBtnUI.addEventListener('click', function() {
+    expandBtnUI.addEventListener('click', function () {
         const inputArea = document.getElementById('input-area');
         if (inputArea) {
             inputArea.classList.remove('is-typing');
@@ -2393,12 +2451,12 @@ function closeChatMobile() {
 // 7. Sự kiện Gửi Hình ảnh
 const imageUploadInput = document.getElementById("image-upload");
 if (imageUploadInput) {
-    imageUploadInput.addEventListener("change", function(e) {
+    imageUploadInput.addEventListener("change", function (e) {
         const file = e.target.files[0];
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = function(event) {
+        reader.onload = function (event) {
             const base64Image = event.target.result;
             sendMessage(base64Image);
         };
@@ -2409,7 +2467,7 @@ if (imageUploadInput) {
 // Sự kiện Gửi Tệp tin (File/Document)
 const fileUploadInput = document.getElementById("file-upload");
 if (fileUploadInput) {
-    fileUploadInput.addEventListener("change", function(e) {
+    fileUploadInput.addEventListener("change", function (e) {
         const file = e.target.files[0];
         if (!file) return;
 
@@ -2419,7 +2477,7 @@ if (fileUploadInput) {
         }
 
         const reader = new FileReader();
-        reader.onload = function(event) {
+        reader.onload = function (event) {
             const base64Data = event.target.result;
             const filePayload = {
                 fileName: file.name,
@@ -2435,7 +2493,7 @@ if (fileUploadInput) {
 // 9. Sự kiện Tải lên Avatar Mới
 const avatarUploadInput = document.getElementById("avatar-upload");
 if (avatarUploadInput) {
-    avatarUploadInput.addEventListener("change", async function(e) {
+    avatarUploadInput.addEventListener("change", async function (e) {
         const file = e.target.files[0];
         if (!file) return;
 
@@ -2605,7 +2663,7 @@ function createReactionBurst(messageId, emoji) {
 // 1. Chống chụm ngón tay (Pinch Zoom)
 document.addEventListener(
     "touchmove",
-    function(e) {
+    function (e) {
         if (e.touches.length > 1) {
             e.preventDefault();
         }
@@ -2970,7 +3028,7 @@ async function openOtherUserProfileModal(userId) {
         }
 
         if (callBtn) {
-            callBtn.onclick = async() => {
+            callBtn.onclick = async () => {
                 closeOtherUserProfileModal();
                 await startChat(user.id, user.name, formatUrl(user.profileAvatarUrl));
                 startCall("voice");
@@ -2978,7 +3036,7 @@ async function openOtherUserProfileModal(userId) {
         }
 
         if (videoBtn) {
-            videoBtn.onclick = async() => {
+            videoBtn.onclick = async () => {
                 closeOtherUserProfileModal();
                 await startChat(user.id, user.name, formatUrl(user.profileAvatarUrl));
                 startCall("video");
@@ -3201,7 +3259,7 @@ async function sendAiMessage() {
                 try {
                     const errData = await response.json();
                     if (errData && errData.error) errorMsg = errData.error;
-                } catch (e) {}
+                } catch (e) { }
             }
             throw new Error(errorMsg);
         }
@@ -5614,4 +5672,133 @@ function startAiQuotaCountdown() {
 
     updateCountdown();
     aiQuotaTimerInterval = setInterval(updateCountdown, 1000);
+}
+
+// --- XOÁ CUỘC TRÒ CHUYỆN (GIAO DIỆN & API) ---
+function toggleConversationMenu(event, conversationId) {
+    event.stopPropagation();
+    const menuId = `conv-menu-${conversationId}`;
+    const menu = document.getElementById(menuId);
+    if (!menu) return;
+
+    // Đóng toàn bộ dropdown khác
+    document.querySelectorAll(".conv-dropdown-menu").forEach((m) => {
+        if (m.id !== menuId) m.style.display = "none";
+    });
+
+    menu.style.display = menu.style.display === "block" ? "none" : "block";
+}
+
+async function confirmDeleteConversation(event, conversationId) {
+    event.stopPropagation();
+    const menu = document.getElementById(`conv-menu-${conversationId}`);
+    if (menu) menu.style.display = "none";
+
+    const isConfirmed = confirm("Bạn có chắc chắn muốn xóa vĩnh viễn toàn bộ cuộc trò chuyện này không? Tất cả tin nhắn sẽ bị xóa sạch.");
+    if (!isConfirmed) return;
+
+    try {
+        const res = await fetch(`${API_URL}/chat/conversations/${conversationId}`, {
+            method: "DELETE",
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            alert("Đã xóa cuộc trò chuyện thành công.");
+            if (isSameId(conversationId, currentConversationId)) {
+                currentConversationId = "";
+                currentChatPartnerId = null;
+                document.getElementById("chat-header-container").style.display = "none";
+                document.getElementById("input-area").style.display = "none";
+                document.getElementById("chat-header-placeholder").style.display = "flex";
+                document.getElementById("messages").innerHTML = "";
+            }
+            loadConversations();
+        } else {
+            alert("Lỗi: " + data.message);
+        }
+    } catch (error) {
+        alert("Lỗi kết nối server: " + error.message);
+    }
+}
+
+// Đóng dropdown khi click ra ngoài màn hình
+document.addEventListener("click", () => {
+    document.querySelectorAll(".conv-dropdown-menu").forEach((m) => {
+        m.style.display = "none";
+    });
+});
+
+// --- CHỨC NĂNG THAY ĐỔI CHỦ ĐỀ CHAT (CHAT THEMES) ---
+let currentChatTheme = "default";
+
+function applyChatTheme(themeName) {
+    currentChatTheme = themeName || "default";
+    const root = document.documentElement;
+
+    const themeColors = {
+        default: { start: "#0084ff", end: "#006eeb", accent: "#0084ff" },
+        ocean: { start: "#00c6ff", end: "#0072ff", accent: "#0072ff" },
+        sunset: { start: "#f12711", end: "#f5af19", accent: "#f12711" },
+        lavender: { start: "#a18cd1", end: "#fbc2eb", accent: "#a18cd1" },
+        forest: { start: "#11998e", end: "#38ef7d", accent: "#11998e" },
+        rose: { start: "#ff758c", end: "#ff7eb3", accent: "#ff758c" },
+        cyberpunk: { start: "#8a2be2", end: "#ff007f", accent: "#ff007f" },
+        midnight: { start: "#0f2027", end: "#203a43", accent: "#203a43" }
+    };
+
+    const colors = themeColors[currentChatTheme] || themeColors.default;
+
+    root.style.setProperty("--theme-primary-start", colors.start);
+    root.style.setProperty("--theme-primary-end", colors.end);
+    root.style.setProperty("--theme-accent", colors.accent);
+
+    console.log("🎨 Đã áp dụng chủ đề chat thành công:", currentChatTheme);
+}
+
+function openThemeModal() {
+    if (!currentConversationId) return alert("Vui lòng mở một cuộc trò chuyện để đổi chủ đề!");
+
+    const activeTheme = currentChatTheme || "default";
+    document.querySelectorAll(".theme-option-item").forEach((item) => {
+        if (item.getAttribute("data-theme") === activeTheme) {
+            item.classList.add("active");
+        } else {
+            item.classList.remove("active");
+        }
+    });
+
+    document.getElementById("theme-modal").style.display = "flex";
+}
+
+function closeThemeModal() {
+    document.getElementById("theme-modal").style.display = "none";
+}
+
+async function selectChatTheme(themeName) {
+    if (!currentConversationId) return;
+
+    try {
+        const res = await fetch(`${API_URL}/chat/conversations/${currentConversationId}/theme`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({ theme: themeName })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            applyChatTheme(themeName);
+            closeThemeModal();
+        } else {
+            alert("Lỗi đổi chủ đề: " + data.message);
+        }
+    } catch (error) {
+        alert("Lỗi mạng khi đổi chủ đề: " + error.message);
+    }
 }

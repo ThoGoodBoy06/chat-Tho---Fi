@@ -3,6 +3,11 @@
    ========================================================================== */
 
 :root {
+    /* Variables cho Chat Themes (Đổi màu bong bóng & Accent giống Messenger) */
+    --theme-primary-start: #0084ff;
+    --theme-primary-end: #006eeb;
+    --theme-accent: #0084ff;
+
     --primary-color: #0084ff;
     /* Emerald Green */
     --primary-hover: #006eeb;
@@ -860,7 +865,7 @@ p {
 }
 
 .my-message .message-content {
-    background: linear-gradient(135deg, #0084ff, #006eeb);
+    background: linear-gradient(135deg, var(--theme-primary-start), var(--theme-primary-end));
     color: white;
     border-radius: 18px 18px 4px 18px;
     box-shadow: 0 2px 8px rgba(0, 132, 255, 0.3);
@@ -1144,6 +1149,57 @@ p {
     }
 }
 
+
+/* Giao diện nút 3 chấm và menu dropdown xoá hội thoại */
+.conv-actions-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.conv-options-btn {
+    padding: 6px 10px;
+    font-size: 16px;
+    color: var(--text-light);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.conv-options-btn:hover {
+    background: var(--hover-bg);
+    color: var(--text-dark);
+}
+
+.conv-dropdown-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 26px;
+    background: var(--msg-receiver-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: var(--shadow-lg);
+    z-index: 1000;
+    min-width: 135px;
+    padding: 4px 0;
+}
+
+.conv-menu-item {
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.2s;
+}
+
+.conv-menu-item:hover {
+    background: var(--hover-bg);
+}
 
 /* Mobile actions overlay */
 
@@ -4812,4 +4868,81 @@ body[data-theme="dark"] .ai-quota-bar-bg {
 
 body[data-theme="dark"] .ai-quota-bar-footer {
     color: #71717a;
+}
+
+/* Kiểu tin nhắn Hệ Thống (System Message) trong khung chat */
+.message.system-message {
+    align-self: center !important;
+    max-width: 90% !important;
+    margin: 12px 0;
+    width: 100%;
+}
+
+.message.system-message .message-body {
+    align-self: center !important;
+    justify-content: center;
+    width: 100%;
+    max-width: 100%;
+}
+
+.message.system-message .message-content {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    color: var(--text-light) !important;
+    font-size: 12.5px !important;
+    text-align: center;
+    padding: 4px 16px;
+    line-height: 1.4;
+    font-style: italic;
+    font-weight: 500;
+}
+
+/* Các accent khác đổi màu theo chủ đề chat */
+#send-btn, #like-btn {
+    color: var(--theme-accent) !important;
+}
+
+/* Định dạng lưới chọn chủ đề chat trong Modal */
+.theme-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    justify-items: center;
+    padding: 10px 0;
+}
+
+.theme-option-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    gap: 6px;
+    transition: transform 0.2s;
+    width: 100%;
+}
+
+.theme-option-item:hover {
+    transform: scale(1.08);
+}
+
+.theme-preview-circle {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    box-shadow: var(--shadow-md);
+    transition: border-color 0.2s;
+}
+
+.theme-option-item.active .theme-preview-circle {
+    border-color: var(--primary-color);
+}
+
+.theme-option-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-dark);
+    text-align: center;
+    white-space: nowrap;
 }

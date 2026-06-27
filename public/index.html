@@ -243,6 +243,7 @@
                             </div>
                         </div>
                         <div class="chat-header-actions">
+                            <i class="fas fa-palette icon-btn" onclick="openThemeModal()" title="Thay đổi chủ đề"></i>
                             <i class="fas fa-phone-alt icon-btn" onclick="startCall('voice')"></i>
                             <i class="fas fa-video icon-btn" onclick="startCall('video')"></i>
                             <i class="fas fa-info-circle icon-btn"></i>
@@ -747,6 +748,58 @@
           <i class="fas fa-video"></i>
           <span>Gọi video</span>
         </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal chọn chủ đề chat (Chat Themes) -->
+    <div id="theme-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 400px; padding: 24px; border-radius: 16px;">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0; font-size: 18px; font-weight: 700;">Chủ đề cuộc trò chuyện</h3>
+                <i class="fas fa-times" onclick="closeThemeModal()" style="cursor: pointer; font-size: 18px; color: var(--text-light);"></i>
+            </div>
+            <div class="theme-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; justify-items: center;">
+                <!-- Mặc định -->
+                <div class="theme-option-item" onclick="selectChatTheme('default')" title="Tho-Fi Classic" data-theme="default">
+                    <div class="theme-preview-circle" style="background: linear-gradient(135deg, #0084ff, #006eeb);"></div>
+                    <span class="theme-option-name">Mặc định</span>
+                </div>
+                <!-- Ocean -->
+                <div class="theme-option-item" onclick="selectChatTheme('ocean')" title="Đại dương" data-theme="ocean">
+                    <div class="theme-preview-circle" style="background: linear-gradient(135deg, #00c6ff, #0072ff);"></div>
+                    <span class="theme-option-name">Đại dương</span>
+                </div>
+                <!-- Sunset -->
+                <div class="theme-option-item" onclick="selectChatTheme('sunset')" title="Hoàng hôn" data-theme="sunset">
+                    <div class="theme-preview-circle" style="background: linear-gradient(135deg, #f12711, #f5af19);"></div>
+                    <span class="theme-option-name">Hoàng hôn</span>
+                </div>
+                <!-- Lavender -->
+                <div class="theme-option-item" onclick="selectChatTheme('lavender')" title="Oải hương" data-theme="lavender">
+                    <div class="theme-preview-circle" style="background: linear-gradient(135deg, #a18cd1, #fbc2eb);"></div>
+                    <span class="theme-option-name">Oải hương</span>
+                </div>
+                <!-- Forest -->
+                <div class="theme-option-item" onclick="selectChatTheme('forest')" title="Rừng già" data-theme="forest">
+                    <div class="theme-preview-circle" style="background: linear-gradient(135deg, #11998e, #38ef7d);"></div>
+                    <span class="theme-option-name">Rừng già</span>
+                </div>
+                <!-- Rose -->
+                <div class="theme-option-item" onclick="selectChatTheme('rose')" title="Hoa hồng" data-theme="rose">
+                    <div class="theme-preview-circle" style="background: linear-gradient(135deg, #ff758c, #ff7eb3);"></div>
+                    <span class="theme-option-name">Hoa hồng</span>
+                </div>
+                <!-- Cyberpunk -->
+                <div class="theme-option-item" onclick="selectChatTheme('cyberpunk')" title="Tương lai" data-theme="cyberpunk">
+                    <div class="theme-preview-circle" style="background: linear-gradient(135deg, #8a2be2, #ff007f);"></div>
+                    <span class="theme-option-name">Tương lai</span>
+                </div>
+                <!-- Midnight -->
+                <div class="theme-option-item" onclick="selectChatTheme('midnight')" title="Nửa đêm" data-theme="midnight">
+                    <div class="theme-preview-circle" style="background: linear-gradient(135deg, #0f2027, #203a43);"></div>
+                    <span class="theme-option-name">Nửa đêm</span>
+                </div>
             </div>
         </div>
     </div>

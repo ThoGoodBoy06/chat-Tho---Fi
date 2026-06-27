@@ -24,6 +24,7 @@ model Conversations {
   name                String?
   avatar              String?
   createdBy           String?
+  theme               String?               @default("default")
   createdAt           DateTime?             @default(now())
   ConversationMembers ConversationMembers[]
   Users               Users?                @relation(fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction)

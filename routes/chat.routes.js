@@ -8,6 +8,8 @@ router.use(authMiddleware);
 
 router.get("/conversations", chatController.getConversations);
 router.post("/conversations", chatController.createConversation);
+router.patch("/conversations/:conversationId/theme", chatController.changeConversationTheme);
+router.delete("/conversations/:conversationId", chatController.deleteConversation);
 router.get("/:conversationId/messages", chatController.getMessages);
 router.post("/:conversationId/messages", chatController.sendMessage);
 
