@@ -2766,6 +2766,16 @@ input:checked+.slider.round:before {
     background: #DC2626;
 }
 
+.btn-primary {
+    background: var(--primary-color) !important;
+    color: white !important;
+}
+
+.btn-primary:hover {
+    background: var(--primary-hover) !important;
+    color: white !important;
+}
+
 
 /* ==========================================================================
    RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
