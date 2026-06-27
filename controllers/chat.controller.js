@@ -183,17 +183,45 @@ exports.getMessages = async (req, res) => {
     // Đảo ngược lại thứ tự: cũ nhất trước, mới nhất sau (để frontend render đúng)
     messages.reverse();
 
-    const mappedMessages = messages.map((m) => {
-      if (m.Users) {
-        return {
-          ...m,
-          Users: {
-            ...m.Users,
-            avatar: `/api/users/${m.Users.id}/avatar`,
-          },
-        };
+    // Batch-fetch tin nhắn gốc (Parent Messages) để phục vụ tính năng Reply
+    const replyIds = messages.map(m => m.replyMessageId).filter(Boolean);
+    let parentMap = {};
+    if (replyIds.length > 0) {
+      try {
+        const parents = await prisma.messages.findMany({
+          where: { id: { in: replyIds } },
+          include: {
+            Users: { select: { id: true, fullName: true } }
+          }
+        });
+        parents.forEach(p => {
+          parentMap[p.id] = {
+            id: p.id,
+            content: p.content,
+            senderId: p.senderId,
+            type: p.type,
+            isRecalled: p.isRecalled || false,
+            senderName: p.Users ? p.Users.fullName : "Người dùng"
+          };
+        });
+      } catch (err) {
+        console.error("Lỗi khi tải thông tin trích dẫn tin nhắn gốc:", err);
       }
-      return m;
+    }
+
+    const mappedMessages = messages.map((m) => {
+      const mapped = m.Users ? {
+        ...m,
+        Users: {
+          ...m.Users,
+          avatar: `/api/users/${m.Users.id}/avatar`,
+        },
+      } : { ...m };
+
+      if (m.replyMessageId && parentMap[m.replyMessageId]) {
+        mapped.replyMessage = parentMap[m.replyMessageId];
+      }
+      return mapped;
     });
     // Lấy biệt danh (nicknames) của các thành viên trong cuộc hội thoại
     const membersWithNicknames = await prisma.conversationMembers.findMany({
@@ -295,6 +323,31 @@ exports.sendMessage = async (req, res) => {
       },
     });
 
+    // Lấy thông tin tin nhắn gốc nếu đây là tin nhắn trả lời (Reply)
+    let parentMessageObj = null;
+    if (replyMessageId) {
+      try {
+        const parent = await prisma.messages.findUnique({
+          where: { id: replyMessageId },
+          include: {
+            Users: { select: { id: true, fullName: true } }
+          }
+        });
+        if (parent) {
+          parentMessageObj = {
+            id: parent.id,
+            content: parent.content,
+            senderId: parent.senderId,
+            type: parent.type,
+            isRecalled: parent.isRecalled || false,
+            senderName: parent.Users ? parent.Users.fullName : "Người dùng"
+          };
+        }
+      } catch (err) {
+        console.error("Lỗi khi lấy thông tin tin nhắn gốc:", err);
+      }
+    }
+
     // Map avatar sang URL tĩnh
     const mappedMessage = {
       ...newMessage,
@@ -303,6 +356,9 @@ exports.sendMessage = async (req, res) => {
         avatar: `/api/users/${newMessage.Users.id}/avatar`,
       } : null
     };
+    if (parentMessageObj) {
+      mappedMessage.replyMessage = parentMessageObj;
+    }
 
     // Trả response ngay sau khi lưu DB xong (không đợi socket/FCM)
     res.status(201).json({ success: true, data: mappedMessage });

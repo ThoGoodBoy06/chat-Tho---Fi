@@ -2060,24 +2060,52 @@ function displayMessage(msg, targetContainer = null) {
 
         // Nâng cấp: Hiển thị tin nhắn trích dẫn (Replied Message Preview)
         if (msg.replyMessageId) {
-            const parentMsg = currentChatMessages.find((m) => m.id === msg.replyMessageId);
+            let parentMsg = msg.replyMessage;
+
+            // Nếu chưa có đối tượng do backend đính kèm, tìm trong mảng cục bộ
+            if (!parentMsg) {
+                const localParent = currentChatMessages.find((m) => m.id === msg.replyMessageId);
+                if (localParent) {
+                    let parentSenderName = "Người dùng";
+                    if (localParent.senderId === myId) {
+                        parentSenderName = "Bạn";
+                    } else if (localParent.Users) {
+                        parentSenderName = localParent.Users.fullName;
+                    } else {
+                        const headerName = document.getElementById("chat-header-name");
+                        if (headerName) parentSenderName = headerName.innerText;
+                    }
+                    parentMsg = {
+                        content: localParent.content,
+                        senderId: localParent.senderId,
+                        type: localParent.type,
+                        isRecalled: localParent.isRecalled || false,
+                        senderName: parentSenderName
+                    };
+                }
+            }
+
             if (parentMsg) {
                 const replyBox = document.createElement("div");
                 replyBox.className = "replied-message-box";
 
-                let parentSenderName = "Người dùng";
+                let parentSenderName = parentMsg.senderName || "Người dùng";
                 if (parentMsg.senderId === myId) {
                     parentSenderName = "Bạn";
-                } else if (parentMsg.Users) {
-                    parentSenderName = parentMsg.Users.fullName;
-                } else {
-                    const headerName = document.getElementById("chat-header-name");
-                    if (headerName) parentSenderName = headerName.innerText;
                 }
 
                 let parentText = parentMsg.content;
                 if (parentMsg.isRecalled) {
                     parentText = "Tin nhắn đã bị thu hồi";
+                } else if (parentMsg.type === "file") {
+                    try {
+                        const fileData = JSON.parse(parentMsg.content);
+                        parentText = `[ Tệp tin: ${fileData.fileName} ]`;
+                    } catch (e) {
+                        parentText = "[ Tệp tin ]";
+                    }
+                } else if (parentMsg.type === "audio") {
+                    parentText = "[ Tin nhắn thoại ]";
                 } else if (
                     parentMsg.content &&
                     (parentMsg.content.startsWith("data:image/") ||
@@ -5056,6 +5084,15 @@ function setReplyMode(msgId) {
     let textPreview = msg.content;
     if (msg.isRecalled) {
         textPreview = "Tin nhắn đã bị thu hồi";
+    } else if (msg.type === "file") {
+        try {
+            const fileData = JSON.parse(msg.content);
+            textPreview = `[Tệp tin: ${fileData.fileName}]`;
+        } catch (e) {
+            textPreview = "[Tệp tin]";
+        }
+    } else if (msg.type === "audio") {
+        textPreview = "[Tin nhắn thoại]";
     } else if (msg.content && (msg.content.startsWith("data:image/") || msg.content.match(/\.(jpeg|jpg|gif|png)$/i))) {
         textPreview = "[Hình ảnh]";
     } else if (msg.type === "missed_call") {
