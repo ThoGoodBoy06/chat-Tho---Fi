@@ -2464,12 +2464,12 @@ function sendMessage(imageContent = null) {
     currentChatMessages.push(optimisticMsg);
     displayMessage(optimisticMsg);
     updateChatListUI(optimisticMsg, true);
-    cancelReply();
 
     const payload = { content };
     if (replyingToMessage) {
         payload.replyMessageId = replyingToMessage.id;
     }
+    cancelReply();
 
     fetch(`${API_URL}/chat/${currentConversationId}/messages`, {
         method: "POST",
