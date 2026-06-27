@@ -2848,34 +2848,41 @@ async function sendNativeNotification(msg) {
             senderName,
         )}&background=random`;
 
-    // DÀNH CHO TRÌNH DUYỆT WEB (CHROME, SAFARI, EDGE TRÊN MÁY TÍNH & ĐIỆN THOẠI)
+    // HIỂN THỊ THÔNG BÁO HỆ THỐNG (SYSTEM NATIVE NOTIFICATION BANNER)
     if ("Notification" in window && Notification.permission === "granted") {
-        const isMobileWeb = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        if (isMobileWeb) {
-            showNewMessageToast(msg);
-        } else {
-            try {
+        try {
+            // Sử dụng Service Worker (Chuẩn nhất cho di động iOS/Android và tránh bị Chrome Mobile block)
+            if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+                navigator.serviceWorker.ready.then((reg) => {
+                    reg.showNotification(senderName, {
+                        body: snippet,
+                        icon: avatarUrl,
+                        badge: "/icon.png",
+                        tag: String(msg.conversationId || "message-notification"),
+                        renotify: true
+                    });
+                });
+            } else {
+                // Fallback cho trình duyệt Desktop không hỗ trợ SW
                 const notification = new Notification(senderName, {
                     body: snippet,
                     icon: avatarUrl,
                 });
                 notification.onclick = () => {
-                    window.focus(); // Đánh thức tab trình duyệt lên trên cùng
+                    window.focus();
                     startChat(msg.senderId, senderName, avatarUrl);
                     const messagesTabNav = document.querySelector(
                         '.nav-item[title="Tin nhắn"]',
                     );
                     if (messagesTabNav) switchTab("tab-messages", messagesTabNav);
                 };
-            } catch (err) {
-                console.warn(
-                    "Trình duyệt di động chặn Notification, chuyển sang dùng Toast.",
-                    err,
-                );
-                showNewMessageToast(msg);
             }
+        } catch (err) {
+            console.warn("Lỗi khi hiển thị thông báo hệ thống:", err);
+            showNewMessageToast(msg);
         }
     } else {
+        // Fallback hiện Toast nổi trong app nếu không có quyền/không hỗ trợ thông báo hệ thống
         showNewMessageToast(msg);
     }
 }
