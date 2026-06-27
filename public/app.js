@@ -2824,8 +2824,15 @@ function closeUserProfile() {
 }
 
 
+// Biến cờ khóa chống spam click
+let isSwitchingTab = false;
+
 // Chuyển đổi giữa các Tab
 function switchTab(tabId, navElement) {
+    // Nếu đang chuyển tab rồi thì bỏ qua không xử lý (Chống lag)
+    if (isSwitchingTab) return;
+    isSwitchingTab = true;
+
     if (tabId === "tab-contacts") {
         navElement.classList.remove("shake");
     }
@@ -2862,6 +2869,11 @@ function switchTab(tabId, navElement) {
             mobileHeader.style.setProperty("display", "none", "important");
         }
     }
+
+    // Mở khóa sau 350ms (bằng đúng thời gian chạy Animation của CSS)
+    setTimeout(() => {
+        isSwitchingTab = false;
+    }, 350);
 }
 
 // Tải lịch sử chat AI lưu trữ từ Database

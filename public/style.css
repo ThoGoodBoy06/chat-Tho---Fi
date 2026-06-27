@@ -440,13 +440,30 @@ p {
     width: 100%;
     height: 100%;
     min-width: 0;
+    /* Bật tăng tốc GPU chống giật lag */
+    will-change: transform, opacity;
+    backface-visibility: hidden;
 }
 
 .tab-pane.active {
     display: flex;
     flex-direction: row;
-    /* Thêm hiệu ứng trượt và hiện dần khi chuyển tab */
+    /* Hiệu ứng trượt và hiện dần khi chuyển tab */
     animation: tabContentFadeIn 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+
+/* Khai báo khung hình chuyển động */
+
+@keyframes tabContentFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
 }
 
 
@@ -793,6 +810,7 @@ p {
     display: flex;
     flex-direction: column;
     position: relative;
+    overflow: hidden;
 }
 
 .message-body {
@@ -800,6 +818,7 @@ p {
     align-items: flex-end;
     gap: 10px;
     max-width: 75%;
+    min-width: 0;
 }
 
 .my-message .message-body {
@@ -817,6 +836,11 @@ p {
     font-size: 15px;
     line-height: 1.5;
     word-wrap: break-word;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    overflow: hidden;
+    max-width: 100%;
+    min-width: 0;
     position: relative;
     box-shadow: var(--shadow-sm);
 }
@@ -1141,13 +1165,7 @@ p {
 .input-area.is-typing .expand-actions-btn {
     display: block;
 }
-
-
 /* Khung bọc Textarea (đã tối ưu lại kích thước) */
-
-
-/* Khung bọc Textarea (đã tối ưu lại kích thước) */
-
 .input-wrapper {
     flex: 1;
     background: var(--bg-color);
@@ -2711,7 +2729,10 @@ input:checked+.slider.round:before {
         margin-right: 0 !important;
         padding-right: 0 !important;
         justify-content: flex-end !important;
-        max-width: 100% !important;
+        max-width: 80% !important;
+    }
+    .other-message .message-body {
+        max-width: 80% !important;
     }
     .my-message .message-meta {
         align-self: flex-end !important;
