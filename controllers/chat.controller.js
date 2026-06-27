@@ -207,7 +207,7 @@ exports.sendMessage = async (req, res) => {
 
     const { conversationId } = req.params;
 
-    const { content, replyMessageId, type } = req.body;
+    let { content, replyMessageId, type } = req.body;
 
     if (!content) {
       return res
@@ -215,6 +215,43 @@ exports.sendMessage = async (req, res) => {
         .status(400)
 
         .json({ message: "Nội dung tin nhắn không được để trống" });
+    }
+
+    let finalContent = content;
+
+    // --- TÍCH HỢP SUPABASE STORAGE ---
+    // Kiểm tra nếu tin nhắn là ảnh, âm thanh hoặc file chứa chuỗi base64
+    if (type === "image" || type === "audio" || type === "file") {
+      try {
+        const { uploadBase64 } = require("../supabase");
+        if (type === "image" && content.startsWith("data:image")) {
+          console.log("📸 Đang tải ảnh lên Supabase Storage...");
+          finalContent = await uploadBase64(content, "image");
+        } else if (type === "audio" && content.startsWith("data:audio")) {
+          console.log("🎙️ Đang tải tin nhắn thoại lên Supabase Storage...");
+          finalContent = await uploadBase64(content, "audio");
+        } else if (type === "file") {
+          try {
+            const fileData = JSON.parse(content);
+            if (fileData && fileData.base64 && fileData.base64.startsWith("data:")) {
+              console.log(`📁 Đang tải file lên Supabase Storage: ${fileData.fileName}`);
+              const publicUrl = await uploadBase64(fileData.base64, "file", fileData.fileName);
+              
+              // Tạo lại JSON string mới chứa publicUrl thay vì lưu base64 nặng
+              finalContent = JSON.stringify({
+                fileName: fileData.fileName,
+                fileSize: fileData.fileSize,
+                url: publicUrl
+              });
+            }
+          } catch (jsonErr) {
+            console.error("❌ Lỗi parse JSON file payload:", jsonErr);
+          }
+        }
+      } catch (uploadError) {
+        console.error("❌ Lỗi upload media lên Supabase (Sẽ fallback lưu base64 vào DB):", uploadError);
+        // Fallback: Giữ nguyên finalContent = content để lưu base64 tránh mất tin nhắn của user
+      }
     }
 
     // 1. Lưu tin nhắn vào Database
@@ -227,7 +264,7 @@ exports.sendMessage = async (req, res) => {
 
         senderId,
 
-        content,
+        content: finalContent,
 
         type: type || "text",
 

@@ -1824,8 +1824,12 @@ function displayMessage(msg, targetContainer = null) {
                 messageContent.onclick = (e) => {
                     e.stopPropagation();
                     const link = document.createElement("a");
-                    link.href = fileData.base64;
+                    link.href = fileData.url || fileData.base64;
                     link.download = fileData.fileName;
+                    // Nếu là URL ngoài, mở tab mới thay vì tự động tạo click
+                    if (fileData.url) {
+                        link.target = "_blank";
+                    }
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
@@ -1844,9 +1848,11 @@ function displayMessage(msg, targetContainer = null) {
             messageContent.style.background = "transparent";
             messageContent.style.padding = "0";
         } else if (
-            msg.content &&
-            (msg.content.startsWith("data:image/") ||
-                msg.content.match(/\.(jpeg|jpg|gif|png)$/i))
+            msg.type === "image" ||
+            (msg.content &&
+                (msg.content.startsWith("data:image/") ||
+                    msg.content.startsWith("http") ||
+                    msg.content.match(/\.(jpeg|jpg|gif|png)(\?.*)?$/i)))
         ) {
             messageContent.innerHTML = `<img src="${msg.content}" class="message-image" onclick="openLightbox(this.src)" alt="Ảnh tin nhắn" />`;
             messageContent.style.background = "transparent";
