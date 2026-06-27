@@ -30,7 +30,17 @@ let isAppInBackground = false;
 document.addEventListener("visibilitychange", () => {
     isAppInBackground = document.visibilityState === "hidden";
 
-    if (!isAppInBackground) {
+    if (isAppInBackground) {
+        // Gửi sự kiện chạy ngầm (go_offline) lên socket server
+        if (typeof socket !== "undefined" && socket && socket.connected && myId) {
+            socket.emit("go_offline");
+        }
+    } else {
+        // Gửi sự kiện mở lại app (go_online) lên socket server
+        if (typeof socket !== "undefined" && socket && socket.connected && myId) {
+            socket.emit("go_online");
+        }
+
         // 1. Kéo lại tin nhắn bị lỡ trong lúc trình duyệt ngủ đông (mất kết nối Socket)
         if (typeof loadConversations === "function") loadConversations();
         if (typeof reloadCurrentChat === "function" && currentConversationId)

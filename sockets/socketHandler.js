@@ -64,6 +64,46 @@ module.exports = (io) => {
       console.log(`👤 User ${userId} đã kết nối.`);
     });
 
+    // 1b. Lắng nghe khi người dùng chuyển ứng dụng chạy ngầm (go_offline)
+    socket.on("go_offline", async () => {
+      if (!socket.userId) return;
+      try {
+        const lastActiveTime = new Date();
+        await prisma.users.update({
+          where: { id: socket.userId },
+          data: { isOnline: false, lastActive: lastActiveTime },
+        });
+
+        const payload = {
+          userId: socket.userId,
+          isOnline: false,
+          lastActive: lastActiveTime.toISOString()
+        };
+        io.emit("user_status_changed", payload);
+        io.emit("user_status_change", payload);
+        console.log(`👤 User ${socket.userId} chạy ngầm (Offline).`);
+      } catch (e) {
+        console.error("Lỗi khi cập nhật trạng thái offline chạy ngầm:", e);
+      }
+    });
+
+    // 1c. Lắng nghe khi người dùng mở lại app (go_online)
+    socket.on("go_online", async () => {
+      if (!socket.userId) return;
+      try {
+        await prisma.users.update({
+          where: { id: socket.userId },
+          data: { isOnline: true },
+        });
+
+        io.emit("user_status_changed", { userId: socket.userId, isOnline: true });
+        io.emit("user_status_change", { userId: socket.userId, isOnline: true });
+        console.log(`👤 User ${socket.userId} mở lại app (Online).`);
+      } catch (e) {
+        console.error("Lỗi khi cập nhật trạng thái online mở lại app:", e);
+      }
+    });
+
     // 2. Lắng nghe khi người dùng tắt app hoặc mất mạng
     socket.on("disconnect", async () => {
       console.log("🔴 Một thiết bị vừa ngắt kết nối: " + socket.id);
