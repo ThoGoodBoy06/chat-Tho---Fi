@@ -59,6 +59,7 @@ let notificationsList = [];
 let replyingToMessage = null;
 let editingMessage = null;
 let currentChatMessages = [];
+let currentNicknames = {};
 let mediaRecorder = null;
 let audioChunks = [];
 let isRecording = false;
@@ -894,6 +895,19 @@ function initizeChatSession(userData, userToken) {
         }
     });
 
+    // Nghe sự kiện thay đổi biệt danh (Nickname)
+    socket.on("nickname_changed", ({ conversationId, targetUserId, nickname, nicknames, systemMessage }) => {
+        if (isSameId(conversationId, currentConversationId)) {
+            currentNicknames = nicknames || {};
+            updateUINames();
+            if (systemMessage) {
+                displayMessage(systemMessage);
+            }
+        }
+        // Tải lại danh sách cuộc trò chuyện ở sidebar
+        loadConversations();
+    });
+
     // Gắn sự kiện cho các nút trong cuộc gọi
     document.getElementById("reject-call-btn").onclick = () => endCall(true);
     document.getElementById("end-call-btn").onclick = () => endCall(true);
@@ -1058,10 +1072,20 @@ async function loadConversations() {
                 const li = document.createElement("li");
                 li.className = "conversation-item";
                 li.dataset.conversationId = conv.id;
+                
+                // Lưu nicknames vào dataset để tra cứu sau này
+                const nicksMap = {};
+                if (conv.ConversationMembers) {
+                    conv.ConversationMembers.forEach(m => {
+                        if (m.nickname) nicksMap[m.userId] = m.nickname;
+                    });
+                }
+                li.dataset.nicknames = JSON.stringify(nicksMap);
+
                 if (isSameId(conv.id, currentConversationId))
                     li.classList.add("active");
                 li.onclick = () =>
-                    startChat(user.id, user.fullName || user.username, avatarUrl);
+                    startChat(user.id, otherMember.nickname || user.fullName || user.username, avatarUrl);
                 li.innerHTML = `
           <div class="avatar" style="cursor: pointer;" onclick="event.stopPropagation(); showUserProfile('${user.id}')">
             <img src="${avatarUrl}" alt="Avatar">
@@ -1069,7 +1093,7 @@ async function loadConversations() {
           </div>
           <div class="chat-list-content">
             <div class="chat-list-header">
-              <span class="chat-list-name">${user.fullName || "Người dùng"}</span>
+              <span class="chat-list-name">${otherMember.nickname || user.fullName || "Người dùng"}</span>
               <div class="chat-list-right" style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
                 <span class="chat-list-time" style="font-size: 11px; color: var(--text-light);">${timeStr}</span>
                 ${unreadBadgeHtml}
@@ -1155,7 +1179,17 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
 
         const headerContainer = document.getElementById("chat-header-container");
         headerContainer.style.display = "flex";
-        document.getElementById("chat-header-name").innerText = receiverName;
+        
+        const headerNameEl = document.getElementById("chat-header-name");
+        headerNameEl.dataset.realName = receiverName;
+        headerNameEl.innerText = receiverName;
+
+        const infoNameEl = document.getElementById("chat-info-name");
+        if (infoNameEl) {
+            infoNameEl.dataset.realName = receiverName;
+            infoNameEl.innerText = receiverName;
+        }
+
         document.getElementById("current-chat-avatar").src =
             receiverAvatar ||
             `https://ui-avatars.com/api/?name=${encodeURIComponent(
@@ -1247,6 +1281,10 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
         const dataMsg = await resMsg.json();
         const messagesDiv = document.getElementById("messages");
         messagesDiv.innerHTML = "";
+
+        // Lưu và áp dụng biệt danh
+        currentNicknames = dataMsg.nicknames || {};
+        updateUINames();
 
         // Áp dụng chủ đề trò chuyện
         applyChatTheme(dataMsg.theme || "default");
@@ -1390,6 +1428,10 @@ async function reloadCurrentChat() {
         const dataMsg = await resMsg.json();
         const messagesDiv = document.getElementById("messages");
         messagesDiv.innerHTML = "";
+
+        // Lưu và áp dụng biệt danh
+        currentNicknames = dataMsg.nicknames || {};
+        updateUINames();
 
         // Áp dụng chủ đề trò chuyện
         applyChatTheme(dataMsg.theme || "default");
@@ -1839,7 +1881,8 @@ function displayMessage(msg, targetContainer = null) {
     if (msg.senderId !== myId && msg.Users) {
         const senderName = document.createElement("div");
         senderName.className = "sender-name";
-        senderName.innerText = msg.Users.fullName;
+        senderName.dataset.realName = msg.Users.fullName;
+        senderName.innerText = (currentNicknames && currentNicknames[msg.senderId]) || msg.Users.fullName;
         messageElement.appendChild(senderName);
     }
 
@@ -2674,6 +2717,33 @@ document.addEventListener(
 // THÔNG BÁO TIN NHẮN MỚI (IN-APP TOAST & NATIVE)
 // =========================================
 
+function getNicknameForUser(userId, conversationId) {
+    if (isSameId(conversationId, currentConversationId) && currentNicknames && currentNicknames[userId]) {
+        return currentNicknames[userId];
+    }
+    const userList = document.getElementById("user-list");
+    if (userList) {
+        const items = userList.querySelectorAll("li.conversation-item");
+        for (const item of items) {
+            if (isSameId(item.dataset.conversationId, conversationId)) {
+                if (item.dataset.nicknames) {
+                    try {
+                        const nicks = JSON.parse(item.dataset.nicknames);
+                        if (nicks[userId]) return nicks[userId];
+                    } catch (e) {}
+                }
+            }
+        }
+    }
+    return null;
+}
+
+function resolveSenderName(msg) {
+    const defaultName = (msg.Users && msg.Users.fullName) || "Tin nhắn mới";
+    const nick = getNicknameForUser(msg.senderId, msg.conversationId);
+    return nick || defaultName;
+}
+
 function showNewMessageToast(msg) {
     let container = document.getElementById("top-toast-container");
     if (!container) {
@@ -2683,7 +2753,7 @@ function showNewMessageToast(msg) {
     }
 
     const sender = msg.Users || {};
-    const senderName = sender.fullName || "Tin nhắn mới";
+    const senderName = resolveSenderName(msg);
     let avatarUrl = sender.avatar ?
         formatUrl(sender.avatar) :
         `https://ui-avatars.com/api/?name=${encodeURIComponent(
@@ -2750,7 +2820,7 @@ function showNewMessageToast(msg) {
 
 async function sendNativeNotification(msg) {
     const sender = msg.Users || {};
-    const senderName = sender.fullName || "Tin nhắn mới";
+    const senderName = resolveSenderName(msg);
 
     let snippet = msg.content;
     if (msg.isRecalled) snippet = "Tin nhắn đã bị thu hồi";
@@ -5789,6 +5859,39 @@ function applyChatTheme(themeName) {
     console.log("🎨 Đã áp dụng chủ đề chat thành công:", currentChatTheme, "Nền:", colors.bg);
 }
 
+// --- PANEL THÔNG TIN CUỘC TRÒ CHUYỆN (CHAT INFO) ---
+function openChatInfoPanel() {
+    if (!currentConversationId) return;
+
+    // Lấy thông tin từ header chat hiện tại
+    const avatarEl = document.getElementById("current-chat-avatar");
+    const nameEl = document.getElementById("chat-header-name");
+
+    const infoAvatar = document.getElementById("chat-info-avatar-img");
+    const infoName = document.getElementById("chat-info-name");
+
+    if (avatarEl && infoAvatar) {
+        infoAvatar.src = avatarEl.src || "";
+    }
+    if (nameEl && infoName) {
+        infoName.textContent = nameEl.textContent || "Người dùng";
+    }
+
+    const modal = document.getElementById("chat-info-panel");
+    modal.style.display = "flex";
+    setTimeout(() => {
+        modal.classList.add("show");
+    }, 10);
+}
+
+function closeChatInfoPanel() {
+    const modal = document.getElementById("chat-info-panel");
+    modal.classList.remove("show");
+    setTimeout(() => {
+        modal.style.display = "none";
+    }, 250);
+}
+
 function openThemeModal() {
     if (!currentConversationId) return alert("Vui lòng mở một cuộc trò chuyện để đổi chủ đề!");
 
@@ -5839,5 +5942,136 @@ async function selectChatTheme(themeName) {
         }
     } catch (error) {
         console.error("Lỗi kết nối mạng khi đổi chủ đề:", error);
+    }
+}
+
+// --- QUẢN LÝ BIỆT DANH (NICKNAMES) ---
+function updateUINames() {
+    if (!currentConversationId) return;
+
+    const partnerNickname = currentNicknames[currentChatPartnerId];
+    const partnerRealName = document.getElementById("chat-header-name")?.dataset.realName || "Người dùng";
+
+    // 1. Cập nhật tên trong header chat
+    const headerNameEl = document.getElementById("chat-header-name");
+    if (headerNameEl) {
+        headerNameEl.innerText = partnerNickname || partnerRealName;
+    }
+
+    // 2. Cập nhật tên hiển thị trong các dòng tin nhắn
+    const messages = document.getElementById("messages");
+    if (messages) {
+        const messageElements = messages.querySelectorAll(".message.other-message");
+        messageElements.forEach((el) => {
+            const senderId = el.dataset.senderId;
+            const senderNameEl = el.querySelector(".sender-name");
+            if (senderNameEl && senderId) {
+                if (currentNicknames[senderId]) {
+                    senderNameEl.innerText = currentNicknames[senderId];
+                } else {
+                    senderNameEl.innerText = senderNameEl.dataset.realName || senderNameEl.innerText;
+                }
+            }
+        });
+    }
+
+    // 3. Cập nhật thông tin trong Chat Info Panel
+    const chatInfoNameEl = document.getElementById("chat-info-name");
+    if (chatInfoNameEl) {
+        chatInfoNameEl.innerText = partnerNickname || chatInfoNameEl.dataset.realName || "Người dùng";
+    }
+}
+
+function openNicknameModal() {
+    if (!currentConversationId) return;
+
+    const partnerRealName = document.getElementById("chat-header-name")?.dataset.realName || "Đối phương";
+    const partnerLabel = document.getElementById("nickname-partner-label");
+    if (partnerLabel) {
+        partnerLabel.innerText = `Biệt danh của ${partnerRealName}:`;
+    }
+
+    const selfInput = document.getElementById("nickname-self-input");
+    const partnerInput = document.getElementById("nickname-partner-input");
+
+    if (selfInput) selfInput.value = currentNicknames[myId] || "";
+    if (partnerInput) partnerInput.value = currentNicknames[currentChatPartnerId] || "";
+
+    const modal = document.getElementById("nickname-modal");
+    modal.style.display = "flex";
+    setTimeout(() => {
+        modal.classList.add("show");
+    }, 10);
+}
+
+function closeNicknameModal() {
+    const modal = document.getElementById("nickname-modal");
+    modal.classList.remove("show");
+    setTimeout(() => {
+        modal.style.display = "none";
+    }, 250);
+}
+
+async function saveNickname(type) {
+    if (!currentConversationId) return;
+
+    let targetUserId = type === "self" ? myId : currentChatPartnerId;
+    let inputId = type === "self" ? "nickname-self-input" : "nickname-partner-input";
+    const nicknameVal = document.getElementById(inputId)?.value || "";
+
+    try {
+        const res = await fetch(`${API_URL}/chat/conversations/${currentConversationId}/nickname`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({ targetUserId, nickname: nicknameVal })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            currentNicknames = data.nicknames || {};
+            updateUINames();
+            closeNicknameModal();
+        } else {
+            alert("Lỗi lưu biệt danh: " + data.message);
+        }
+    } catch (error) {
+        console.error("Lỗi mạng khi lưu biệt danh:", error);
+        alert("Lỗi mạng khi lưu biệt danh.");
+    }
+}
+
+async function removeNickname(type) {
+    if (!currentConversationId) return;
+
+    let targetUserId = type === "self" ? myId : currentChatPartnerId;
+    let inputId = type === "self" ? "nickname-self-input" : "nickname-partner-input";
+    
+    const input = document.getElementById(inputId);
+    if (input) input.value = "";
+
+    try {
+        const res = await fetch(`${API_URL}/chat/conversations/${currentConversationId}/nickname`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({ targetUserId, nickname: "" })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            currentNicknames = data.nicknames || {};
+            updateUINames();
+            closeNicknameModal();
+        } else {
+            alert("Lỗi xóa biệt danh: " + data.message);
+        }
+    } catch (error) {
+        console.error("Lỗi mạng khi xóa biệt danh:", error);
+        alert("Lỗi mạng khi xóa biệt danh.");
     }
 }

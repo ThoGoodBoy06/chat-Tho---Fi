@@ -194,8 +194,17 @@ exports.getMessages = async (req, res) => {
       }
       return m;
     });
+    // Lấy biệt danh (nicknames) của các thành viên trong cuộc hội thoại
+    const membersWithNicknames = await prisma.conversationMembers.findMany({
+      where: { conversationId },
+      select: { userId: true, nickname: true },
+    });
+    const nicknames = {};
+    membersWithNicknames.forEach((m) => {
+      if (m.nickname) nicknames[m.userId] = m.nickname;
+    });
 
-    res.status(200).json({ success: true, data: mappedMessages, hasMore, theme });
+    res.status(200).json({ success: true, data: mappedMessages, hasMore, theme, nicknames });
   } catch (error) {
     res.status(500).json({ message: "Lỗi server", error: error.message });
   }
@@ -341,10 +350,13 @@ exports.sendMessage = async (req, res) => {
           )}&background=random`;
         }
 
+        const senderMember = members.find((m) => m.userId === senderId);
+        const senderDisplayName = (senderMember && senderMember.nickname) || newMessage.Users.fullName || "Tin nhắn mới";
+
         const payload = {
           token: member.Users.fcmToken,
           notification: {
-            title: newMessage.Users.fullName || "Tin nhắn mới",
+            title: senderDisplayName,
             body: snippet,
             image: avatarUrl,
           },
@@ -930,3 +942,133 @@ exports.deleteConversation = async (req, res) => {
   }
 };
 
+// 10. Đặt / Xóa biệt danh (Nickname) cho thành viên trong cuộc trò chuyện
+
+exports.setNickname = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const { targetUserId, nickname } = req.body;
+    const userId = req.user.id;
+
+    if (!targetUserId) {
+      return res.status(400).json({ success: false, message: "Thiếu targetUserId." });
+    }
+
+    // 1. Kiểm tra quyền thành viên của người thực hiện
+    const membership = await prisma.conversationMembers.findFirst({
+      where: { conversationId, userId },
+    });
+
+    if (!membership) {
+      return res.status(403).json({
+        success: false,
+        message: "Bạn không phải thành viên cuộc trò chuyện này.",
+      });
+    }
+
+    // 2. Tìm bản ghi thành viên của người được đặt biệt danh
+    const targetMembership = await prisma.conversationMembers.findFirst({
+      where: { conversationId, userId: targetUserId },
+    });
+
+    if (!targetMembership) {
+      return res.status(404).json({
+        success: false,
+        message: "Người dùng mục tiêu không phải thành viên cuộc trò chuyện.",
+      });
+    }
+
+    // 3. Cập nhật biệt danh (nickname = null hoặc "" để xóa)
+    const cleanNickname = nickname && nickname.trim() !== "" ? nickname.trim() : null;
+
+    await prisma.conversationMembers.update({
+      where: { id: targetMembership.id },
+      data: { nickname: cleanNickname },
+    });
+
+    // 4. Lấy tên thật của người thực hiện và người được đặt biệt danh
+    const [actor, target] = await Promise.all([
+      prisma.users.findUnique({ where: { id: userId }, select: { fullName: true } }),
+      prisma.users.findUnique({ where: { id: targetUserId }, select: { fullName: true } }),
+    ]);
+
+    const actorName = actor ? actor.fullName : "Người dùng";
+    const targetName = target ? target.fullName : "Người dùng";
+
+    // 5. Tạo tin nhắn hệ thống
+    let systemContent;
+    if (cleanNickname) {
+      if (targetUserId === userId) {
+        systemContent = `${actorName} đã đặt biệt danh của mình là ${cleanNickname}.`;
+      } else {
+        systemContent = `${actorName} đã đặt biệt danh cho ${targetName} là ${cleanNickname}.`;
+      }
+    } else {
+      if (targetUserId === userId) {
+        systemContent = `${actorName} đã xóa biệt danh của mình.`;
+      } else {
+        systemContent = `${actorName} đã xóa biệt danh của ${targetName}.`;
+      }
+    }
+
+    const systemMessage = await prisma.messages.create({
+      data: {
+        id: uuidv4(),
+        conversationId,
+        senderId: userId,
+        content: systemContent,
+        type: "system",
+      },
+      include: {
+        Users: {
+          select: { id: true, fullName: true },
+        },
+      },
+    });
+
+    const mappedSystemMessage = {
+      ...systemMessage,
+      Users: systemMessage.Users
+        ? { ...systemMessage.Users, avatar: `/api/users/${systemMessage.Users.id}/avatar` }
+        : null,
+    };
+
+    // 6. Phát socket event tới tất cả thành viên
+    const members = await prisma.conversationMembers.findMany({
+      where: { conversationId },
+      select: { userId: true, nickname: true },
+    });
+
+    const io = req.app.get("io");
+
+    // Tạo map nicknames mới
+    const nicknames = {};
+    members.forEach((m) => {
+      if (m.nickname) nicknames[m.userId] = m.nickname;
+    });
+
+    members.forEach((m) => {
+      io.to(m.userId).emit("nickname_changed", {
+        conversationId,
+        targetUserId,
+        nickname: cleanNickname,
+        nicknames,
+        systemMessage: mappedSystemMessage,
+      });
+    });
+
+    res.status(200).json({
+      success: true,
+      message: cleanNickname ? "Đặt biệt danh thành công." : "Đã xóa biệt danh.",
+      nickname: cleanNickname,
+      nicknames,
+    });
+  } catch (error) {
+    console.error("❌ Lỗi khi đặt biệt danh:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi hệ thống khi đặt biệt danh.",
+      error: error.message,
+    });
+  }
+};
