@@ -233,6 +233,7 @@ exports.getOtherUserProfile = async (req, res) => {
         fullName: true,
         bio: true,
         isOnline: true,
+        lastActive: true,
       },
     });
 
@@ -247,6 +248,7 @@ exports.getOtherUserProfile = async (req, res) => {
       coverPhotoGroupUrl: `/api/users/${user.id}/cover`,
       bio: user.bio || "Chưa có tiểu sử",
       status: user.isOnline ? "online" : "offline",
+      lastActive: user.lastActive,
     });
   } catch (error) {
     console.error("Lỗi khi lấy thông tin hồ sơ chi tiết:", error.message);
