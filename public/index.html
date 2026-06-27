@@ -14,7 +14,7 @@
     <meta name="apple-mobile-web-app-title" content="Chat Tho-Fi" />
     <link rel="icon" href="icon.png" type="image/png" />
     <link rel="apple-touch-icon" href="icon.png" />
-    <link rel="stylesheet" href="style.css?v=20099" />
+    <link rel="stylesheet" href="style.css?v=24000" />
 </head>
 
 <body>
@@ -753,8 +753,8 @@
     </div>
 
     <!-- Modal chọn chủ đề chat (Chat Themes) -->
-    <div id="theme-modal" class="modal" style="display: none;">
-        <div class="modal-content" style="max-width: 400px; padding: 24px; border-radius: 16px;">
+    <div id="theme-modal" class="custom-modal-overlay" style="display: none;">
+        <div class="custom-modal-card" style="max-width: 400px; padding: 24px; border-radius: 16px;">
             <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h3 style="margin: 0; font-size: 18px; font-weight: 700;">Chủ đề cuộc trò chuyện</h3>
                 <i class="fas fa-times" onclick="closeThemeModal()" style="cursor: pointer; font-size: 18px; color: var(--text-light);"></i>
@@ -810,7 +810,7 @@
 
     <!-- Import Socket.IO và file xử lý logic -->
     <script src="/socket.io/socket.io.js"></script>
-    <script src="app.js?v=20053"></script>
+    <script src="app.js?v=24000"></script>
 </body>
 
 </html>

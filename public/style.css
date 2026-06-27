@@ -7,6 +7,7 @@
     --theme-primary-start: #0084ff;
     --theme-primary-end: #006eeb;
     --theme-accent: #0084ff;
+    --theme-bg-color: var(--chat-bg);
 
     --primary-color: #0084ff;
     /* Emerald Green */
@@ -756,9 +757,11 @@ p {
     flex: 1;
     display: flex;
     flex-direction: column;
-    background: var(--chat-bg);
+    background: var(--theme-bg-color, var(--chat-bg)) !important;
     position: relative;
     min-width: 0;
+    transition: background-color 0.25s ease;
+    will-change: background-color;
 }
 
 .chat-header {
@@ -869,6 +872,8 @@ p {
     color: white;
     border-radius: 18px 18px 4px 18px;
     box-shadow: 0 2px 8px rgba(0, 132, 255, 0.3);
+    transform: translateZ(0);
+    will-change: background;
 }
 
 .other-message .message-content {
@@ -2642,15 +2647,15 @@ input:checked+.slider.round:before {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 100000;
     opacity: 0;
-    transition: opacity 0.25s ease-out;
+    transition: opacity 0.2s ease-out;
 }
 
 .custom-modal-overlay.show {
@@ -3146,7 +3151,7 @@ input:checked+.slider.round:before {
     }
     #messages {
         padding: 16px 12px;
-        background: var(--bg-color);
+        background: transparent !important;
     }
     .zalo-profile-layout {
         max-width: 100%;
@@ -4945,4 +4950,8 @@ body[data-theme="dark"] .ai-quota-bar-footer {
     color: var(--text-dark);
     text-align: center;
     white-space: nowrap;
+}
+
+#theme-modal .custom-modal-card {
+    transform: none !important;
 }

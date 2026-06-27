@@ -2940,6 +2940,10 @@ function toggleDarkMode(checkbox) {
         document.body.removeAttribute("data-theme");
         localStorage.setItem("theme", "light");
     }
+    // Cập nhật lại màu nền chủ đề chat tương ứng với chế độ sáng/tối mới
+    if (typeof applyChatTheme === "function") {
+        applyChatTheme(currentChatTheme);
+    }
 }
 
 // =========================================
@@ -5738,16 +5742,41 @@ let currentChatTheme = "default";
 function applyChatTheme(themeName) {
     currentChatTheme = themeName || "default";
     const root = document.documentElement;
+    const isDark = document.body.getAttribute("data-theme") === "dark";
 
     const themeColors = {
-        default: { start: "#0084ff", end: "#006eeb", accent: "#0084ff" },
-        ocean: { start: "#00c6ff", end: "#0072ff", accent: "#0072ff" },
-        sunset: { start: "#f12711", end: "#f5af19", accent: "#f12711" },
-        lavender: { start: "#a18cd1", end: "#fbc2eb", accent: "#a18cd1" },
-        forest: { start: "#11998e", end: "#38ef7d", accent: "#11998e" },
-        rose: { start: "#ff758c", end: "#ff7eb3", accent: "#ff758c" },
-        cyberpunk: { start: "#8a2be2", end: "#ff007f", accent: "#ff007f" },
-        midnight: { start: "#0f2027", end: "#203a43", accent: "#203a43" }
+        default: {
+            start: "#0084ff", end: "#006eeb", accent: "#0084ff",
+            bg: isDark ? "#151515" : "#f0f2f5"
+        },
+        ocean: {
+            start: "#00c6ff", end: "#0072ff", accent: "#0072ff",
+            bg: isDark ? "#081b22" : "#eef9fc"
+        },
+        sunset: {
+            start: "#f12711", end: "#f5af19", accent: "#f12711",
+            bg: isDark ? "#22110c" : "#fff6f5"
+        },
+        lavender: {
+            start: "#a18cd1", end: "#fbc2eb", accent: "#a18cd1",
+            bg: isDark ? "#171022" : "#faf5ff"
+        },
+        forest: {
+            start: "#11998e", end: "#38ef7d", accent: "#11998e",
+            bg: isDark ? "#081c12" : "#f2faf5"
+        },
+        rose: {
+            start: "#ff758c", end: "#ff7eb3", accent: "#ff758c",
+            bg: isDark ? "#240d15" : "#fff5f7"
+        },
+        cyberpunk: {
+            start: "#8a2be2", end: "#ff007f", accent: "#ff007f",
+            bg: isDark ? "#170824" : "#f9f2ff"
+        },
+        midnight: {
+            start: "#0f2027", end: "#203a43", accent: "#203a43",
+            bg: isDark ? "#090b0e" : "#e8eaed"
+        }
     };
 
     const colors = themeColors[currentChatTheme] || themeColors.default;
@@ -5755,8 +5784,9 @@ function applyChatTheme(themeName) {
     root.style.setProperty("--theme-primary-start", colors.start);
     root.style.setProperty("--theme-primary-end", colors.end);
     root.style.setProperty("--theme-accent", colors.accent);
+    root.style.setProperty("--theme-bg-color", colors.bg);
 
-    console.log("🎨 Đã áp dụng chủ đề chat thành công:", currentChatTheme);
+    console.log("🎨 Đã áp dụng chủ đề chat thành công:", currentChatTheme, "Nền:", colors.bg);
 }
 
 function openThemeModal() {
@@ -5771,15 +5801,27 @@ function openThemeModal() {
         }
     });
 
-    document.getElementById("theme-modal").style.display = "flex";
+    const modal = document.getElementById("theme-modal");
+    modal.style.display = "flex";
+    setTimeout(() => {
+        modal.classList.add("show");
+    }, 10);
 }
 
 function closeThemeModal() {
-    document.getElementById("theme-modal").style.display = "none";
+    const modal = document.getElementById("theme-modal");
+    modal.classList.remove("show");
+    setTimeout(() => {
+        modal.style.display = "none";
+    }, 250); // Đồng bộ với thời gian transition CSS
 }
 
 async function selectChatTheme(themeName) {
     if (!currentConversationId) return;
+
+    // ✨ Cập nhật giao diện và đóng Modal ngay lập tức (Optimistic UI) để tạo hiệu ứng mượt mà không độ trễ
+    applyChatTheme(themeName);
+    closeThemeModal();
 
     try {
         const res = await fetch(`${API_URL}/chat/conversations/${currentConversationId}/theme`, {
@@ -5792,13 +5834,10 @@ async function selectChatTheme(themeName) {
         });
 
         const data = await res.json();
-        if (data.success) {
-            applyChatTheme(themeName);
-            closeThemeModal();
-        } else {
-            alert("Lỗi đổi chủ đề: " + data.message);
+        if (!data.success) {
+            console.error("Lỗi đồng bộ chủ đề với server:", data.message);
         }
     } catch (error) {
-        alert("Lỗi mạng khi đổi chủ đề: " + error.message);
+        console.error("Lỗi kết nối mạng khi đổi chủ đề:", error);
     }
 }
