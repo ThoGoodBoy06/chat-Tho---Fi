@@ -793,6 +793,24 @@ p {
     margin: 0;
     font-size: 12.5px;
     color: var(--text-light);
+    transition: color 0.2s ease;
+}
+
+.chat-header-text .status.online {
+    color: #42b72a !important;
+    font-weight: 500;
+}
+
+.status-online-dot {
+    position: absolute;
+    bottom: 1px;
+    right: 1px;
+    width: 11px;
+    height: 11px;
+    background: #42b72a !important;
+    border: 2px solid var(--msg-receiver-bg);
+    border-radius: 50%;
+    z-index: 2;
 }
 
 .chat-header-actions {

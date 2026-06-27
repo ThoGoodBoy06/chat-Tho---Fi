@@ -277,7 +277,7 @@ app.get("/api/auth/me", async (req, res) => {
         phone: true,
         bio: true,
         isOnline: true,
-        lastSeen: true,
+        lastActive: true,
         createdAt: true,
         updatedAt: true
       }

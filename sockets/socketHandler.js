@@ -58,8 +58,9 @@ module.exports = (io) => {
         data: { isOnline: true },
       });
 
-      // Báo cho mọi người khác biết user này vừa online
+      // Báo cho mọi người khác biết user này vừa online (cả 2 dạng sự kiện để tương thích)
       io.emit("user_status_changed", { userId, isOnline: true });
+      io.emit("user_status_change", { userId, isOnline: true });
       console.log(`👤 User ${userId} đã kết nối.`);
     });
 
@@ -79,16 +80,20 @@ module.exports = (io) => {
         // Chỉ cập nhật DB offline nếu người dùng không còn kết nối nào khác
         if (!hasRemainingSockets) {
           try {
+            const lastActiveTime = new Date();
             await prisma.users.update({
               where: { id: socket.userId },
-              data: { isOnline: false, lastSeen: new Date() },
+              data: { isOnline: false, lastActive: lastActiveTime },
             });
 
             // Báo cho mọi người biết user này đã offline
-            io.emit("user_status_changed", {
+            const payload = {
               userId: socket.userId,
               isOnline: false,
-            });
+              lastActive: lastActiveTime.toISOString()
+            };
+            io.emit("user_status_changed", payload);
+            io.emit("user_status_change", payload);
           } catch (e) {
             console.error("Lỗi khi cập nhật trạng thái offline:", e);
           }

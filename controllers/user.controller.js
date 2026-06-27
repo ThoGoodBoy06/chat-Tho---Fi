@@ -195,7 +195,7 @@ exports.getUserProfile = async (req, res) => {
         fullName: true,
         bio: true,
         isOnline: true,
-        lastSeen: true,
+        lastActive: true,
       },
     });
 
@@ -210,7 +210,7 @@ exports.getUserProfile = async (req, res) => {
       coverUrl: `/api/users/${user.id}/cover`,
       bio: user.bio || "Chưa có tiểu sử",
       status: user.isOnline ? "online" : "offline",
-      lastSeen: user.lastSeen,
+      lastActive: user.lastActive,
     });
   } catch (error) {
     console.error("Lỗi khi lấy hồ sơ người dùng:", error.message);

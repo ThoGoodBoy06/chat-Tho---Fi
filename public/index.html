@@ -14,7 +14,7 @@
     <meta name="apple-mobile-web-app-title" content="Chat Tho-Fi" />
     <link rel="icon" href="icon.png" type="image/png" />
     <link rel="apple-touch-icon" href="icon.png" />
-    <link rel="stylesheet" href="style.css?v=28000" />
+    <link rel="stylesheet" href="style.css?v=30000" />
 </head>
 
 <body>
@@ -235,11 +235,11 @@
                             <i class="fas fa-arrow-left icon-btn back-btn" onclick="closeChatMobile()"></i>
                             <div class="avatar" style="cursor: pointer;" onclick="if (currentChatPartnerId) openOtherUserProfileModal(currentChatPartnerId)">
                                 <img src="" alt="Avatar" id="current-chat-avatar" />
-                                <div class="online-dot"></div>
+                                <div class="online-dot" id="chat-header-status-dot" style="display: none;"></div>
                             </div>
                             <div class="chat-header-text">
                                 <h3 id="chat-header-name">Tên người chat</h3>
-                                <p class="status">Vừa mới truy cập</p>
+                                <p class="status" id="chat-header-status">Đang hoạt động</p>
                             </div>
                         </div>
                         <div class="chat-header-actions">
@@ -875,7 +875,7 @@
 
     <!-- Import Socket.IO và file xử lý logic -->
     <script src="/socket.io/socket.io.js"></script>
-    <script src="app.js?v=29000"></script>
+    <script src="app.js?v=30000"></script>
 </body>
 
 </html>

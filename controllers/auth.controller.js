@@ -76,7 +76,7 @@ exports.login = async (req, res) => {
         password: true,
         bio: true,
         isOnline: true,
-        lastSeen: true,
+        lastActive: true,
         createdAt: true,
         updatedAt: true
       }

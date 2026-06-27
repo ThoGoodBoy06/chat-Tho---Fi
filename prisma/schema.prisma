@@ -75,7 +75,7 @@ model Users {
   coverPhoto                      String?
   bio                             String?
   isOnline                        Boolean?              @default(false)
-  lastSeen                        DateTime?
+  lastActive                      DateTime?             @default(now())
   createdAt                       DateTime?             @default(now())
   updatedAt                       DateTime?             @default(now())
   ConversationMembers             ConversationMembers[]

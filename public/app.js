@@ -812,6 +812,36 @@ function initizeChatSession(userData, userToken) {
         endCall(false);
     });
 
+    // Nghe sự kiện thay đổi trạng thái hoạt động (online/offline)
+    socket.on("user_status_change", ({ userId, isOnline, lastActive }) => {
+        // 1. Cập nhật trong danh sách chat (sidebar)
+        const sidebarItem = document.querySelector(`#user-list li[data-user-id="${userId}"]`);
+        if (sidebarItem) {
+            sidebarItem.dataset.isOnline = isOnline ? "true" : "false";
+            if (lastActive) sidebarItem.dataset.lastActive = lastActive;
+
+            const dot = sidebarItem.querySelector(".online-dot");
+            if (dot) {
+                dot.style.display = isOnline ? "block" : "none";
+            }
+        }
+
+        // 2. Cập nhật trong danh sách bạn bè (nếu có)
+        const friendItem = document.querySelector(`.friend-request-item[data-user-id="${userId}"]`);
+        if (friendItem) {
+            friendItem.dataset.isOnline = isOnline ? "true" : "false";
+            const dot = friendItem.querySelector(".online-dot");
+            if (dot) {
+                dot.style.display = isOnline ? "block" : "none";
+            }
+        }
+
+        // 3. Cập nhật ở Chat Header nếu đang chat với user này
+        if (typeof currentChatPartnerId !== "undefined" && isSameId(userId, currentChatPartnerId)) {
+            updateHeaderStatusUI(isOnline, lastActive);
+        }
+    });
+
     // Nghe sự kiện thu hồi tin nhắn
     socket.on("message_recalled", ({ messageId, conversationId }) => {
         if (conversationId === currentConversationId) {
@@ -1082,6 +1112,9 @@ async function loadConversations() {
                     });
                 }
                 li.dataset.nicknames = JSON.stringify(nicksMap);
+                li.dataset.userId = user.id;
+                li.dataset.isOnline = user.isOnline ? "true" : "false";
+                li.dataset.lastActive = user.lastActive || "";
 
                 if (isSameId(conv.id, currentConversationId))
                     li.classList.add("active");
@@ -1090,7 +1123,7 @@ async function loadConversations() {
                 li.innerHTML = `
           <div class="avatar" style="cursor: pointer;" onclick="event.stopPropagation(); showUserProfile('${user.id}')">
             <img src="${avatarUrl}" alt="Avatar">
-            ${user.isOnline ? '<div class="online-dot"></div>' : ""}
+            <div class="online-dot" style="display: ${user.isOnline ? 'block' : 'none'};"></div>
           </div>
           <div class="chat-list-content">
             <div class="chat-list-header">
@@ -1180,7 +1213,7 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
 
         const headerContainer = document.getElementById("chat-header-container");
         headerContainer.style.display = "flex";
-        
+
         const headerNameEl = document.getElementById("chat-header-name");
         headerNameEl.dataset.realName = receiverName;
         headerNameEl.innerText = receiverName;
@@ -1196,6 +1229,41 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
             `https://ui-avatars.com/api/?name=${encodeURIComponent(
                 receiverName,
             )}&background=random`;
+
+        // Đồng bộ trạng thái online/offline của đối phương lên header
+        let partnerOnline = false;
+        let partnerLastActive = null;
+
+        const sidebarItem = document.querySelector(`#user-list li[data-user-id="${receiverId}"]`);
+        if (sidebarItem) {
+            partnerOnline = sidebarItem.dataset.isOnline === "true";
+            partnerLastActive = sidebarItem.dataset.lastActive;
+        }
+
+        updateHeaderStatusUI(partnerOnline, partnerLastActive);
+
+        // Luôn fetch profile mới nhất để đảm bảo trạng thái hoạt động chính xác nhất
+        fetch(`/api/users/${receiverId}/profile`, {
+            headers: { Authorization: `Bearer ${token}` }
+        })
+        .then(res => res.json())
+        .then(profileData => {
+            if (profileData && isSameId(receiverId, currentChatPartnerId)) {
+                partnerOnline = profileData.status === "online";
+                partnerLastActive = profileData.lastActive;
+                updateHeaderStatusUI(partnerOnline, partnerLastActive);
+
+                // Đồng bộ lại vào sidebar dataset nếu có
+                if (sidebarItem) {
+                    sidebarItem.dataset.isOnline = partnerOnline ? "true" : "false";
+                    if (partnerLastActive) sidebarItem.dataset.lastActive = partnerLastActive;
+                    const dot = sidebarItem.querySelector(".online-dot");
+                    if (dot) dot.style.display = partnerOnline ? "block" : "none";
+                }
+            }
+        })
+        .catch(e => console.warn("Không thể tải trạng thái hoạt động thời gian thực:", e));
+
         document.getElementById("input-area").style.display = "flex";
 
         // Reset ô nhập và trạng thái UI (thu gọn/Like) khi chuyển phòng chat
@@ -1725,11 +1793,13 @@ async function loadFriends() {
 
             const itemEl = document.createElement("div");
             itemEl.className = "friend-request-item";
+            itemEl.dataset.userId = user.id;
+            itemEl.dataset.isOnline = user.isOnline ? "true" : "false";
             itemEl.innerHTML = `
         <div class="friend-request-info">
           <div class="avatar" style="cursor: pointer;" onclick="showUserProfile('${user.id}')">
             <img src="${avatarUrl}" alt="Avatar">
-            ${user.isOnline ? '<div class="online-dot"></div>' : ""}
+            <div class="online-dot" style="display: ${user.isOnline ? 'block' : 'none'};"></div>
           </div>
           <span style="cursor: pointer;" onclick="showUserProfile('${user.id}')">${user.fullName}</span>
         </div>
@@ -6127,3 +6197,63 @@ async function removeNickname(type) {
         alert("Lỗi mạng khi xóa biệt danh.");
     }
 }
+
+// Định dạng thời gian hoạt động cuối cùng (Online/Offline status format)
+function formatLastActive(timestamp) {
+    if (!timestamp) return "Không hoạt động";
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now - date;
+
+    if (diffMs < 0) return "Vừa hoạt động";
+
+    const diffSec = Math.floor(diffMs / 1000);
+    if (diffSec < 60) {
+        return "Vừa hoạt động";
+    }
+
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) {
+        return `Hoạt động ${diffMin} phút trước`;
+    }
+
+    const diffHour = Math.floor(diffMin / 60);
+    if (diffHour < 24) {
+        return `Hoạt động ${diffHour} giờ trước`;
+    }
+
+    const diffDay = Math.floor(diffHour / 24);
+    if (diffDay === 1) {
+        return "Hoạt động 1 ngày trước";
+    }
+    return `Hoạt động ${diffDay} ngày trước`;
+}
+
+// Cập nhật giao diện thanh Chat Header Status
+function updateHeaderStatusUI(isOnline, lastActive) {
+    const dot = document.getElementById("chat-header-status-dot");
+    const statusText = document.getElementById("chat-header-status");
+    if (!dot || !statusText) return;
+
+    if (isOnline) {
+        dot.style.display = "block";
+        statusText.innerText = "Đang hoạt động";
+        statusText.classList.add("online");
+    } else {
+        dot.style.display = "none";
+        statusText.innerText = formatLastActive(lastActive);
+        statusText.classList.remove("online");
+    }
+}
+
+// Tự động quét và cập nhật hiển thị thời gian offline định kỳ mỗi 60 giây
+setInterval(() => {
+    // 1. Cập nhật dòng status trên chat header (nếu đang offline)
+    if (currentChatPartnerId) {
+        const sidebarItem = document.querySelector(`#user-list li[data-user-id="${currentChatPartnerId}"]`);
+        if (sidebarItem && sidebarItem.dataset.isOnline === "false") {
+            const lastActive = sidebarItem.dataset.lastActive;
+            updateHeaderStatusUI(false, lastActive);
+        }
+    }
+}, 60000);

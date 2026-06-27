@@ -51,6 +51,7 @@ exports.getConversations = async (req, res) => {
                     id: true,
                     fullName: true,
                     isOnline: true,
+                    lastActive: true,
                   },
                 },
               },
