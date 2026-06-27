@@ -23,23 +23,15 @@ messaging.onBackgroundMessage((payload) => {
 
   const isCall = payload.data?.type === "incoming_call";
 
-  // Nếu payload đã có trường notification và KHÔNG phải cuộc gọi, Firebase SDK sẽ tự động hiển thị thông báo.
-  // Chúng ta không gọi showNotification() để tránh bị trùng lặp (hiển thị 2 lần).
-  // Riêng cuộc gọi (isCall = true), chúng ta bắt buộc gọi showNotification() thủ công để cấu hình actions và rung dài.
-  if (payload.notification && !isCall) {
-    console.log("[firebase-messaging-sw.js] Trình duyệt tự động hiển thị thông báo từ payload.notification");
-    return;
-  }
-
-  const title = payload.notification?.title || payload.data?.title || "Cuộc gọi đến";
-  const body = payload.notification?.body || payload.data?.body || "Bạn có cuộc gọi mới";
+  const title = payload.notification?.title || payload.data?.title || "Tin nhắn mới";
+  const body = payload.notification?.body || payload.data?.body || "Bạn có thông báo mới";
 
   const options = {
     body: body,
-    icon: payload.data?.callerAvatar || payload.data?.image || "/icon.png",
+    icon: payload.data?.callerAvatar || payload.data?.image || payload.notification?.image || "/icon.png",
     badge: "/icon.png",
     data: payload.data,
-    // Rung cực mạnh và liên tục (Rung 3s, nghỉ 0.5s, lặp lại 8 lần) khi màn hình tắt/chạy ngầm
+    // Rung liên tục (Rung 3s, nghỉ 0.5s, lặp lại 8 lần) cho cuộc gọi, hoặc nhịp mặc định cho tin nhắn
     vibrate: isCall ? [3000, 500, 3000, 500, 3000, 500, 3000, 500, 3000, 500, 3000, 500, 3000, 500, 3000, 500] : [400, 100, 400, 100, 600],
     tag: isCall ? "incoming-call-notification" : (payload.data?.conversationId || "tho-fi-chat-notification"),
     renotify: true,
@@ -53,7 +45,8 @@ messaging.onBackgroundMessage((payload) => {
     ];
   }
 
-  self.registration.showNotification(title, options);
+  // LUÔN LUÔN gọi showNotification đồng bộ để đảm bảo iOS/Android hiển thị thông báo tin nhắn khi bị xóa đa nhiệm
+  return self.registration.showNotification(title, options);
 });
 
 // Xử lý khi click vào banner thông báo chạy ngầm trên điện thoại
@@ -104,4 +97,13 @@ self.addEventListener("notificationclick", function(event) {
       })
     );
   }
+});
+
+// Hỏa tốc kích hoạt Service Worker mới ngay lập tức để nhận thông báo mới khi cập nhật app
+self.addEventListener("install", (event) => {
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
 });

@@ -345,6 +345,10 @@ exports.sendMessage = async (req, res) => {
             priority: "high",
           },
           apns: {
+            headers: {
+              "apns-push-type": "alert",
+              "apns-priority": "10",
+            },
             payload: {
               aps: {
                 sound: "default",
@@ -718,6 +722,10 @@ exports.sendPushNotification = async (fcmToken, title, body, customData = null) 
       priority: "high" // Hiện banner Head-up trên Android
     },
     apns: {
+      headers: {
+        "apns-push-type": "alert",
+        "apns-priority": "10",
+      },
       payload: {
         aps: {
           sound: "default", // Đổ chuông trên iOS

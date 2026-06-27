@@ -901,6 +901,8 @@ function setupFirebaseMessaging(userToken) {
                 navigator.serviceWorker.register('/firebase-messaging-sw.js')
                     .then((registration) => {
                         console.log("🔥 Service Worker FCM đã được đăng ký thành công!");
+                        // Chủ động kiểm tra cập nhật mới để kích hoạt thay đổi tức thì
+                        registration.update();
                         return messaging.getToken({
                             serviceWorkerRegistration: registration,
                             vapidKey: "BBtraQSvar7RExe_T8aVhoA3TebgLw0S-ucoMcuV-Oef-H7ULkJGWyBctnxfY5tLnawpWQ9Wn8Aihi-wJaLiGu0",
@@ -2533,10 +2535,12 @@ function renderReactions(messageElement, reactions) {
     reactionsContainer.innerHTML = "";
     if (!reactions || Object.keys(reactions).length === 0) {
         reactionsContainer.style.display = "none";
+        content.classList.remove("has-reactions");
         return;
     }
 
     reactionsContainer.style.display = "flex";
+    content.classList.add("has-reactions");
     const uniqueEmojis = [...new Set(Object.values(reactions))];
     const count = Object.keys(reactions).length;
     reactionsContainer.innerText = `${uniqueEmojis.join("")} ${count}`;

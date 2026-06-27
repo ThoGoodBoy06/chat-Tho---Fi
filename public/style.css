@@ -1082,6 +1082,24 @@ p {
     z-index: 2;
 }
 
+/* Đảm bảo bong bóng tin nhắn đủ rộng và cao khi có cảm xúc, tránh đè chữ */
+.message-content.has-reactions {
+    min-width: 75px;
+    padding-bottom: 24px !important;
+}
+
+/* Vị trí cảm xúc: Tin nhắn của tôi (bên phải) -> Cảm xúc nằm góc dưới bên trái */
+.my-message .message-content .message-reactions {
+    right: auto;
+    left: 12px;
+}
+
+/* Vị trí cảm xúc: Tin nhắn đối phương (bên trái) -> Cảm xúc nằm góc dưới bên phải */
+.other-message .message-content .message-reactions {
+    left: auto;
+    right: 12px;
+}
+
 
 /* Mobile actions overlay */
 
