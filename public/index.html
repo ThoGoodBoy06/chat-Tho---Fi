@@ -878,56 +878,39 @@
                     </button>
                 </div>
 
-                <div class="zalo-menu-item" style="flex-direction: column; align-items: stretch; gap: 8px; border-bottom: 1px solid var(--border-color); padding: 12px 0;">
-                    <div class="menu-left" style="font-weight: 500; font-size: 13.5px;">
-                        <i class="fas fa-microphone menu-icon" style="color: #3b82f6; width: 20px;"></i> Thiết bị Micro
-                    </div>
-                    <select id="setting-mic-select" style="width: 100%; padding: 8px 12px; border-radius: 6px; background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); font-size: 12px; cursor: pointer; outline: none; margin-top: 4px;">
-                        <option value="">Thiết bị mặc định</option>
-                    </select>
-                </div>
 
-                <div class="zalo-menu-item" style="flex-direction: column; align-items: stretch; gap: 8px; border-bottom: 1px solid var(--border-color); padding: 12px 0;">
-                    <div class="menu-left" style="font-weight: 500; font-size: 13.5px;">
-                        <i class="fas fa-video menu-icon" style="color: #10b981; width: 20px;"></i> Thiết bị Máy ảnh
-                    </div>
-                    <select id="setting-cam-select" style="width: 100%; padding: 8px 12px; border-radius: 6px; background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); font-size: 12px; cursor: pointer; outline: none; margin-top: 4px;">
-                        <option value="">Thiết bị mặc định</option>
-                    </select>
-                </div>
-            </div>
 
-            <div class="zalo-menu-list" style="padding: 10px 20px; border: none; background: transparent; box-shadow: none;">
-                <button class="logout-btn-danger" onclick="closeSettingsModal(); logout();" style="width: 100%;">
+                <div class="zalo-menu-list" style="padding: 10px 20px; border: none; background: transparent; box-shadow: none;">
+                    <button class="logout-btn-danger" onclick="closeSettingsModal(); logout();" style="width: 100%;">
                     <i class="fas fa-sign-out-alt"></i> Đăng xuất tài khoản
                 </button>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Dropdown chứa danh sách thông báo -->
-    <div id="notifications-dropdown" class="notifications-dropdown-menu">
-        <div class="notifications-dropdown-header">
-            <!-- Nút quay lại chỉ hiện trên mobile -->
-            <button class="notifications-back-btn" onclick="toggleNotificationsDropdown(event)">
+        <!-- Dropdown chứa danh sách thông báo -->
+        <div id="notifications-dropdown" class="notifications-dropdown-menu">
+            <div class="notifications-dropdown-header">
+                <!-- Nút quay lại chỉ hiện trên mobile -->
+                <button class="notifications-back-btn" onclick="toggleNotificationsDropdown(event)">
                 <i class="fas fa-arrow-left"></i>
             </button>
-            <h4>Thông báo mới</h4>
-            <span onclick="markAllNotificationsAsRead()" class="mark-all-read-btn">Đánh dấu đã đọc tất cả</span>
+                <h4>Thông báo mới</h4>
+                <span onclick="markAllNotificationsAsRead()" class="mark-all-read-btn">Đánh dấu đã đọc tất cả</span>
+            </div>
+            <div id="notifications-list" class="notifications-dropdown-list">
+                <p style="color: var(--text-light); text-align: center; padding: 20px; font-size: 13.5px;">Chưa có thông báo nào.
+                </p>
+            </div>
         </div>
-        <div id="notifications-list" class="notifications-dropdown-list">
-            <p style="color: var(--text-light); text-align: center; padding: 20px; font-size: 13.5px;">Chưa có thông báo nào.
-            </p>
-        </div>
-    </div>
 
-    <!-- Import Firebase Web SDK (Compat mode) -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+        <!-- Import Firebase Web SDK (Compat mode) -->
+        <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
 
-    <!-- Import Socket.IO và file xử lý logic -->
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="app.js?v=33000"></script>
+        <!-- Import Socket.IO và file xử lý logic -->
+        <script src="/socket.io/socket.io.js"></script>
+        <script src="app.js?v=33000"></script>
 </body>
 
 </html>
