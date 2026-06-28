@@ -167,23 +167,23 @@ let isAudioUnlocked = false;
 
 function unlockBrowserAudio() {
     if (isAudioUnlocked) return;
-    const audioIds = [
-        "incoming-ringtone",
-        "outgoing-ringtone",
-        "remote-audio",
-        "message-sound",
-    ];
-    audioIds.forEach((id) => {
-        const el = document.getElementById(id);
-        if (el) {
-            el.play()
-                .then(() => {
-                    el.pause();
-                    el.currentTime = 0;
-                })
-                .catch(() => { });
-        }
-    });
+    // Chỉ unlock âm thanh tin nhắn (message-sound) vì nó cần phát tự động khi nhận tin.
+    // Nhạc chuông cuộc gọi (incoming/outgoing ringtone) không cần unlock ở đây
+    // vì chúng luôn được kích hoạt bởi hành động của người dùng (nhấn gọi, nhấn nghe).
+    const el = document.getElementById("message-sound");
+    if (el) {
+        const originalVolume = el.volume;
+        el.volume = 0; // Tắt âm lượng hoàn toàn trước khi play để không phát ra tiếng
+        el.play()
+            .then(() => {
+                el.pause();
+                el.currentTime = 0;
+                el.volume = originalVolume; // Khôi phục âm lượng ban đầu
+            })
+            .catch(() => {
+                el.volume = originalVolume;
+            });
+    }
     isAudioUnlocked = true;
     document.removeEventListener("click", unlockBrowserAudio);
     document.removeEventListener("touchstart", unlockBrowserAudio);
@@ -476,14 +476,19 @@ function showMobileOverlay(messageEl) {
 
     // Kiem tra vi tri tin nhan: neu gan day man hinh, dao nguoc action panel len tren
     requestAnimationFrame(() => {
-        const rect = messageEl.getBoundingClientRect();
-        const spaceBelow = window.innerHeight - rect.bottom;
-        // Can it nhat 180px cho reaction palette + menu
-        if (spaceBelow < 180) {
-            messageEl.classList.add("flip-up");
-        } else {
-            messageEl.classList.remove("flip-up");
-        }
+        // Cuộn tin nhắn vào vị trí hiển thị tốt nhất (ở giữa màn hình) để tránh bị che khuất bởi bàn phím hoặc input area
+        messageEl.scrollIntoView({ behavior: "smooth", block: "center" });
+
+        setTimeout(() => {
+            const rect = messageEl.getBoundingClientRect();
+            const spaceBelow = window.innerHeight - rect.bottom;
+            // Cần ít nhất 270px cho reaction palette + menu
+            if (spaceBelow < 270) {
+                messageEl.classList.add("flip-up");
+            } else {
+                messageEl.classList.remove("flip-up");
+            }
+        }, 150);
     });
 }
 
@@ -1432,6 +1437,12 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
     }
 }
 
+function startChatAndSwitchTab(receiverId, receiverName, receiverAvatar) {
+    startChat(receiverId, receiverName, receiverAvatar);
+    const messagesTabNav = document.querySelector('.nav-item[title="Tin nhắn"]');
+    if (messagesTabNav) switchTab("tab-messages", messagesTabNav);
+}
+
 // --- HÀM CẬP NHẬT GIAO DIỆN CHAT LIST KHI CÓ TIN NHẮN MỚI ---
 function updateChatListUI(msg, isRead = false) {
     try {
@@ -1843,7 +1854,7 @@ async function loadFriends() {
           <span style="cursor: pointer;" onclick="showUserProfile('${user.id}')">${user.fullName}</span>
         </div>
         <div class="friend-request-actions">
-          <button class="btn-chat-friend btn-outline" onclick="startChat('${user.id}', '${user.fullName
+          <button class="btn-chat-friend btn-outline" onclick="startChatAndSwitchTab('${user.id}', '${user.fullName
                 }', '${avatarUrl}')"><i class="far fa-comment-dots"></i> Nhắn tin</button>
           <button class="btn-delete-friend" onclick="removeFriend('${user.id
                 }')" title="Xóa bạn bè"><i class="fas fa-trash-alt"></i></button>
@@ -3139,8 +3150,11 @@ document.addEventListener("DOMContentLoaded", () => {
     document.addEventListener("click", (e) => {
         const dropdown = document.getElementById("notifications-dropdown");
         const bellBtn = document.getElementById("bell-notifications-btn");
+        const mobileBellBtn = document.getElementById("mobile-bell-btn");
         if (dropdown && dropdown.classList.contains("active")) {
-            if (!dropdown.contains(e.target) && e.target !== bellBtn && !bellBtn.contains(e.target)) {
+            const isClickInsideBell = (bellBtn && (e.target === bellBtn || bellBtn.contains(e.target))) ||
+                                      (mobileBellBtn && (e.target === mobileBellBtn || mobileBellBtn.contains(e.target)));
+            if (!dropdown.contains(e.target) && !isClickInsideBell) {
                 dropdown.classList.remove("active");
             }
         }
@@ -3479,7 +3493,7 @@ async function loadAiChatHistory() {
             });
 
             // Cuộn xuống cuối
-            const historyEl = document.getElementById("ai-chat-history");
+            const historyEl = document.getElementById("ai-chat-body");
             if (historyEl) historyEl.scrollTop = historyEl.scrollHeight;
         } else {
             if (welcomeEl) welcomeEl.style.display = "flex";
@@ -3527,7 +3541,7 @@ async function sendAiMessage() {
     if (welcomeEl) welcomeEl.style.display = "none";
     if (wrapperEl) wrapperEl.style.display = "flex";
 
-    const historyEl = document.getElementById("ai-chat-history");
+    const historyEl = document.getElementById("ai-chat-body");
     if (!historyEl) return;
 
     // Hiển thị tin nhắn người dùng (phong cách tối giản/không avatar giống mockup)
@@ -5000,13 +5014,19 @@ async function loadNotifications() {
 
 function updateNotificationBadge() {
     const badge = document.getElementById("notifications-badge");
-    if (!badge) return;
+    const mobileBadge = document.getElementById("mobile-notifications-badge");
     const unreadCount = notificationsList.filter((n) => !n.isRead).length;
-    if (unreadCount > 0) {
-        badge.innerText = unreadCount > 9 ? "9+" : unreadCount;
-        badge.style.display = "flex";
-    } else {
-        badge.style.display = "none";
+    
+    const countText = unreadCount > 9 ? "9+" : unreadCount;
+    const displayStyle = unreadCount > 0 ? "flex" : "none";
+    
+    if (badge) {
+        badge.innerText = countText;
+        badge.style.display = displayStyle;
+    }
+    if (mobileBadge) {
+        mobileBadge.innerText = countText;
+        mobileBadge.style.display = displayStyle;
     }
 }
 
@@ -5262,6 +5282,8 @@ function startEditMode(msgId, currentContent) {
     if (input) {
         input.value = currentContent;
         input.focus();
+        // Kích hoạt sự kiện input để tự động hiện nút Gửi (thay vì nút Like) và tự động căn chỉnh chiều cao ô nhập tin nhắn
+        input.dispatchEvent(new Event("input"));
     }
 
     const previewContainer = document.getElementById("reply-preview-container");
@@ -5799,7 +5821,7 @@ async function updateMediaDevicesList() {
  */
 (function () {
     function initAiScrollFix() {
-        const history = document.getElementById('ai-chat-history');
+        const history = document.getElementById('ai-chat-body');
         if (!history) return;
 
         let startX = 0;
@@ -5944,7 +5966,7 @@ async function updateMediaDevicesList() {
 
     function start() {
         scan();
-        const hist = document.getElementById('ai-chat-history');
+        const hist = document.getElementById('ai-chat-body');
         if (!hist) return;
         new MutationObserver(function (muts) {
             muts.forEach(function (m) {
@@ -6434,3 +6456,264 @@ setInterval(() => {
         }
     }
 }, 60000);
+
+// ============================================================
+// EMOJI PICKER
+// ============================================================
+const EMOJI_DATA = [
+    {
+        name: "Mặt cười",
+        icon: "😀",
+        emojis: ["😀","😃","😄","😁","😆","😅","🤣","😂","🙂","🙃","😉","😊","😇","🥰","😍","🤩","😘","😗","😚","😙","🥲","😋","😛","😜","🤪","😝","🤑","🤗","🤭","🤫","🤔","🫡","🤐","🤨","😐","😑","😶","🫥","😏","😒","🙄","😬","🤥","😌","😔","😪","🤤","😴","😷","🤒","🤕","🤢","🤮","🥵","🥶","🥴","😵","🤯","🤠","🥳","🥸","😎","🤓","🧐","😕","🫤","😟","🙁","😮","😯","😲","😳","🥺","🥹","😦","😧","😨","😰","😥","😢","😭","😱","😖","😣","😞","😓","😩","😫","🥱","😤","😡","😠","🤬","😈","👿","💀","☠️","💩","🤡","👹","👺","👻","👽","👾","🤖"]
+    },
+    {
+        name: "Trái tim",
+        icon: "❤️",
+        emojis: ["❤️","🧡","💛","💚","💙","💜","🖤","🤍","🤎","💔","❣️","💕","💞","💓","💗","💖","💘","💝","💟","♥️","🫶","💑","💏","❤️‍🔥","❤️‍🩹","🩷","🩵","🩶"]
+    },
+    {
+        name: "Tay & Cử chỉ",
+        icon: "👋",
+        emojis: ["👋","🤚","🖐️","✋","🖖","🫱","🫲","🫳","🫴","👌","🤌","🤏","✌️","🤞","🫰","🤟","🤘","🤙","👈","👉","👆","🖕","👇","☝️","🫵","👍","👎","✊","👊","🤛","🤜","👏","🙌","🫶","👐","🤲","🤝","🙏","✍️","💅","🤳","💪","🦾","🦿","🦵","🦶"]
+    },
+    {
+        name: "Con người",
+        icon: "👤",
+        emojis: ["👶","👧","🧒","👦","👩","🧑","👨","👩‍🦱","🧑‍🦱","👨‍🦱","👩‍🦰","🧑‍🦰","👨‍🦰","👱‍♀️","👱","👱‍♂️","👩‍🦳","🧑‍🦳","👨‍🦳","👩‍🦲","🧑‍🦲","👨‍🦲","🧔‍♀️","🧔","🧔‍♂️","👵","🧓","👴","👲","👳‍♀️","👳","👳‍♂️","🧕","👮‍♀️","👮","👮‍♂️","💂‍♀️","💂","💂‍♂️","🥷","👷‍♀️","👷","👷‍♂️","🫅","🤴","👸","👰‍♀️","👰","👰‍♂️","🤵‍♀️","🤵","🤵‍♂️"]
+    },
+    {
+        name: "Động vật",
+        icon: "🐶",
+        emojis: ["🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐻‍❄️","🐨","🐯","🦁","🐮","🐷","🐸","🐵","🙈","🙉","🙊","🐒","🐔","🐧","🐦","🐤","🐣","🐥","🦆","🦅","🦉","🦇","🐺","🐗","🐴","🦄","🐝","🪱","🐛","🦋","🐌","🐞","🐜","🪰","🪲","🪳","🦟","🦗","🕷️","🕸️","🦂","🐢","🐍","🦎","🦖","🦕","🐙","🦑","🦐","🦞","🦀","🐡","🐠","🐟","🐬","🐳","🐋","🦈","🪸","🐊","🐅","🐆","🦓","🦍","🦧","🐘","🦛","🦏","🐪","🐫","🦒","🦘","🦬","🐃","🐂","🐄","🐎","🐖","🐏","🐑","🦙","🐐","🦌","🐕","🐩","🦮"]
+    },
+    {
+        name: "Đồ ăn",
+        icon: "🍔",
+        emojis: ["🍏","🍎","🍐","🍊","🍋","🍌","🍉","🍇","🍓","🫐","🍈","🍒","🍑","🥭","🍍","🥥","🥝","🍅","🍆","🥑","🫛","🥦","🥬","🥒","🌶️","🫑","🌽","🥕","🫒","🧄","🧅","🫚","🥔","🍠","🫘","🥐","🥯","🍞","🥖","🥨","🧀","🥚","🍳","🧈","🥞","🧇","🥓","🥩","🍗","🍖","🌭","🍔","🍟","🍕","🫓","🥪","🥙","🧆","🌮","🌯","🫔","🥗","🥘","🫕","🥫","🍝","🍜","🍲","🍛","🍣","🍱","🥟","🦪","🍤","🍙","🍚","🍘","🍥","🥠","🥮","🍢","🍡","🍧","🍨","🍦","🥧","🧁","🍰","🎂","🍮","🍭","🍬","🍫","🍿","🍩","🍪","🌰","🥜","🍯","🥛","🍼","🫖","☕","🍵","🧃","🥤","🧋","🫧","🍶","🍺","🍻","🥂","🍷","🫗","🥃","🍸","🍹","🧉","🍾","🧊"]
+    },
+    {
+        name: "Hoạt động",
+        icon: "⚽",
+        emojis: ["⚽","🏀","🏈","⚾","🥎","🎾","🏐","🏉","🥏","🎱","🪀","🏓","🏸","🏒","🏑","🥍","🏏","🪃","🥅","⛳","🪁","🏹","🎣","🤿","🥊","🥋","🎽","🛹","🛼","🛷","⛸️","🥌","🎿","⛷️","🏂","🪂","🏋️‍♀️","🏋️","🏋️‍♂️","🤸‍♀️","🤸","🤸‍♂️","⛹️‍♀️","⛹️","⛹️‍♂️","🤺","🤾‍♀️","🤾","🤾‍♂️","🏌️‍♀️","🏌️","🏌️‍♂️","🏇","🧘‍♀️","🧘","🧘‍♂️","🏄‍♀️","🏄","🏄‍♂️","🏊‍♀️","🏊","🏊‍♂️","🎪","🎭","🎨","🎬","🎤","🎧","🎼","🎹","🥁","🪘","🎷","🎺","🪗","🎸","🪕","🎻","🎲","♟️","🎯","🎳","🎮","🕹️","🎰"]
+    },
+    {
+        name: "Du lịch",
+        icon: "✈️",
+        emojis: ["🚗","🚕","🚙","🚌","🚎","🏎️","🚓","🚑","🚒","🚐","🛻","🚚","🚛","🚜","🦯","🦽","🦼","🛴","🚲","🛵","🏍️","🛺","🚨","🚔","🚍","🚘","🚖","🛞","🚡","🚠","🚟","🚃","🚋","🚞","🚝","🚄","🚅","🚈","🚂","🚆","🚇","🚊","🚉","✈️","🛫","🛬","🛩️","💺","🛰️","🚀","🛸","🚁","🛶","⛵","🚤","🛥️","🛳️","⛴️","🚢","🗽","🗼","🏰","🏯","🏟️","🎡","🎢","🎠","⛲","⛱️","🏖️","🏝️","🏜️","🌋","⛰️","🏔️","🗻","🏕️","🛖","🏠","🏡","🏗️","🏢","🏬","🏣","🏤","🏥","🏦","🏨","🏪","🏫","🏩","💒","🏛️","⛪","🕌","🕍","🛕","🕋","⛩️"]
+    },
+    {
+        name: "Đồ vật",
+        icon: "💡",
+        emojis: ["⌚","📱","📲","💻","⌨️","🖥️","🖨️","🖱️","🖲️","🕹️","🗜️","💽","💾","💿","📀","📼","📷","📸","📹","🎥","📽️","🎞️","📞","☎️","📟","📠","📺","📻","🎙️","🎚️","🎛️","🧭","⏱️","⏲️","⏰","🕰️","⌛","⏳","📡","🔋","🪫","🔌","💡","🔦","🕯️","🪔","🧯","🛢️","🪙","💰","💴","💵","💶","💷","🪪","💳","💎","⚖️","🪜","🧰","🪛","🔧","🔨","⚒️","🛠️","⛏️","🪚","🔩","⚙️","🪤","🧱","⛓️","🧲","🔫","💣","🧨","🪓","🔪","🗡️","⚔️","🛡️","🚬","⚰️","🪦","⚱️","🏺","🔮","📿","🧿","🪬","💈","⚗️","🔭","🔬","🕳️","🩹","🩺","🩻","🩼","💊","💉","🩸","🧬","🦠","🧫","🧪","🌡️","🧹","🪠","🧺","🧻","🧼","🫧","🪥","🧽","🧯","🛒","🚬"]
+    }
+];
+
+let emojiPickerInitialized = false;
+let currentEmojiCategory = 0;
+
+function initEmojiPicker() {
+    if (emojiPickerInitialized) return;
+    emojiPickerInitialized = true;
+
+    const tabsContainer = document.getElementById("emoji-category-tabs");
+    const gridContainer = document.getElementById("emoji-grid");
+
+    if (!tabsContainer || !gridContainer) return;
+
+    // Tạo category tabs
+    EMOJI_DATA.forEach((cat, index) => {
+        const tab = document.createElement("div");
+        tab.className = "emoji-category-tab" + (index === 0 ? " active" : "");
+        tab.innerText = cat.icon;
+        tab.title = cat.name;
+        tab.setAttribute("data-cat-index", index);
+        tab.onclick = (e) => {
+            e.stopPropagation();
+            scrollToCategory(index);
+            setActiveCategoryTab(index);
+        };
+        tabsContainer.appendChild(tab);
+    });
+
+    // Tạo emoji grid
+    renderAllEmojis(gridContainer);
+
+    // Scroll detection to update active tab
+    gridContainer.addEventListener("scroll", () => {
+        const labels = gridContainer.querySelectorAll(".emoji-category-label");
+        let activeIndex = 0;
+        labels.forEach((label, i) => {
+            if (label.offsetTop <= gridContainer.scrollTop + 40) {
+                activeIndex = i;
+            }
+        });
+        setActiveCategoryTab(activeIndex);
+    });
+}
+
+function renderAllEmojis(container) {
+    container.innerHTML = "";
+    EMOJI_DATA.forEach((cat, catIndex) => {
+        const label = document.createElement("div");
+        label.className = "emoji-category-label";
+        label.innerText = cat.name;
+        label.id = "emoji-cat-" + catIndex;
+        container.appendChild(label);
+
+        const items = document.createElement("div");
+        items.className = "emoji-items";
+        cat.emojis.forEach(emoji => {
+            const span = document.createElement("span");
+            span.className = "emoji-item";
+            span.innerText = emoji;
+            span.onclick = (e) => {
+                e.stopPropagation();
+                insertEmojiToInput(emoji);
+            };
+            items.appendChild(span);
+        });
+        container.appendChild(items);
+    });
+}
+
+function scrollToCategory(index) {
+    const target = document.getElementById("emoji-cat-" + index);
+    const grid = document.getElementById("emoji-grid");
+    if (target && grid) {
+        grid.scrollTo({
+            top: target.offsetTop - grid.offsetTop,
+            behavior: "smooth"
+        });
+    }
+}
+
+function setActiveCategoryTab(index) {
+    if (currentEmojiCategory === index) return;
+    currentEmojiCategory = index;
+    const tabs = document.querySelectorAll(".emoji-category-tab");
+    tabs.forEach((tab, i) => {
+        tab.classList.toggle("active", i === index);
+    });
+}
+
+function insertEmojiToInput(emoji) {
+    const input = document.getElementById("message-input");
+    if (!input) return;
+
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+    const text = input.value;
+    input.value = text.substring(0, start) + emoji + text.substring(end);
+    
+    // Set cursor position after emoji
+    const newPos = start + emoji.length;
+    input.selectionStart = newPos;
+    input.selectionEnd = newPos;
+    
+    // Trigger input event for any listeners (like show/hide send button)
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.focus();
+}
+
+function toggleEmojiPicker(e) {
+    if (e) e.stopPropagation();
+    const panel = document.getElementById("emoji-picker-panel");
+    const btn = document.getElementById("emoji-toggle-btn");
+    if (!panel) return;
+
+    const isOpen = panel.classList.contains("show");
+    if (isOpen) {
+        closeEmojiPicker();
+    } else {
+        initEmojiPicker();
+        panel.classList.add("show");
+        if (btn) btn.classList.add("active");
+        
+        // Clear search
+        const searchInput = document.getElementById("emoji-search-input");
+        if (searchInput) searchInput.value = "";
+        
+        // Reset to show all emojis
+        const grid = document.getElementById("emoji-grid");
+        if (grid) renderAllEmojis(grid);
+        setActiveCategoryTab(0);
+    }
+}
+
+function closeEmojiPicker() {
+    const panel = document.getElementById("emoji-picker-panel");
+    const btn = document.getElementById("emoji-toggle-btn");
+    if (panel) panel.classList.remove("show");
+    if (btn) btn.classList.remove("active");
+}
+
+function filterEmojis(query) {
+    const grid = document.getElementById("emoji-grid");
+    if (!grid) return;
+    
+    if (!query || query.trim() === "") {
+        renderAllEmojis(grid);
+        return;
+    }
+
+    query = query.toLowerCase();
+    grid.innerHTML = "";
+
+    let hasResults = false;
+    EMOJI_DATA.forEach(cat => {
+        // Simple filter: match category name
+        const catNameMatch = cat.name.toLowerCase().includes(query);
+        const matchedEmojis = catNameMatch ? cat.emojis : [];
+        
+        if (matchedEmojis.length > 0) {
+            hasResults = true;
+            const label = document.createElement("div");
+            label.className = "emoji-category-label";
+            label.innerText = cat.name;
+            grid.appendChild(label);
+
+            const items = document.createElement("div");
+            items.className = "emoji-items";
+            matchedEmojis.forEach(emoji => {
+                const span = document.createElement("span");
+                span.className = "emoji-item";
+                span.innerText = emoji;
+                span.onclick = (e) => {
+                    e.stopPropagation();
+                    insertEmojiToInput(emoji);
+                };
+                items.appendChild(span);
+            });
+            grid.appendChild(items);
+        }
+    });
+
+    if (!hasResults) {
+        // Show all emojis flattened when no category matches
+        const allEmojis = EMOJI_DATA.flatMap(c => c.emojis);
+        const filtered = allEmojis; // Show all since emoji search by character isn't practical
+        if (filtered.length === 0) {
+            grid.innerHTML = '<div class="emoji-no-results">Không tìm thấy emoji 😢</div>';
+        } else {
+            grid.innerHTML = '<div class="emoji-no-results">Không tìm thấy danh mục phù hợp 😢</div>';
+        }
+    }
+}
+
+// Close emoji picker when clicking outside
+document.addEventListener("click", (e) => {
+    const panel = document.getElementById("emoji-picker-panel");
+    const wrapper = document.querySelector(".emoji-picker-wrapper");
+    if (panel && panel.classList.contains("show")) {
+        if (wrapper && !wrapper.contains(e.target)) {
+            closeEmojiPicker();
+        }
+    }
+});
+
+// Close emoji picker on Escape key
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+        closeEmojiPicker();
+    }
+});
