@@ -989,7 +989,7 @@ function initizeChatSession(userData, userToken) {
     updateNotificationPermissionUI();
 
     // ── Khởi tạo tab mặc định (Tin nhắn) và vị trí thanh trượt slider-pill (Fix lỗi khuất tab khi mới vào app) ──
-    const defaultTab = document.querySelector('.nav-item[title="Tin nhắn"]');
+    const defaultTab = document.querySelector('.sidebar .nav-item') || document.querySelector('.nav-item[title="Tin nhắn"]');
     if (defaultTab) {
         const originalSwitchingState = isSwitchingTab;
         isSwitchingTab = false;
@@ -1005,10 +1005,12 @@ function initizeChatSession(userData, userToken) {
                 if (sidebar) {
                     const sidebarRect = sidebar.getBoundingClientRect();
                     const itemRect = defaultTab.getBoundingClientRect();
-                    pill.style.transition = 'none';
-                    pill.style.left = (itemRect.left - sidebarRect.left) + 'px';
-                    pill.style.width = itemRect.width + 'px';
-                    setTimeout(() => { pill.style.transition = ''; }, 50);
+                    if (itemRect.width > 0) {
+                        pill.style.transition = 'none';
+                        pill.style.left = (itemRect.left - sidebarRect.left) + 'px';
+                        pill.style.width = itemRect.width + 'px';
+                        setTimeout(() => { pill.style.transition = ''; }, 50);
+                    }
                 }
             }
         }, 400);
@@ -3192,6 +3194,29 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
     });
+
+    // Tự động đồng bộ vị trí slider-pill khi sidebar hiển thị hoặc thay đổi kích thước (Fix lỗi tab ẩn/tàng hình khi load app)
+    const sidebarEl = document.querySelector('.sidebar');
+    if (sidebarEl) {
+        const resizeObserver = new ResizeObserver(() => {
+            const pill = document.getElementById('nav-slider-pill');
+            const activeItem = sidebarEl.querySelector('.nav-item.active');
+            if (pill && activeItem && window.innerWidth <= 768) {
+                const sidebarRect = sidebarEl.getBoundingClientRect();
+                const itemRect = activeItem.getBoundingClientRect();
+                if (itemRect.width > 0) {
+                    const originalTransition = pill.style.transition;
+                    pill.style.transition = 'none';
+                    pill.style.left = (itemRect.left - sidebarRect.left) + 'px';
+                    pill.style.width = itemRect.width + 'px';
+                    setTimeout(() => {
+                        pill.style.transition = originalTransition;
+                    }, 50);
+                }
+            }
+        });
+        resizeObserver.observe(sidebarEl);
+    }
 });
 
 function openMyProfileModal() {
@@ -3462,10 +3487,14 @@ function switchTab(tabId, navElement) {
     const pill = document.getElementById('nav-slider-pill');
     if (pill && navElement && window.innerWidth <= 768) {
         const sidebar = navElement.closest('.sidebar');
-        const sidebarRect = sidebar.getBoundingClientRect();
-        const itemRect = navElement.getBoundingClientRect();
-        pill.style.left = (itemRect.left - sidebarRect.left) + 'px';
-        pill.style.width = itemRect.width + 'px';
+        if (sidebar) {
+            const sidebarRect = sidebar.getBoundingClientRect();
+            const itemRect = navElement.getBoundingClientRect();
+            if (itemRect.width > 0) {
+                pill.style.left = (itemRect.left - sidebarRect.left) + 'px';
+                pill.style.width = itemRect.width + 'px';
+            }
+        }
     }
 
     // ── Ripple effect khi chạm ──
@@ -3813,7 +3842,7 @@ async function logout() {
     document.getElementById("auth-screen").style.display = "flex";
     document.getElementById("login-password").value = "";
 
-    const defaultTab = document.querySelector('.nav-item[title="Tin nhắn"]');
+    const defaultTab = document.querySelector('.sidebar .nav-item') || document.querySelector('.nav-item[title="Tin nhắn"]');
     if (defaultTab) switchTab("tab-messages", defaultTab);
 
     // ── Khởi tạo pill đúng vị trí ngay khi load (không có animation) ──
