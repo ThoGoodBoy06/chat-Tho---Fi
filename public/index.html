@@ -611,12 +611,12 @@
     <audio id="remote-audio" playsinline></audio>
 
     <!-- Element phát nhạc chuông khi có cuộc gọi đến -->
-    <audio id="incoming-ringtone" loop preload="none">
+    <audio id="incoming-ringtone" loop preload="auto">
         <source src="ringtone.mp3" type="audio/mpeg" />
     </audio>
 
     <!-- Element phát nhạc chờ tút tút khi người gọi đi đang chờ -->
-    <audio id="outgoing-ringtone" loop preload="none">
+    <audio id="outgoing-ringtone" loop preload="auto">
         <source src="dialtone.mp3" type="audio/mpeg" />
     </audio>
 
@@ -957,9 +957,10 @@
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Dropdown chứa danh sách thông báo -->
-        <div id="notifications-dropdown" class="notifications-dropdown-menu">
+    <!-- Dropdown chứa danh sách thông báo -->
+    <div id="notifications-dropdown" class="notifications-dropdown-menu">
             <div class="notifications-dropdown-header">
                 <!-- Nút quay lại chỉ hiện trên mobile -->
                 <button class="notifications-back-btn" onclick="toggleNotificationsDropdown(event)">

@@ -4182,6 +4182,7 @@ async function startCall(callType) {
         playOutgoingRingtone();
     } catch (err) {
         console.error("Lỗi trong startCall:", err);
+        alert("Không thể thực hiện cuộc gọi: " + err.message);
     }
 }
 
@@ -4587,7 +4588,11 @@ async function processSignal(signal) {
             processIceQueue();
         } else if (signal.ice) {
             if (peerConnection.remoteDescription) {
-                await peerConnection.addIceCandidate(new RTCIceCandidate(signal.ice));
+                try {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(signal.ice));
+                } catch (e) {
+                    console.warn("Lỗi khi thêm ICE candidate trực tiếp:", e.message);
+                }
             } else {
                 iceCandidateQueue.push(signal.ice);
             }
