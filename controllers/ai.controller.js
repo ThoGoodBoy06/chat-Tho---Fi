@@ -9,18 +9,18 @@ const geminiApiKey = process.env.GEMINI_API_KEY;
 let ai = null;
 
 if (geminiApiKey) {
-  ai = new GoogleGenAI({ apiKey: geminiApiKey });
+    ai = new GoogleGenAI({ apiKey: geminiApiKey });
 } else {
-  console.error("❌ Lỗi: GEMINI_API_KEY chưa được cấu hình trong file .env!");
+    console.error("❌ Lỗi: GEMINI_API_KEY chưa được cấu hình trong file .env!");
 }
 
 // Khởi tạo OpenAI Client cho tính năng "Thanh tra gọt giũa"
 const openaiApiKey = process.env.OPENAI_API_KEY;
 let openai = null;
 if (openaiApiKey) {
-  openai = new OpenAI({ apiKey: openaiApiKey });
+    openai = new OpenAI({ apiKey: openaiApiKey });
 } else {
-  console.warn("⚠️ Cảnh báo: OPENAI_API_KEY chưa có, hệ thống sẽ chỉ dùng Gemini.");
+    console.warn("⚠️ Cảnh báo: OPENAI_API_KEY chưa có, hệ thống sẽ chỉ dùng Gemini.");
 }
 
 // Model dùng cho chat 
@@ -51,192 +51,192 @@ const SESSION_TTL_MS = 30 * 60 * 1000;
 const MAX_HISTORY_TURNS = 30;
 
 function buildChatConfig() {
-  const config = {
-    systemInstruction: SYSTEM_INSTRUCTION,
-    maxOutputTokens: 2048,
-  };
-  if (MODEL_NAME && MODEL_NAME.toLowerCase().includes("thinking")) {
-    config.thinkingConfig = { thinkingLevel: THINKING_LEVEL };
-  }
-  return config;
+    const config = {
+        systemInstruction: SYSTEM_INSTRUCTION,
+        maxOutputTokens: 2048,
+    };
+    if (MODEL_NAME && MODEL_NAME.toLowerCase().includes("thinking")) {
+        config.thinkingConfig = { thinkingLevel: THINKING_LEVEL };
+    }
+    return config;
 }
 
 async function getOrCreateAiConversation(userId) {
-  let conversation = await prisma.conversations.findFirst({
-    where: { type: "ai", createdBy: userId },
-  });
-
-  if (!conversation) {
-    conversation = await prisma.conversations.create({
-      data: { type: "ai", createdBy: userId, name: "Trợ lý AI Tho-Fi" },
+    let conversation = await prisma.conversations.findFirst({
+        where: { type: "ai", createdBy: userId },
     });
-  }
-  return conversation;
+
+    if (!conversation) {
+        conversation = await prisma.conversations.create({
+            data: { type: "ai", createdBy: userId, name: "Trợ lý AI Tho-Fi" },
+        });
+    }
+    return conversation;
 }
 
 async function getOrCreateChatSession(userId) {
-  const existing = sessions.get(userId);
-  if (existing) {
-    existing.lastActive = Date.now();
-    return existing.chat;
-  }
+    const existing = sessions.get(userId);
+    if (existing) {
+        existing.lastActive = Date.now();
+        return existing.chat;
+    }
 
-  let history = [];
-  try {
-    const conversation = await getOrCreateAiConversation(userId);
-    const dbMessages = await prisma.messages.findMany({
-      where: { conversationId: conversation.id },
-      orderBy: { createdAt: "asc" },
-      take: 40,
+    let history = [];
+    try {
+        const conversation = await getOrCreateAiConversation(userId);
+        const dbMessages = await prisma.messages.findMany({
+            where: { conversationId: conversation.id },
+            orderBy: { createdAt: "asc" },
+            take: 40,
+        });
+
+        history = dbMessages.map((msg) => ({
+            role: msg.senderId ? "user" : "model",
+            parts: [{ text: msg.content }],
+        }));
+    } catch (err) {
+        console.error("⚠️ Không thể tải lịch sử AI từ database:", err);
+    }
+
+    const chat = ai.chats.create({
+        model: MODEL_NAME,
+        history: history,
+        config: buildChatConfig(),
     });
-
-    history = dbMessages.map((msg) => ({
-      role: msg.senderId ? "user" : "model",
-      parts: [{ text: msg.content }],
-    }));
-  } catch (err) {
-    console.error("⚠️ Không thể tải lịch sử AI từ database:", err);
-  }
-
-  const chat = ai.chats.create({
-    model: MODEL_NAME,
-    history: history,
-    config: buildChatConfig(),
-  });
-  sessions.set(userId, { chat, lastActive: Date.now() });
-  return chat;
+    sessions.set(userId, { chat, lastActive: Date.now() });
+    return chat;
 }
 
 function trimHistoryIfNeeded(userId, chat) {
-  const history = chat.getHistory();
-  const maxMessages = MAX_HISTORY_TURNS * 2;
-  if (history.length > maxMessages) {
-    const trimmed = history.slice(history.length - maxMessages);
-    const newChat = ai.chats.create({
-      model: MODEL_NAME,
-      history: trimmed,
-      config: buildChatConfig(),
-    });
-    sessions.set(userId, { chat: newChat, lastActive: Date.now() });
-  }
+    const history = chat.getHistory();
+    const maxMessages = MAX_HISTORY_TURNS * 2;
+    if (history.length > maxMessages) {
+        const trimmed = history.slice(history.length - maxMessages);
+        const newChat = ai.chats.create({
+            model: MODEL_NAME,
+            history: trimmed,
+            config: buildChatConfig(),
+        });
+        sessions.set(userId, { chat: newChat, lastActive: Date.now() });
+    }
 }
 
 setInterval(() => {
-  const now = Date.now();
-  for (const [key, session] of sessions.entries()) {
-    if (now - session.lastActive > SESSION_TTL_MS) sessions.delete(key);
-  }
+    const now = Date.now();
+    for (const [key, session] of sessions.entries()) {
+        if (now - session.lastActive > SESSION_TTL_MS) sessions.delete(key);
+    }
 }, 10 * 60 * 1000);
 
 async function callWithRetry(fn, retries = 2, delayMs = 800) {
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      return await fn();
-    } catch (err) {
-      const status = err?.status || err?.code;
-      const isRetryable = status === 429 || status === 503 || status === 500;
-      if (!isRetryable || attempt === retries) throw err;
-      await new Promise((r) => setTimeout(r, delayMs * (attempt + 1)));
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+            return await fn();
+        } catch (err) {
+            const status = err?.status || err?.code;
+            const isRetryable = status === 429 || status === 503 || status === 500;
+            if (!isRetryable || attempt === retries) throw err;
+            await new Promise((r) => setTimeout(r, delayMs * (attempt + 1)));
+        }
     }
-  }
 }
 
 function resolveUserId(req) {
-  return req.user?.id || req.user?.username || "guest";
+    return req.user?.id || req.user?.username || "guest";
 }
 
 // Lấy lịch sử và định dạng lại cho OpenAI
 async function getChatMessagesForOpenAi(userId, currentPrompt) {
-  const conversation = await getOrCreateAiConversation(userId);
-  const dbMessages = await prisma.messages.findMany({
-    where: { conversationId: conversation.id },
-    orderBy: { createdAt: "asc" },
-    take: 40,
-  });
-
-  const messages = [
-    { role: "system", content: SYSTEM_INSTRUCTION }
-  ];
-
-  dbMessages.forEach((msg) => {
-    messages.push({
-      role: msg.senderId ? "user" : "assistant",
-      content: msg.content,
+    const conversation = await getOrCreateAiConversation(userId);
+    const dbMessages = await prisma.messages.findMany({
+        where: { conversationId: conversation.id },
+        orderBy: { createdAt: "asc" },
+        take: 40,
     });
-  });
 
-  messages.push({ role: "user", content: currentPrompt });
-  return messages;
+    const messages = [
+        { role: "system", content: SYSTEM_INSTRUCTION }
+    ];
+
+    dbMessages.forEach((msg) => {
+        messages.push({
+            role: msg.senderId ? "user" : "assistant",
+            content: msg.content,
+        });
+    });
+
+    messages.push({ role: "user", content: currentPrompt });
+    return messages;
 }
 
 // Gọi OpenAI thường (Dự phòng)
 async function callOpenAi(userId, prompt) {
-  if (!openai) throw new Error("OpenAI client is not initialized.");
+    if (!openai) throw new Error("OpenAI client is not initialized.");
 
-  const messages = await getChatMessagesForOpenAi(userId, prompt);
-  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
+    const messages = await getChatMessagesForOpenAi(userId, prompt);
+    const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
-  console.log(`🤖 Fallback: Đang gọi OpenAI (${model}) cho user ${userId}...`);
+    console.log(`🤖 Fallback: Đang gọi OpenAI (${model}) cho user ${userId}...`);
 
-  const response = await openai.chat.completions.create({
-    model: model,
-    messages: messages,
-  });
+    const response = await openai.chat.completions.create({
+        model: model,
+        messages: messages,
+    });
 
-  return response.choices[0]?.message?.content || "";
+    return response.choices[0]?.message?.content || "";
 }
 
 // Gọi OpenAI stream (Dự phòng)
 async function callOpenAiStream(userId, prompt, res) {
-  if (!openai) throw new Error("OpenAI client is not initialized.");
+    if (!openai) throw new Error("OpenAI client is not initialized.");
 
-  const messages = await getChatMessagesForOpenAi(userId, prompt);
-  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
+    const messages = await getChatMessagesForOpenAi(userId, prompt);
+    const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
-  console.log(`🤖 Fallback: Đang gọi OpenAI Stream (${model}) cho user ${userId}...`);
+    console.log(`🤖 Fallback: Đang gọi OpenAI Stream (${model}) cho user ${userId}...`);
 
-  const stream = await openai.chat.completions.create({
-    model: model,
-    messages: messages,
-    stream: true,
-  });
+    const stream = await openai.chat.completions.create({
+        model: model,
+        messages: messages,
+        stream: true,
+    });
 
-  let fullAiText = "";
-  for await (const chunk of stream) {
-    const text = chunk.choices[0]?.delta?.content || "";
-    if (text) {
-      fullAiText += text;
-      res.write(`data: ${JSON.stringify({ text })}\n\n`);
+    let fullAiText = "";
+    for await (const chunk of stream) {
+        const text = chunk.choices[0]?.delta?.content || "";
+        if (text) {
+            fullAiText += text;
+            res.write(`data: ${JSON.stringify({ text })}\n\n`);
+        }
     }
-  }
 
-  return fullAiText;
+    return fullAiText;
 }
 
 /**
  * GET /api/ai/chat/history
  */
 exports.getHistory = async (req, res) => {
-  try {
-    const userId = resolveUserId(req);
-    const conversation = await getOrCreateAiConversation(userId);
-    const messages = await prisma.messages.findMany({
-      where: { conversationId: conversation.id },
-      orderBy: { createdAt: "asc" },
-    });
+    try {
+        const userId = resolveUserId(req);
+        const conversation = await getOrCreateAiConversation(userId);
+        const messages = await prisma.messages.findMany({
+            where: { conversationId: conversation.id },
+            orderBy: { createdAt: "asc" },
+        });
 
-    return res.json({
-      success: true,
-      messages: messages.map((msg) => ({
-        role: msg.senderId ? "user" : "model",
-        content: msg.content,
-        createdAt: msg.createdAt,
-      })),
-    });
-  } catch (error) {
-    console.error("❌ Lỗi lấy lịch sử AI từ database:", error);
-    return res.status(500).json({ success: false, error: "Không thể tải lịch sử AI." });
-  }
+        return res.json({
+            success: true,
+            messages: messages.map((msg) => ({
+                role: msg.senderId ? "user" : "model",
+                content: msg.content,
+                createdAt: msg.createdAt,
+            })),
+        });
+    } catch (error) {
+        console.error("❌ Lỗi lấy lịch sử AI từ database:", error);
+        return res.status(500).json({ success: false, error: "Không thể tải lịch sử AI." });
+    }
 };
 
 /**
@@ -244,93 +244,93 @@ exports.getHistory = async (req, res) => {
  * Cấu trúc Multi-LLM: Gemini (Draft) -> ChatGPT (Polish) -> Database
  */
 exports.chat = async (req, res) => {
-  try {
-    const { prompt } = req.body;
-
-    if (!prompt || typeof prompt !== "string" || prompt.trim() === "") {
-      return res.status(400).json({ success: false, error: "Câu hỏi không được để trống." });
-    }
-    if (prompt.length > 8000) {
-      return res.status(400).json({ success: false, error: "Câu hỏi quá dài (tối đa 8000 ký tự)." });
-    }
-    if (!ai) {
-      return res.status(500).json({ success: false, error: "Chưa cấu hình API Key của Gemini!" });
-    }
-
-    const userId = resolveUserId(req);
-    const conversation = await getOrCreateAiConversation(userId);
-
-    // 1. Lưu DB User Message
-    await prisma.messages.create({
-      data: { conversationId: conversation.id, senderId: userId, content: prompt.trim() },
-    });
-
-    let finalAiText = "";
-    let chat = null;
-
     try {
-      chat = await getOrCreateChatSession(userId);
-      console.log(`🤖 [BƯỚC 1 - DRAFT] Gemini đang xử lý cho user ${req.user?.username || "Unknown"}...`);
-      const response = await callWithRetry(() => chat.sendMessage({ message: prompt.trim() }));
-      const geminiDraft = response.text || "";
-      finalAiText = geminiDraft;
+        const { prompt } = req.body;
 
-      // 2. ChatGPT gọt giũa (Nếu có Key)
-      if (openai) {
-        try {
-          console.log(`🧠 [BƯỚC 2 - POLISH] Đẩy sang ChatGPT gọt giũa...`);
-          const chatGptResponse = await openai.chat.completions.create({
-            model: "gpt-4o-mini",
-            messages: [
-              {
-                role: "system",
-                content: "Bạn là chuyên gia biên tập cấp cao. Nhiệm vụ: Nhận bản nháp từ AI khác, sửa lỗi hành văn cho tự nhiên, cấu trúc lại bằng Markdown (Heading, Bullet points). Tuyệt đối KHÔNG cắt xén dữ liệu hoặc thay đổi sự thật."
-              },
-              {
-                role: "user",
-                content: `Câu hỏi gốc: "${prompt}"\n\n--- BẢN NHÁP ---\n${geminiDraft}`
-              }
-            ],
-            temperature: 0.7
-          });
-          finalAiText = chatGptResponse.choices[0].message.content;
-        } catch (openAiError) {
-          console.error("⚠️ Lỗi ChatGPT, kích hoạt khiên bất tử dùng bản nháp Gemini:", openAiError.message);
+        if (!prompt || typeof prompt !== "string" || prompt.trim() === "") {
+            return res.status(400).json({ success: false, error: "Câu hỏi không được để trống." });
         }
-      }
-    } catch (geminiError) {
-      console.warn("⚠️ Gemini gặp sự cố, thử chuyển sang OpenAI làm dự phòng...", geminiError.message);
-      if (openai) {
-        try {
-          finalAiText = await callOpenAi(userId, prompt.trim());
-        } catch (openaiError) {
-          console.error("❌ Cả Gemini và OpenAI đều thất bại:", openaiError.message);
-          throw geminiError;
+        if (prompt.length > 8000) {
+            return res.status(400).json({ success: false, error: "Câu hỏi quá dài (tối đa 8000 ký tự)." });
         }
-      } else {
-        throw geminiError;
-      }
-    }
+        if (!ai) {
+            return res.status(500).json({ success: false, error: "Chưa cấu hình API Key của Gemini!" });
+        }
 
-    // 3. Lưu DB AI Message
-    await prisma.messages.create({
-      data: { conversationId: conversation.id, senderId: null, content: finalAiText },
-    });
+        const userId = resolveUserId(req);
+        const conversation = await getOrCreateAiConversation(userId);
 
-    if (chat) {
-      trimHistoryIfNeeded(userId, chat);
-    }
+        // 1. Lưu DB User Message
+        await prisma.messages.create({
+            data: { conversationId: conversation.id, senderId: userId, content: prompt.trim() },
+        });
 
-    return res.json({ success: true, text: finalAiText });
-  } catch (error) {
-    console.error("❌ Lỗi hệ thống AI:", error);
-    const status = error.status || error.code || (error.error && error.error.code);
-    let errorMessage = "Hệ thống AI đang bảo trì. Vui lòng thử lại sau!";
-    if (status === 429 || error.message?.includes("quota") || error.message?.includes("RESOURCE_EXHAUSTED") || error.message?.includes("Quota")) {
-      errorMessage = "⚠️ Tài khoản đã hết token rồi!!!";
+        let finalAiText = "";
+        let chat = null;
+
+        try {
+            chat = await getOrCreateChatSession(userId);
+            console.log(`🤖 [BƯỚC 1 - DRAFT] Gemini đang xử lý cho user ${req.user?.username || "Unknown"}...`);
+            const response = await callWithRetry(() => chat.sendMessage({ message: prompt.trim() }));
+            const geminiDraft = response.text || "";
+            finalAiText = geminiDraft;
+
+            // 2. ChatGPT gọt giũa (Nếu có Key)
+            if (openai) {
+                try {
+                    console.log(`🧠 [BƯỚC 2 - POLISH] Đẩy sang ChatGPT gọt giũa...`);
+                    const chatGptResponse = await openai.chat.completions.create({
+                        model: "gpt-4o-mini",
+                        messages: [
+                            {
+                                role: "system",
+                                content: "Bạn là chuyên gia biên tập cấp cao. Nhiệm vụ: Nhận bản nháp từ AI khác, sửa lỗi hành văn cho tự nhiên, cấu trúc lại bằng Markdown (Heading, Bullet points). Tuyệt đối KHÔNG cắt xén dữ liệu hoặc thay đổi sự thật."
+                            },
+                            {
+                                role: "user",
+                                content: `Câu hỏi gốc: "${prompt}"\n\n--- BẢN NHÁP ---\n${geminiDraft}`
+                            }
+                        ],
+                        temperature: 0.7
+                    });
+                    finalAiText = chatGptResponse.choices[0].message.content;
+                } catch (openAiError) {
+                    console.error("⚠️ Lỗi ChatGPT, kích hoạt khiên bất tử dùng bản nháp Gemini:", openAiError.message);
+                }
+            }
+        } catch (geminiError) {
+            console.warn("⚠️ Gemini gặp sự cố, thử chuyển sang OpenAI làm dự phòng...", geminiError.message);
+            if (openai) {
+                try {
+                    finalAiText = await callOpenAi(userId, prompt.trim());
+                } catch (openaiError) {
+                    console.error("❌ Cả Gemini và OpenAI đều thất bại:", openaiError.message);
+                    throw geminiError;
+                }
+            } else {
+                throw geminiError;
+            }
+        }
+
+        // 3. Lưu DB AI Message
+        await prisma.messages.create({
+            data: { conversationId: conversation.id, senderId: null, content: finalAiText },
+        });
+
+        if (chat) {
+            trimHistoryIfNeeded(userId, chat);
+        }
+
+        return res.json({ success: true, text: finalAiText });
+    } catch (error) {
+        console.error("❌ Lỗi hệ thống AI:", error);
+        const status = error.status || error.code || (error.error && error.error.code);
+        let errorMessage = "Hệ thống AI đang bảo trì. Vui lòng thử lại sau!";
+        if (status === 429 || error.message?.includes("quota") || error.message?.includes("RESOURCE_EXHAUSTED") || error.message?.includes("Quota")) {
+            errorMessage = "⚠️ Tài khoản đã hết token rồi!!!";
+        }
+        return res.status(status === 429 ? 429 : 500).json({ success: false, error: errorMessage });
     }
-    return res.status(status === 429 ? 429 : 500).json({ success: false, error: errorMessage });
-  }
 };
 
 /**
@@ -338,93 +338,93 @@ exports.chat = async (req, res) => {
  * Giữ nguyên Stream bằng Gemini để đảm bảo tốc độ phản hồi real-time.
  */
 exports.chatStream = async (req, res) => {
-  const { prompt } = req.body;
+    const { prompt } = req.body;
 
-  if (!prompt || typeof prompt !== "string" || prompt.trim() === "") {
-    return res.status(400).json({ success: false, error: "Câu hỏi không được để trống." });
-  }
-  if (!ai) {
-    return res.status(500).json({ success: false, error: "Chưa cấu hình API Key của Gemini." });
-  }
+    if (!prompt || typeof prompt !== "string" || prompt.trim() === "") {
+        return res.status(400).json({ success: false, error: "Câu hỏi không được để trống." });
+    }
+    if (!ai) {
+        return res.status(500).json({ success: false, error: "Chưa cấu hình API Key của Gemini." });
+    }
 
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-  res.flushHeaders?.();
-
-  try {
-    const userId = resolveUserId(req);
-    const conversation = await getOrCreateAiConversation(userId);
-
-    await prisma.messages.create({
-      data: { conversationId: conversation.id, senderId: userId, content: prompt.trim() },
-    });
-
-    let fullAiText = "";
-    let chat = null;
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders?.();
 
     try {
-      chat = await getOrCreateChatSession(userId);
-      const stream = await chat.sendMessageStream({ message: prompt.trim() });
+        const userId = resolveUserId(req);
+        const conversation = await getOrCreateAiConversation(userId);
 
-      for await (const chunk of stream) {
-        if (chunk.text) {
-          fullAiText += chunk.text;
-          res.write(`data: ${JSON.stringify({ text: chunk.text })}\n\n`);
-        }
-      }
-      
-      trimHistoryIfNeeded(userId, chat);
-    } catch (geminiError) {
-      console.warn("⚠️ Gemini stream gặp sự cố, thử chuyển sang OpenAI làm dự phòng...", geminiError.message);
-      if (openai) {
+        await prisma.messages.create({
+            data: { conversationId: conversation.id, senderId: userId, content: prompt.trim() },
+        });
+
+        let fullAiText = "";
+        let chat = null;
+
         try {
-          fullAiText = await callOpenAiStream(userId, prompt.trim(), res);
-        } catch (openaiError) {
-          console.error("❌ Cả Gemini và OpenAI stream đều thất bại:", openaiError.message);
-          throw geminiError;
+            chat = await getOrCreateChatSession(userId);
+            const stream = await chat.sendMessageStream({ message: prompt.trim() });
+
+            for await (const chunk of stream) {
+                if (chunk.text) {
+                    fullAiText += chunk.text;
+                    res.write(`data: ${JSON.stringify({ text: chunk.text })}\n\n`);
+                }
+            }
+
+            trimHistoryIfNeeded(userId, chat);
+        } catch (geminiError) {
+            console.warn("⚠️ Gemini stream gặp sự cố, thử chuyển sang OpenAI làm dự phòng...", geminiError.message);
+            if (openai) {
+                try {
+                    fullAiText = await callOpenAiStream(userId, prompt.trim(), res);
+                } catch (openaiError) {
+                    console.error("❌ Cả Gemini và OpenAI stream đều thất bại:", openaiError.message);
+                    throw geminiError;
+                }
+            } else {
+                throw geminiError;
+            }
         }
-      } else {
-        throw geminiError;
-      }
-    }
 
-    if (fullAiText.trim() !== "") {
-      await prisma.messages.create({
-        data: { conversationId: conversation.id, senderId: null, content: fullAiText },
-      });
-    }
+        if (fullAiText.trim() !== "") {
+            await prisma.messages.create({
+                data: { conversationId: conversation.id, senderId: null, content: fullAiText },
+            });
+        }
 
-    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
-    res.end();
-  } catch (error) {
-    console.error("❌ Lỗi stream API:", error);
-    const status = error.status || error.code || (error.error && error.error.code);
-    let errorMessage = "Tài khoản AI có thể đã hết Token, vui lòng thử lại sau!";
-    if (status === 429 || error.message?.includes("quota") || error.message?.includes("RESOURCE_EXHAUSTED") || error.message?.includes("Quota")) {
-      errorMessage = "⚠️ Tài khoản đã hết token rồi!!!";
+        res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+        res.end();
+    } catch (error) {
+        console.error("❌ Lỗi stream API:", error);
+        const status = error.status || error.code || (error.error && error.error.code);
+        let errorMessage = "Tài khoản AI có thể đã hết Token, vui lòng thử lại sau!";
+        if (status === 429 || error.message?.includes("quota") || error.message?.includes("RESOURCE_EXHAUSTED") || error.message?.includes("Quota")) {
+            errorMessage = "⚠️ Tài khoản đã hết token rồi!!!";
+        }
+        res.write(`data: ${JSON.stringify({ error: errorMessage })}\n\n`);
+        res.end();
     }
-    res.write(`data: ${JSON.stringify({ error: errorMessage })}\n\n`);
-    res.end();
-  }
 };
 
 /**
  * DELETE /api/ai/chat/history
  */
 exports.resetHistory = async (req, res) => {
-  try {
-    const userId = resolveUserId(req);
-    sessions.delete(userId);
+    try {
+        const userId = resolveUserId(req);
+        sessions.delete(userId);
 
-    const conversation = await getOrCreateAiConversation(userId);
-    await prisma.messages.deleteMany({
-      where: { conversationId: conversation.id },
-    });
+        const conversation = await getOrCreateAiConversation(userId);
+        await prisma.messages.deleteMany({
+            where: { conversationId: conversation.id },
+        });
 
-    return res.json({ success: true, message: "Đã xoá lịch sử trò chuyện. Bắt đầu cuộc hội thoại mới!" });
-  } catch (error) {
-    console.error("❌ Lỗi xoá lịch sử chat AI:", error);
-    return res.status(500).json({ success: false, error: "Không thể xoá lịch sử trò chuyện." });
-  }
+        return res.json({ success: true, message: "Đã xoá lịch sử trò chuyện. Bắt đầu cuộc hội thoại mới!" });
+    } catch (error) {
+        console.error("❌ Lỗi xoá lịch sử chat AI:", error);
+        return res.status(500).json({ success: false, error: "Không thể xoá lịch sử trò chuyện." });
+    }
 };

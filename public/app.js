@@ -2182,7 +2182,8 @@ function displayMessage(msg, targetContainer = null) {
             emojiSpan.innerText = emoji;
             emojiSpan.onclick = (e) => {
                 e.stopPropagation();
-                reactToMessage(msg.id, emoji);
+                const currentMsgId = messageElement.dataset.messageId;
+                reactToMessage(currentMsgId, emoji);
                 reactionPalette.classList.remove("show");
                 hideMobileOverlay();
             };
@@ -2212,7 +2213,8 @@ function displayMessage(msg, targetContainer = null) {
         replyOption.innerText = "Trả lời";
         replyOption.onclick = (e) => {
             e.stopPropagation();
-            setReplyMode(msg.id);
+            const currentMsgId = messageElement.dataset.messageId;
+            setReplyMode(currentMsgId);
             moreMenu.classList.remove("show");
             hideMobileOverlay();
         };
@@ -2239,7 +2241,10 @@ function displayMessage(msg, targetContainer = null) {
                 editOption.innerText = "Sửa tin nhắn";
                 editOption.onclick = (e) => {
                     e.stopPropagation();
-                    startEditMode(msg.id, msg.content);
+                    const currentMsgId = messageElement.dataset.messageId;
+                    const latestMsgObj = currentChatMessages.find(m => m.id === currentMsgId);
+                    const latestContent = latestMsgObj ? latestMsgObj.content : msg.content;
+                    startEditMode(currentMsgId, latestContent);
                     moreMenu.classList.remove("show");
                     hideMobileOverlay();
                 };
@@ -2251,7 +2256,8 @@ function displayMessage(msg, targetContainer = null) {
             recallOption.innerText = "Thu hồi tin nhắn";
             recallOption.onclick = (e) => {
                 e.stopPropagation();
-                recallMessage(msg.id);
+                const currentMsgId = messageElement.dataset.messageId;
+                recallMessage(currentMsgId);
                 moreMenu.classList.remove("show");
                 hideMobileOverlay();
             };
@@ -2291,7 +2297,8 @@ function displayMessage(msg, targetContainer = null) {
         replyBtn.title = "Trả lời";
         replyBtn.onclick = (e) => {
             e.stopPropagation();
-            setReplyMode(msg.id);
+            const currentMsgId = messageElement.dataset.messageId;
+            setReplyMode(currentMsgId);
         };
 
         const actions = document.createElement("div");
