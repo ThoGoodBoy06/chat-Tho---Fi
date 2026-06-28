@@ -3209,6 +3209,9 @@ input:checked+.slider.round:before {
         pointer-events: none;
         z-index: 0;
         will-change: left, width;
+        /* Vị trí mặc định ban đầu cho tab Tin nhắn */
+        left: 4px;
+        width: calc((100% - 8px) / 4);
     }
     body[data-theme="dark"] .nav-slider-pill {
         background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
