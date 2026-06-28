@@ -576,6 +576,12 @@ function initizeChatSession(userData, userToken) {
         formatUrl(userData.avatar) :
         `https://ui-avatars.com/api/?name=${encodeURIComponent(myName)}&background=random`;
 
+    // Đồng bộ thông tin sang Tab Cá nhân và các Modal liên quan
+    if (document.getElementById("my-name-personal-tab"))
+        document.getElementById("my-name-personal-tab").innerText = myName;
+    if (document.getElementById("my-avatar-personal-tab"))
+        document.getElementById("my-avatar-personal-tab").src = document.getElementById("my-avatar").src;
+
     // Đồng bộ thông tin sang Tab Hồ sơ
     document.getElementById("profile-name").innerText = myName;
     if (document.getElementById("my-avatar-profile"))
@@ -616,6 +622,22 @@ function initizeChatSession(userData, userToken) {
         console.log("⚡ Kết nối Socket thành công, đang xác thực user_connected: " + myId);
         socket.emit("user_connected", myId);
         checkUrlParamsForCall(); // Tự động kiểm tra cuộc gọi chạy ngầm khi kết nối thành công
+    });
+
+    // Xử lý tái kết nối Socket (rất quan trọng trên di động iOS/Android)
+    // Khi điện thoại mất mạng rồi kết nối lại, Socket.IO tự reconnect
+    // nhưng server không biết user này online nếu không gửi lại user_connected
+    socket.io.on("reconnect", (attemptNumber) => {
+        console.log(`🔄 Socket đã tái kết nối sau ${attemptNumber} lần thử, đang gửi lại user_connected: ` + myId);
+        socket.emit("user_connected", myId);
+        // Kéo lại tin nhắn bị lỡ trong khi mất kết nối
+        if (typeof loadConversations === "function") loadConversations();
+        if (typeof reloadCurrentChat === "function" && currentConversationId) reloadCurrentChat();
+    });
+
+    // Log khi socket bị mất kết nối (debug di động)
+    socket.on("disconnect", (reason) => {
+        console.warn("🔴 Socket bị ngắt kết nối. Lý do:", reason);
     });
 
     // Nghe danh sách lời mời bạn bè ban đầu
@@ -977,6 +999,13 @@ function setupFirebaseMessaging(userToken) {
 
             if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
             const messaging = firebase.messaging();
+
+            // Lắng nghe FCM khi app đang mở (Foreground) — tránh bỏ lỡ hoặc trùng lặp thông báo
+            messaging.onMessage((payload) => {
+                console.log("📩 Nhận FCM notification khi app đang mở (foreground):", payload);
+                // Không cần hiển thị notification vì Socket.IO đã xử lý real-time
+                // Chỉ log để debug, tránh hiện notification trùng lặp
+            });
 
             // Đăng ký Service Worker tường minh
             if ('serviceWorker' in navigator) {
@@ -2671,6 +2700,8 @@ if (avatarUploadInput) {
                 document.getElementById("my-avatar").src = avatarUrlWithVersion;
                 if (document.getElementById("my-avatar-profile"))
                     document.getElementById("my-avatar-profile").src = avatarUrlWithVersion;
+                if (document.getElementById("my-avatar-personal-tab"))
+                    document.getElementById("my-avatar-personal-tab").src = avatarUrlWithVersion;
                 showTempToast("Đã cập nhật ảnh đại diện mới thành công!");
             } else {
                 alert("Lỗi tải ảnh: " + data.message);
@@ -3085,7 +3116,104 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     }
+
+    const myProfileModal = document.getElementById("my-profile-modal");
+    if (myProfileModal) {
+        myProfileModal.addEventListener("click", (e) => {
+            if (e.target === myProfileModal) {
+                closeMyProfileModal();
+            }
+        });
+    }
+
+    const settingsModal = document.getElementById("tab-settings-modal");
+    if (settingsModal) {
+        settingsModal.addEventListener("click", (e) => {
+            if (e.target === settingsModal) {
+                closeSettingsModal();
+            }
+        });
+    }
+
+    // Click outside notifications dropdown to close it
+    document.addEventListener("click", (e) => {
+        const dropdown = document.getElementById("notifications-dropdown");
+        const bellBtn = document.getElementById("bell-notifications-btn");
+        if (dropdown && dropdown.classList.contains("active")) {
+            if (!dropdown.contains(e.target) && e.target !== bellBtn && !bellBtn.contains(e.target)) {
+                dropdown.classList.remove("active");
+            }
+        }
+    });
 });
+
+function openMyProfileModal() {
+    const modal = document.getElementById("my-profile-modal");
+    if (modal) {
+        modal.classList.add("active");
+    }
+}
+
+function closeMyProfileModal() {
+    const modal = document.getElementById("my-profile-modal");
+    if (modal) {
+        modal.classList.remove("active");
+    }
+}
+
+function openSettingsModal() {
+    const modal = document.getElementById("tab-settings-modal");
+    if (modal) {
+        modal.classList.add("active");
+        updateMediaDevicesList();
+        updateNotificationPermissionUI();
+    }
+}
+
+function closeSettingsModal() {
+    const modal = document.getElementById("tab-settings-modal");
+    if (modal) {
+        modal.classList.remove("active");
+    }
+}
+
+function toggleNotificationsDropdown(event) {
+    if (event) event.stopPropagation();
+    const dropdown = document.getElementById("notifications-dropdown");
+    if (dropdown) {
+        const isActive = dropdown.classList.toggle("active");
+        if (isActive) {
+            loadNotifications();
+            // Đóng các modal khác cho gọn
+            const myProfileModal = document.getElementById("my-profile-modal");
+            if (myProfileModal) myProfileModal.classList.remove("active");
+            const settingsModal = document.getElementById("tab-settings-modal");
+            if (settingsModal) settingsModal.classList.remove("active");
+        }
+    }
+}
+
+async function markAllNotificationsAsRead() {
+    let hasUnread = false;
+    notificationsList.forEach(n => {
+        if (!n.isRead) {
+            n.isRead = true;
+            hasUnread = true;
+        }
+    });
+    if (hasUnread) {
+        updateNotificationBadge();
+        renderNotifications();
+        try {
+            await fetch(`${API_URL}/users/notifications/read-all`, {
+                method: "PATCH",
+                headers: { Authorization: `Bearer ${token}` },
+            });
+        } catch (e) {
+            console.error("Lỗi đánh dấu đã đọc tất cả:", e);
+        }
+    }
+}
 
 async function tryAutoLogin() {
     const token = localStorage.getItem("authToken");
@@ -3692,6 +3820,8 @@ async function openEditProfileModal() {
             myName = data.data.fullName;
             document.getElementById("my-name").innerText = myName;
             document.getElementById("profile-name").innerText = myName;
+            if (document.getElementById("my-name-personal-tab"))
+                document.getElementById("my-name-personal-tab").innerText = myName;
             document.getElementById("profile-bio").innerText =
                 data.data.bio || "Chưa có tiểu sử";
             alert("Cập nhật thông tin thành công!");

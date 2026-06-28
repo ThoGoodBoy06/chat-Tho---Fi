@@ -419,6 +419,12 @@ exports.sendMessage = async (req, res) => {
           },
           android: {
             priority: "high",
+            notification: {
+              channel_id: "chat_messages",
+              sound: "default",
+              priority: "high",
+              default_vibrate_timings: true,
+            },
           },
           apns: {
             headers: {
@@ -429,6 +435,8 @@ exports.sendMessage = async (req, res) => {
               aps: {
                 sound: "default",
                 badge: 1,
+                "content-available": 1,
+                "mutable-content": 1,
               },
             },
           },
@@ -795,17 +803,25 @@ exports.sendPushNotification = async (fcmToken, title, body, customData = null, 
   const payload = {
     token: fcmToken,
     android: {
-      priority: "high"
+      priority: "high",
+      notification: {
+        channel_id: dataOnly ? "incoming_calls" : "chat_messages",
+        sound: "default",
+        priority: "high",
+        default_vibrate_timings: true,
+      },
     },
     apns: {
       headers: {
-        "apns-push-type": dataOnly ? "background" : "alert",
-        "apns-priority": dataOnly ? "5" : "10",
+        "apns-push-type": "alert",
+        "apns-priority": "10",
       },
       payload: {
         aps: {
           sound: "default",
-          badge: 1
+          badge: 1,
+          "content-available": 1,
+          "mutable-content": 1,
         }
       }
     },
@@ -833,9 +849,6 @@ exports.sendPushNotification = async (fcmToken, title, body, customData = null, 
       vibrate: [1000, 500, 1000, 500, 1000],
       requireInteraction: true
     };
-  } else {
-    // Trên iOS, để APNs cho phép chạy nền nhận dữ liệu Web Push, cần thêm content-available: 1
-    payload.apns.payload.aps["content-available"] = 1;
   }
 
   try {

@@ -5208,3 +5208,204 @@ body[data-theme="dark"] .chat-info-action-icon {
 #nickname-modal .custom-modal-card {
     transform: none !important;
 }
+
+/* ==========================================================================
+   PERSONAL PROFILE MODAL & SETTINGS MODAL (ZALO STYLE)
+   ========================================================================== */
+
+#my-profile-modal, #tab-settings-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 100000;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+#my-profile-modal.active, #tab-settings-modal.active {
+    display: flex;
+    opacity: 1;
+}
+
+#my-profile-modal.active .profile-modal-card,
+#tab-settings-modal.active .profile-modal-card {
+    transform: scale(1) translateY(0);
+}
+
+.settings-modal-card {
+    padding: 0;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+/* Zalo Personal Tab Styling */
+.personal-main-content {
+    width: 100%;
+    padding: 12px 0;
+    box-sizing: border-box;
+}
+
+.personal-profile-card {
+    display: flex;
+    align-items: center;
+    padding: 20px;
+    margin: 16px;
+    background: var(--msg-receiver-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--transition-normal), box-shadow var(--transition-normal), background-color var(--transition-normal);
+}
+
+.personal-profile-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    background: var(--hover-bg);
+}
+
+.personal-profile-card:active {
+    transform: translateY(1px);
+}
+
+.personal-avatar-container {
+    position: relative;
+    width: 64px;
+    height: 64px;
+    flex-shrink: 0;
+}
+
+.personal-avatar-container img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--primary-color);
+}
+
+.personal-avatar-container .online-dot {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 12px;
+    height: 12px;
+    background: #10b981;
+    border: 2px solid var(--msg-receiver-bg);
+    border-radius: 50%;
+}
+
+.personal-profile-info {
+    flex: 1;
+    padding-left: 16px;
+}
+
+.personal-profile-info h3 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.personal-view-profile-text {
+    margin: 4px 0 0 0;
+    font-size: 13px;
+    color: var(--text-light);
+}
+
+.personal-arrow {
+    color: var(--text-light);
+    font-size: 14px;
+    transition: transform var(--transition-fast);
+}
+
+.personal-profile-card:hover .personal-arrow {
+    transform: translateX(4px);
+}
+
+/* ==========================================================================
+   NOTIFICATIONS DROPDOWN POPUP
+   ========================================================================== */
+
+.notifications-dropdown-menu {
+    display: none;
+    position: fixed;
+    top: 70px;
+    left: 80px;
+    width: 360px;
+    max-height: 480px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg);
+    z-index: 1000;
+    flex-direction: column;
+    overflow: hidden;
+    animation: slideDownFade 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.notifications-dropdown-menu.active {
+    display: flex;
+}
+
+.notifications-dropdown-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-color);
+}
+
+.notifications-dropdown-header h4 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.mark-all-read-btn {
+    font-size: 12px;
+    color: var(--primary-color);
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.mark-all-read-btn:hover {
+    text-decoration: underline;
+}
+
+.notifications-dropdown-list {
+    overflow-y: auto;
+    flex: 1;
+    max-height: 400px;
+}
+
+@keyframes slideDownFade {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Thích ứng trên thiết bị di động */
+@media (max-width: 768px) {
+    .notifications-dropdown-menu {
+        top: 60px;
+        left: 10px;
+        right: 10px;
+        width: auto;
+        max-height: 70vh;
+        z-index: 999;
+    }
+}

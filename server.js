@@ -3,8 +3,8 @@ require("dotenv").config();
 // Tự động đồng bộ hóa cấu trúc Database khi khởi chạy ứng dụng (ví dụ trên Render)
 try {
   const { execSync } = require("child_process");
-  console.log("🔄 Đang tiến hành đồng bộ hóa cấu trúc Database (Prisma db push)...");
-  execSync("npx prisma db push --accept-data-loss", { stdio: "inherit" });
+  console.log("🔄 Đang tiến hành đồng bộ hóa cấu trúc Database (Prisma generate & db push)...");
+  execSync("npx prisma generate && npx prisma db push --accept-data-loss", { stdio: "inherit" });
   console.log("✅ Đồng bộ hóa Database thành công!");
 } catch (err) {
   console.error("⚠️ Cảnh báo: Lỗi tự động đồng bộ hóa Database:", err.message);
@@ -39,7 +39,7 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 // Mở thư mục 'public' để chứa file giao diện web (HTML/CSS/JS)
-app.use(express.static("public"));
+app.use(express.static(path.join(__dirname, "public")));
 
 // Import Routes
 const authRoutes = require("./routes/auth.routes");
@@ -47,8 +47,12 @@ const chatRoutes = require("./routes/chat.routes");
 const userRoutes = require("./routes/user.routes");
 const aiRoutes = require("./routes/ai.routes");
 
-// Tạo một API test thử xem server chạy chưa
+// Tạo một API test thử xem server chạy chưa (nếu từ trình duyệt thì trả về file index.html giao diện)
 app.get("/", async (req, res) => {
+  if (req.headers.accept && req.headers.accept.includes("text/html")) {
+    return res.sendFile(path.join(__dirname, "public", "index.html"));
+  }
+
   try {
     // Thử đếm số lượng người dùng trong Database
     const userCount = await prisma.users.count();
@@ -230,6 +234,19 @@ app.get("/api/users/notifications", async (req, res) => {
       return n;
     });
     res.json({ success: true, data: mappedNotifications });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// API Đánh dấu đã đọc tất cả thông báo
+app.patch("/api/users/notifications/read-all", authMiddleware, async (req, res) => {
+  try {
+    await prisma.notifications.updateMany({
+      where: { userId: req.user.id, isRead: false },
+      data: { isRead: true },
+    });
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

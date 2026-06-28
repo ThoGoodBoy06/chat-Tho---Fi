@@ -166,24 +166,13 @@
                     0
                 </div>
             </div>
-            <div class="nav-item" onclick="switchTab('tab-profile', this)" title="Hồ sơ">
-                <i class="fas fa-user"></i>
-                <span class="nav-label">Hồ sơ</span>
-            </div>
-            <div class="nav-item" onclick="switchTab('tab-notifications', this)" title="Thông báo">
-                <i class="fas fa-bell"></i>
-                <span class="nav-label">Thông báo</span>
-                <div class="nav-badge" id="notifications-badge" style="display: none">
-                    0
-                </div>
-            </div>
             <div class="nav-item" onclick="switchTab('tab-ai', this)" title="Trợ lý AI">
                 <i class="fas fa-star"></i>
                 <span class="nav-label">Trợ lý AI</span>
             </div>
-            <div class="nav-item" onclick="switchTab('tab-settings', this)" title="Cài đặt">
-                <i class="fas fa-cog"></i>
-                <span class="nav-label">Cài đặt</span>
+            <div class="nav-item" onclick="switchTab('tab-profile', this)" title="Cá nhân">
+                <i class="fas fa-user-circle"></i>
+                <span class="nav-label">Cá nhân</span>
             </div>
         </nav>
 
@@ -207,8 +196,13 @@
                             <h3 id="my-name">Cá Nhân</h3>
                         </div>
                         <div class="sidebar-actions">
+                            <!-- Tích hợp nút chuông thông báo -->
+                            <div class="notification-bell-wrapper" style="position: relative; display: inline-block;">
+                                <i class="fas fa-bell icon-btn" id="bell-notifications-btn" onclick="toggleNotificationsDropdown(event)" title="Thông báo" style="cursor: pointer;"></i>
+                                <span class="nav-badge" id="notifications-badge" style="display: none; position: absolute; top: -5px; right: -5px; width: 18px; height: 18px; font-size: 10px; border-radius: 50%; background: #ef4444; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 1.5px solid #fff;">0</span>
+                            </div>
                             <i class="fas fa-edit icon-btn"></i>
-                            <i class="fas fa-cog icon-btn"></i>
+                            <i class="fas fa-cog icon-btn" onclick="openSettingsModal()"></i>
                         </div>
                     </div>
 
@@ -352,135 +346,65 @@
                 </div>
             </div>
 
-            <!-- TAB 3: HỒ SƠ -->
+            <!-- TAB 3: CÁ NHÂN -->
             <div id="tab-profile" class="tab-pane">
                 <div class="profile-container zalo-profile-layout">
                     <!-- Zalo Profile Header -->
                     <div class="zalo-profile-header">
                         <h3>Cá nhân</h3>
-                        <i class="fas fa-cog" onclick="
-                  switchTab(
-                    'tab-settings',
-                    document.querySelectorAll('.nav-item')[4],
-                  )
-                "></i>
+                        <i class="fas fa-cog" onclick="openSettingsModal()" style="cursor: pointer; font-size: 20px;"></i>
                     </div>
 
-                    <div class="profile-tab-cover" onclick="document.getElementById('cover-upload').click()">
-                        <img id="my-cover" src="https://ui-avatars.com/api/?name=Cover&background=e9ecef&color=333&size=800&font-size=0.1" alt="Cover Image" />
-                        <div class="cover-overlay"><i class="fas fa-camera"></i></div>
-                        <input type="file" id="cover-upload" accept="image/*" hidden />
-                    </div>
-
-                    <!-- Info Card -->
-                    <div class="profile-info-card">
-                        <div class="profile-avatar-wrapper" onclick="document.getElementById('avatar-upload').click()">
-                            <img id="my-avatar-profile" src="https://ui-avatars.com/api/?name=Me&background=random" alt="Avatar" />
-                        </div>
-                        <div class="profile-text-info">
-                            <h2 id="profile-name">Đang tải...</h2>
-                            <p id="profile-bio">Chưa có tiểu sử</p>
-                        </div>
-                    </div>
-
-                    <!-- Menu List -->
-                    <div class="zalo-menu-list">
-                        <div class="zalo-menu-item" onclick="openEditProfileModal()">
-                            <div class="menu-left">
-                                <i class="fas fa-user-edit menu-icon" style="color: var(--primary-color)"></i> Chỉnh sửa thông tin
+                    <!-- Personal Tab Main content -->
+                    <div class="personal-main-content">
+                        <!-- Profile preview card (clicking opens Trang cá nhân modal) -->
+                        <div class="personal-profile-card" onclick="openMyProfileModal()">
+                            <div class="personal-avatar-container">
+                                <img id="my-avatar-personal-tab" src="https://ui-avatars.com/api/?name=Me&background=random" alt="Avatar" />
+                                <div class="online-dot"></div>
                             </div>
-                            <i class="fas fa-chevron-right menu-arrow"></i>
-                        </div>
-                        <div class="zalo-menu-item" onclick="alert('Tính năng nâng cấp tài khoản đang phát triển')">
-                            <div class="menu-left">
-                                <i class="fas fa-shield-alt menu-icon" style="color: #05a060"></i> Tài khoản và bảo mật
+                            <div class="personal-profile-info">
+                                <h3 id="my-name-personal-tab">Đang tải...</h3>
+                                <p class="personal-view-profile-text">Xem trang cá nhân</p>
                             </div>
-                            <i class="fas fa-chevron-right menu-arrow"></i>
+                            <i class="fas fa-chevron-right personal-arrow"></i>
+                        </div>
+
+                        <!-- Menu Zalo-style -->
+                        <div class="zalo-menu-list mt-3">
+                            <div class="zalo-menu-item" onclick="alert('Tính năng Ví QR đang phát triển')">
+                                <div class="menu-left">
+                                    <i class="fas fa-qrcode menu-icon" style="color: var(--primary-color)"></i> Ví QR
+                                </div>
+                                <i class="fas fa-chevron-right menu-arrow"></i>
+                            </div>
+                            <div class="zalo-menu-item" onclick="alert('Tính năng Cloud của tôi đang phát triển')">
+                                <div class="menu-left">
+                                    <i class="fas fa-cloud menu-icon" style="color: #38bdf8"></i> Cloud của tôi
+                                </div>
+                                <i class="fas fa-chevron-right menu-arrow"></i>
+                            </div>
+                            <div class="zalo-menu-item" onclick="alert('Tính năng Tài khoản và bảo mật đang phát triển')">
+                                <div class="menu-left">
+                                    <i class="fas fa-shield-alt menu-icon" style="color: #05a060"></i> Tài khoản và bảo mật
+                                </div>
+                                <i class="fas fa-chevron-right menu-arrow"></i>
+                            </div>
+                            <div class="zalo-menu-item" onclick="alert('Tính năng Quyền riêng tư đang phát triển')">
+                                <div class="menu-left">
+                                    <i class="fas fa-lock menu-icon" style="color: #8b5cf6"></i> Quyền riêng tư
+                                </div>
+                                <i class="fas fa-chevron-right menu-arrow"></i>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- TAB 5: THÔNG BÁO -->
-            <div id="tab-notifications" class="tab-pane">
-                <div class="contacts-container">
-                    <div class="zalo-profile-header">
-                        <h3>Thông báo</h3>
-                    </div>
-                    <div class="contact-section" style="padding: 0">
-                        <div id="notifications-list">
-                            <p style="
-                    color: var(--text-light);
-                    text-align: center;
-                    margin-top: 20px;
-                  ">
-                                Chưa có thông báo nào.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-            <!-- TAB 4: CÀI ĐẶT -->
-            <div id="tab-settings" class="tab-pane">
-                <div class="settings-container zalo-profile-layout">
-                    <div class="zalo-profile-header">
-                        <i class="fas fa-arrow-left" style="margin-right: 16px" onclick="
-                  switchTab(
-                    'tab-profile',
-                    document.querySelectorAll('.nav-item')[2],
-                  )
-                "></i>
-                        <h3>Cài đặt</h3>
-                    </div>
+            <!-- TAB 5: THÔNG BÁO (ĐÃ ĐƯỢC TÍCH HỢP VÀO TAB TIN NHẮN DƯỚI DẠNG DROPDOWN) -->
 
-                    <div class="zalo-menu-list mt-3">
-                        <div class="zalo-menu-item">
-                            <div class="menu-left">
-                                <i class="fas fa-moon menu-icon" style="color: #333"></i> Giao diện tối (Dark Mode)
-                            </div>
-                            <label class="switch">
-                <input type="checkbox" id="dark-mode-toggle" onchange="toggleDarkMode(this)" />
-                <span class="slider round"></span>
-              </label>
-                        </div>
-
-                        <div class="zalo-menu-item" style="border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 12px; display: flex; justify-content: space-between; align-items: center;">
-                            <div class="menu-left" style="font-weight: 500; font-size: 13px;">
-                                <i class="fas fa-bell menu-icon" style="color: #f59e0b; width: 16px;"></i> Thông báo hệ thống (Web Push)
-                            </div>
-                            <button id="notification-permission-btn" class="custom-btn btn-primary" onclick="requestNotificationPermission()" style="padding: 6px 14px; font-size: 12px; border-radius: 6px; margin: 0; min-height: unset; height: 32px; display: inline-flex; align-items: center; justify-content: center;">
-                                Bật
-                            </button>
-                        </div>
-
-                        <div class="zalo-menu-item" style="flex-direction: column; align-items: stretch; gap: 8px; border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 12px;">
-                            <div class="menu-left" style="font-weight: 500; font-size: 13px;">
-                                <i class="fas fa-microphone menu-icon" style="color: #3b82f6; width: 16px;"></i> Thiết bị Microphone (Micro)
-                            </div>
-                            <select id="setting-mic-select" style="width: 100%; padding: 8px 12px; border-radius: 6px; background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); font-size: 12px; cursor: pointer; outline: none; margin-top: 4px;">
-                <option value="">Thiết bị mặc định</option>
-              </select>
-                        </div>
-
-                        <div class="zalo-menu-item" style="flex-direction: column; align-items: stretch; gap: 8px; border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 12px;">
-                            <div class="menu-left" style="font-weight: 500; font-size: 13px;">
-                                <i class="fas fa-video menu-icon" style="color: #10b981; width: 16px;"></i> Thiết bị Camera (Máy ảnh)
-                            </div>
-                            <select id="setting-cam-select" style="width: 100%; padding: 8px 12px; border-radius: 6px; background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); font-size: 12px; cursor: pointer; outline: none; margin-top: 4px;">
-                <option value="">Thiết bị mặc định</option>
-              </select>
-                        </div>
-                    </div>
-
-                    <div class="zalo-menu-list mt-3" style="border: none; background: transparent; box-shadow: none;">
-                        <button class="logout-btn-danger" onclick="logout()">
-              <i class="fas fa-sign-out-alt"></i> Đăng xuất tài khoản
-            </button>
-                    </div>
-                </div>
-            </div>
-            <!-- Kết thúc tab-settings -->
+            <!-- TAB 4: CÀI ĐẶT ĐÃ ĐƯỢC CHUYỂN THÀNH MODAL -->
 
             <!-- TAB AI: TRỢ LÝ AI GEMINI -->
             <div id="tab-ai" class="tab-pane tab-content">
@@ -866,6 +790,104 @@
                     <span class="theme-option-name">Nửa đêm</span>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Giao diện xem Trang cá nhân của tôi (My Profile Modal - Zalo style) -->
+    <div id="my-profile-modal" class="modal-overlay">
+        <div class="profile-modal-card">
+            <button class="profile-modal-close" onclick="closeMyProfileModal()">&times;</button>
+            <div class="profile-cover" onclick="document.getElementById('cover-upload').click()">
+                <img id="my-cover" src="https://ui-avatars.com/api/?name=Cover&background=e9ecef&color=333&size=800&font-size=0.1" alt="Cover" />
+                <div class="cover-overlay"><i class="fas fa-camera"></i></div>
+            </div>
+            <input type="file" id="cover-upload" accept="image/*" hidden />
+            <div class="profile-modal-avatar-header">
+                <div class="profile-avatar" onclick="document.getElementById('avatar-upload').click()">
+                    <img id="my-avatar-profile" src="https://ui-avatars.com/api/?name=Me&background=random" alt="Avatar" />
+                    <div class="avatar-overlay"><i class="fas fa-camera"></i></div>
+                    <div class="profile-status-dot"></div>
+                </div>
+            </div>
+            <div class="profile-info">
+                <h2 id="profile-name">Đang tải...</h2>
+                <p id="profile-bio" class="profile-bio">Chưa có tiểu sử</p>
+            </div>
+            
+            <div class="zalo-menu-list" style="margin-top: 15px; border-top: 1px solid var(--border-color);">
+                <div class="zalo-menu-item" onclick="openEditProfileModal()">
+                    <div class="menu-left">
+                        <i class="fas fa-user-edit menu-icon" style="color: var(--primary-color)"></i> Chỉnh sửa thông tin
+                    </div>
+                    <i class="fas fa-chevron-right menu-arrow"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Giao diện Cài đặt (Settings Modal) -->
+    <div id="tab-settings-modal" class="modal-overlay">
+        <div class="profile-modal-card settings-modal-card">
+            <button class="profile-modal-close" onclick="closeSettingsModal()">&times;</button>
+            <div class="zalo-profile-header">
+                <h3>Cài đặt</h3>
+            </div>
+
+            <div class="zalo-menu-list" style="padding: 10px 20px;">
+                <div class="zalo-menu-item" style="border-bottom: 1px solid var(--border-color); padding: 12px 0;">
+                    <div class="menu-left">
+                        <i class="fas fa-moon menu-icon" style="color: #333; width: 20px;"></i> Giao diện tối (Dark Mode)
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="dark-mode-toggle" onchange="toggleDarkMode(this)" />
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+
+                <div class="zalo-menu-item" style="border-bottom: 1px solid var(--border-color); padding: 12px 0; display: flex; justify-content: space-between; align-items: center;">
+                    <div class="menu-left" style="font-weight: 500; font-size: 13.5px;">
+                        <i class="fas fa-bell menu-icon" style="color: #f59e0b; width: 20px;"></i> Thông báo Web Push
+                    </div>
+                    <button id="notification-permission-btn" class="custom-btn btn-primary" onclick="requestNotificationPermission()" style="padding: 6px 14px; font-size: 12px; border-radius: 6px; margin: 0; min-height: unset; height: 32px; display: inline-flex; align-items: center; justify-content: center;">
+                        Bật
+                    </button>
+                </div>
+
+                <div class="zalo-menu-item" style="flex-direction: column; align-items: stretch; gap: 8px; border-bottom: 1px solid var(--border-color); padding: 12px 0;">
+                    <div class="menu-left" style="font-weight: 500; font-size: 13.5px;">
+                        <i class="fas fa-microphone menu-icon" style="color: #3b82f6; width: 20px;"></i> Thiết bị Micro
+                    </div>
+                    <select id="setting-mic-select" style="width: 100%; padding: 8px 12px; border-radius: 6px; background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); font-size: 12px; cursor: pointer; outline: none; margin-top: 4px;">
+                        <option value="">Thiết bị mặc định</option>
+                    </select>
+                </div>
+
+                <div class="zalo-menu-item" style="flex-direction: column; align-items: stretch; gap: 8px; border-bottom: 1px solid var(--border-color); padding: 12px 0;">
+                    <div class="menu-left" style="font-weight: 500; font-size: 13.5px;">
+                        <i class="fas fa-video menu-icon" style="color: #10b981; width: 20px;"></i> Thiết bị Máy ảnh
+                    </div>
+                    <select id="setting-cam-select" style="width: 100%; padding: 8px 12px; border-radius: 6px; background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); font-size: 12px; cursor: pointer; outline: none; margin-top: 4px;">
+                        <option value="">Thiết bị mặc định</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="zalo-menu-list" style="padding: 10px 20px; border: none; background: transparent; box-shadow: none;">
+                <button class="logout-btn-danger" onclick="closeSettingsModal(); logout();" style="width: 100%;">
+                    <i class="fas fa-sign-out-alt"></i> Đăng xuất tài khoản
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dropdown chứa danh sách thông báo -->
+    <div id="notifications-dropdown" class="notifications-dropdown-menu">
+        <div class="notifications-dropdown-header">
+            <h4>Thông báo mới</h4>
+            <span onclick="markAllNotificationsAsRead()" class="mark-all-read-btn">Đánh dấu đã đọc tất cả</span>
+        </div>
+        <div id="notifications-list" class="notifications-dropdown-list">
+            <p style="color: var(--text-light); text-align: center; padding: 20px; font-size: 13.5px;">Chưa có thông báo nào.</p>
         </div>
     </div>
 

@@ -1,3 +1,7 @@
+// Version tracking - giúp trình duyệt iOS/Android nhận diện cập nhật mới và không dùng bản cache cũ
+const SW_VERSION = "1.1.0";
+console.log("[firebase-messaging-sw.js] Version:", SW_VERSION);
+
 importScripts(
   "https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js",
 );
