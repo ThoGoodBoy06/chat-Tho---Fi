@@ -987,6 +987,32 @@ function initizeChatSession(userData, userToken) {
     loadFriends();
     loadNotifications();
     updateNotificationPermissionUI();
+
+    // ── Khởi tạo tab mặc định (Tin nhắn) và vị trí thanh trượt slider-pill (Fix lỗi khuất tab khi mới vào app) ──
+    const defaultTab = document.querySelector('.nav-item[title="Tin nhắn"]');
+    if (defaultTab) {
+        const originalSwitchingState = isSwitchingTab;
+        isSwitchingTab = false;
+        
+        switchTab("tab-messages", defaultTab);
+        
+        isSwitchingTab = originalSwitchingState;
+
+        setTimeout(() => {
+            const pill = document.getElementById('nav-slider-pill');
+            if (pill && window.innerWidth <= 768) {
+                const sidebar = defaultTab.closest('.sidebar');
+                if (sidebar) {
+                    const sidebarRect = sidebar.getBoundingClientRect();
+                    const itemRect = defaultTab.getBoundingClientRect();
+                    pill.style.transition = 'none';
+                    pill.style.left = (itemRect.left - sidebarRect.left) + 'px';
+                    pill.style.width = itemRect.width + 'px';
+                    setTimeout(() => { pill.style.transition = ''; }, 50);
+                }
+            }
+        }, 400);
+    }
 }
 
 // --- ĐĂNG KÝ VÀ CẤU HÌNH FIREBASE CLOUD MESSAGING (LẤY FCM TOKEN) ---
