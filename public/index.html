@@ -3,8 +3,7 @@
 
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, shrink-to-fit=no, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, shrink-to-fit=no, viewport-fit=cover" />
     <title>Chat Tho-Fi | Kết nối không giới hạn</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
@@ -110,13 +109,11 @@
             <div id="login-form">
                 <div class="input-group">
                     <i class="fas fa-user input-icon"></i>
-                    <input type="text" id="login-username" placeholder="Username"
-                        onkeyup="if (event.key === 'Enter') login();" />
+                    <input type="text" id="login-username" placeholder="Username" onkeyup="if (event.key === 'Enter') login();" />
                 </div>
                 <div class="input-group">
                     <i class="fas fa-lock input-icon"></i>
-                    <input type="password" id="login-password" placeholder="Mật khẩu"
-                        onkeyup="if (event.key === 'Enter') login();" />
+                    <input type="password" id="login-password" placeholder="Mật khẩu" onkeyup="if (event.key === 'Enter') login();" />
                     <i class="fas fa-eye-slash toggle-pw" onclick="togglePassword('login-password', this)"></i>
                 </div>
                 <button id="login-btn" class="auth-btn btn-primary" onclick="login()">
@@ -132,18 +129,15 @@
             <div id="register-form" style="display: none">
                 <div class="input-group">
                     <i class="fas fa-id-card input-icon"></i>
-                    <input type="text" id="reg-fullname" placeholder="Họ và Tên (để tìm kiếm)"
-                        onkeyup="if (event.key === 'Enter') register();" />
+                    <input type="text" id="reg-fullname" placeholder="Họ và Tên (để tìm kiếm)" onkeyup="if (event.key === 'Enter') register();" />
                 </div>
                 <div class="input-group">
                     <i class="fas fa-user input-icon"></i>
-                    <input type="text" id="reg-username" placeholder="Username"
-                        onkeyup="if (event.key === 'Enter') register();" />
+                    <input type="text" id="reg-username" placeholder="Username" onkeyup="if (event.key === 'Enter') register();" />
                 </div>
                 <div class="input-group">
                     <i class="fas fa-lock input-icon"></i>
-                    <input type="password" id="reg-password" placeholder="Mật khẩu"
-                        onkeyup="if (event.key === 'Enter') register();" />
+                    <input type="password" id="reg-password" placeholder="Mật khẩu" onkeyup="if (event.key === 'Enter') register();" />
                     <i class="fas fa-eye-slash toggle-pw" onclick="togglePassword('reg-password', this)"></i>
                 </div>
                 <button id="register-btn" class="auth-btn btn-success" onclick="register()">
@@ -161,23 +155,22 @@
     <div id="chat-screen" style="display: none">
         <!-- Thanh Điều Hướng (Navigation) -->
         <nav class="sidebar">
+            <div class="nav-slider-pill" id="nav-slider-pill"></div>
             <div class="nav-item active" onclick="switchTab('tab-messages', this)" title="Tin nhắn">
-                <i class="fas fa-comment-dots"></i>
+                <div class="nav-icon-wrap"><i class="fas fa-comment-dots"></i></div>
                 <span class="nav-label">Tin nhắn</span>
             </div>
             <div class="nav-item" onclick="switchTab('tab-contacts', this)" title="Danh bạ">
-                <i class="fas fa-users"></i>
+                <div class="nav-icon-wrap"><i class="fas fa-users"></i></div>
                 <span class="nav-label">Danh bạ</span>
-                <div class="nav-badge" id="contacts-badge" style="display: none">
-                    0
-                </div>
+                <div class="nav-badge" id="contacts-badge" style="display: none">0</div>
             </div>
             <div class="nav-item" onclick="switchTab('tab-ai', this)" title="Trợ lý AI">
-                <i class="fas fa-star"></i>
+                <div class="nav-icon-wrap"><i class="fas fa-star"></i></div>
                 <span class="nav-label">Trợ lý AI</span>
             </div>
             <div class="nav-item" onclick="switchTab('tab-profile', this)" title="Cá nhân">
-                <i class="fas fa-user-circle"></i>
+                <div class="nav-icon-wrap"><i class="fas fa-user-circle"></i></div>
                 <span class="nav-label">Cá nhân</span>
             </div>
         </nav>
@@ -191,10 +184,8 @@
                     <!-- Header Sidebar -->
                     <div class="sidebar-header">
                         <div class="user-info">
-                            <div class="avatar avatar-wrapper"
-                                onclick="document.getElementById('avatar-upload').click()">
-                                <img src="https://ui-avatars.com/api/?name=Me&background=random" alt="Avatar"
-                                    id="my-avatar" />
+                            <div class="avatar avatar-wrapper" onclick="document.getElementById('avatar-upload').click()">
+                                <img src="https://ui-avatars.com/api/?name=Me&background=random" alt="Avatar" id="my-avatar" />
                                 <div class="avatar-overlay">
                                     <i class="fas fa-camera"></i>
                                 </div>
@@ -207,8 +198,7 @@
                             <!-- Tích hợp nút chuông thông báo -->
                             <div class="notification-bell-wrapper" onclick="toggleNotificationsDropdown(event)" style="position: relative; display: inline-block; cursor: pointer;">
                                 <i class="fas fa-bell icon-btn" id="bell-notifications-btn" title="Thông báo" style="pointer-events: none;"></i>
-                                <span class="nav-badge" id="notifications-badge"
-                                    style="display: none; position: absolute; top: -5px; right: -5px; width: 18px; height: 18px; font-size: 10px; border-radius: 50%; background: #ef4444; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 1.5px solid #fff; pointer-events: none;">0</span>
+                                <span class="nav-badge" id="notifications-badge" style="display: none; position: absolute; top: -5px; right: -5px; width: 18px; height: 18px; font-size: 10px; border-radius: 50%; background: #ef4444; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 1.5px solid #fff; pointer-events: none;">0</span>
                             </div>
                             <i class="fas fa-edit icon-btn"></i>
                             <i class="fas fa-cog icon-btn" onclick="openSettingsModal()"></i>
@@ -219,8 +209,7 @@
                     <div class="search-box">
                         <div class="search-input-wrapper">
                             <i class="fas fa-search search-icon"></i>
-                            <input type="text" id="search-input" placeholder="Tìm kiếm"
-                                onkeyup="if (event.key === 'Enter') searchUser();" />
+                            <input type="text" id="search-input" placeholder="Tìm kiếm" onkeyup="if (event.key === 'Enter') searchUser();" />
                         </div>
                     </div>
                     <div id="search-results"></div>
@@ -237,8 +226,7 @@
                         <div class="chat-header-info chat-partner-info">
                             <!-- Nút Back cho mobile -->
                             <i class="fas fa-arrow-left icon-btn back-btn" onclick="closeChatMobile()"></i>
-                            <div class="avatar" style="cursor: pointer;"
-                                onclick="if (currentChatPartnerId) openOtherUserProfileModal(currentChatPartnerId)">
+                            <div class="avatar" style="cursor: pointer;" onclick="if (currentChatPartnerId) openOtherUserProfileModal(currentChatPartnerId)">
                                 <img src="" alt="Avatar" id="current-chat-avatar" />
                                 <div class="online-dot" id="chat-header-status-dot" style="display: none;"></div>
                             </div>
@@ -250,8 +238,7 @@
                         <div class="chat-header-actions">
                             <i class="fas fa-phone-alt icon-btn" onclick="startCall('voice')"></i>
                             <i class="fas fa-video icon-btn" onclick="startCall('video')"></i>
-                            <i class="fas fa-info-circle icon-btn" onclick="openChatInfoPanel()"
-                                title="Thông tin cuộc trò chuyện"></i>
+                            <i class="fas fa-info-circle icon-btn" onclick="openChatInfoPanel()" title="Thông tin cuộc trò chuyện"></i>
                         </div>
                     </div>
 
@@ -279,8 +266,7 @@
                         </svg>
                         <h3>Chào mừng đến với Chat Tho-Fi</h3>
                         <p>Kết nối nhanh chóng, gọi điện và nhắn tin không giới hạn</p>
-                        <button class="btn-start-chat"
-                            onclick="switchTab('tab-contacts', document.querySelectorAll('.nav-item')[1])">
+                        <button class="btn-start-chat" onclick="switchTab('tab-contacts', document.querySelectorAll('.nav-item')[1])">
                             <i class="fas fa-paper-plane"></i> Bắt đầu cuộc trò chuyện mới
                         </button>
                     </div>
@@ -291,8 +277,7 @@
                     <div id="reply-preview-container" class="reply-preview-container" style="display: none;">
                         <div class="reply-preview-content">
                             <div class="reply-preview-title">
-                                <i class="fas fa-reply"
-                                    style="margin-right: 6px; font-size: 11px; color: var(--primary-color);"></i>
+                                <i class="fas fa-reply" style="margin-right: 6px; font-size: 11px; color: var(--primary-color);"></i>
                                 <span>Đang trả lời <strong id="reply-preview-sender">User</strong></span>
                             </div>
                             <div id="reply-preview-text" class="reply-preview-text">Nội dung tin nhắn...</div>
@@ -303,29 +288,23 @@
                     <div class="input-area" id="input-area" style="display: none">
                         <div class="input-actions-left-wrapper" id="action-left-wrapper">
                             <div class="input-actions-left">
-                                <i class="fas fa-camera icon-btn"
-                                    onclick="alert('Tính năng Camera đang phát triển')"></i>
-                                <i class="fas fa-image icon-btn"
-                                    onclick="document.getElementById('image-upload').click()"></i>
+                                <i class="fas fa-camera icon-btn" onclick="alert('Tính năng Camera đang phát triển')"></i>
+                                <i class="fas fa-image icon-btn" onclick="document.getElementById('image-upload').click()"></i>
                                 <input type="file" id="image-upload" accept="image/*" hidden />
-                                <i class="fas fa-microphone icon-btn" id="voice-record-btn"
-                                    onclick="toggleVoiceRecording()"></i>
+                                <i class="fas fa-microphone icon-btn" id="voice-record-btn" onclick="toggleVoiceRecording()"></i>
                             </div>
                         </div>
 
                         <div class="input-wrapper">
                             <textarea id="message-input" rows="1" placeholder="Aa"></textarea>
                             <div class="emoji-picker-wrapper">
-                                <i class="fas fa-smile icon-btn face-icon" id="emoji-toggle-btn"
-                                    onclick="toggleEmojiPicker(event)"></i>
+                                <i class="fas fa-smile icon-btn face-icon" id="emoji-toggle-btn" onclick="toggleEmojiPicker(event)"></i>
                                 <div class="emoji-picker-panel" id="emoji-picker-panel">
                                     <div class="emoji-picker-header">
-                                        <i class="fas fa-arrow-left emoji-back-btn" onclick="closeEmojiPicker()"
-                                            title="Quay lại"></i>
+                                        <i class="fas fa-arrow-left emoji-back-btn" onclick="closeEmojiPicker()" title="Quay lại"></i>
                                         <div class="emoji-search-box">
                                             <i class="fas fa-search"></i>
-                                            <input type="text" id="emoji-search-input" placeholder="Tìm emoji..."
-                                                oninput="filterEmojis(this.value)">
+                                            <input type="text" id="emoji-search-input" placeholder="Tìm emoji..." oninput="filterEmojis(this.value)">
                                         </div>
                                     </div>
                                     <div class="emoji-category-tabs" id="emoji-category-tabs"></div>
@@ -335,10 +314,8 @@
                         </div>
 
                         <div class="input-actions-right">
-                            <i class="fas fa-thumbs-up icon-btn send-like-btn" id="like-btn"
-                                onclick="sendMessage('👍')"></i>
-                            <i class="fas fa-paper-plane icon-btn send-btn" id="send-btn" onclick="sendMessage()"
-                                style="display: none;"></i>
+                            <i class="fas fa-thumbs-up icon-btn send-like-btn" id="like-btn" onclick="sendMessage('👍')"></i>
+                            <i class="fas fa-paper-plane icon-btn send-btn" id="send-btn" onclick="sendMessage()" style="display: none;"></i>
                         </div>
                     </div>
                 </main>
@@ -355,9 +332,7 @@
                         <div class="search-box" style="padding: 0; margin-bottom: 20px">
                             <div class="search-input-wrapper">
                                 <i class="fas fa-search search-icon"></i>
-                                <input type="text" id="friend-search-input"
-                                    placeholder="Nhập Username hoặc Tên đầy đủ..."
-                                    onkeyup="if (event.key === 'Enter') searchUserForFriend();" />
+                                <input type="text" id="friend-search-input" placeholder="Nhập Username hoặc Tên đầy đủ..." onkeyup="if (event.key === 'Enter') searchUserForFriend();" />
                             </div>
                         </div>
                         <div id="friend-search-results">
@@ -389,8 +364,7 @@
                     <!-- Zalo Profile Header -->
                     <div class="zalo-profile-header">
                         <h3>Cá nhân</h3>
-                        <i class="fas fa-cog" onclick="openSettingsModal()"
-                            style="cursor: pointer; font-size: 20px;"></i>
+                        <i class="fas fa-cog" onclick="openSettingsModal()" style="cursor: pointer; font-size: 20px;"></i>
                     </div>
 
                     <!-- Personal Tab Main content -->
@@ -398,8 +372,7 @@
                         <!-- Profile preview card (clicking opens Trang cá nhân modal) -->
                         <div class="personal-profile-card" onclick="openMyProfileModal()">
                             <div class="personal-avatar-container">
-                                <img id="my-avatar-personal-tab"
-                                    src="https://ui-avatars.com/api/?name=Me&background=random" alt="Avatar" />
+                                <img id="my-avatar-personal-tab" src="https://ui-avatars.com/api/?name=Me&background=random" alt="Avatar" />
                                 <div class="online-dot"></div>
                             </div>
                             <div class="personal-profile-info">
@@ -423,11 +396,9 @@
                                 </div>
                                 <i class="fas fa-chevron-right menu-arrow"></i>
                             </div>
-                            <div class="zalo-menu-item"
-                                onclick="alert('Tính năng Tài khoản và bảo mật đang phát triển')">
+                            <div class="zalo-menu-item" onclick="alert('Tính năng Tài khoản và bảo mật đang phát triển')">
                                 <div class="menu-left">
-                                    <i class="fas fa-shield-alt menu-icon" style="color: #05a060"></i> Tài khoản và bảo
-                                    mật
+                                    <i class="fas fa-shield-alt menu-icon" style="color: #05a060"></i> Tài khoản và bảo mật
                                 </div>
                                 <i class="fas fa-chevron-right menu-arrow"></i>
                             </div>
@@ -466,8 +437,7 @@
                         <!-- Màn hình chào mừng chính giữa -->
                         <div class="ai-welcome-screen" id="ai-welcome-screen">
                             <div class="ai-welcome-logo-container">
-                                <img src="tho_fi_logo.png" alt="Logo" class="ai-welcome-logo"
-                                    onerror="this.src='logo.jpg'" />
+                                <img src="tho_fi_logo.png" alt="Logo" class="ai-welcome-logo" onerror="this.src='logo.jpg'" />
                             </div>
                             <h1 class="ai-welcome-title" id="ai-welcome-title">Hôm nay bạn thế nào, ?</h1>
                         </div>
@@ -478,12 +448,9 @@
                     </div>
                     <div class="ai-chat-input-area">
                         <div class="ai-input-pill">
-                            <i class="fas fa-plus ai-input-plus"
-                                onclick="alert('Tính năng tải tài liệu đính kèm đang phát triển')"></i>
-                            <input type="text" id="ai-message-input" placeholder="Hỏi Chat AI Tho-Fi..."
-                                onkeyup="if (event.key === 'Enter') sendAiMessage();" autocomplete="off" />
-                            <i class="fas fa-microphone ai-input-mic"
-                                onclick="alert('Tính năng nhập giọng nói đang phát triển')"></i>
+                            <i class="fas fa-plus ai-input-plus" onclick="alert('Tính năng tải tài liệu đính kèm đang phát triển')"></i>
+                            <input type="text" id="ai-message-input" placeholder="Hỏi Chat AI Tho-Fi..." onkeyup="if (event.key === 'Enter') sendAiMessage();" autocomplete="off" />
+                            <i class="fas fa-microphone ai-input-mic" onclick="alert('Tính năng nhập giọng nói đang phát triển')"></i>
                             <button id="ai-send-btn" onclick="sendAiMessage()">
                                 <i class="fas fa-paper-plane"></i>
                             </button>
@@ -499,16 +466,12 @@
         <header class="zalo-mobile-header" id="mobile-header">
             <div class="mobile-search-wrapper">
                 <i class="fas fa-search mobile-search-icon"></i>
-                <input type="text" id="mobile-search-input" placeholder="Tìm kiếm"
-                    onkeyup="if (event.key === 'Enter') searchUser();" />
+                <input type="text" id="mobile-search-input" placeholder="Tìm kiếm" onkeyup="if (event.key === 'Enter') searchUser();" />
             </div>
             <!-- Thay thế dấu cộng bằng Chuông thông báo trên mobile -->
-            <div class="notification-bell-wrapper mobile-bell-wrapper" onclick="toggleNotificationsDropdown(event)"
-                style="position: relative; display: inline-block; cursor: pointer; padding: 6px;">
-                <i class="fas fa-bell icon-btn" id="mobile-bell-btn"
-                    title="Thông báo" style="pointer-events: none; color: white; font-size: 20px;"></i>
-                <span class="nav-badge" id="mobile-notifications-badge"
-                    style="display: none; position: absolute; top: -2px; right: -2px; width: 16px; height: 16px; font-size: 9px; border-radius: 50%; background: #ef4444; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 1.5px solid #0068ff; pointer-events: none;">0</span>
+            <div class="notification-bell-wrapper mobile-bell-wrapper" onclick="toggleNotificationsDropdown(event)" style="position: relative; display: inline-block; cursor: pointer; padding: 6px;">
+                <i class="fas fa-bell icon-btn" id="mobile-bell-btn" title="Thông báo" style="pointer-events: none; color: white; font-size: 20px;"></i>
+                <span class="nav-badge" id="mobile-notifications-badge" style="display: none; position: absolute; top: -2px; right: -2px; width: 16px; height: 16px; font-size: 9px; border-radius: 50%; background: #ef4444; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 1.5px solid #0068ff; pointer-events: none;">0</span>
             </div>
         </header>
     </div>
@@ -664,8 +627,7 @@
             </div>
             <div class="custom-modal-body">
                 <p id="custom-prompt-message"></p>
-                <input type="text" id="custom-prompt-input" class="custom-modal-input" placeholder="Nhập vào đây..."
-                    autocomplete="off" />
+                <input type="text" id="custom-prompt-input" class="custom-modal-input" placeholder="Nhập vào đây..." autocomplete="off" />
             </div>
             <div class="custom-modal-footer">
                 <button id="custom-prompt-cancel-btn" class="custom-btn btn-muted">Hủy</button>
@@ -679,8 +641,7 @@
         <div class="profile-modal-card">
             <button class="profile-modal-close" onclick="closeUserProfile()">&times;</button>
             <div class="profile-cover">
-                <img src="https://ui-avatars.com/api/?name=Cover&background=e9ecef&color=333&size=800&font-size=0.1"
-                    alt="Cover" />
+                <img src="https://ui-avatars.com/api/?name=Cover&background=e9ecef&color=333&size=800&font-size=0.1" alt="Cover" />
             </div>
             <div class="profile-modal-avatar-header">
                 <div class="profile-avatar">
@@ -751,8 +712,7 @@
                 <h3 id="chat-info-name" class="chat-info-name">Tên người chat</h3>
             </div>
             <div class="chat-info-actions-grid">
-                <div class="chat-info-action-item"
-                    onclick="if (currentChatPartnerId) openOtherUserProfileModal(currentChatPartnerId); closeChatInfoPanel();">
+                <div class="chat-info-action-item" onclick="if (currentChatPartnerId) openOtherUserProfileModal(currentChatPartnerId); closeChatInfoPanel();">
                     <div class="chat-info-action-icon"><i class="fas fa-user"></i></div>
                     <span>Trang cá nhân</span>
                 </div>
@@ -775,37 +735,23 @@
                 <i class="fas fa-times" onclick="closeNicknameModal()"></i>
             </div>
             <h3 class="nickname-modal-title">Biệt danh</h3>
-            <p class="nickname-modal-subtitle" style="margin-bottom: 20px;">Biệt danh sẽ hiển thị thay cho tên thật
-                trong cuộc trò chuyện này.</p>
+            <p class="nickname-modal-subtitle" style="margin-bottom: 20px;">Biệt danh sẽ hiển thị thay cho tên thật trong cuộc trò chuyện này.</p>
 
             <div class="nickname-input-group" style="margin-bottom: 16px;">
-                <label class="nickname-label" id="nickname-self-label"
-                    style="font-weight: 600; margin-bottom: 6px; font-size: 13px;">Biệt danh của bạn:</label>
+                <label class="nickname-label" id="nickname-self-label" style="font-weight: 600; margin-bottom: 6px; font-size: 13px;">Biệt danh của bạn:</label>
                 <div style="display: flex; gap: 8px; align-items: center; width: 100%;">
-                    <input type="text" id="nickname-self-input" class="nickname-input"
-                        placeholder="Đặt biệt danh cho bạn..." maxlength="30" autocomplete="off" style="flex: 1;" />
-                    <button class="nickname-btn nickname-btn-save" onclick="saveNickname('self')"
-                        style="padding: 10px 12px; margin: 0; min-height: 42px; display: flex; align-items: center; justify-content: center;"
-                        title="Lưu"><i class="fas fa-check"></i></button>
-                    <button class="nickname-btn nickname-btn-remove" onclick="removeNickname('self')"
-                        style="padding: 10px 12px; margin: 0; min-height: 42px; display: flex; align-items: center; justify-content: center;"
-                        title="Xóa"><i class="fas fa-trash-alt"></i></button>
+                    <input type="text" id="nickname-self-input" class="nickname-input" placeholder="Đặt biệt danh cho bạn..." maxlength="30" autocomplete="off" style="flex: 1;" />
+                    <button class="nickname-btn nickname-btn-save" onclick="saveNickname('self')" style="padding: 10px 12px; margin: 0; min-height: 42px; display: flex; align-items: center; justify-content: center;" title="Lưu"><i class="fas fa-check"></i></button>
+                    <button class="nickname-btn nickname-btn-remove" onclick="removeNickname('self')" style="padding: 10px 12px; margin: 0; min-height: 42px; display: flex; align-items: center; justify-content: center;" title="Xóa"><i class="fas fa-trash-alt"></i></button>
                 </div>
             </div>
 
             <div class="nickname-input-group" style="margin-bottom: 8px;">
-                <label class="nickname-label" id="nickname-partner-label"
-                    style="font-weight: 600; margin-bottom: 6px; font-size: 13px;">Biệt danh của đối phương:</label>
+                <label class="nickname-label" id="nickname-partner-label" style="font-weight: 600; margin-bottom: 6px; font-size: 13px;">Biệt danh của đối phương:</label>
                 <div style="display: flex; gap: 8px; align-items: center; width: 100%;">
-                    <input type="text" id="nickname-partner-input" class="nickname-input"
-                        placeholder="Đặt biệt danh cho đối phương..." maxlength="30" autocomplete="off"
-                        style="flex: 1;" />
-                    <button class="nickname-btn nickname-btn-save" onclick="saveNickname('partner')"
-                        style="padding: 10px 12px; margin: 0; min-height: 42px; display: flex; align-items: center; justify-content: center;"
-                        title="Lưu"><i class="fas fa-check"></i></button>
-                    <button class="nickname-btn nickname-btn-remove" onclick="removeNickname('partner')"
-                        style="padding: 10px 12px; margin: 0; min-height: 42px; display: flex; align-items: center; justify-content: center;"
-                        title="Xóa"><i class="fas fa-trash-alt"></i></button>
+                    <input type="text" id="nickname-partner-input" class="nickname-input" placeholder="Đặt biệt danh cho đối phương..." maxlength="30" autocomplete="off" style="flex: 1;" />
+                    <button class="nickname-btn nickname-btn-save" onclick="saveNickname('partner')" style="padding: 10px 12px; margin: 0; min-height: 42px; display: flex; align-items: center; justify-content: center;" title="Lưu"><i class="fas fa-check"></i></button>
+                    <button class="nickname-btn nickname-btn-remove" onclick="removeNickname('partner')" style="padding: 10px 12px; margin: 0; min-height: 42px; display: flex; align-items: center; justify-content: center;" title="Xóa"><i class="fas fa-trash-alt"></i></button>
                 </div>
             </div>
         </div>
@@ -814,17 +760,13 @@
     <!-- Modal chọn chủ đề chat (Chat Themes) -->
     <div id="theme-modal" class="custom-modal-overlay" style="display: none;">
         <div class="custom-modal-card" style="max-width: 400px; padding: 24px; border-radius: 16px;">
-            <div class="modal-header"
-                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h3 style="margin: 0; font-size: 18px; font-weight: 700;">Chủ đề cuộc trò chuyện</h3>
-                <i class="fas fa-times" onclick="closeThemeModal()"
-                    style="cursor: pointer; font-size: 18px; color: var(--text-light);"></i>
+                <i class="fas fa-times" onclick="closeThemeModal()" style="cursor: pointer; font-size: 18px; color: var(--text-light);"></i>
             </div>
-            <div class="theme-grid"
-                style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; justify-items: center;">
+            <div class="theme-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; justify-items: center;">
                 <!-- Mặc định -->
-                <div class="theme-option-item" onclick="selectChatTheme('default')" title="Tho-Fi Classic"
-                    data-theme="default">
+                <div class="theme-option-item" onclick="selectChatTheme('default')" title="Tho-Fi Classic" data-theme="default">
                     <div class="theme-preview-circle" style="background: linear-gradient(135deg, #0084ff, #006eeb);">
                     </div>
                     <span class="theme-option-name">Mặc định</span>
@@ -836,15 +778,13 @@
                     <span class="theme-option-name">Đại dương</span>
                 </div>
                 <!-- Sunset -->
-                <div class="theme-option-item" onclick="selectChatTheme('sunset')" title="Hoàng hôn"
-                    data-theme="sunset">
+                <div class="theme-option-item" onclick="selectChatTheme('sunset')" title="Hoàng hôn" data-theme="sunset">
                     <div class="theme-preview-circle" style="background: linear-gradient(135deg, #f12711, #f5af19);">
                     </div>
                     <span class="theme-option-name">Hoàng hôn</span>
                 </div>
                 <!-- Lavender -->
-                <div class="theme-option-item" onclick="selectChatTheme('lavender')" title="Oải hương"
-                    data-theme="lavender">
+                <div class="theme-option-item" onclick="selectChatTheme('lavender')" title="Oải hương" data-theme="lavender">
                     <div class="theme-preview-circle" style="background: linear-gradient(135deg, #a18cd1, #fbc2eb);">
                     </div>
                     <span class="theme-option-name">Oải hương</span>
@@ -862,15 +802,13 @@
                     <span class="theme-option-name">Hoa hồng</span>
                 </div>
                 <!-- Cyberpunk -->
-                <div class="theme-option-item" onclick="selectChatTheme('cyberpunk')" title="Tương lai"
-                    data-theme="cyberpunk">
+                <div class="theme-option-item" onclick="selectChatTheme('cyberpunk')" title="Tương lai" data-theme="cyberpunk">
                     <div class="theme-preview-circle" style="background: linear-gradient(135deg, #8a2be2, #ff007f);">
                     </div>
                     <span class="theme-option-name">Tương lai</span>
                 </div>
                 <!-- Midnight -->
-                <div class="theme-option-item" onclick="selectChatTheme('midnight')" title="Nửa đêm"
-                    data-theme="midnight">
+                <div class="theme-option-item" onclick="selectChatTheme('midnight')" title="Nửa đêm" data-theme="midnight">
                     <div class="theme-preview-circle" style="background: linear-gradient(135deg, #0f2027, #203a43);">
                     </div>
                     <span class="theme-option-name">Nửa đêm</span>
@@ -884,16 +822,13 @@
         <div class="profile-modal-card">
             <button class="profile-modal-close" onclick="closeMyProfileModal()">&times;</button>
             <div class="profile-cover" onclick="document.getElementById('cover-upload').click()">
-                <img id="my-cover"
-                    src="https://ui-avatars.com/api/?name=Cover&background=e9ecef&color=333&size=800&font-size=0.1"
-                    alt="Cover" />
+                <img id="my-cover" src="https://ui-avatars.com/api/?name=Cover&background=e9ecef&color=333&size=800&font-size=0.1" alt="Cover" />
                 <div class="cover-overlay"><i class="fas fa-camera"></i></div>
             </div>
             <input type="file" id="cover-upload" accept="image/*" hidden />
             <div class="profile-modal-avatar-header">
                 <div class="profile-avatar" onclick="document.getElementById('avatar-upload').click()">
-                    <img id="my-avatar-profile" src="https://ui-avatars.com/api/?name=Me&background=random"
-                        alt="Avatar" />
+                    <img id="my-avatar-profile" src="https://ui-avatars.com/api/?name=Me&background=random" alt="Avatar" />
                     <div class="avatar-overlay"><i class="fas fa-camera"></i></div>
                     <div class="profile-status-dot"></div>
                 </div>
@@ -906,8 +841,7 @@
             <div class="zalo-menu-list" style="margin-top: 15px; border-top: 1px solid var(--border-color);">
                 <div class="zalo-menu-item" onclick="openEditProfileModal()">
                     <div class="menu-left">
-                        <i class="fas fa-user-edit menu-icon" style="color: var(--primary-color)"></i> Chỉnh sửa thông
-                        tin
+                        <i class="fas fa-user-edit menu-icon" style="color: var(--primary-color)"></i> Chỉnh sửa thông tin
                     </div>
                     <i class="fas fa-chevron-right menu-arrow"></i>
                 </div>
@@ -926,8 +860,7 @@
             <div class="zalo-menu-list" style="padding: 10px 20px;">
                 <div class="zalo-menu-item" style="border-bottom: 1px solid var(--border-color); padding: 12px 0;">
                     <div class="menu-left">
-                        <i class="fas fa-moon menu-icon" style="color: #333; width: 20px;"></i> Giao diện tối (Dark
-                        Mode)
+                        <i class="fas fa-moon menu-icon" style="color: #333; width: 20px;"></i> Giao diện tối (Dark Mode)
                     </div>
                     <label class="switch">
                         <input type="checkbox" id="dark-mode-toggle" onchange="toggleDarkMode(this)" />
@@ -935,22 +868,18 @@
                     </label>
                 </div>
 
-                <div class="zalo-menu-item"
-                    style="border-bottom: 1px solid var(--border-color); padding: 12px 0; display: flex; justify-content: space-between; align-items: center;">
+                <div class="zalo-menu-item" style="border-bottom: 1px solid var(--border-color); padding: 12px 0; display: flex; justify-content: space-between; align-items: center;">
                     <div class="menu-left" style="font-weight: 500; font-size: 13.5px;">
                         <i class="fas fa-bell menu-icon" style="color: #f59e0b; width: 20px;"></i> Thông báo Web Push
                     </div>
-                    <button id="notification-permission-btn" class="custom-btn btn-primary"
-                        onclick="requestNotificationPermission()"
-                        style="padding: 6px 14px; font-size: 12px; border-radius: 6px; margin: 0; min-height: unset; height: 32px; display: inline-flex; align-items: center; justify-content: center;">
+                    <button id="notification-permission-btn" class="custom-btn btn-primary" onclick="requestNotificationPermission()" style="padding: 6px 14px; font-size: 12px; border-radius: 6px; margin: 0; min-height: unset; height: 32px; display: inline-flex; align-items: center; justify-content: center;">
                         Bật
                     </button>
                 </div>
 
 
 
-                <div class="zalo-menu-list"
-                    style="padding: 10px 20px; border: none; background: transparent; box-shadow: none;">
+                <div class="zalo-menu-list" style="padding: 10px 20px; border: none; background: transparent; box-shadow: none;">
                     <button class="logout-btn-danger" onclick="closeSettingsModal(); logout();" style="width: 100%;">
                         <i class="fas fa-sign-out-alt"></i> Đăng xuất tài khoản
                     </button>
@@ -961,28 +890,27 @@
 
     <!-- Dropdown chứa danh sách thông báo -->
     <div id="notifications-dropdown" class="notifications-dropdown-menu">
-            <div class="notifications-dropdown-header">
-                <!-- Nút quay lại chỉ hiện trên mobile -->
-                <button class="notifications-back-btn" onclick="toggleNotificationsDropdown(event)">
+        <div class="notifications-dropdown-header">
+            <!-- Nút quay lại chỉ hiện trên mobile -->
+            <button class="notifications-back-btn" onclick="toggleNotificationsDropdown(event)">
                     <i class="fas fa-arrow-left"></i>
                 </button>
-                <h4>Thông báo mới</h4>
-                <span onclick="markAllNotificationsAsRead()" class="mark-all-read-btn">Đánh dấu đã đọc tất cả</span>
-            </div>
-            <div id="notifications-list" class="notifications-dropdown-list">
-                <p style="color: var(--text-light); text-align: center; padding: 20px; font-size: 13.5px;">Chưa có thông
-                    báo nào.
-                </p>
-            </div>
+            <h4>Thông báo mới</h4>
+            <span onclick="markAllNotificationsAsRead()" class="mark-all-read-btn">Đánh dấu đã đọc tất cả</span>
         </div>
+        <div id="notifications-list" class="notifications-dropdown-list">
+            <p style="color: var(--text-light); text-align: center; padding: 20px; font-size: 13.5px;">Chưa có thông báo nào.
+            </p>
+        </div>
+    </div>
 
-        <!-- Import Firebase Web SDK (Compat mode) -->
-        <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+    <!-- Import Firebase Web SDK (Compat mode) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
 
-        <!-- Import Socket.IO và file xử lý logic -->
-        <script src="/socket.io/socket.io.js"></script>
-        <script src="app.js?v=33000"></script>
+    <!-- Import Socket.IO và file xử lý logic -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="app.js?v=33000"></script>
 </body>
 
 </html>
