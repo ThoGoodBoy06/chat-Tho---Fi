@@ -2961,33 +2961,48 @@ input:checked+.slider.round:before {
         box-shadow: none;
     }
     .nav-item i {
-        padding: 4px 16px;
-        border-radius: 16px;
+        padding: 4px;
         background: transparent;
-        transition: all 0.35s ease;
+        transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    /* Hiệu ứng Viên thuốc Gradient & Nảy */
+    /* Giao diện active mới: Tinh tế, hiện đại */
     .nav-item.active i {
-        background: linear-gradient(135deg, var(--primary-color), #5eafff) !important;
-        color: white !important;
-        padding: 6px 24px !important;
-        border-radius: 20px !important;
-        transform: scale(1.15) translateY(-2px);
-        /* Bay lên và to ra */
-        box-shadow: 0 4px 10px rgba(0, 132, 255, 0.4) !important;
+        background: linear-gradient(135deg, var(--primary-color), #3b82f6) !important;
+        -webkit-background-clip: text !important;
+        -webkit-text-fill-color: transparent !important;
+        transform: scale(1.22) translateY(-3px);
+        filter: drop-shadow(0 2px 4px rgba(59, 130, 246, 0.15));
         transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+    }
+    /* Thanh chỉ thị (indicator line) ở dưới tab active */
+    .nav-item::after {
+        content: '';
+        position: absolute;
+        bottom: 4px;
+        left: 50%;
+        transform: translateX(-50%) scaleX(0);
+        width: 14px;
+        height: 3px;
+        background: linear-gradient(90deg, var(--primary-color), #3b82f6);
+        border-radius: 2px;
+        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+        opacity: 0;
+    }
+    .nav-item.active::after {
+        transform: translateX(-50%) scaleX(1);
+        opacity: 1;
     }
     /* Hiệu ứng chữ đổi màu mượt */
     .nav-item.active .nav-label {
         color: var(--primary-color) !important;
-        font-weight: 800 !important;
+        font-weight: 700 !important;
         transform: translateY(-2px);
     }
     .nav-label {
         display: block;
         font-size: 10px !important;
         font-weight: 500;
-        margin-top: 4px;
+        margin-top: 2px;
         transition: all 0.3s ease;
     }
     .nav-badge {
@@ -3052,7 +3067,14 @@ input:checked+.slider.round:before {
         padding: 0 !important;
         margin: 0 !important;
     }
-    .sidebar-header,
+    .sidebar-header {
+        display: flex !important;
+        padding: 12px 16px;
+        background: var(--card-bg);
+        border-bottom: 1px solid var(--border-color);
+        width: 100%;
+        box-sizing: border-box;
+    }
     .chat-list .search-box {
         display: none;
     }
