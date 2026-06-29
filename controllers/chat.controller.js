@@ -421,7 +421,7 @@ exports.sendMessage = async (req, res) => {
             priority: "high",
             notification: {
               channel_id: "chat_messages",
-              sound: "default",
+              sound: "amthanhtinnhan",
               priority: "high",
               default_vibrate_timings: true,
             },
@@ -433,7 +433,7 @@ exports.sendMessage = async (req, res) => {
             },
             payload: {
               aps: {
-                sound: "default",
+                sound: "amthanhtinnhan.mp3",
                 badge: 1,
                 "content-available": 1,
                 "mutable-content": 1,
@@ -806,7 +806,7 @@ exports.sendPushNotification = async (fcmToken, title, body, customData = null, 
       priority: "high",
       notification: {
         channel_id: dataOnly ? "incoming_calls" : "chat_messages",
-        sound: "default",
+        sound: dataOnly ? "ringtone" : "amthanhtinnhan",
         priority: "high",
         default_vibrate_timings: true,
       },
@@ -818,7 +818,7 @@ exports.sendPushNotification = async (fcmToken, title, body, customData = null, 
       },
       payload: {
         aps: {
-          sound: "default",
+          sound: dataOnly ? "ringtone.mp3" : "amthanhtinnhan.mp3",
           badge: 1,
           "content-available": 1,
           "mutable-content": 1,

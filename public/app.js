@@ -181,9 +181,11 @@ function unlockBrowserAudio() {
             .then(() => {
                 msgSound.pause();
                 msgSound.src = originalSrc;
+                msgSound.load(); // Nạp lại file âm thanh gốc vào bộ nhớ
             })
             .catch(() => {
                 msgSound.src = originalSrc;
+                msgSound.load();
             });
     }
 
@@ -196,9 +198,11 @@ function unlockBrowserAudio() {
             .then(() => {
                 incomingRingtone.pause();
                 incomingRingtone.src = originalSrc;
+                incomingRingtone.load(); // Nạp lại file âm thanh gốc vào bộ nhớ
             })
             .catch(() => {
                 incomingRingtone.src = originalSrc;
+                incomingRingtone.load();
             });
     }
 
@@ -211,9 +215,11 @@ function unlockBrowserAudio() {
             .then(() => {
                 outgoingRingtone.pause();
                 outgoingRingtone.src = originalSrc;
+                outgoingRingtone.load(); // Nạp lại file âm thanh gốc vào bộ nhớ
             })
             .catch(() => {
                 outgoingRingtone.src = originalSrc;
+                outgoingRingtone.load();
             });
     }
 
