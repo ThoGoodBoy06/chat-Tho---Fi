@@ -3503,6 +3503,12 @@ input:checked+.slider.round:before {
             z-index: 3;
         }
 
+        .ai-header {
+            height: calc(60px + env(safe-area-inset-top, 0px)) !important;
+            padding-top: env(safe-area-inset-top, 0px) !important;
+            box-sizing: border-box !important;
+        }
+
         .zalo-mobile-header {
             display: flex !important;
             align-items: center;
