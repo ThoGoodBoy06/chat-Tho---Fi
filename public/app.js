@@ -4030,6 +4030,12 @@ async function logout() {
     document.getElementById("chat-screen").style.display = "none";
     document.getElementById("chat-screen").classList.remove("mobile-chat-active");
     document.getElementById("auth-screen").style.display = "flex";
+    
+    const loginForm = document.getElementById("login-form");
+    const registerForm = document.getElementById("register-form");
+    if (loginForm) loginForm.style.display = "block";
+    if (registerForm) registerForm.style.display = "none";
+
     document.getElementById("login-password").value = "";
 
     const defaultTab = document.querySelector('.sidebar .nav-item') || document.querySelector('.nav-item[title="Tin nhắn"]');
