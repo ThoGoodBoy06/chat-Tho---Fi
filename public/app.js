@@ -2218,7 +2218,7 @@ function displayMessage(msg, targetContainer = null) {
                     msg.content.startsWith("http") ||
                     msg.content.match(/\.(jpeg|jpg|gif|png)(\?.*)?$/i)))
         ) {
-            messageContent.innerHTML = `<img src="${msg.content}" class="message-image" onclick="openLightbox(this.src)" alt="Ảnh tin nhắn" />`;
+            messageContent.innerHTML = `<img src="${msg.content}" class="message-image" loading="lazy" onclick="openLightbox(this.src)" alt="Ảnh tin nhắn" />`;
             messageContent.style.background = "transparent";
             messageContent.style.padding = "0";
         } else {
@@ -3564,14 +3564,14 @@ function closeUserProfile() {
 }
 
 
-// Biến cờ khóa chống spam click
+// Biến cờ khóa chống spam click (Đã tối ưu hóa sang kiểm tra active để phản hồi ngay lập tức)
 let isSwitchingTab = false;
 
 // Chuyển đổi giữa các Tab
 function switchTab(tabId, navElement) {
-    // Nếu đang chuyển tab rồi thì bỏ qua không xử lý (Chống lag)
-    if (isSwitchingTab) return;
-    isSwitchingTab = true;
+    // Nếu tab đã hiển thị sẵn rồi thì không làm gì (Tránh render lại dư thừa)
+    const targetTab = document.getElementById(tabId);
+    if (targetTab && targetTab.classList.contains("active")) return;
 
     if (tabId === "tab-contacts") {
         navElement.classList.remove("shake");
@@ -3635,17 +3635,17 @@ function switchTab(tabId, navElement) {
         }
     }
 
-    // Mở khóa sau 350ms (bằng đúng thời gian chạy Animation của CSS)
-    setTimeout(() => {
-        isSwitchingTab = false;
-    }, 350);
 }
 
+let isFetchingAiHistory = false;
 // Tải lịch sử chat AI lưu trữ từ Database
 async function loadAiChatHistory() {
     const welcomeEl = document.getElementById("ai-welcome-screen");
     const wrapperEl = document.getElementById("ai-chat-messages-wrapper");
     if (!wrapperEl) return;
+
+    if (isFetchingAiHistory) return;
+    isFetchingAiHistory = true;
 
     try {
         const res = await fetch("/api/ai/chat/history", {
@@ -3691,6 +3691,8 @@ async function loadAiChatHistory() {
         }
     } catch (err) {
         console.error("Lỗi khi tải lịch sử chat AI:", err);
+    } finally {
+        isFetchingAiHistory = false;
     }
 }
 

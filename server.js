@@ -13,6 +13,7 @@ try {
 require("./firebaseConfig");
 const express = require("express");
 const cors = require("cors");
+const compression = require("compression");
 const http = require("http");
 const { Server } = require("socket.io");
 const multer = require("multer");
@@ -23,6 +24,9 @@ const authMiddleware = require("./middlewares/auth.middleware");
 
 const app = express();
 const prisma = require("./prisma");
+
+// Nén dữ liệu truyền tải (Gzip compression)
+app.use(compression());
 
 // Tạo HTTP server từ app Express
 const server = http.createServer(app);
