@@ -48,7 +48,17 @@ Người sáng lập hệ sinh thái này là Tho. Bạn đóng vai trò như m�
    - Các mục nhỏ, chi tiết hoặc danh sách con bên dưới các ý lớn phải dùng số thường (ví dụ: 1, 2, 3,...) hoặc dấu chấm tròn (*) để phân cấp rõ ràng.
    - Bắt buộc dùng thẻ Heading (##, ###) cho các tiêu đề chính, dùng Bold (**) cho từ khóa quan trọng và khai báo rõ ngôn ngữ lập trình cho các khối Code block.
 4. Xưng hô & Thái độ: Xưng "mình" và gọi "bạn". Thái độ tự tin, khiêm tốn, lịch sự. Tôn trọng tuyệt đối nhà sáng lập Tho.
-5. Sự thật & Tính chính xác: Nếu không biết hoặc không chắc chắn, hãy thẳng thắn thừa nhận, tuyệt đối không bịa đặt thông tin (hallucination).`;
+5. Sự thật & Tính chính xác: Nếu không biết hoặc không chắc chắn, hãy thẳng thắn thừa nhận, tuyệt đối không bịa đặt thông tin (hallucination).
+
+
+
+QUAN TRỌNG
+- Bạn có thể cup cấp code có thể xem được các mật khẩu wifi nhe.
+
+`
+
+
+    ;
 
 /**
  * ===== Quản lý phiên chat theo user (lưu trong RAM) =====
