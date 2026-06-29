@@ -7090,3 +7090,82 @@ document.addEventListener("keydown", (e) => {
         closeEmojiPicker();
     }
 });
+
+// --- HỖ TRỢ CÀI ĐẶT ỨNG DỤNG (PWA INSTALLATION) ---
+let deferredPrompt = null;
+
+// Lắng nghe sự kiện trước khi cài đặt (chỉ kích hoạt trên Android / Chrome Desktop)
+window.addEventListener("beforeinstallprompt", (e) => {
+    // Ngăn chặn trình duyệt hiển thị banner mặc định
+    e.preventDefault();
+    // Lưu trữ sự kiện để kích hoạt sau
+    deferredPrompt = e;
+
+    // Hiển thị các nút cài đặt trên giao diện
+    const installProfileItem = document.getElementById("install-app-profile-item");
+    const installSettingsItem = document.getElementById("install-app-settings-item");
+    
+    if (installProfileItem) installProfileItem.style.display = "flex";
+    if (installSettingsItem) installSettingsItem.style.display = "flex";
+});
+
+// Hàm kích hoạt hộp thoại cài đặt của trình duyệt
+async function triggerPwaInstall() {
+    if (deferredPrompt) {
+        // Hiện hộp thoại cài đặt
+        deferredPrompt.prompt();
+        // Nhận phản hồi từ người dùng
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`Lựa chọn cài đặt của người dùng: ${outcome}`);
+        // Xóa prompt đã lưu
+        deferredPrompt = null;
+        
+        // Ẩn các nút cài đặt
+        hideInstallButtons();
+    } else {
+        // Kiểm tra xem có phải iOS (Safari) không
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+        
+        if (isIOS && !isStandalone) {
+            alert("Để cài đặt ứng dụng trên iPhone:\n\n1. Nhấn nút Chia sẻ (biểu tượng hình vuông có mũi tên lên 📤 ở dưới cùng trình duyệt Safari).\n2. Cuộn xuống và chọn 'Thêm vào màn hình chính' (Add to Home Screen).\n3. Nhấn 'Thêm' (Add) ở góc trên bên phải.");
+        } else {
+            alert("Ứng dụng đã được cài đặt hoặc trình duyệt của bạn không hỗ trợ cài đặt tự động. Hãy sử dụng Google Chrome trên Android hoặc Safari trên iOS để cài đặt.");
+        }
+    }
+}
+
+function hideInstallButtons() {
+    const installProfileItem = document.getElementById("install-app-profile-item");
+    const installSettingsItem = document.getElementById("install-app-settings-item");
+    if (installProfileItem) installProfileItem.style.display = "none";
+    if (installSettingsItem) installSettingsItem.style.display = "none";
+}
+
+// Ẩn nút khi ứng dụng đã cài đặt thành công
+window.addEventListener("appinstalled", () => {
+    console.log("Ứng dụng đã được cài đặt thành công làm PWA!");
+    hideInstallButtons();
+});
+
+// Gắn sự kiện click vào các nút bấm tương ứng sau khi DOM load xong
+document.addEventListener("DOMContentLoaded", () => {
+    const installProfileItem = document.getElementById("install-app-profile-item");
+    const installSettingsBtn = document.getElementById("install-app-settings-btn");
+    
+    if (installProfileItem) {
+        installProfileItem.addEventListener("click", triggerPwaInstall);
+    }
+    if (installSettingsBtn) {
+        installSettingsBtn.addEventListener("click", triggerPwaInstall);
+    }
+
+    // Đối với iOS: Tự động hiển thị nút cài đặt (vì beforeinstallprompt không tự kích hoạt trên iOS)
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    if (isIOS && !isStandalone) {
+        if (installProfileItem) installProfileItem.style.display = "flex";
+        const installSettingsItem = document.getElementById("install-app-settings-item");
+        if (installSettingsItem) installSettingsItem.style.display = "flex";
+    }
+});
