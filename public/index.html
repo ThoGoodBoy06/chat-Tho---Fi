@@ -299,17 +299,6 @@
                             <textarea id="message-input" rows="1" placeholder="Aa"></textarea>
                             <div class="emoji-picker-wrapper">
                                 <i class="fas fa-smile icon-btn face-icon" id="emoji-toggle-btn" onclick="toggleEmojiPicker(event)"></i>
-                                <div class="emoji-picker-panel" id="emoji-picker-panel">
-                                    <div class="emoji-picker-header">
-                                        <i class="fas fa-arrow-left emoji-back-btn" onclick="closeEmojiPicker()" title="Quay lại"></i>
-                                        <div class="emoji-search-box">
-                                            <i class="fas fa-search"></i>
-                                            <input type="text" id="emoji-search-input" placeholder="Tìm emoji..." oninput="filterEmojis(this.value)">
-                                        </div>
-                                    </div>
-                                    <div class="emoji-category-tabs" id="emoji-category-tabs"></div>
-                                    <div class="emoji-grid" id="emoji-grid"></div>
-                                </div>
                             </div>
                         </div>
 
@@ -317,6 +306,18 @@
                             <i class="fas fa-thumbs-up icon-btn send-like-btn" id="like-btn" onclick="sendMessage('👍')"></i>
                             <i class="fas fa-paper-plane icon-btn send-btn" id="send-btn" onclick="sendMessage()" style="display: none;"></i>
                         </div>
+                    </div>
+
+                    <!-- Khung chọn Emoji dạng bàn phím Messenger (bên dưới input-area) -->
+                    <div class="emoji-picker-panel" id="emoji-picker-panel">
+                        <div class="emoji-picker-header">
+                            <div class="emoji-search-box">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="emoji-search-input" placeholder="Tìm kiếm biểu tượng" oninput="filterEmojis(this.value)">
+                            </div>
+                        </div>
+                        <div class="emoji-grid" id="emoji-grid"></div>
+                        <div class="emoji-category-tabs" id="emoji-category-tabs"></div>
                     </div>
                 </main>
             </div>

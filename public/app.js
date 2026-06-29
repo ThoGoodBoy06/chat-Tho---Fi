@@ -163,30 +163,64 @@ function isChatAreaVisible() {
 }
 
 // --- MỞ KHÓA ÂM THANH TRÌNH DUYỆT (CHỐNG CHẶN AUTOPLAY) ---
+// --- MỞ KHÓA ÂM THANH TRÌNH DUYỆT (CHỐNG CHẶN AUTOPLAY BẰNG SILENT AUDIO) ---
 let isAudioUnlocked = false;
 
 function unlockBrowserAudio() {
     if (isAudioUnlocked) return;
-    // Chỉ unlock âm thanh tin nhắn (message-sound) vì nó cần phát tự động khi nhận tin.
-    // Nhạc chuông cuộc gọi (incoming/outgoing ringtone) không cần unlock ở đây
-    // vì chúng luôn được kích hoạt bởi hành động của người dùng (nhấn gọi, nhấn nghe).
-    const el = document.getElementById("message-sound");
-    if (el) {
-        const originalVolume = el.volume;
-        el.volume = 0; // Tắt âm lượng hoàn toàn trước khi play để không phát ra tiếng
-        el.play()
+
+    // Chuỗi base64 của một file âm thanh WAV siêu nhỏ và im lặng hoàn toàn
+    const silentSrc = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAAA";
+
+    // 1. Mở khóa âm thanh báo tin nhắn
+    const msgSound = document.getElementById("message-sound");
+    if (msgSound) {
+        const originalSrc = msgSound.src;
+        msgSound.src = silentSrc;
+        msgSound.play()
             .then(() => {
-                el.pause();
-                el.currentTime = 0;
-                el.volume = originalVolume; // Khôi phục âm lượng ban đầu
+                msgSound.pause();
+                msgSound.src = originalSrc;
             })
             .catch(() => {
-                el.volume = originalVolume;
+                msgSound.src = originalSrc;
             });
     }
+
+    // 2. Mở khóa nhạc chuông cuộc gọi đến
+    const incomingRingtone = document.getElementById("incoming-ringtone");
+    if (incomingRingtone) {
+        const originalSrc = incomingRingtone.src;
+        incomingRingtone.src = silentSrc;
+        incomingRingtone.play()
+            .then(() => {
+                incomingRingtone.pause();
+                incomingRingtone.src = originalSrc;
+            })
+            .catch(() => {
+                incomingRingtone.src = originalSrc;
+            });
+    }
+
+    // 3. Mở khóa nhạc chuông chờ cuộc gọi đi
+    const outgoingRingtone = document.getElementById("outgoing-ringtone");
+    if (outgoingRingtone) {
+        const originalSrc = outgoingRingtone.src;
+        outgoingRingtone.src = silentSrc;
+        outgoingRingtone.play()
+            .then(() => {
+                outgoingRingtone.pause();
+                outgoingRingtone.src = originalSrc;
+            })
+            .catch(() => {
+                outgoingRingtone.src = originalSrc;
+            });
+    }
+
     isAudioUnlocked = true;
     document.removeEventListener("click", unlockBrowserAudio);
     document.removeEventListener("touchstart", unlockBrowserAudio);
+    console.log("🔊 Tất cả kênh âm thanh đã được mở khóa bằng dữ liệu im lặng thành công!");
 }
 document.addEventListener("click", unlockBrowserAudio);
 document.addEventListener("touchstart", unlockBrowserAudio);
@@ -1101,8 +1135,66 @@ function setupFirebaseMessaging(userToken) {
     }
 }
 
+function renderConversationSkeletons(container) {
+    container.innerHTML = "";
+    for (let i = 0; i < 5; i++) {
+        const li = document.createElement("li");
+        li.className = "skeleton-chat-item";
+        li.innerHTML = `
+            <div class="skeleton-avatar"></div>
+            <div class="skeleton-info">
+                <div class="skeleton-line skeleton-title"></div>
+                <div class="skeleton-line skeleton-text"></div>
+            </div>
+        `;
+        container.appendChild(li);
+    }
+}
+
+function renderMessageSkeletons(container) {
+    container.innerHTML = "";
+    const isMePatterns = [false, true, false, false, true];
+    isMePatterns.forEach((isMe) => {
+        const div = document.createElement("div");
+        div.className = `message ${isMe ? "my-message" : "other-message"} skeleton-message-container`;
+        const avatarHtml = !isMe ? `<div class="avatar skeleton-avatar"></div>` : "";
+        div.innerHTML = `
+            ${avatarHtml}
+            <div class="message-body">
+                <div class="message-content skeleton-message-bubble"></div>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+    container.scrollTop = container.scrollHeight;
+}
+
+function renderFriendSkeletons(container) {
+    container.innerHTML = "";
+    for (let i = 0; i < 4; i++) {
+        const div = document.createElement("div");
+        div.className = "skeleton-friend-item";
+        div.innerHTML = `
+            <div class="friend-request-info" style="display: flex; align-items: center; gap: 12px; flex: 1;">
+                <div class="avatar skeleton-avatar"></div>
+                <div class="skeleton-line skeleton-title" style="width: 120px;"></div>
+            </div>
+            <div class="friend-request-actions" style="display: flex; gap: 8px;">
+                <div class="skeleton-line" style="width: 70px; height: 32px; border-radius: 6px;"></div>
+            </div>
+        `;
+        container.appendChild(div);
+    }
+}
+
 // 2. Tải danh sách cuộc trò chuyện gần đây
 async function loadConversations() {
+    const userList = document.getElementById("user-list");
+    // Chỉ hiển thị skeleton nếu danh sách hiện tại đang trống (lần đầu load hoặc sau khi clear) để tránh nháy giao diện khi cập nhật ngầm
+    if (userList && (userList.children.length === 0 || userList.querySelector('.skeleton-chat-item'))) {
+        renderConversationSkeletons(userList);
+    }
+
     try {
         const res = await fetch(`${API_URL}/chat/conversations`, {
             headers: { Authorization: `Bearer ${token}` },
@@ -1408,6 +1500,11 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
             }
         }
 
+        const messagesDiv = document.getElementById("messages");
+        if (messagesDiv) {
+            renderMessageSkeletons(messagesDiv);
+        }
+
         const resMsg = await fetch(
             `${API_URL}/chat/${currentConversationId}/messages?limit=50`, {
                 headers: { Authorization: `Bearer ${token}` },
@@ -1420,7 +1517,6 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
         }
 
         const dataMsg = await resMsg.json();
-        const messagesDiv = document.getElementById("messages");
         messagesDiv.innerHTML = "";
 
         // Lưu và áp dụng biệt danh
@@ -1844,6 +1940,14 @@ function rejectFriendRequest(requestId) {
 
 // --- TẢI DANH SÁCH BẠN BÈ ---
 async function loadFriends() {
+    const listEl = document.getElementById("friends-list");
+    if (!listEl) return;
+
+    // Chỉ hiển thị skeleton nếu danh sách hiện tại đang trống để tránh nháy giao diện khi cập nhật ngầm
+    if (listEl.children.length === 0 || listEl.querySelector('.skeleton-friend-item')) {
+        renderFriendSkeletons(listEl);
+    }
+
     try {
         const res = await fetch(`${API_URL}/users/friends`, {
             headers: { Authorization: `Bearer ${token}` },
@@ -1853,8 +1957,6 @@ async function loadFriends() {
             throw new Error(`Không thể tải bạn bè (HTTP ${res.status}): ${errorText.substring(0, 100) || "Lỗi máy chủ"}`);
         }
         const data = await res.json();
-        const listEl = document.getElementById("friends-list");
-        if (!listEl) return;
 
         if (!data.data || data.data.length === 0) {
             listEl.innerHTML = `<p style="color: var(--text-light); text-align: center;">Chưa có bạn bè nào.</p>`;
@@ -6613,6 +6715,33 @@ const EMOJI_DATA = [
 let emojiPickerInitialized = false;
 let currentEmojiCategory = 0;
 
+function switchToTextKeyboard() {
+    closeEmojiPicker();
+    const input = document.getElementById("message-input");
+    if (input) {
+        input.focus();
+    }
+}
+
+function deleteLastCharFromInput() {
+    const input = document.getElementById("message-input");
+    if (!input) return;
+    const text = input.value;
+    if (text.length === 0) return;
+    
+    // Sử dụng Array.from để tách ký tự/emoji surrogate pairs chuẩn xác
+    const chars = Array.from(text);
+    chars.pop();
+    input.value = chars.join("");
+    
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    
+    // Tránh tự động focus trên mobile để không làm nhảy bàn phím ảo
+    if (window.innerWidth > 768) {
+        input.focus();
+    }
+}
+
 function initEmojiPicker() {
     if (emojiPickerInitialized) return;
     emojiPickerInitialized = true;
@@ -6622,7 +6751,17 @@ function initEmojiPicker() {
 
     if (!tabsContainer || !gridContainer) return;
 
-    // Tạo category tabs
+    // 1. Thêm nút "ABC" vào đầu để tắt emoji quay về bàn phím chữ
+    const abcTab = document.createElement("div");
+    abcTab.className = "emoji-category-tab abc-tab";
+    abcTab.innerText = "ABC";
+    abcTab.onclick = (e) => {
+        e.stopPropagation();
+        switchToTextKeyboard();
+    };
+    tabsContainer.appendChild(abcTab);
+
+    // 2. Tạo category tabs từ EMOJI_DATA
     EMOJI_DATA.forEach((cat, index) => {
         const tab = document.createElement("div");
         tab.className = "emoji-category-tab" + (index === 0 ? " active" : "");
@@ -6636,6 +6775,32 @@ function initEmojiPicker() {
         };
         tabsContainer.appendChild(tab);
     });
+
+    // 3. Thêm nút backspace (xóa chữ) vào cuối
+    const deleteTab = document.createElement("div");
+    deleteTab.className = "emoji-category-tab delete-tab";
+    deleteTab.innerHTML = '<i class="fas fa-backspace"></i>';
+    deleteTab.title = "Xóa";
+    
+    // Xử lý giữ nút để xóa nhanh (giống bàn phím thật)
+    let deleteInterval = null;
+    const startDelete = () => {
+        deleteLastCharFromInput();
+        deleteInterval = setInterval(deleteLastCharFromInput, 150);
+    };
+    const stopDelete = () => {
+        if (deleteInterval) {
+            clearInterval(deleteInterval);
+            deleteInterval = null;
+        }
+    };
+    deleteTab.onmousedown = (e) => { e.preventDefault(); startDelete(); };
+    deleteTab.onmouseup = stopDelete;
+    deleteTab.onmouseleave = stopDelete;
+    deleteTab.ontouchstart = (e) => { e.preventDefault(); startDelete(); };
+    deleteTab.ontouchend = stopDelete;
+    
+    tabsContainer.appendChild(deleteTab);
 
     // Tạo emoji grid
     renderAllEmojis(gridContainer);
@@ -6694,7 +6859,8 @@ function setActiveCategoryTab(index) {
     currentEmojiCategory = index;
     const tabs = document.querySelectorAll(".emoji-category-tab");
     tabs.forEach((tab, i) => {
-        tab.classList.toggle("active", i === index);
+        // Cộng 1 để bỏ qua tab "ABC" ở vị trí đầu tiên
+        tab.classList.toggle("active", i === (index + 1));
     });
 }
 
@@ -6714,7 +6880,11 @@ function insertEmojiToInput(emoji) {
     
     // Trigger input event for any listeners (like show/hide send button)
     input.dispatchEvent(new Event("input", { bubbles: true }));
-    input.focus();
+    
+    // Chỉ focus lại trên Desktop (để tiếp tục gõ), trên mobile tránh gọi focus gây bật bàn phím ảo che mất emoji
+    if (window.innerWidth > 768) {
+        input.focus();
+    }
 }
 
 function toggleEmojiPicker(e) {
@@ -6727,6 +6897,10 @@ function toggleEmojiPicker(e) {
     if (isOpen) {
         closeEmojiPicker();
     } else {
+        // Tắt bàn phím ảo trên mobile khi bật chọn emoji
+        const input = document.getElementById("message-input");
+        if (input) input.blur();
+        
         initEmojiPicker();
         panel.classList.add("show");
         if (btn) btn.classList.add("active");
@@ -6807,7 +6981,8 @@ document.addEventListener("click", (e) => {
     const panel = document.getElementById("emoji-picker-panel");
     const wrapper = document.querySelector(".emoji-picker-wrapper");
     if (panel && panel.classList.contains("show")) {
-        if (wrapper && !wrapper.contains(e.target)) {
+        // Tránh đóng panel khi click vào trong chính panel hoặc vào nút bấm toggle
+        if (wrapper && !wrapper.contains(e.target) && !panel.contains(e.target)) {
             closeEmojiPicker();
         }
     }
