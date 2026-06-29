@@ -3346,12 +3346,12 @@ input:checked+.slider.round:before {
         justify-content: flex-start !important;
         align-items: flex-start;
         padding: 6px 4px 0 4px !important;
-        padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+        padding-bottom: max(env(safe-area-inset-bottom, 16px), 16px) !important;
         position: relative;
         gap: 0 !important;
     }
 
-body[data-theme="dark"] .sidebar {
+    body[data-theme="dark"] .sidebar {
         background: rgba(18, 18, 18, 0.97) !important;
         border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
         box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.04) !important;
