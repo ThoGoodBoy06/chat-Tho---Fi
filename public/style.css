@@ -1073,8 +1073,8 @@ p {
 
 .message-reactions {
     position: absolute;
-    bottom: -10px;
-    right: 12px;
+    bottom: -6px;
+    right: 18px;
     background: var(--msg-receiver-bg);
     border: 1px solid var(--border-color);
     border-radius: 12px;
@@ -1112,7 +1112,7 @@ p {
 
 .message-content.has-reactions {
     min-width: 75px;
-    padding-bottom: 24px !important;
+    padding-bottom: 18px !important;
 }
 
 
@@ -1120,7 +1120,7 @@ p {
 
 .my-message .message-content .message-reactions {
     right: auto;
-    left: 12px;
+    left: 18px;
 }
 
 
@@ -1128,7 +1128,7 @@ p {
 
 .other-message .message-content .message-reactions {
     left: auto;
-    right: 12px;
+    right: 18px;
 }
 
 

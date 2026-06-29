@@ -2756,6 +2756,7 @@ if (messageInput) {
     messageInput.addEventListener("focus", function() {
         const inputArea = document.getElementById('input-area');
         if (inputArea) inputArea.classList.add('is-typing');
+        if (typeof closeEmojiPicker === "function") closeEmojiPicker();
     });
 
     // Khi người dùng bấm ra ngoài (Blur) -> hiển thị lại menu trái nếu ô nhập trống
