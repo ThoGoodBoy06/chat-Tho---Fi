@@ -3296,10 +3296,11 @@ input:checked+.slider.round:before {
         box-sizing: border-box;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.10), 0 1.5px 0 rgba(255, 255, 255, 0.7) inset !important;
         flex-direction: row;
-        justify-content: space-around;
+        justify-content: flex-start !important;
         align-items: center;
         padding: 0 4px !important;
         position: relative;
+        gap: 0 !important; /* Remove desktop gap spacing to tile equally */
     }
     body[data-theme="dark"] .sidebar {
         background: rgba(22, 22, 30, 0.82) !important;
@@ -3329,7 +3330,8 @@ input:checked+.slider.round:before {
     }
     /* ── NAV ITEM ── */
     .nav-item {
-        flex: 1;
+        width: calc((100% - 8px) / 4) !important; /* Force exact 25% of available content width */
+        flex: none !important; /* Prevent layout engine from shrinking/growing items */
         height: 46px;
         flex-direction: column;
         gap: 2px;
@@ -3385,6 +3387,7 @@ input:checked+.slider.round:before {
         font-weight: 600;
         letter-spacing: 0.01em;
         margin-top: 1px;
+        line-height: 1 !important; /* Force single line-height to fix vertical off-center cramping */
         color: var(--text-light);
         transition: color 0.25s ease, transform 0.3s ease;
     }

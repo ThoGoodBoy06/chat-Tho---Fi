@@ -7149,15 +7149,7 @@ async function triggerPwaInstall() {
         // Ẩn các nút cài đặt
         hideInstallButtons();
     } else {
-        // Kiểm tra xem có phải iOS (Safari) không
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-        
-        if (isIOS && !isStandalone) {
-            alert("Để cài đặt ứng dụng trên iPhone:\n\n1. Nhấn nút Chia sẻ (biểu tượng hình vuông có mũi tên lên 📤 ở dưới cùng trình duyệt Safari).\n2. Cuộn xuống và chọn 'Thêm vào màn hình chính' (Add to Home Screen).\n3. Nhấn 'Thêm' (Add) ở góc trên bên phải.");
-        } else {
-            alert("Ứng dụng đã được cài đặt hoặc trình duyệt của bạn không hỗ trợ cài đặt tự động. Hãy sử dụng Google Chrome trên Android hoặc Safari trên iOS để cài đặt.");
-        }
+        alert("Ứng dụng đã được cài đặt hoặc trình duyệt của bạn không hỗ trợ cài đặt tự động. Hãy sử dụng Google Chrome trên Android để cài đặt.");
     }
 }
 
@@ -7199,11 +7191,5 @@ document.addEventListener("DOMContentLoaded", () => {
         installAuthBtn.addEventListener("click", triggerPwaInstall);
     }
 
-    // Đối với iOS: Tự động hiển thị nút cài đặt (vì beforeinstallprompt không tự kích hoạt trên iOS)
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-    if (isIOS && !isStandalone) {
-        if (installProfileItem) installProfileItem.style.display = "flex";
-        if (installAuthBtn) installAuthBtn.style.display = "flex";
-    }
+    // Không tự động kích hoạt trên iOS (chỉ hỗ trợ Android/Chrome thông qua event beforeinstallprompt)
 });
