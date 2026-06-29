@@ -3348,12 +3348,13 @@ input:checked+.slider.round:before {
         padding: 8px 4px env(safe-area-inset-bottom, 8px) 4px !important;
         position: relative;
         gap: 0 !important;
+    }
 
-        body[data-theme="dark"] .sidebar {
-            background: rgba(18, 18, 22, 0.97) !important;
-            border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
-            box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.3) !important;
-        }
+    body[data-theme="dark"] .sidebar {
+        background: rgba(18, 18, 22, 0.97) !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+        box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.3) !important;
+    }
 
         /* ── SLIDING PILL INDICATOR ── */
         .nav-slider-pill {
