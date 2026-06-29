@@ -6176,3 +6176,11 @@ body[data-theme="dark"] .chat-info-action-icon {
         transform: translateY(-3px) scale(1.1);
     }
 }
+
+@supports not (padding-bottom: env(safe-area-inset-bottom)) {
+    @media (max-width: 768px) {
+        .sidebar {
+            padding-bottom: 16px !important;
+        }
+    }
+}
