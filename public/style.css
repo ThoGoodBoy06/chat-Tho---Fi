@@ -457,7 +457,9 @@ p {
     animation: tabContentFadeIn 0.12s ease-out forwards;
 }
 
+
 /* Khai báo khung hình chuyển động (Tối ưu hóa chỉ dùng opacity) */
+
 @keyframes tabContentFadeIn {
     from {
         opacity: 0;
@@ -1367,6 +1369,8 @@ p {
 .face-icon.active {
     color: var(--primary-color);
 }
+
+
 /* ==========================================================================
    SKELETON LOADING (SHIMMER EFFECT)
    ========================================================================== */
@@ -1385,7 +1389,9 @@ body[data-theme="dark"] .skeleton-friend-item {
     --skeleton-shimmer: linear-gradient(90deg, #22222b 25%, #2d2d38 50%, #22222b 75%);
 }
 
+
 /* Hiệu ứng quét shimmer */
+
 .skeleton-avatar,
 .skeleton-line,
 .skeleton-message-bubble {
@@ -1403,7 +1409,9 @@ body[data-theme="dark"] .skeleton-friend-item {
     }
 }
 
+
 /* Giao diện khung xương cho danh sách chat bên trái */
+
 .skeleton-chat-item {
     display: flex;
     align-items: center;
@@ -1442,7 +1450,9 @@ body[data-theme="dark"] .skeleton-friend-item {
     height: 10px;
 }
 
+
 /* Giao diện khung xương cho tin nhắn bên phải */
+
 .skeleton-message-container {
     display: flex;
     align-items: flex-end;
@@ -1477,7 +1487,9 @@ body[data-theme="dark"] .skeleton-friend-item {
     border-bottom-left-radius: 4px;
 }
 
+
 /* Giao diện khung xương cho danh sách bạn bè */
+
 .skeleton-friend-item {
     display: flex;
     align-items: center;
@@ -1578,7 +1590,7 @@ body[data-theme="dark"] .skeleton-friend-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px)) 12px;
+    padding: 8px 12px calc(12px + env(safe-area-inset-bottom, 12px)) 12px;
     border-top: 1px solid var(--border-color);
     background: var(--msg-receiver-bg);
     flex-shrink: 0;
@@ -3298,7 +3310,8 @@ input:checked+.slider.round:before {
     .nav-slider-pill {
         position: absolute;
         height: 46px;
-        top: 8px; /* Cân giữa chiều dọc của tab bar */
+        top: 8px;
+        /* Cân giữa chiều dọc của tab bar */
         border-radius: 24px;
         background: linear-gradient(135deg, var(--primary-color) 0%, #2563eb 100%);
         box-shadow: 0 4px 16px rgba(0, 104, 255, 0.35), 0 1px 0 rgba(255, 255, 255, 0.25) inset;
@@ -3577,6 +3590,9 @@ input:checked+.slider.round:before {
         align-items: center;
         gap: 8px;
         border-top: 1px solid var(--border-color) !important;
+    }
+    .input-area.emoji-open {
+        padding-bottom: 6px !important;
     }
     .input-actions-left-wrapper {
         overflow: hidden;
@@ -5901,5 +5917,82 @@ body[data-theme="dark"] .chat-info-action-icon {
         -moz-user-select: none !important;
         -ms-user-select: none !important;
         user-select: none !important;
+    }
+}
+
+
+/* ===== PHONG CÁCH NỔI BẬT CHO NÚT TẢI APP PWA ===== */
+
+#install-app-profile-item {
+    background: linear-gradient(135deg, #0068ff, #0056d2) !important;
+    color: white !important;
+    border-radius: 12px !important;
+    padding: 14px 18px !important;
+    margin: 16px 20px !important;
+    box-shadow: 0 4px 15px rgba(0, 104, 255, 0.25) !important;
+    border: none !important;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+    cursor: pointer !important;
+    display: none;
+    /* Sẽ được JS bật thành flex khi cần */
+}
+
+#install-app-profile-item:hover,
+#install-app-profile-item:active {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(0, 104, 255, 0.4) !important;
+    filter: brightness(1.08);
+}
+
+#install-app-profile-item .menu-left {
+    color: white !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+}
+
+#install-app-profile-item .menu-icon {
+    color: white !important;
+    font-size: 16px !important;
+    animation: pulseDownloadIcon 2s infinite ease-in-out;
+}
+
+#install-app-profile-item .menu-arrow {
+    color: rgba(255, 255, 255, 0.8) !important;
+    font-size: 14px !important;
+}
+
+
+/* Nút Tải App ngoài màn hình Auth */
+
+#install-app-auth-btn {
+    background: linear-gradient(135deg, #0068ff, #0056d2) !important;
+    color: white !important;
+    font-weight: 600 !important;
+    box-shadow: 0 4px 15px rgba(0, 104, 255, 0.25) !important;
+    border: none !important;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+}
+
+#install-app-auth-btn:hover,
+#install-app-auth-btn:active {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(0, 104, 255, 0.4) !important;
+    filter: brightness(1.08);
+}
+
+#install-app-auth-btn i {
+    animation: pulseDownloadIcon 2s infinite ease-in-out;
+}
+
+@keyframes pulseDownloadIcon {
+    0%,
+    100% {
+        transform: translateY(0) scale(1);
+    }
+    50% {
+        transform: translateY(-3px) scale(1.1);
     }
 }

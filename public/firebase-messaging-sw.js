@@ -111,3 +111,8 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
 });
+
+// Bắt buộc phải có sự kiện fetch để trình duyệt nhận diện ứng dụng có thể cài đặt (PWA)
+self.addEventListener("fetch", (event) => {
+  // Trình duyệt sẽ xử lý request mạng như bình thường (hoặc bạn có thể cache thêm tài nguyên ở đây nếu cần)
+});

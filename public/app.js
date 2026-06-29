@@ -82,6 +82,9 @@ const typingSound = new Audio('/sounds/typing.mp3');
 typingSound.loop = true;
 typingSound.volume = 0.5;
 
+const tabClickSound = new Audio('/click.mp3');
+tabClickSound.volume = 0.4;
+
 const readReceiptState = {
     conversationId: null,
     readBy: null,
@@ -3574,6 +3577,12 @@ function switchTab(tabId, navElement) {
     const targetTab = document.getElementById(tabId);
     if (targetTab && targetTab.classList.contains("active")) return;
 
+    // Phát âm thanh click ngắn khi chuyển tab thành công
+    if (typeof tabClickSound !== "undefined" && tabClickSound) {
+        tabClickSound.currentTime = 0;
+        tabClickSound.play().catch(err => console.log("Âm thanh bị chặn phát tự động bởi trình duyệt:", err));
+    }
+
     if (tabId === "tab-contacts") {
         navElement.classList.remove("shake");
     }
@@ -7002,6 +7011,10 @@ function toggleEmojiPicker(e) {
         panel.classList.add("show");
         if (btn) btn.classList.add("active");
         
+        // Thêm class emoji-open ở input-area
+        const inputArea = document.getElementById("input-area");
+        if (inputArea) inputArea.classList.add("emoji-open");
+        
         // Clear search
         const searchInput = document.getElementById("emoji-search-input");
         if (searchInput) searchInput.value = "";
@@ -7010,6 +7023,14 @@ function toggleEmojiPicker(e) {
         const grid = document.getElementById("emoji-grid");
         if (grid) renderAllEmojis(grid);
         setActiveCategoryTab(0);
+
+        // Tự động cuộn tin nhắn xuống cuối sau khi mở emoji picker
+        const messagesDiv = document.getElementById("messages");
+        if (messagesDiv) {
+            setTimeout(() => {
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }, 100);
+        }
     }
 }
 
@@ -7018,6 +7039,10 @@ function closeEmojiPicker() {
     const btn = document.getElementById("emoji-toggle-btn");
     if (panel) panel.classList.remove("show");
     if (btn) btn.classList.remove("active");
+    
+    // Xóa class emoji-open ở input-area
+    const inputArea = document.getElementById("input-area");
+    if (inputArea) inputArea.classList.remove("emoji-open");
 }
 
 function filterEmojis(query) {
@@ -7104,10 +7129,10 @@ window.addEventListener("beforeinstallprompt", (e) => {
 
     // Hiển thị các nút cài đặt trên giao diện
     const installProfileItem = document.getElementById("install-app-profile-item");
-    const installSettingsItem = document.getElementById("install-app-settings-item");
+    const installAuthBtn = document.getElementById("install-app-auth-btn");
     
     if (installProfileItem) installProfileItem.style.display = "flex";
-    if (installSettingsItem) installSettingsItem.style.display = "flex";
+    if (installAuthBtn) installAuthBtn.style.display = "flex";
 });
 
 // Hàm kích hoạt hộp thoại cài đặt của trình duyệt
@@ -7138,9 +7163,9 @@ async function triggerPwaInstall() {
 
 function hideInstallButtons() {
     const installProfileItem = document.getElementById("install-app-profile-item");
-    const installSettingsItem = document.getElementById("install-app-settings-item");
+    const installAuthBtn = document.getElementById("install-app-auth-btn");
     if (installProfileItem) installProfileItem.style.display = "none";
-    if (installSettingsItem) installSettingsItem.style.display = "none";
+    if (installAuthBtn) installAuthBtn.style.display = "none";
 }
 
 // Ẩn nút khi ứng dụng đã cài đặt thành công
@@ -7151,14 +7176,27 @@ window.addEventListener("appinstalled", () => {
 
 // Gắn sự kiện click vào các nút bấm tương ứng sau khi DOM load xong
 document.addEventListener("DOMContentLoaded", () => {
+    // Đăng ký Service Worker toàn cục ngay khi tải trang để đảm bảo tính năng PWA (cài đặt app) hoạt động độc lập với Thông báo
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/firebase-messaging-sw.js')
+            .then((registration) => {
+                console.log("PWA Service Worker đã được đăng ký toàn cục thành công!");
+                // Chủ động cập nhật service worker nếu có phiên bản mới
+                registration.update();
+            })
+            .catch((err) => {
+                console.error("Lỗi đăng ký Service Worker toàn cục:", err);
+            });
+    }
+
     const installProfileItem = document.getElementById("install-app-profile-item");
-    const installSettingsBtn = document.getElementById("install-app-settings-btn");
+    const installAuthBtn = document.getElementById("install-app-auth-btn");
     
     if (installProfileItem) {
         installProfileItem.addEventListener("click", triggerPwaInstall);
     }
-    if (installSettingsBtn) {
-        installSettingsBtn.addEventListener("click", triggerPwaInstall);
+    if (installAuthBtn) {
+        installAuthBtn.addEventListener("click", triggerPwaInstall);
     }
 
     // Đối với iOS: Tự động hiển thị nút cài đặt (vì beforeinstallprompt không tự kích hoạt trên iOS)
@@ -7166,7 +7204,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
     if (isIOS && !isStandalone) {
         if (installProfileItem) installProfileItem.style.display = "flex";
-        const installSettingsItem = document.getElementById("install-app-settings-item");
-        if (installSettingsItem) installSettingsItem.style.display = "flex";
+        if (installAuthBtn) installAuthBtn.style.display = "flex";
     }
 });
