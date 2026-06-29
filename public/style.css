@@ -4597,9 +4597,6 @@ body[data-theme="dark"] .ai-header {
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
     scroll-behavior: smooth;
     background: transparent;
     min-width: 0;
@@ -4665,7 +4662,6 @@ body[data-theme="dark"] .ai-welcome-logo {
     align-items: flex-start;
     gap: 12px;
     max-width: 85%;
-    animation: fadeInMsg 0.25s ease-out forwards;
     min-width: 0;
     box-sizing: border-box;
 }

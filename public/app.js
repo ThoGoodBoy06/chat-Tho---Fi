@@ -3683,8 +3683,7 @@ async function loadAiChatHistory() {
             });
 
             // Cuộn xuống cuối
-            const historyEl = document.getElementById("ai-chat-body");
-            if (historyEl) historyEl.scrollTop = historyEl.scrollHeight;
+            scrollAiToBottom();
         } else {
             if (welcomeEl) welcomeEl.style.display = "flex";
             wrapperEl.style.display = "none";
@@ -3693,6 +3692,19 @@ async function loadAiChatHistory() {
     } catch (err) {
         console.error("Lỗi khi tải lịch sử chat AI:", err);
     }
+}
+
+// Cuộn mượt và chính xác xuống cuối màn hình chat AI sau khi vẽ DOM xong
+function scrollAiToBottom() {
+    const historyEl = document.getElementById("ai-chat-history");
+    if (!historyEl) return;
+    // Sử dụng cả requestAnimationFrame và setTimeout để bảo đảm tương thích tốt nhất trên iOS/Android
+    requestAnimationFrame(() => {
+        historyEl.scrollTop = historyEl.scrollHeight;
+        setTimeout(() => {
+            historyEl.scrollTop = historyEl.scrollHeight;
+        }, 50);
+    });
 }
 
 // Reset cuộc hội thoại AI về màn hình chào mừng ban đầu
@@ -3731,7 +3743,7 @@ async function sendAiMessage() {
     if (welcomeEl) welcomeEl.style.display = "none";
     if (wrapperEl) wrapperEl.style.display = "flex";
 
-    const historyEl = document.getElementById("ai-chat-body");
+    const historyEl = document.getElementById("ai-chat-history");
     if (!historyEl) return;
 
     // Hiển thị tin nhắn người dùng (phong cách tối giản/không avatar giống mockup)
@@ -3741,7 +3753,7 @@ async function sendAiMessage() {
       </div>
     `;
     wrapperEl.insertAdjacentHTML("beforeend", userMsgHtml);
-    historyEl.scrollTop = historyEl.scrollHeight;
+    scrollAiToBottom();
 
     // Tạo ID duy nhất cho bong bóng tin nhắn của AI bot này
     const botMsgId = "ai-msg-" + Date.now();
@@ -3762,7 +3774,7 @@ async function sendAiMessage() {
       </div>
     `;
     wrapperEl.insertAdjacentHTML("beforeend", typingHtml);
-    historyEl.scrollTop = historyEl.scrollHeight;
+    scrollAiToBottom();
 
     try {
         const response = await fetch("/api/ai/chat/stream", {
@@ -3815,7 +3827,7 @@ async function sendAiMessage() {
                         if (bubbleEl) {
                             bubbleEl.innerHTML = formatAiResponse(fullText);
                         }
-                        historyEl.scrollTop = historyEl.scrollHeight;
+                        scrollAiToBottom();
                     }
                     if (data.error) {
                         throw new Error(data.error);
@@ -3853,10 +3865,10 @@ async function sendAiMessage() {
         }
     }
 
-    historyEl.scrollTop = historyEl.scrollHeight;
+    scrollAiToBottom();
 }
 
-// Định dạng văn bản trả về từ AI (chuyển đổi code, bold, list, newline thành HTML)
+// Định dạng văn bản trả về từ AI (chuyển đổi code, bold, list, heading, newline thành HTML)
 function formatAiResponse(text) {
     if (!text) return "";
     let formatted = escapeHTML(text);
@@ -3885,26 +3897,96 @@ function formatAiResponse(text) {
         return placeholder;
     });
 
-    // 2. Định dạng các phần text khác (inline code, bold, list, newline)
-    // Convert inline code
-    formatted = formatted.replace(/`([^`]+)`/g, '<code style="background: rgba(255,255,255,0.08); color: #f4f4f5; padding: 2px 6px; border-radius: 4px; font-family: monospace;">$1</code>');
+    // 2. Tách văn bản theo từng dòng để xử lý chính xác danh sách (ul/ol) và tiêu đề (h1-h6)
+    const lines = formatted.split("\n");
+    const resultLines = [];
+    let inList = false;
 
-    // Convert bold
-    formatted = formatted.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    for (let i = 0; i < lines.length; i++) {
+        let line = lines[i];
+        
+        // Kiểm tra dòng có phải là tiêu đề Markdown không (bắt đầu bằng # và khoảng trắng)
+        const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
+        // Kiểm tra dòng có phải là phần tử danh sách không (bắt đầu bằng * hoặc - hoặc + và khoảng trắng)
+        const listMatch = line.match(/^\s*[\-\*\+]\s+(.+)$/);
+        
+        if (headingMatch) {
+            if (inList) {
+                resultLines.push('</ul>');
+                inList = false;
+            }
+            const level = headingMatch[1].length;
+            const content = headingMatch[2];
+            let formattedContent = content
+                .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                .replace(/`([^`]+)`/g, '<code style="background: rgba(255,255,255,0.08); color: #f4f4f5; padding: 2px 6px; border-radius: 4px; font-family: monospace;">$1</code>');
+            
+            // Định nghĩa kích thước font chữ và lề tương ứng cho từng cấp độ tiêu đề
+            let fontSize = "15px";
+            let marginTop = "12px";
+            let marginBottom = "6px";
+            if (level === 1) { fontSize = "20px"; marginTop = "18px"; marginBottom = "10px"; }
+            else if (level === 2) { fontSize = "17px"; marginTop = "16px"; marginBottom = "8px"; }
+            else if (level === 3) { fontSize = "15px"; marginTop = "14px"; marginBottom = "6px"; }
+            
+            resultLines.push(`<h${level} style="font-size: ${fontSize}; margin-top: ${marginTop}; margin-bottom: ${marginBottom}; font-weight: 600; line-height: 1.35; color: var(--text-dark); display: block;">${formattedContent}</h${level}>`);
+        } else if (listMatch) {
+            const content = listMatch[1];
+            // Định dạng inline bold và inline code cho nội dung li trước
+            let formattedContent = content
+                .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                .replace(/`([^`]+)`/g, '<code style="background: rgba(255,255,255,0.08); color: #f4f4f5; padding: 2px 6px; border-radius: 4px; font-family: monospace;">$1</code>');
+            
+            if (!inList) {
+                resultLines.push('<ul style="margin: 6px 0; padding-left: 20px; list-style-type: disc;">');
+                inList = true;
+            }
+            resultLines.push(`<li style="margin-bottom: 4px; line-height: 1.5; color: var(--text-dark);">${formattedContent}</li>`);
+        } else {
+            if (inList) {
+                resultLines.push('</ul>');
+                inList = false;
+            }
+            
+            // Định dạng inline bold và inline code cho các dòng thường
+            let formattedLine = line
+                .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                .replace(/`([^`]+)`/g, '<code style="background: rgba(255,255,255,0.08); color: #f4f4f5; padding: 2px 6px; border-radius: 4px; font-family: monospace;">$1</code>');
+                
+            resultLines.push(formattedLine);
+        }
+    }
+    
+    // Nếu kết thúc chuỗi vẫn đang ở trong thẻ ul thì đóng lại
+    if (inList) {
+        resultLines.push('</ul>');
+    }
 
-    // Convert lists
-    formatted = formatted.replace(/^\s*[\-\*]\s+(.+)$/gm, '<li style="margin-left: 20px; list-style-type: disc; margin-bottom: 4px;">$1</li>');
+    // Nối các dòng lại, với các dòng không phải là ul/li/heading thì dùng <br> để xuống dòng
+    // Tránh thêm <br> sau các thẻ <ul>, </ul>, <li>, </li>, <h1-6>
+    let finalHtml = "";
+    for (let i = 0; i < resultLines.length; i++) {
+        const curr = resultLines[i];
+        const next = resultLines[i + 1] || "";
+        
+        finalHtml += curr;
+        
+        // Thêm <br> nếu dòng hiện tại và dòng tiếp theo không phải là thẻ ul/li/heading hoặc trống
+        const isCurrTag = curr.startsWith("<ul") || curr.startsWith("</ul>") || curr.startsWith("<li") || curr.startsWith("</li>") || curr.startsWith("<h");
+        const isNextTag = next.startsWith("<ul") || next.startsWith("</ul>") || next.startsWith("<li") || next.startsWith("</li>") || next.startsWith("<h");
+        
+        if (i < resultLines.length - 1 && !isCurrTag && !isNextTag) {
+            finalHtml += "<br>";
+        }
+    }
 
-    // Convert newlines to breaks
-    formatted = formatted.replace(/\n/g, "<br>");
-
-    // 3. Khôi phục lại các khối code blocks đã trích xuất vào đúng vị trí
+    // 3. Khôi phục các khối code blocks
     codeBlocks.forEach((codeBlockHtml, index) => {
         const placeholder = `__CODE_BLOCK_PLACEHOLDER_${index}__`;
-        formatted = formatted.split(placeholder).join(codeBlockHtml);
+        finalHtml = finalHtml.split(placeholder).join(codeBlockHtml);
     });
 
-    return formatted;
+    return finalHtml;
 }
 
 // Hàm sao chép code vào clipboard
@@ -6031,7 +6113,7 @@ async function updateMediaDevicesList() {
  */
 (function () {
     function initAiScrollFix() {
-        const history = document.getElementById('ai-chat-body');
+        const history = document.getElementById('ai-chat-history');
         if (!history) return;
 
         let startX = 0;
@@ -6176,7 +6258,7 @@ async function updateMediaDevicesList() {
 
     function start() {
         scan();
-        const hist = document.getElementById('ai-chat-body');
+        const hist = document.getElementById('ai-chat-history');
         if (!hist) return;
         new MutationObserver(function (muts) {
             muts.forEach(function (m) {
