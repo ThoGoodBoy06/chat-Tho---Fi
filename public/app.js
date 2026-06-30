@@ -7283,10 +7283,21 @@ function renderNews() {
     }
 }
 
+function getCategoryDetails(category) {
+    switch (category) {
+        case "World":
+            return { label: "Thế giới", badgeClass: "world-badge" };
+        case "Vietnam":
+            return { label: "Việt Nam", badgeClass: "vietnam-badge" };
+        case "Tech_AI":
+        default:
+            return { label: "Công nghệ & AI", badgeClass: "tech-badge" };
+    }
+}
+
 function getNewsCardHtml(newsItem, isNewRealtime = false) {
     const animationClass = isNewRealtime ? "realtime-news-animation" : "";
-    const badgeClass = newsItem.category === "AI" ? "ai-badge" : "tech-badge";
-    const categoryLabel = newsItem.category === "AI" ? "AI" : "Công nghệ";
+    const { label, badgeClass } = getCategoryDetails(newsItem.category);
     
     // Định dạng ngày giờ thân thiện
     const date = new Date(newsItem.createdAt);
@@ -7296,7 +7307,7 @@ function getNewsCardHtml(newsItem, isNewRealtime = false) {
     return `
         <div class="news-card ${animationClass}" data-category="${newsItem.category}" onclick="showNewsDetail('${newsItem.id}')" style="cursor: pointer;">
             <div class="news-card-header">
-                <span class="news-badge ${badgeClass}">${categoryLabel}</span>
+                <span class="news-badge ${badgeClass}">${label}</span>
                 <span class="news-time">${formattedTime}</span>
             </div>
             <h4 class="news-title">${newsItem.title}</h4>
@@ -7357,9 +7368,10 @@ async function showNewsDetail(newsId) {
     if (!newsItem) return;
 
     // Gán dữ liệu cơ bản
+    const { label, badgeClass } = getCategoryDetails(newsItem.category);
     detailTitle.textContent = newsItem.title;
-    detailBadge.textContent = newsItem.category === "AI" ? "AI" : "Công nghệ";
-    detailBadge.className = `news-detail-badge ${newsItem.category === "AI" ? "ai-badge" : "tech-badge"}`;
+    detailBadge.textContent = label;
+    detailBadge.className = `news-detail-badge ${badgeClass}`;
     
     const date = new Date(newsItem.createdAt);
     detailTime.textContent = date.toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' }) + 

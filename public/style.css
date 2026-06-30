@@ -6288,14 +6288,22 @@ input:checked+.slider.round:before {
     letter-spacing: 0.03em;
 }
 
-.news-badge.ai-badge {
-    background: #f3e8ff;
-    color: #7c3aed;
+.news-badge.tech-badge,
+.news-detail-badge.tech-badge {
+    background: #e0f2fe;
+    color: #0369a1;
 }
 
-.news-badge.tech-badge {
-    background: #dbeafe;
-    color: #2563eb;
+.news-badge.world-badge,
+.news-detail-badge.world-badge {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.news-badge.vietnam-badge,
+.news-detail-badge.vietnam-badge {
+    background: #fee2e2;
+    color: #dc2626;
 }
 
 .news-time {
@@ -6384,14 +6392,22 @@ body[data-theme="dark"] .news-card:hover {
     border-color: rgba(255, 255, 255, 0.1);
 }
 
-body[data-theme="dark"] .news-badge.ai-badge {
-    background: rgba(124, 58, 237, 0.2);
-    color: #a78bfa;
+body[data-theme="dark"] .news-badge.tech-badge,
+body[data-theme="dark"] .news-detail-badge.tech-badge {
+    background: rgba(3, 105, 161, 0.2);
+    color: #7dd3fc;
 }
 
-body[data-theme="dark"] .news-badge.tech-badge {
-    background: rgba(37, 99, 235, 0.2);
-    color: #60a5fa;
+body[data-theme="dark"] .news-badge.world-badge,
+body[data-theme="dark"] .news-detail-badge.world-badge {
+    background: rgba(21, 128, 61, 0.2);
+    color: #86efac;
+}
+
+body[data-theme="dark"] .news-badge.vietnam-badge,
+body[data-theme="dark"] .news-detail-badge.vietnam-badge {
+    background: rgba(220, 38, 38, 0.2);
+    color: #fca5a5;
 }
 
 /* TRANG CHI TIẾT BÀI BÁO ĐỘC LẬP */
@@ -6507,15 +6523,7 @@ body[data-theme="dark"] .news-detail-view {
     background: var(--bg-color);
 }
 
-body[data-theme="dark"] .news-detail-badge.ai-badge {
-    background: rgba(124, 58, 237, 0.2);
-    color: #a78bfa;
-}
 
-body[data-theme="dark"] .news-detail-badge.tech-badge {
-    background: rgba(37, 99, 235, 0.2);
-    color: #60a5fa;
-}
 
 body[data-theme="dark"] .news-detail-header {
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);

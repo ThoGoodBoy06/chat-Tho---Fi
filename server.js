@@ -451,89 +451,83 @@ server.listen(PORT, () => {
   }
 
   // ============================================
-  // REAL-TIME NEWS SCRAPER (VNEXPRESS SO HOA)
+  // REAL-TIME NEWS SCRAPER (VNEXPRESS RSS FEEDS)
   // ============================================
+  const FEEDS = [
+    { url: "https://vnexpress.net/rss/the-gioi.rss", category: "World" },
+    { url: "https://vnexpress.net/rss/thoi-su.rss", category: "Vietnam" },
+    { url: "https://vnexpress.net/rss/so-hoa.rss", category: "Tech_AI" }
+  ];
+
   async function updateRealNews(ioInstance) {
     try {
-      const response = await fetch("https://vnexpress.net/rss/so-hoa.rss");
-      const xmlText = await response.text();
+      for (const feed of FEEDS) {
+        const response = await fetch(feed.url);
+        const xmlText = await response.text();
 
-      const items = [];
-      const itemRegex = /<item>([\s\S]*?)<\/item>/g;
-      let match;
-      while ((match = itemRegex.exec(xmlText)) !== null) {
-        const itemContent = match[1];
-        
-        const extractTag = (tag) => {
-          const regex = new RegExp(`<${tag}>(?:<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>|([\\s\\S]*?))<\/${tag}>`);
-          const tagMatch = itemContent.match(regex);
-          if (tagMatch) {
-            return (tagMatch[1] || tagMatch[2] || "").trim();
-          }
-          return "";
-        };
-
-        let title = extractTag("title");
-        let description = extractTag("description");
-        let pubDate = extractTag("pubDate");
-        let link = extractTag("link");
-
-        // Clean up description
-        if (description.includes("<br/>")) {
-          description = description.split("<br/>").pop();
-        }
-        description = description.replace(/<a[\s\S]*?<\/a>/g, ""); // remove anchor image link
-        description = description.replace(/<[^>]*>?/gm, "").trim(); // remove general HTML tags
-
-        if (title) {
-          items.push({
-            title,
-            content: description,
-            link,
-            pubDate: pubDate ? new Date(pubDate) : new Date()
-          });
-        }
-      }
-
-      // Sắp xếp bài từ cũ đến mới để ghi nhận vào DB đúng thứ tự thời gian
-      items.reverse();
-
-      for (const item of items) {
-        // Kiểm tra xem tin đã tồn tại trong DB chưa
-        const existing = await prisma.news.findFirst({
-          where: { title: item.title }
-        });
-
-        if (!existing) {
-          // Phân loại danh mục tự động dựa trên từ khóa
-          const aiKeywords = [
-            "ai", "intelligence", "trí tuệ nhân tạo", "chatgpt", "openai", "gemini", 
-            "claude", "nvidia", "blackwell", "llm", "suy luận", "copilot", "siri", 
-            "robot", "deepseek", "qwen"
-          ];
-          const lowerTitle = item.title.toLowerCase();
-          const lowerContent = item.content.toLowerCase();
-          let category = "Tech";
+        const items = [];
+        const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+        let match;
+        while ((match = itemRegex.exec(xmlText)) !== null) {
+          const itemContent = match[1];
           
-          if (aiKeywords.some(keyword => lowerTitle.includes(keyword) || lowerContent.includes(keyword))) {
-            category = "AI";
-          }
-
-          const newNewsItem = await prisma.news.create({
-            data: {
-              title: item.title,
-              content: item.content,
-              category,
-              link: item.link,
-              createdAt: item.pubDate
+          const extractTag = (tag) => {
+            const regex = new RegExp(`<${tag}>(?:<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>|([\\s\\S]*?))<\/${tag}>`);
+            const tagMatch = itemContent.match(regex);
+            if (tagMatch) {
+              return (tagMatch[1] || tagMatch[2] || "").trim();
             }
+            return "";
+          };
+
+          let title = extractTag("title");
+          let description = extractTag("description");
+          let pubDate = extractTag("pubDate");
+          let link = extractTag("link");
+
+          // Clean up description
+          if (description.includes("<br/>")) {
+            description = description.split("<br/>").pop();
+          }
+          description = description.replace(/<a[\s\S]*?<\/a>/g, ""); // remove anchor image link
+          description = description.replace(/<[^>]*>?/gm, "").trim(); // remove general HTML tags
+
+          if (title) {
+            items.push({
+              title,
+              content: description,
+              link,
+              pubDate: pubDate ? new Date(pubDate) : new Date()
+            });
+          }
+        }
+
+        // Sắp xếp bài từ cũ đến mới để ghi nhận vào DB đúng thứ tự thời gian
+        items.reverse();
+
+        for (const item of items) {
+          // Kiểm tra xem tin đã tồn tại trong DB chưa
+          const existing = await prisma.news.findFirst({
+            where: { title: item.title }
           });
 
-          console.log(`📰 [Real News] Đã tải thêm tin mới: ${item.title}`);
-          
-          // Phát sóng tới tất cả client nếu đây là lần quét định kỳ
-          if (ioInstance) {
-            ioInstance.emit("new_news_broadcast", newNewsItem);
+          if (!existing) {
+            const newNewsItem = await prisma.news.create({
+              data: {
+                title: item.title,
+                content: item.content,
+                category: feed.category,
+                link: item.link,
+                createdAt: item.pubDate
+              }
+            });
+
+            console.log(`📰 [Real News] Đã tải thêm tin mới [${feed.category}]: ${item.title}`);
+            
+            // Phát sóng tới tất cả client nếu đây là lần quét định kỳ
+            if (ioInstance) {
+              ioInstance.emit("new_news_broadcast", newNewsItem);
+            }
           }
         }
       }

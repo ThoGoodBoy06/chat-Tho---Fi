@@ -3,7 +3,7 @@ const prisma = require("../prisma");
 const getLatestNews = async (req, res) => {
   try {
     const news = await prisma.news.findMany({
-      take: 20,
+      take: 40,
       orderBy: {
         createdAt: "desc",
       },
