@@ -77,13 +77,6 @@ const getNewsContent = async (req, res) => {
             newAttributes = ` src="${realSrc}"` + newAttributes;
           }
           
-          // Ghi đè thuộc tính style để giải quyết vấn đề ảnh absolute bay ra ngoài khung hình
-          if (newAttributes.includes("style=")) {
-            newAttributes = newAttributes.replace(/style=["']([^"']*)["']/i, 'style="max-width:100%; height:auto; display:block; margin:12px auto; border-radius:12px; position:relative !important;"');
-          } else {
-            newAttributes += ' style="max-width:100%; height:auto; display:block; margin:12px auto; border-radius:12px; position:relative !important;"';
-          }
-          
           return `<img${newAttributes}>`;
         }
         return imgTag;
