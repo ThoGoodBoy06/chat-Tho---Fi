@@ -6552,14 +6552,28 @@ body[data-theme="dark"] .news-detail-meta {
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-/* UNREAD DOT & READ STATE */
-.unread-dot {
-    width: 7px;
-    height: 7px;
-    background-color: #ef4444;
-    border-radius: 50%;
+/* READ / UNREAD STATUS BADGES */
+.read-status-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    margin-left: 8px;
+    letter-spacing: 0.02em;
     display: inline-block;
-    box-shadow: 0 0 6px #ef4444;
+}
+
+.read-status-badge.unread {
+    background: #fef2f2;
+    color: #ef4444;
+    border: 1px solid #fee2e2;
+}
+
+.read-status-badge.read {
+    background: #f3f4f6;
+    color: #6b7280;
+    border: 1px solid #e5e7eb;
 }
 
 .news-card.read {
@@ -6570,6 +6584,19 @@ body[data-theme="dark"] .news-detail-meta {
 .news-card.read .news-title {
     color: var(--text-light) !important;
     font-weight: 500 !important;
+}
+
+/* DARK MODE STATUS BADGES */
+body[data-theme="dark"] .read-status-badge.unread {
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+body[data-theme="dark"] .read-status-badge.read {
+    background: rgba(255, 255, 255, 0.05);
+    color: #9ca3af;
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 body[data-theme="dark"] .news-card.read {

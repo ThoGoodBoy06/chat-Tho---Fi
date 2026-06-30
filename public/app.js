@@ -7311,7 +7311,11 @@ function getNewsCardHtml(newsItem, isNewRealtime = false) {
     // Kiểm tra trạng thái đã đọc hay chưa
     const isRead = readNewsIds.includes(newsItem.id);
     const readClass = isRead ? "read" : "";
-    const unreadDot = isRead ? "" : `<span class="unread-dot" id="unread-dot-${newsItem.id}"></span>`;
+    
+    // Tạo nhãn "Đã đọc" / "Chưa đọc" thay vì chỉ có chấm đỏ
+    const statusBadge = isRead 
+        ? `<span class="read-status-badge read" id="status-badge-${newsItem.id}">Đã đọc</span>` 
+        : `<span class="read-status-badge unread" id="status-badge-${newsItem.id}">Chưa đọc</span>`;
 
     // Định dạng ngày giờ thân thiện
     const date = new Date(newsItem.createdAt);
@@ -7321,11 +7325,11 @@ function getNewsCardHtml(newsItem, isNewRealtime = false) {
     return `
         <div class="news-card ${animationClass} ${readClass}" id="news-card-${newsItem.id}" data-category="${newsItem.category}" onclick="showNewsDetail('${newsItem.id}')" style="cursor: pointer;">
             <div class="news-card-header">
-                <span class="news-badge ${badgeClass}">${label}</span>
-                <span class="news-time" style="display: flex; align-items: center; gap: 6px;">
-                    ${formattedTime}
-                    ${unreadDot}
-                </span>
+                <div style="display: flex; align-items: center;">
+                    <span class="news-badge ${badgeClass}">${label}</span>
+                    ${statusBadge}
+                </div>
+                <span class="news-time">${formattedTime}</span>
             </div>
             <h4 class="news-title" style="margin-bottom: 0;">${newsItem.title}</h4>
         </div>
@@ -7409,9 +7413,10 @@ async function showNewsDetail(newsId) {
         const card = document.getElementById(`news-card-${newsId}`);
         if (card) {
             card.classList.add("read");
-            const dot = document.getElementById(`unread-dot-${newsId}`);
-            if (dot) {
-                dot.remove();
+            const badge = document.getElementById(`status-badge-${newsId}`);
+            if (badge) {
+                badge.className = "read-status-badge read";
+                badge.textContent = "Đã đọc";
             }
         }
     }
