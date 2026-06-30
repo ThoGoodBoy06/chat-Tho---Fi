@@ -6576,15 +6576,7 @@ body[data-theme="dark"] .news-detail-meta {
     border: 1px solid #e5e7eb;
 }
 
-.news-card.read {
-    opacity: 0.65;
-    border-color: rgba(0, 0, 0, 0.04);
-}
 
-.news-card.read .news-title {
-    color: var(--text-light) !important;
-    font-weight: 500 !important;
-}
 
 /* DARK MODE STATUS BADGES */
 body[data-theme="dark"] .read-status-badge.unread {
@@ -6597,9 +6589,4 @@ body[data-theme="dark"] .read-status-badge.read {
     background: rgba(255, 255, 255, 0.05);
     color: #9ca3af;
     border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-body[data-theme="dark"] .news-card.read {
-    opacity: 0.45;
-    border-color: rgba(255, 255, 255, 0.02);
 }
