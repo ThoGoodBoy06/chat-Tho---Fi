@@ -476,6 +476,7 @@ server.listen(PORT, () => {
         let title = extractTag("title");
         let description = extractTag("description");
         let pubDate = extractTag("pubDate");
+        let link = extractTag("link");
 
         // Clean up description
         if (description.includes("<br/>")) {
@@ -488,6 +489,7 @@ server.listen(PORT, () => {
           items.push({
             title,
             content: description,
+            link,
             pubDate: pubDate ? new Date(pubDate) : new Date()
           });
         }
@@ -522,6 +524,7 @@ server.listen(PORT, () => {
               title: item.title,
               content: item.content,
               category,
+              link: item.link,
               createdAt: item.pubDate
             }
           });

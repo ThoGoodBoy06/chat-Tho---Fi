@@ -126,5 +126,6 @@ model News {
   title     String
   content   String
   category  String   // "AI" hoặc "Tech"
+  link      String?  // Đường dẫn gốc của bài báo
   createdAt DateTime @default(now())
 }
