@@ -10,7 +10,7 @@ function formatUrl(url) {
 // TỰ ĐỘNG THAY THẾ ẢNH LỖI (404) BẰNG ẢNH MẶC ĐỊNH
 document.addEventListener(
     "error",
-    function(e) {
+    function (e) {
         if (e.target.tagName && e.target.tagName.toLowerCase() === "img") {
             const fallback =
                 "https://ui-avatars.com/api/?name=User&background=random";
@@ -315,8 +315,8 @@ function getReadReceiptTarget(myMessages) {
     // Fallback: tìm tin nhắn của mình được đọc cuối cùng theo data attribute
     return (
         [...myMessages]
-        .reverse()
-        .find((message) => message.dataset.isRead === "true") || null
+            .reverse()
+            .find((message) => message.dataset.isRead === "true") || null
     );
 }
 
@@ -536,7 +536,7 @@ function showMobileOverlay(messageEl) {
 }
 
 // Hệ thống gài quét lỗi toàn cục
-window.onerror = function(msg, url, lineNo, columnNo, error) {
+window.onerror = function (msg, url, lineNo, columnNo, error) {
     if (
         typeof msg === "string" &&
         (msg.includes("ResizeObserver") ||
@@ -634,10 +634,10 @@ function initizeChatSession(userData, userToken) {
     document.getElementById("profile-name").innerText = myName;
     if (document.getElementById("my-avatar-profile"))
         document.getElementById("my-avatar-profile").src =
-        document.getElementById("my-avatar").src;
+            document.getElementById("my-avatar").src;
     if (document.getElementById("profile-bio"))
         document.getElementById("profile-bio").innerText =
-        userData.bio || "Chưa có tiểu sử";
+            userData.bio || "Chưa có tiểu sử";
     if (document.getElementById("my-cover")) {
         const coverUrl = userData.coverPhoto || userData.coverImage;
         if (coverUrl) {
@@ -710,7 +710,7 @@ function initizeChatSession(userData, userToken) {
     });
 
     // Nghe khi mình chấp nhận lời mời của ai đó
-    socket.on("you_accepted_friend_request", async(newFriend) => {
+    socket.on("you_accepted_friend_request", async (newFriend) => {
         alert(`Bạn và ${newFriend.fullName} đã trở thành bạn bè!`);
         try {
             await fetch(`${API_URL}/chat/conversations`, {
@@ -721,13 +721,13 @@ function initizeChatSession(userData, userToken) {
                 },
                 body: JSON.stringify({ receiverId: newFriend.id }),
             });
-        } catch (e) {}
+        } catch (e) { }
         loadConversations();
         loadFriends();
     });
 
     // Nghe khi lời mời của mình được chấp nhận
-    socket.on("friend_request_accepted", async(userWhoAccepted) => {
+    socket.on("friend_request_accepted", async (userWhoAccepted) => {
         alert(`${userWhoAccepted.fullName} đã chấp nhận lời mời của bạn!`);
         try {
             await fetch(`${API_URL}/chat/conversations`, {
@@ -738,7 +738,7 @@ function initizeChatSession(userData, userToken) {
                 },
                 body: JSON.stringify({ receiverId: userWhoAccepted.id }),
             });
-        } catch (e) {}
+        } catch (e) { }
         loadConversations();
     });
 
@@ -1043,9 +1043,9 @@ function initizeChatSession(userData, userToken) {
     if (defaultTab) {
         const originalSwitchingState = isSwitchingTab;
         isSwitchingTab = false;
-        
+
         switchTab("tab-messages", defaultTab);
-        
+
         isSwitchingTab = originalSwitchingState;
 
         setTimeout(() => {
@@ -1106,13 +1106,13 @@ function setupFirebaseMessaging(userToken) {
                         if (currentToken) {
                             console.log("🔥 Đã lấy được FCM Token:", currentToken);
                             fetch(`${API_URL}/users/fcm-token`, {
-                                    method: "POST",
-                                    headers: {
-                                        "Content-Type": "application/json",
-                                        Authorization: `Bearer ${userToken}`,
-                                    },
-                                    body: JSON.stringify({ fcmToken: currentToken }),
-                                })
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                    Authorization: `Bearer ${userToken}`,
+                                },
+                                body: JSON.stringify({ fcmToken: currentToken }),
+                            })
                                 .then(res => res.json())
                                 .then(data => {
                                     console.log("💾 Đã lưu thành công FCM Token lên server:", data);
@@ -1128,8 +1128,8 @@ function setupFirebaseMessaging(userToken) {
             } else {
                 // Fallback nếu trình duyệt không hỗ trợ Service Worker
                 messaging.getToken({
-                        vapidKey: "BBtraQSvar7RExe_T8aVhoA3TebgLw0S-ucoMcuV-Oef-H7ULkJGWyBctnxfY5tLnawpWQ9Wn8Aihi-wJaLiGu0",
-                    })
+                    vapidKey: "BBtraQSvar7RExe_T8aVhoA3TebgLw0S-ucoMcuV-Oef-H7ULkJGWyBctnxfY5tLnawpWQ9Wn8Aihi-wJaLiGu0",
+                })
                     .then((currentToken) => {
                         if (currentToken) {
                             console.log("🔥 Đã lấy được FCM Token (fallback):", currentToken);
@@ -1274,9 +1274,9 @@ async function loadConversations() {
                     conv._count && conv._count.Messages ? conv._count.Messages : 0;
                 const unreadBadgeHtml =
                     unreadCount > 0 ?
-                    `<span class="unread-badge">${unreadCount > 99 ? "99+" : unreadCount
+                        `<span class="unread-badge">${unreadCount > 99 ? "99+" : unreadCount
                         }</span>` :
-                    "";
+                        "";
                 const msgStyle =
                     unreadCount > 0 ? "font-weight: 600; color: var(--text-dark);" : "";
 
@@ -1424,8 +1424,8 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
 
         // Luôn fetch profile mới nhất để đảm bảo trạng thái hoạt động chính xác nhất
         fetch(`/api/users/${receiverId}/profile`, {
-                headers: { Authorization: `Bearer ${token}` }
-            })
+            headers: { Authorization: `Bearer ${token}` }
+        })
             .then(res => res.json())
             .then(profileData => {
                 if (profileData && isSameId(receiverId, currentChatPartnerId)) {
@@ -1523,8 +1523,8 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
 
         const resMsg = await fetch(
             `${API_URL}/chat/${currentConversationId}/messages?limit=50`, {
-                headers: { Authorization: `Bearer ${token}` },
-            },
+            headers: { Authorization: `Bearer ${token}` },
+        },
         );
 
         if (!resMsg.ok) {
@@ -1677,8 +1677,8 @@ async function reloadCurrentChat() {
     try {
         const resMsg = await fetch(
             `${API_URL}/chat/${currentConversationId}/messages?limit=50`, {
-                headers: { Authorization: `Bearer ${token}` },
-            },
+            headers: { Authorization: `Bearer ${token}` },
+        },
         );
         if (!resMsg.ok) {
             const errorText = await resMsg.text();
@@ -1729,7 +1729,7 @@ function setupInfiniteScroll(messagesDiv) {
     if (_scrollListenerAttached) return; // Chỉ gắn 1 lần
     _scrollListenerAttached = true;
 
-    messagesDiv.addEventListener("scroll", debounce(function() {
+    messagesDiv.addEventListener("scroll", debounce(function () {
         // Khi cuộn gần đến đầu khung chat (cách top < 80px)
         if (messagesDiv.scrollTop < 80 && hasMoreMessages && !isLoadingMoreMessages) {
             loadOlderMessages();
@@ -1739,7 +1739,7 @@ function setupInfiniteScroll(messagesDiv) {
 
 function debounce(fn, delay) {
     let timer;
-    return function(...args) {
+    return function (...args) {
         clearTimeout(timer);
         timer = setTimeout(() => fn.apply(this, args), delay);
     };
@@ -1761,8 +1761,8 @@ async function loadOlderMessages() {
 
         const res = await fetch(
             `${API_URL}/chat/${currentConversationId}/messages?limit=50&before=${oldestMsg.id}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            },
+            headers: { Authorization: `Bearer ${token}` },
+        },
         );
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -2513,7 +2513,7 @@ function displayMessage(msg, targetContainer = null) {
                 if (navigator.vibrate) {
                     try {
                         navigator.vibrate(30);
-                    } catch (err) {}
+                    } catch (err) { }
                 }
             }
         });
@@ -2665,13 +2665,13 @@ function sendMessage(imageContent = null) {
     cancelReply();
 
     fetch(`${API_URL}/chat/${currentConversationId}/messages`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(payload),
-        })
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+    })
         .then((response) => response.json())
         .then((data) => {
             if (data.success) {
@@ -2703,14 +2703,14 @@ function sendMessage(imageContent = null) {
 // 6. Bấm phím Enter để gửi & Sự kiện gõ phím
 const messageInput = document.getElementById("message-input");
 if (messageInput) {
-    messageInput.addEventListener("keydown", function(e) {
+    messageInput.addEventListener("keydown", function (e) {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             sendMessage();
         }
     });
 
-    messageInput.addEventListener("input", function() {
+    messageInput.addEventListener("input", function () {
         // Tự động giãn dòng nhưng giới hạn tối đa
         this.style.height = 'auto';
         const newHeight = Math.min(this.scrollHeight, 80); // Giới hạn max 80px
@@ -2763,14 +2763,14 @@ if (messageInput) {
     });
 
     // Khi người dùng bấm click vào ô nhập (Focus) -> thu gọn menu trái để nhường chỗ
-    messageInput.addEventListener("focus", function() {
+    messageInput.addEventListener("focus", function () {
         const inputArea = document.getElementById('input-area');
         if (inputArea) inputArea.classList.add('is-typing');
         if (typeof closeEmojiPicker === "function") closeEmojiPicker();
     });
 
     // Khi người dùng bấm ra ngoài (Blur) -> hiển thị lại menu trái nếu ô nhập trống
-    messageInput.addEventListener("blur", function() {
+    messageInput.addEventListener("blur", function () {
         const inputArea = document.getElementById('input-area');
         if (this.value.trim().length === 0) {
             if (inputArea) inputArea.classList.remove('is-typing');
@@ -2781,7 +2781,7 @@ if (messageInput) {
 // Xử lý nút mũi tên mở rộng lại cụm ảnh/file khi đang gõ
 const expandBtnUI = document.getElementById('expand-btn');
 if (expandBtnUI) {
-    expandBtnUI.addEventListener('click', function() {
+    expandBtnUI.addEventListener('click', function () {
         const inputArea = document.getElementById('input-area');
         if (inputArea) {
             inputArea.classList.remove('is-typing');
@@ -2797,12 +2797,12 @@ function closeChatMobile() {
 // 7. Sự kiện Gửi Hình ảnh
 const imageUploadInput = document.getElementById("image-upload");
 if (imageUploadInput) {
-    imageUploadInput.addEventListener("change", function(e) {
+    imageUploadInput.addEventListener("change", function (e) {
         const file = e.target.files[0];
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = function(event) {
+        reader.onload = function (event) {
             const base64Image = event.target.result;
             sendMessage(base64Image);
         };
@@ -2813,7 +2813,7 @@ if (imageUploadInput) {
 // Sự kiện Gửi Tệp tin (File/Document)
 const fileUploadInput = document.getElementById("file-upload");
 if (fileUploadInput) {
-    fileUploadInput.addEventListener("change", function(e) {
+    fileUploadInput.addEventListener("change", function (e) {
         const file = e.target.files[0];
         if (!file) return;
 
@@ -2823,7 +2823,7 @@ if (fileUploadInput) {
         }
 
         const reader = new FileReader();
-        reader.onload = function(event) {
+        reader.onload = function (event) {
             const base64Data = event.target.result;
             const filePayload = {
                 fileName: file.name,
@@ -2839,7 +2839,7 @@ if (fileUploadInput) {
 // 9. Sự kiện Tải lên Avatar Mới
 const avatarUploadInput = document.getElementById("avatar-upload");
 if (avatarUploadInput) {
-    avatarUploadInput.addEventListener("change", async function(e) {
+    avatarUploadInput.addEventListener("change", async function (e) {
         const file = e.target.files[0];
         if (!file) return;
 
@@ -3011,7 +3011,7 @@ function createReactionBurst(messageId, emoji) {
 // 1. Chống chụm ngón tay (Pinch Zoom)
 document.addEventListener(
     "touchmove",
-    function(e) {
+    function (e) {
         if (e.touches.length > 1) {
             e.preventDefault();
         }
@@ -3035,7 +3035,7 @@ function getNicknameForUser(userId, conversationId) {
                     try {
                         const nicks = JSON.parse(item.dataset.nicknames);
                         if (nicks[userId]) return nicks[userId];
-                    } catch (e) {}
+                    } catch (e) { }
                 }
             }
         }
@@ -3537,7 +3537,7 @@ async function openOtherUserProfileModal(userId) {
         }
 
         if (callBtn) {
-            callBtn.onclick = async() => {
+            callBtn.onclick = async () => {
                 closeOtherUserProfileModal();
                 await startChat(user.id, user.name, formatUrl(user.profileAvatarUrl));
                 startCall("voice");
@@ -3545,7 +3545,7 @@ async function openOtherUserProfileModal(userId) {
         }
 
         if (videoBtn) {
-            videoBtn.onclick = async() => {
+            videoBtn.onclick = async () => {
                 closeOtherUserProfileModal();
                 await startChat(user.id, user.name, formatUrl(user.profileAvatarUrl));
                 startCall("video");
@@ -3819,7 +3819,7 @@ async function sendAiMessage() {
                 try {
                     const errData = await response.json();
                     if (errData && errData.error) errorMsg = errData.error;
-                } catch (e) {}
+                } catch (e) { }
             }
             throw new Error(errorMsg);
         }
@@ -3929,12 +3929,12 @@ function formatAiResponse(text) {
 
     for (let i = 0; i < lines.length; i++) {
         let line = lines[i];
-        
+
         // Kiểm tra dòng có phải là tiêu đề Markdown không (bắt đầu bằng # và khoảng trắng)
         const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
         // Kiểm tra dòng có phải là phần tử danh sách không (bắt đầu bằng * hoặc - hoặc + và khoảng trắng)
         const listMatch = line.match(/^\s*[\-\*\+]\s+(.+)$/);
-        
+
         if (headingMatch) {
             if (inList) {
                 resultLines.push('</ul>');
@@ -3945,7 +3945,7 @@ function formatAiResponse(text) {
             let formattedContent = content
                 .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
                 .replace(/`([^`]+)`/g, '<code style="background: rgba(255,255,255,0.08); color: #f4f4f5; padding: 2px 6px; border-radius: 4px; font-family: monospace;">$1</code>');
-            
+
             // Định nghĩa kích thước font chữ và lề tương ứng cho từng cấp độ tiêu đề
             let fontSize = "15px";
             let marginTop = "12px";
@@ -3953,7 +3953,7 @@ function formatAiResponse(text) {
             if (level === 1) { fontSize = "20px"; marginTop = "18px"; marginBottom = "10px"; }
             else if (level === 2) { fontSize = "17px"; marginTop = "16px"; marginBottom = "8px"; }
             else if (level === 3) { fontSize = "15px"; marginTop = "14px"; marginBottom = "6px"; }
-            
+
             resultLines.push(`<h${level} style="font-size: ${fontSize}; margin-top: ${marginTop}; margin-bottom: ${marginBottom}; font-weight: 600; line-height: 1.35; color: var(--text-dark); display: block;">${formattedContent}</h${level}>`);
         } else if (listMatch) {
             const content = listMatch[1];
@@ -3961,7 +3961,7 @@ function formatAiResponse(text) {
             let formattedContent = content
                 .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
                 .replace(/`([^`]+)`/g, '<code style="background: rgba(255,255,255,0.08); color: #f4f4f5; padding: 2px 6px; border-radius: 4px; font-family: monospace;">$1</code>');
-            
+
             if (!inList) {
                 resultLines.push('<ul style="margin: 6px 0; padding-left: 20px; list-style-type: disc;">');
                 inList = true;
@@ -3972,16 +3972,16 @@ function formatAiResponse(text) {
                 resultLines.push('</ul>');
                 inList = false;
             }
-            
+
             // Định dạng inline bold và inline code cho các dòng thường
             let formattedLine = line
                 .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
                 .replace(/`([^`]+)`/g, '<code style="background: rgba(255,255,255,0.08); color: #f4f4f5; padding: 2px 6px; border-radius: 4px; font-family: monospace;">$1</code>');
-                
+
             resultLines.push(formattedLine);
         }
     }
-    
+
     // Nếu kết thúc chuỗi vẫn đang ở trong thẻ ul thì đóng lại
     if (inList) {
         resultLines.push('</ul>');
@@ -3993,13 +3993,13 @@ function formatAiResponse(text) {
     for (let i = 0; i < resultLines.length; i++) {
         const curr = resultLines[i];
         const next = resultLines[i + 1] || "";
-        
+
         finalHtml += curr;
-        
+
         // Thêm <br> nếu dòng hiện tại và dòng tiếp theo không phải là thẻ ul/li/heading hoặc trống
         const isCurrTag = curr.startsWith("<ul") || curr.startsWith("</ul>") || curr.startsWith("<li") || curr.startsWith("</li>") || curr.startsWith("<h");
         const isNextTag = next.startsWith("<ul") || next.startsWith("</ul>") || next.startsWith("<li") || next.startsWith("</li>") || next.startsWith("<h");
-        
+
         if (i < resultLines.length - 1 && !isCurrTag && !isNextTag) {
             finalHtml += "<br>";
         }
@@ -4055,7 +4055,7 @@ async function logout() {
     document.getElementById("chat-screen").style.display = "none";
     document.getElementById("chat-screen").classList.remove("mobile-chat-active");
     document.getElementById("auth-screen").style.display = "flex";
-    
+
     const loginForm = document.getElementById("login-form");
     const registerForm = document.getElementById("register-form");
     if (loginForm) loginForm.style.display = "block";
@@ -5339,10 +5339,10 @@ function updateNotificationBadge() {
     const badge = document.getElementById("notifications-badge");
     const mobileBadge = document.getElementById("mobile-notifications-badge");
     const unreadCount = notificationsList.filter((n) => !n.isRead).length;
-    
+
     const countText = unreadCount > 9 ? "9+" : unreadCount;
     const displayStyle = unreadCount > 0 ? "flex" : "none";
-    
+
     if (badge) {
         badge.innerText = countText;
         badge.style.display = displayStyle;
@@ -6692,7 +6692,7 @@ async function removeNickname(type) {
 
     let targetUserId = type === "self" ? myId : currentChatPartnerId;
     let inputId = type === "self" ? "nickname-self-input" : "nickname-partner-input";
-    
+
     const input = document.getElementById(inputId);
     if (input) input.value = "";
 
@@ -6787,47 +6787,47 @@ const EMOJI_DATA = [
     {
         name: "Mặt cười",
         icon: "😀",
-        emojis: ["😀","😃","😄","😁","😆","😅","🤣","😂","🙂","🙃","😉","😊","😇","🥰","😍","🤩","😘","😗","😚","😙","🥲","😋","😛","😜","🤪","😝","🤑","🤗","🤭","🤫","🤔","🫡","🤐","🤨","😐","😑","😶","🫥","😏","😒","🙄","😬","🤥","😌","😔","😪","🤤","😴","😷","🤒","🤕","🤢","🤮","🥵","🥶","🥴","😵","🤯","🤠","🥳","🥸","😎","🤓","🧐","😕","🫤","😟","🙁","😮","😯","😲","😳","🥺","🥹","😦","😧","😨","😰","😥","😢","😭","😱","😖","😣","😞","😓","😩","😫","🥱","😤","😡","😠","🤬","😈","👿","💀","☠️","💩","🤡","👹","👺","👻","👽","👾","🤖"]
+        emojis: ["😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😂", "🙂", "🙃", "😉", "😊", "😇", "🥰", "😍", "🤩", "😘", "😗", "😚", "😙", "🥲", "😋", "😛", "😜", "🤪", "😝", "🤑", "🤗", "🤭", "🤫", "🤔", "🫡", "🤐", "🤨", "😐", "😑", "😶", "🫥", "😏", "😒", "🙄", "😬", "🤥", "😌", "😔", "😪", "🤤", "😴", "😷", "🤒", "🤕", "🤢", "🤮", "🥵", "🥶", "🥴", "😵", "🤯", "🤠", "🥳", "🥸", "😎", "🤓", "🧐", "😕", "🫤", "😟", "🙁", "😮", "😯", "😲", "😳", "🥺", "🥹", "😦", "😧", "😨", "😰", "😥", "😢", "😭", "😱", "😖", "😣", "😞", "😓", "😩", "😫", "🥱", "😤", "😡", "😠", "🤬", "😈", "👿", "💀", "☠️", "💩", "🤡", "👹", "👺", "👻", "👽", "👾", "🤖"]
     },
     {
         name: "Trái tim",
         icon: "❤️",
-        emojis: ["❤️","🧡","💛","💚","💙","💜","🖤","🤍","🤎","💔","❣️","💕","💞","💓","💗","💖","💘","💝","💟","♥️","🫶","💑","💏","❤️‍🔥","❤️‍🩹","🩷","🩵","🩶"]
+        emojis: ["❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎", "💔", "❣️", "💕", "💞", "💓", "💗", "💖", "💘", "💝", "💟", "♥️", "🫶", "💑", "💏", "❤️‍🔥", "❤️‍🩹", "🩷", "🩵", "🩶"]
     },
     {
         name: "Tay & Cử chỉ",
         icon: "👋",
-        emojis: ["👋","🤚","🖐️","✋","🖖","🫱","🫲","🫳","🫴","👌","🤌","🤏","✌️","🤞","🫰","🤟","🤘","🤙","👈","👉","👆","🖕","👇","☝️","🫵","👍","👎","✊","👊","🤛","🤜","👏","🙌","🫶","👐","🤲","🤝","🙏","✍️","💅","🤳","💪","🦾","🦿","🦵","🦶"]
+        emojis: ["👋", "🤚", "🖐️", "✋", "🖖", "🫱", "🫲", "🫳", "🫴", "👌", "🤌", "🤏", "✌️", "🤞", "🫰", "🤟", "🤘", "🤙", "👈", "👉", "👆", "🖕", "👇", "☝️", "🫵", "👍", "👎", "✊", "👊", "🤛", "🤜", "👏", "🙌", "🫶", "👐", "🤲", "🤝", "🙏", "✍️", "💅", "🤳", "💪", "🦾", "🦿", "🦵", "🦶"]
     },
     {
         name: "Con người",
         icon: "👤",
-        emojis: ["👶","👧","🧒","👦","👩","🧑","👨","👩‍🦱","🧑‍🦱","👨‍🦱","👩‍🦰","🧑‍🦰","👨‍🦰","👱‍♀️","👱","👱‍♂️","👩‍🦳","🧑‍🦳","👨‍🦳","👩‍🦲","🧑‍🦲","👨‍🦲","🧔‍♀️","🧔","🧔‍♂️","👵","🧓","👴","👲","👳‍♀️","👳","👳‍♂️","🧕","👮‍♀️","👮","👮‍♂️","💂‍♀️","💂","💂‍♂️","🥷","👷‍♀️","👷","👷‍♂️","🫅","🤴","👸","👰‍♀️","👰","👰‍♂️","🤵‍♀️","🤵","🤵‍♂️"]
+        emojis: ["👶", "👧", "🧒", "👦", "👩", "🧑", "👨", "👩‍🦱", "🧑‍🦱", "👨‍🦱", "👩‍🦰", "🧑‍🦰", "👨‍🦰", "👱‍♀️", "👱", "👱‍♂️", "👩‍🦳", "🧑‍🦳", "👨‍🦳", "👩‍🦲", "🧑‍🦲", "👨‍🦲", "🧔‍♀️", "🧔", "🧔‍♂️", "👵", "🧓", "👴", "👲", "👳‍♀️", "👳", "👳‍♂️", "🧕", "👮‍♀️", "👮", "👮‍♂️", "💂‍♀️", "💂", "💂‍♂️", "🥷", "👷‍♀️", "👷", "👷‍♂️", "🫅", "🤴", "👸", "👰‍♀️", "👰", "👰‍♂️", "🤵‍♀️", "🤵", "🤵‍♂️"]
     },
     {
         name: "Động vật",
         icon: "🐶",
-        emojis: ["🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐻‍❄️","🐨","🐯","🦁","🐮","🐷","🐸","🐵","🙈","🙉","🙊","🐒","🐔","🐧","🐦","🐤","🐣","🐥","🦆","🦅","🦉","🦇","🐺","🐗","🐴","🦄","🐝","🪱","🐛","🦋","🐌","🐞","🐜","🪰","🪲","🪳","🦟","🦗","🕷️","🕸️","🦂","🐢","🐍","🦎","🦖","🦕","🐙","🦑","🦐","🦞","🦀","🐡","🐠","🐟","🐬","🐳","🐋","🦈","🪸","🐊","🐅","🐆","🦓","🦍","🦧","🐘","🦛","🦏","🐪","🐫","🦒","🦘","🦬","🐃","🐂","🐄","🐎","🐖","🐏","🐑","🦙","🐐","🦌","🐕","🐩","🦮"]
+        emojis: ["🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐻‍❄️", "🐨", "🐯", "🦁", "🐮", "🐷", "🐸", "🐵", "🙈", "🙉", "🙊", "🐒", "🐔", "🐧", "🐦", "🐤", "🐣", "🐥", "🦆", "🦅", "🦉", "🦇", "🐺", "🐗", "🐴", "🦄", "🐝", "🪱", "🐛", "🦋", "🐌", "🐞", "🐜", "🪰", "🪲", "🪳", "🦟", "🦗", "🕷️", "🕸️", "🦂", "🐢", "🐍", "🦎", "🦖", "🦕", "🐙", "🦑", "🦐", "🦞", "🦀", "🐡", "🐠", "🐟", "🐬", "🐳", "🐋", "🦈", "🪸", "🐊", "🐅", "🐆", "🦓", "🦍", "🦧", "🐘", "🦛", "🦏", "🐪", "🐫", "🦒", "🦘", "🦬", "🐃", "🐂", "🐄", "🐎", "🐖", "🐏", "🐑", "🦙", "🐐", "🦌", "🐕", "🐩", "🦮"]
     },
     {
         name: "Đồ ăn",
         icon: "🍔",
-        emojis: ["🍏","🍎","🍐","🍊","🍋","🍌","🍉","🍇","🍓","🫐","🍈","🍒","🍑","🥭","🍍","🥥","🥝","🍅","🍆","🥑","🫛","🥦","🥬","🥒","🌶️","🫑","🌽","🥕","🫒","🧄","🧅","🫚","🥔","🍠","🫘","🥐","🥯","🍞","🥖","🥨","🧀","🥚","🍳","🧈","🥞","🧇","🥓","🥩","🍗","🍖","🌭","🍔","🍟","🍕","🫓","🥪","🥙","🧆","🌮","🌯","🫔","🥗","🥘","🫕","🥫","🍝","🍜","🍲","🍛","🍣","🍱","🥟","🦪","🍤","🍙","🍚","🍘","🍥","🥠","🥮","🍢","🍡","🍧","🍨","🍦","🥧","🧁","🍰","🎂","🍮","🍭","🍬","🍫","🍿","🍩","🍪","🌰","🥜","🍯","🥛","🍼","🫖","☕","🍵","🧃","🥤","🧋","🫧","🍶","🍺","🍻","🥂","🍷","🫗","🥃","🍸","🍹","🧉","🍾","🧊"]
+        emojis: ["🍏", "🍎", "🍐", "🍊", "🍋", "🍌", "🍉", "🍇", "🍓", "🫐", "🍈", "🍒", "🍑", "🥭", "🍍", "🥥", "🥝", "🍅", "🍆", "🥑", "🫛", "🥦", "🥬", "🥒", "🌶️", "🫑", "🌽", "🥕", "🫒", "🧄", "🧅", "🫚", "🥔", "🍠", "🫘", "🥐", "🥯", "🍞", "🥖", "🥨", "🧀", "🥚", "🍳", "🧈", "🥞", "🧇", "🥓", "🥩", "🍗", "🍖", "🌭", "🍔", "🍟", "🍕", "🫓", "🥪", "🥙", "🧆", "🌮", "🌯", "🫔", "🥗", "🥘", "🫕", "🥫", "🍝", "🍜", "🍲", "🍛", "🍣", "🍱", "🥟", "🦪", "🍤", "🍙", "🍚", "🍘", "🍥", "🥠", "🥮", "🍢", "🍡", "🍧", "🍨", "🍦", "🥧", "🧁", "🍰", "🎂", "🍮", "🍭", "🍬", "🍫", "🍿", "🍩", "🍪", "🌰", "🥜", "🍯", "🥛", "🍼", "🫖", "☕", "🍵", "🧃", "🥤", "🧋", "🫧", "🍶", "🍺", "🍻", "🥂", "🍷", "🫗", "🥃", "🍸", "🍹", "🧉", "🍾", "🧊"]
     },
     {
         name: "Hoạt động",
         icon: "⚽",
-        emojis: ["⚽","🏀","🏈","⚾","🥎","🎾","🏐","🏉","🥏","🎱","🪀","🏓","🏸","🏒","🏑","🥍","🏏","🪃","🥅","⛳","🪁","🏹","🎣","🤿","🥊","🥋","🎽","🛹","🛼","🛷","⛸️","🥌","🎿","⛷️","🏂","🪂","🏋️‍♀️","🏋️","🏋️‍♂️","🤸‍♀️","🤸","🤸‍♂️","⛹️‍♀️","⛹️","⛹️‍♂️","🤺","🤾‍♀️","🤾","🤾‍♂️","🏌️‍♀️","🏌️","🏌️‍♂️","🏇","🧘‍♀️","🧘","🧘‍♂️","🏄‍♀️","🏄","🏄‍♂️","🏊‍♀️","🏊","🏊‍♂️","🎪","🎭","🎨","🎬","🎤","🎧","🎼","🎹","🥁","🪘","🎷","🎺","🪗","🎸","🪕","🎻","🎲","♟️","🎯","🎳","🎮","🕹️","🎰"]
+        emojis: ["⚽", "🏀", "🏈", "⚾", "🥎", "🎾", "🏐", "🏉", "🥏", "🎱", "🪀", "🏓", "🏸", "🏒", "🏑", "🥍", "🏏", "🪃", "🥅", "⛳", "🪁", "🏹", "🎣", "🤿", "🥊", "🥋", "🎽", "🛹", "🛼", "🛷", "⛸️", "🥌", "🎿", "⛷️", "🏂", "🪂", "🏋️‍♀️", "🏋️", "🏋️‍♂️", "🤸‍♀️", "🤸", "🤸‍♂️", "⛹️‍♀️", "⛹️", "⛹️‍♂️", "🤺", "🤾‍♀️", "🤾", "🤾‍♂️", "🏌️‍♀️", "🏌️", "🏌️‍♂️", "🏇", "🧘‍♀️", "🧘", "🧘‍♂️", "🏄‍♀️", "🏄", "🏄‍♂️", "🏊‍♀️", "🏊", "🏊‍♂️", "🎪", "🎭", "🎨", "🎬", "🎤", "🎧", "🎼", "🎹", "🥁", "🪘", "🎷", "🎺", "🪗", "🎸", "🪕", "🎻", "🎲", "♟️", "🎯", "🎳", "🎮", "🕹️", "🎰"]
     },
     {
         name: "Du lịch",
         icon: "✈️",
-        emojis: ["🚗","🚕","🚙","🚌","🚎","🏎️","🚓","🚑","🚒","🚐","🛻","🚚","🚛","🚜","🦯","🦽","🦼","🛴","🚲","🛵","🏍️","🛺","🚨","🚔","🚍","🚘","🚖","🛞","🚡","🚠","🚟","🚃","🚋","🚞","🚝","🚄","🚅","🚈","🚂","🚆","🚇","🚊","🚉","✈️","🛫","🛬","🛩️","💺","🛰️","🚀","🛸","🚁","🛶","⛵","🚤","🛥️","🛳️","⛴️","🚢","🗽","🗼","🏰","🏯","🏟️","🎡","🎢","🎠","⛲","⛱️","🏖️","🏝️","🏜️","🌋","⛰️","🏔️","🗻","🏕️","🛖","🏠","🏡","🏗️","🏢","🏬","🏣","🏤","🏥","🏦","🏨","🏪","🏫","🏩","💒","🏛️","⛪","🕌","🕍","🛕","🕋","⛩️"]
+        emojis: ["🚗", "🚕", "🚙", "🚌", "🚎", "🏎️", "🚓", "🚑", "🚒", "🚐", "🛻", "🚚", "🚛", "🚜", "🦯", "🦽", "🦼", "🛴", "🚲", "🛵", "🏍️", "🛺", "🚨", "🚔", "🚍", "🚘", "🚖", "🛞", "🚡", "🚠", "🚟", "🚃", "🚋", "🚞", "🚝", "🚄", "🚅", "🚈", "🚂", "🚆", "🚇", "🚊", "🚉", "✈️", "🛫", "🛬", "🛩️", "💺", "🛰️", "🚀", "🛸", "🚁", "🛶", "⛵", "🚤", "🛥️", "🛳️", "⛴️", "🚢", "🗽", "🗼", "🏰", "🏯", "🏟️", "🎡", "🎢", "🎠", "⛲", "⛱️", "🏖️", "🏝️", "🏜️", "🌋", "⛰️", "🏔️", "🗻", "🏕️", "🛖", "🏠", "🏡", "🏗️", "🏢", "🏬", "🏣", "🏤", "🏥", "🏦", "🏨", "🏪", "🏫", "🏩", "💒", "🏛️", "⛪", "🕌", "🕍", "🛕", "🕋", "⛩️"]
     },
     {
         name: "Đồ vật",
         icon: "💡",
-        emojis: ["⌚","📱","📲","💻","⌨️","🖥️","🖨️","🖱️","🖲️","🕹️","🗜️","💽","💾","💿","📀","📼","📷","📸","📹","🎥","📽️","🎞️","📞","☎️","📟","📠","📺","📻","🎙️","🎚️","🎛️","🧭","⏱️","⏲️","⏰","🕰️","⌛","⏳","📡","🔋","🪫","🔌","💡","🔦","🕯️","🪔","🧯","🛢️","🪙","💰","💴","💵","💶","💷","🪪","💳","💎","⚖️","🪜","🧰","🪛","🔧","🔨","⚒️","🛠️","⛏️","🪚","🔩","⚙️","🪤","🧱","⛓️","🧲","🔫","💣","🧨","🪓","🔪","🗡️","⚔️","🛡️","🚬","⚰️","🪦","⚱️","🏺","🔮","📿","🧿","🪬","💈","⚗️","🔭","🔬","🕳️","🩹","🩺","🩻","🩼","💊","💉","🩸","🧬","🦠","🧫","🧪","🌡️","🧹","🪠","🧺","🧻","🧼","🫧","🪥","🧽","🧯","🛒","🚬"]
+        emojis: ["⌚", "📱", "📲", "💻", "⌨️", "🖥️", "🖨️", "🖱️", "🖲️", "🕹️", "🗜️", "💽", "💾", "💿", "📀", "📼", "📷", "📸", "📹", "🎥", "📽️", "🎞️", "📞", "☎️", "📟", "📠", "📺", "📻", "🎙️", "🎚️", "🎛️", "🧭", "⏱️", "⏲️", "⏰", "🕰️", "⌛", "⏳", "📡", "🔋", "🪫", "🔌", "💡", "🔦", "🕯️", "🪔", "🧯", "🛢️", "🪙", "💰", "💴", "💵", "💶", "💷", "🪪", "💳", "💎", "⚖️", "🪜", "🧰", "🪛", "🔧", "🔨", "⚒️", "🛠️", "⛏️", "🪚", "🔩", "⚙️", "🪤", "🧱", "⛓️", "🧲", "🔫", "💣", "🧨", "🪓", "🔪", "🗡️", "⚔️", "🛡️", "🚬", "⚰️", "🪦", "⚱️", "🏺", "🔮", "📿", "🧿", "🪬", "💈", "⚗️", "🔭", "🔬", "🕳️", "🩹", "🩺", "🩻", "🩼", "💊", "💉", "🩸", "🧬", "🦠", "🧫", "🧪", "🌡️", "🧹", "🪠", "🧺", "🧻", "🧼", "🫧", "🪥", "🧽", "🧯", "🛒", "🚬"]
     }
 ];
 
@@ -6847,14 +6847,14 @@ function deleteLastCharFromInput() {
     if (!input) return;
     const text = input.value;
     if (text.length === 0) return;
-    
+
     // Sử dụng Array.from để tách ký tự/emoji surrogate pairs chuẩn xác
     const chars = Array.from(text);
     chars.pop();
     input.value = chars.join("");
-    
+
     input.dispatchEvent(new Event("input", { bubbles: true }));
-    
+
     // Tránh tự động focus trên mobile để không làm nhảy bàn phím ảo
     if (window.innerWidth > 768) {
         input.focus();
@@ -6900,7 +6900,7 @@ function initEmojiPicker() {
     deleteTab.className = "emoji-category-tab delete-tab";
     deleteTab.innerHTML = '<i class="fas fa-backspace"></i>';
     deleteTab.title = "Xóa";
-    
+
     // Xử lý giữ nút để xóa nhanh (giống bàn phím thật)
     let deleteInterval = null;
     const startDelete = () => {
@@ -6918,7 +6918,7 @@ function initEmojiPicker() {
     deleteTab.onmouseleave = stopDelete;
     deleteTab.ontouchstart = (e) => { e.preventDefault(); startDelete(); };
     deleteTab.ontouchend = stopDelete;
-    
+
     tabsContainer.appendChild(deleteTab);
 
     // Tạo emoji grid
@@ -6991,15 +6991,15 @@ function insertEmojiToInput(emoji) {
     const end = input.selectionEnd;
     const text = input.value;
     input.value = text.substring(0, start) + emoji + text.substring(end);
-    
+
     // Set cursor position after emoji
     const newPos = start + emoji.length;
     input.selectionStart = newPos;
     input.selectionEnd = newPos;
-    
+
     // Trigger input event for any listeners (like show/hide send button)
     input.dispatchEvent(new Event("input", { bubbles: true }));
-    
+
     // Chỉ focus lại trên Desktop (để tiếp tục gõ), trên mobile tránh gọi focus gây bật bàn phím ảo che mất emoji
     if (window.innerWidth > 768) {
         input.focus();
@@ -7019,19 +7019,19 @@ function toggleEmojiPicker(e) {
         // Tắt bàn phím ảo trên mobile khi bật chọn emoji
         const input = document.getElementById("message-input");
         if (input) input.blur();
-        
+
         initEmojiPicker();
         panel.classList.add("show");
         if (btn) btn.classList.add("active");
-        
+
         // Thêm class emoji-open ở input-area
         const inputArea = document.getElementById("input-area");
         if (inputArea) inputArea.classList.add("emoji-open");
-        
+
         // Clear search
         const searchInput = document.getElementById("emoji-search-input");
         if (searchInput) searchInput.value = "";
-        
+
         // Reset to show all emojis
         const grid = document.getElementById("emoji-grid");
         if (grid) renderAllEmojis(grid);
@@ -7052,7 +7052,7 @@ function closeEmojiPicker() {
     const btn = document.getElementById("emoji-toggle-btn");
     if (panel) panel.classList.remove("show");
     if (btn) btn.classList.remove("active");
-    
+
     // Xóa class emoji-open ở input-area
     const inputArea = document.getElementById("input-area");
     if (inputArea) inputArea.classList.remove("emoji-open");
@@ -7061,7 +7061,7 @@ function closeEmojiPicker() {
 function filterEmojis(query) {
     const grid = document.getElementById("emoji-grid");
     if (!grid) return;
-    
+
     if (!query || query.trim() === "") {
         renderAllEmojis(grid);
         return;
@@ -7075,7 +7075,7 @@ function filterEmojis(query) {
         // Simple filter: match category name
         const catNameMatch = cat.name.toLowerCase().includes(query);
         const matchedEmojis = catNameMatch ? cat.emojis : [];
-        
+
         if (matchedEmojis.length > 0) {
             hasResults = true;
             const label = document.createElement("div");
@@ -7143,7 +7143,7 @@ window.addEventListener("beforeinstallprompt", (e) => {
     // Hiển thị các nút cài đặt trên giao diện
     const installProfileItem = document.getElementById("install-app-profile-item");
     const installAuthBtn = document.getElementById("install-app-auth-btn");
-    
+
     if (installProfileItem) installProfileItem.style.display = "flex";
     if (installAuthBtn) installAuthBtn.style.display = "flex";
 });
@@ -7158,7 +7158,7 @@ async function triggerPwaInstall() {
         console.log(`Lựa chọn cài đặt của người dùng: ${outcome}`);
         // Xóa prompt đã lưu
         deferredPrompt = null;
-        
+
         // Ẩn các nút cài đặt
         hideInstallButtons();
     } else {
@@ -7196,7 +7196,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const installProfileItem = document.getElementById("install-app-profile-item");
     const installAuthBtn = document.getElementById("install-app-auth-btn");
-    
+
     if (installProfileItem) {
         installProfileItem.addEventListener("click", triggerPwaInstall);
     }
@@ -7284,7 +7284,7 @@ function renderNews() {
         }
     } else {
         if (emptyState) emptyState.style.display = "none";
-        
+
         filteredNews.forEach(item => {
             const cardHtml = getNewsCardHtml(item);
             newsList.insertAdjacentHTML("beforeend", cardHtml);
@@ -7307,14 +7307,14 @@ function getCategoryDetails(category) {
 function getNewsCardHtml(newsItem, isNewRealtime = false) {
     const animationClass = isNewRealtime ? "realtime-news-animation" : "";
     const { label, badgeClass } = getCategoryDetails(newsItem.category);
-    
+
     // Kiểm tra trạng thái đã đọc hay chưa
     const isRead = readNewsIds.includes(newsItem.id);
     const readClass = isRead ? "read" : "";
-    
+
     // Tạo nhãn "Đã đọc" / "Chưa đọc"
-    const statusBadge = isRead 
-        ? `<span class="read-status-badge read" id="status-badge-${newsItem.id}">Đã đọc</span>` 
+    const statusBadge = isRead
+        ? `<span class="read-status-badge read" id="status-badge-${newsItem.id}">Đã đọc</span>`
         : `<span class="read-status-badge unread" id="status-badge-${newsItem.id}">Chưa đọc</span>`;
 
     // Nhãn "Mới" cho tin cào trong vòng 6 tiếng gần đây
@@ -7323,7 +7323,7 @@ function getNewsCardHtml(newsItem, isNewRealtime = false) {
 
     // Định dạng ngày giờ thân thiện
     const date = new Date(newsItem.createdAt);
-    const formattedTime = date.toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' }) + 
+    const formattedTime = date.toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' }) +
         " " + date.toLocaleDateString("vi-VN", { day: '2-digit', month: '2-digit' });
 
     return `
@@ -7365,7 +7365,7 @@ function filterNews(category, btnElement) {
     // Cập nhật trạng thái active cho nút bấm lọc
     const filterButtons = document.querySelectorAll(".news-filter-btn");
     filterButtons.forEach(btn => btn.classList.remove("active"));
-    
+
     if (btnElement) {
         btnElement.classList.add("active");
     }
@@ -7397,9 +7397,9 @@ async function showNewsDetail(newsId) {
     detailTitle.textContent = newsItem.title;
     detailBadge.textContent = label;
     detailBadge.className = `news-detail-badge ${badgeClass}`;
-    
+
     const date = new Date(newsItem.createdAt);
-    detailTime.textContent = date.toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' }) + 
+    detailTime.textContent = date.toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' }) +
         " " + date.toLocaleDateString("vi-VN", { day: '2-digit', month: '2-digit' });
 
     // Hiển thị màn hình chi tiết
@@ -7413,7 +7413,7 @@ async function showNewsDetail(newsId) {
         } catch (e) {
             console.error(e);
         }
-        
+
         // Cập nhật giao diện của card tương ứng ngay lập tức
         const card = document.getElementById(`news-card-${newsId}`);
         if (card) {
