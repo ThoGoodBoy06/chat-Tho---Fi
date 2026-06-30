@@ -451,77 +451,101 @@ server.listen(PORT, () => {
   }
 
   // ============================================
-  // REAL-TIME NEWS GENERATOR: Giả lập tạo tin tức mới mỗi 45 giây
+  // REAL-TIME NEWS SCRAPER (VNEXPRESS SO HOA)
   // ============================================
-  const SIMULATED_NEWS_POOL = [
-    {
-      title: "OpenAI công bố mô hình GPT-5 với khả năng suy luận logic vượt trội",
-      content: "Mô hình mới mang tên GPT-5 của OpenAI dự kiến sẽ ra mắt vào cuối năm nay, cải thiện 50% khả năng giải quyết các bài toán logic phức tạp và xử lý đa phương thức thời gian thực.",
-      category: "AI"
-    },
-    {
-      title: "Google công bố chip Tensor G6 sản xuất trên tiến trình 3nm",
-      content: "Dòng vi xử lý Tensor thế hệ mới dành cho Pixel 10 sẽ được Google thiết kế hoàn toàn và sản xuất trên tiến trình 3nm của TSMC, hứa hẹn tối ưu hóa hiệu năng và tiết kiệm pin vượt trội.",
-      category: "Tech"
-    },
-    {
-      title: "NVIDIA ra mắt siêu máy tính AI Blackwell thế hệ mới",
-      content: "Blackwell B200 của NVIDIA mang đến hiệu năng tính toán AI lên tới 20 petaflops, giảm lượng tiêu thụ điện năng gấp 25 lần so với kiến trúc Hopper cũ.",
-      category: "AI"
-    },
-    {
-      title: "Apple phát triển kính thực tế ảo giá rẻ hơn cho năm 2027",
-      content: "Theo nguồn tin từ chuỗi cung ứng, Apple đang thiết kế một phiên bản Vision Pro rút gọn với mức giá khoảng 1,500 USD nhằm tiếp cận lượng khách hàng đại chúng lớn hơn.",
-      category: "Tech"
-    },
-    {
-      title: "Mô hình Claude 3.5 Sonnet thống trị các bảng xếp hạng lập trình",
-      content: "Phiên bản nâng cấp Claude 3.5 Sonnet từ Anthropic thể hiện độ chính xác vượt trội hơn hẳn GPT-4o trong việc viết mã nguồn và gỡ lỗi phần mềm tự động.",
-      category: "AI"
-    },
-    {
-      title: "Việt Nam đẩy mạnh đầu tư hạ tầng trung tâm dữ liệu và bán dẫn",
-      content: "Nhiều tập đoàn công nghệ lớn trong nước và quốc tế đang rục rịch đầu tư hàng tỷ USD xây dựng các trung tâm dữ liệu quy mô lớn (Hyperscale Data Center) tại TP.HCM và Đà Nẵng.",
-      category: "Tech"
-    },
-    {
-      title: "Meta phát hành mô hình mã nguồn mở Llama 3.2 hỗ trợ xử lý hình ảnh",
-      content: "Mô hình Llama 3.2 thế hệ mới có các phiên bản nhỏ gọn chạy trực tiếp trên thiết bị di động cũng như các bản lớn hỗ trợ đa phương thức văn bản - hình ảnh.",
-      category: "AI"
-    },
-    {
-      title: "Microsoft ra mắt Copilot Studio giúp doanh nghiệp tự xây dựng AI Agent",
-      content: "Nền tảng low-code mới cho phép các công ty nhanh chóng thiết kế, kiểm thử và triển khai các đại lý AI tự động hóa quy trình công việc nội bộ.",
-      category: "AI"
-    }
-  ];
-
-  let newsCycleIndex = 0;
-  setInterval(async () => {
+  async function updateRealNews(ioInstance) {
     try {
-      const template = SIMULATED_NEWS_POOL[newsCycleIndex];
-      newsCycleIndex = (newsCycleIndex + 1) % SIMULATED_NEWS_POOL.length;
+      const response = await fetch("https://vnexpress.net/rss/so-hoa.rss");
+      const xmlText = await response.text();
 
-      const suffix = ` [Cập nhật lúc ${new Date().toLocaleTimeString("vi-VN")}]`;
-      const title = template.title + suffix;
+      const items = [];
+      const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+      let match;
+      while ((match = itemRegex.exec(xmlText)) !== null) {
+        const itemContent = match[1];
+        
+        const extractTag = (tag) => {
+          const regex = new RegExp(`<${tag}>(?:<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>|([\\s\\S]*?))<\/${tag}>`);
+          const tagMatch = itemContent.match(regex);
+          if (tagMatch) {
+            return (tagMatch[1] || tagMatch[2] || "").trim();
+          }
+          return "";
+        };
 
-      // Lưu vào Database qua Prisma
-      const newNewsItem = await prisma.news.create({
-        data: {
-          title,
-          content: template.content,
-          category: template.category
+        let title = extractTag("title");
+        let description = extractTag("description");
+        let pubDate = extractTag("pubDate");
+
+        // Clean up description
+        if (description.includes("<br/>")) {
+          description = description.split("<br/>").pop();
         }
-      });
+        description = description.replace(/<a[\s\S]*?<\/a>/g, ""); // remove anchor image link
+        description = description.replace(/<[^>]*>?/gm, "").trim(); // remove general HTML tags
 
-      console.log(`📰 [Simulated News] Đã tạo tin tức mới: ${title}`);
-      
-      // Phát sự kiện broadcast qua Socket.io tới tất cả client
-      io.emit("new_news_broadcast", newNewsItem);
-    } catch (err) {
-      console.error("❌ Lỗi khi tự động tạo tin tức giả lập:", err);
+        if (title) {
+          items.push({
+            title,
+            content: description,
+            pubDate: pubDate ? new Date(pubDate) : new Date()
+          });
+        }
+      }
+
+      // Sắp xếp bài từ cũ đến mới để ghi nhận vào DB đúng thứ tự thời gian
+      items.reverse();
+
+      for (const item of items) {
+        // Kiểm tra xem tin đã tồn tại trong DB chưa
+        const existing = await prisma.news.findFirst({
+          where: { title: item.title }
+        });
+
+        if (!existing) {
+          // Phân loại danh mục tự động dựa trên từ khóa
+          const aiKeywords = [
+            "ai", "intelligence", "trí tuệ nhân tạo", "chatgpt", "openai", "gemini", 
+            "claude", "nvidia", "blackwell", "llm", "suy luận", "copilot", "siri", 
+            "robot", "deepseek", "qwen"
+          ];
+          const lowerTitle = item.title.toLowerCase();
+          const lowerContent = item.content.toLowerCase();
+          let category = "Tech";
+          
+          if (aiKeywords.some(keyword => lowerTitle.includes(keyword) || lowerContent.includes(keyword))) {
+            category = "AI";
+          }
+
+          const newNewsItem = await prisma.news.create({
+            data: {
+              title: item.title,
+              content: item.content,
+              category,
+              createdAt: item.pubDate
+            }
+          });
+
+          console.log(`📰 [Real News] Đã tải thêm tin mới: ${item.title}`);
+          
+          // Phát sóng tới tất cả client nếu đây là lần quét định kỳ
+          if (ioInstance) {
+            ioInstance.emit("new_news_broadcast", newNewsItem);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("❌ Lỗi khi cập nhật tin tức từ VNExpress RSS:", error.message);
     }
-  }, 45000); // Mỗi 45 giây một tin tức mới
+  }
+
+  // Tải đồng bộ tin tức VNExpress ngay khi khởi động server
+  updateRealNews(null);
+
+  // Định kỳ quét RSS sau mỗi 5 phút (300.000 ms) để tìm tin mới
+  setInterval(() => {
+    updateRealNews(io);
+  }, 5 * 60 * 1000);
 });
 
 // Health check endpoint (dùng bởi self-ping)
