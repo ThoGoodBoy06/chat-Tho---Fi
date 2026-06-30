@@ -14,7 +14,7 @@
     <meta name="apple-mobile-web-app-title" content="Chat Tho-Fi" />
     <link rel="icon" href="icon.png" type="image/png" />
     <link rel="apple-touch-icon" href="icon.png" />
-    <link rel="stylesheet" href="style.css?v=34014" />
+    <link rel="stylesheet" href="style.css?v=34015" />
 </head>
 
 <body>
@@ -369,7 +369,7 @@
             </div>
 
             <!-- TAB 5: TIN TỨC -->
-            <div id="tab-news" class="tab-pane">
+            <div id="tab-news" class="tab-pane" style="position: relative; height: 100%;">
                 <div class="news-container">
                     <div class="news-header">
                         <h3>Tin tức Công nghệ & AI</h3>
@@ -384,6 +384,25 @@
                         <div class="news-empty-state" id="news-empty-state">
                             <i class="fas fa-newspaper" style="font-size: 36px; color: var(--text-light); margin-bottom: 12px; display: block;"></i>
                             <p style="color: var(--text-light); font-size: 13.5px;">Đang tải tin tức mới nhất...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trang chi tiết bài viết (độc lập dạng đọc báo) -->
+                <div class="news-detail-view" id="news-detail-view" style="display: none;">
+                    <div class="news-detail-header">
+                        <button class="news-detail-back-btn" onclick="closeNewsDetail()">
+                            <i class="fas fa-chevron-left"></i> Quay lại
+                        </button>
+                        <span class="news-detail-badge" id="news-detail-badge">AI</span>
+                    </div>
+                    <div class="news-detail-content-area">
+                        <h1 class="news-detail-title" id="news-detail-title">Tiêu đề bài viết</h1>
+                        <div class="news-detail-meta">
+                            <span class="news-detail-time" id="news-detail-time"></span>
+                        </div>
+                        <div class="news-detail-body" id="news-detail-body">
+                            <!-- Nội dung đầy đủ cào từ VNExpress sẽ hiện ở đây -->
                         </div>
                     </div>
                 </div>
@@ -948,7 +967,7 @@
 
     <!-- Import Socket.IO và file xử lý logic -->
     <script src="/socket.io/socket.io.js"></script>
-    <script src="app.js?v=34006"></script>
+    <script src="app.js?v=34007"></script>
 </body>
 
 </html>

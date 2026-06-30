@@ -7294,20 +7294,13 @@ function getNewsCardHtml(newsItem, isNewRealtime = false) {
         " " + date.toLocaleDateString("vi-VN", { day: '2-digit', month: '2-digit' });
 
     return `
-        <div class="news-card ${animationClass}" data-category="${newsItem.category}" onclick="toggleNewsCard(this)" style="cursor: pointer;">
+        <div class="news-card ${animationClass}" data-category="${newsItem.category}" onclick="showNewsDetail('${newsItem.id}')" style="cursor: pointer;">
             <div class="news-card-header">
                 <span class="news-badge ${badgeClass}">${categoryLabel}</span>
                 <span class="news-time">${formattedTime}</span>
             </div>
             <h4 class="news-title">${newsItem.title}</h4>
-            <p class="news-content">${newsItem.content}</p>
-            ${newsItem.link ? `
-            <div class="news-card-footer">
-                <span class="read-more-btn" onclick="event.stopPropagation(); openNewsLink('${newsItem.link}')">
-                    Đọc báo gốc <i class="fas fa-external-link-alt" style="font-size: 11px;"></i>
-                </span>
-            </div>
-            ` : ""}
+            <p class="news-content" style="max-height: none; opacity: 1; overflow: visible; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin-top: 8px;">${newsItem.content}</p>
         </div>
     `;
 }
@@ -7350,11 +7343,69 @@ function openNewsLink(url) {
     }
 }
 
-function toggleNewsCard(cardElement) {
-    cardElement.classList.toggle("expanded");
+async function showNewsDetail(newsId) {
+    const detailView = document.getElementById("news-detail-view");
+    const detailTitle = document.getElementById("news-detail-title");
+    const detailBadge = document.getElementById("news-detail-badge");
+    const detailTime = document.getElementById("news-detail-time");
+    const detailBody = document.getElementById("news-detail-body");
+
+    if (!detailView) return;
+
+    // Tìm bài viết trong bộ nhớ cục bộ để hiện các thông tin cơ bản ngay lập tức
+    const newsItem = allNewsItems.find(item => item.id === newsId);
+    if (!newsItem) return;
+
+    // Gán dữ liệu cơ bản
+    detailTitle.textContent = newsItem.title;
+    detailBadge.textContent = newsItem.category === "AI" ? "AI" : "Công nghệ";
+    detailBadge.className = `news-detail-badge ${newsItem.category === "AI" ? "ai-badge" : "tech-badge"}`;
+    
+    const date = new Date(newsItem.createdAt);
+    detailTime.textContent = date.toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' }) + 
+        " " + date.toLocaleDateString("vi-VN", { day: '2-digit', month: '2-digit' });
+
+    // Hiển thị màn hình chi tiết
+    detailView.style.display = "flex";
+
+    // Hiển thị biểu tượng tải dữ liệu
+    detailBody.innerHTML = `
+        <div style="text-align: center; padding: 60px 0;">
+            <i class="fas fa-spinner fa-spin" style="font-size: 32px; color: var(--primary-color); margin-bottom: 12px; display: block; margin-left: auto; margin-right: auto;"></i>
+            <p style="color: var(--text-light); font-size: 13.5px;">Đang tải nội dung chi tiết...</p>
+        </div>
+    `;
+
+    try {
+        const response = await fetch(`${API_URL}/news/${newsId}/content`);
+        const json = await response.json();
+
+        if (json.success) {
+            detailBody.innerHTML = json.data;
+        } else {
+            throw new Error(json.message);
+        }
+    } catch (error) {
+        console.error("Lỗi khi tải chi tiết bài báo:", error);
+        detailBody.innerHTML = `
+            <div style="text-align: center; padding: 40px 0;">
+                <i class="fas fa-exclamation-triangle" style="font-size: 36px; color: #ef4444; margin-bottom: 12px; display: block; margin-left: auto; margin-right: auto;"></i>
+                <p style="color: #ef4444; font-size: 13.5px;">Không thể tải nội dung chi tiết. Bạn có thể đọc trực tiếp tại nguồn báo:</p>
+                ${newsItem.link ? `<a href="${newsItem.link}" target="_blank" style="color: var(--primary-color); font-weight: 600; text-decoration: underline; font-size: 14px; margin-top: 12px; display: inline-block;">Đọc bài viết gốc trên VNExpress <i class="fas fa-external-link-alt"></i></a>` : ""}
+            </div>
+        `;
+    }
+}
+
+function closeNewsDetail() {
+    const detailView = document.getElementById("news-detail-view");
+    if (detailView) {
+        detailView.style.display = "none";
+    }
 }
 
 // Đăng ký toàn cục để các hàm inline onclick hoạt động được
 window.filterNews = filterNews;
 window.openNewsLink = openNewsLink;
-window.toggleNewsCard = toggleNewsCard;
+window.showNewsDetail = showNewsDetail;
+window.closeNewsDetail = closeNewsDetail;

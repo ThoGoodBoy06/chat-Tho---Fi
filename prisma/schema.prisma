@@ -122,10 +122,11 @@ model Notifications {
 }
 
 model News {
-  id        String   @id @default(uuid())
-  title     String
-  content   String
-  category  String   // "AI" hoặc "Tech"
-  link      String?  // Đường dẫn gốc của bài báo
-  createdAt DateTime @default(now())
+  id          String   @id @default(uuid())
+  title       String
+  content     String
+  category    String   // "AI" hoặc "Tech"
+  link        String?  // Đường dẫn gốc của bài báo
+  fullContent String?  // Nội dung chi tiết bài báo (cào từ VNExpress)
+  createdAt   DateTime @default(now())
 }
