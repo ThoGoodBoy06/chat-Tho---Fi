@@ -7274,6 +7274,15 @@ function renderNews() {
         return item.category === currentNewsFilter;
     });
 
+    // Sắp xếp tin tức: Chưa đọc lên trên, Đã đọc xuống dưới. Cùng trạng thái thì tin mới hơn lên đầu.
+    filteredNews.sort((a, b) => {
+        const aRead = readNewsIds.includes(a.id);
+        const bRead = readNewsIds.includes(b.id);
+        if (aRead && !bRead) return 1;
+        if (!aRead && bRead) return -1;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
     if (filteredNews.length === 0) {
         if (emptyState) {
             emptyState.style.display = "block";
@@ -7414,16 +7423,8 @@ async function showNewsDetail(newsId) {
             console.error(e);
         }
 
-        // Cập nhật giao diện của card tương ứng ngay lập tức
-        const card = document.getElementById(`news-card-${newsId}`);
-        if (card) {
-            card.classList.add("read");
-            const badge = document.getElementById(`status-badge-${newsId}`);
-            if (badge) {
-                badge.className = "read-status-badge read";
-                badge.textContent = "Đã đọc";
-            }
-        }
+        // Rerender lại toàn bộ danh sách để tự động đưa tin đã đọc xuống dưới và đẩy tin chưa đọc lên trên
+        renderNews();
     }
 
     // Hiển thị biểu tượng tải dữ liệu
