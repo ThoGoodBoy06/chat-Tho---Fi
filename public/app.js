@@ -7293,10 +7293,8 @@ function getNewsCardHtml(newsItem, isNewRealtime = false) {
     const formattedTime = date.toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' }) + 
         " " + date.toLocaleDateString("vi-VN", { day: '2-digit', month: '2-digit' });
 
-    const linkOnClick = newsItem.link ? `onclick="openNewsLink('${newsItem.link}')" style="cursor: pointer;"` : "";
-
     return `
-        <div class="news-card ${animationClass}" data-category="${newsItem.category}" ${linkOnClick}>
+        <div class="news-card ${animationClass}" data-category="${newsItem.category}" onclick="toggleNewsCard(this)" style="cursor: pointer;">
             <div class="news-card-header">
                 <span class="news-badge ${badgeClass}">${categoryLabel}</span>
                 <span class="news-time">${formattedTime}</span>
@@ -7304,8 +7302,8 @@ function getNewsCardHtml(newsItem, isNewRealtime = false) {
             <h4 class="news-title">${newsItem.title}</h4>
             <p class="news-content">${newsItem.content}</p>
             ${newsItem.link ? `
-            <div class="news-card-footer" style="margin-top: 12px; text-align: right; border-top: 1px solid var(--border-color); padding-top: 8px;">
-                <span class="read-more-btn" style="color: var(--primary-color); font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+            <div class="news-card-footer">
+                <span class="read-more-btn" onclick="event.stopPropagation(); openNewsLink('${newsItem.link}')">
                     Đọc báo gốc <i class="fas fa-external-link-alt" style="font-size: 11px;"></i>
                 </span>
             </div>
@@ -7352,6 +7350,11 @@ function openNewsLink(url) {
     }
 }
 
+function toggleNewsCard(cardElement) {
+    cardElement.classList.toggle("expanded");
+}
+
 // Đăng ký toàn cục để các hàm inline onclick hoạt động được
 window.filterNews = filterNews;
 window.openNewsLink = openNewsLink;
+window.toggleNewsCard = toggleNewsCard;
