@@ -688,6 +688,13 @@ function initizeChatSession(userData, userToken) {
         console.warn("🔴 Socket bị ngắt kết nối. Lý do:", reason);
     });
 
+    // Nghe khi có tin tức mới Real-time
+    socket.on("new_news_broadcast", (newsItem) => {
+        if (typeof handleIncomingRealtimeNews === "function") {
+            handleIncomingRealtimeNews(newsItem);
+        }
+    });
+
     // Nghe danh sách lời mời bạn bè ban đầu
     socket.on("initial_friend_requests", (requests) => {
         pendingFriendRequests = requests || [];
@@ -3589,6 +3596,10 @@ function switchTab(tabId, navElement) {
     if (tabId === "tab-settings") {
         updateMediaDevicesList();
         updateNotificationPermissionUI();
+    }
+
+    if (tabId === "tab-news" && !newsListLoaded) {
+        loadInitialNews();
     }
 
 
@@ -7195,3 +7206,136 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Không tự động kích hoạt trên iOS (chỉ hỗ trợ Android/Chrome thông qua event beforeinstallprompt)
 });
+
+// ==========================================================================
+// TÍNH NĂNG TIN TỨC REAL-TIME (TECH & AI NEWS)
+// ==========================================================================
+let newsListLoaded = false;
+let allNewsItems = [];
+let currentNewsFilter = "all";
+
+async function loadInitialNews() {
+    const newsList = document.getElementById("news-list");
+    const emptyState = document.getElementById("news-empty-state");
+
+    if (emptyState) {
+        emptyState.style.display = "block";
+        emptyState.innerHTML = `
+            <i class="fas fa-spinner fa-spin" style="font-size: 36px; color: var(--text-light); margin-bottom: 12px; display: block;"></i>
+            <p style="color: var(--text-light); font-size: 13.5px;">Đang tải tin tức mới nhất...</p>
+        `;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/news`);
+        const json = await response.json();
+
+        if (json.success && Array.isArray(json.data)) {
+            allNewsItems = json.data;
+            newsListLoaded = true;
+            renderNews();
+        } else {
+            throw new Error(json.message || "Không thể tải dữ liệu.");
+        }
+    } catch (error) {
+        console.error("Lỗi khi tải danh sách tin tức ban đầu:", error);
+        if (emptyState) {
+            emptyState.style.display = "block";
+            emptyState.innerHTML = `
+                <i class="fas fa-exclamation-triangle" style="font-size: 36px; color: #ef4444; margin-bottom: 12px; display: block;"></i>
+                <p style="color: #ef4444; font-size: 13.5px;">Không thể kết nối máy chủ tin tức. Vui lòng thử lại.</p>
+            `;
+        }
+    }
+}
+
+function renderNews() {
+    const newsList = document.getElementById("news-list");
+    const emptyState = document.getElementById("news-empty-state");
+
+    if (!newsList) return;
+
+    // Xóa các news-card cũ
+    const cards = newsList.querySelectorAll(".news-card");
+    cards.forEach(card => card.remove());
+
+    // Lọc tin tức theo danh mục
+    const filteredNews = allNewsItems.filter(item => {
+        if (currentNewsFilter === "all") return true;
+        return item.category === currentNewsFilter;
+    });
+
+    if (filteredNews.length === 0) {
+        if (emptyState) {
+            emptyState.style.display = "block";
+            emptyState.innerHTML = `
+                <i class="fas fa-newspaper" style="font-size: 36px; color: var(--text-light); margin-bottom: 12px; display: block;"></i>
+                <p style="color: var(--text-light); font-size: 13.5px;">Chưa có tin tức nào thuộc danh mục này.</p>
+            `;
+        }
+    } else {
+        if (emptyState) emptyState.style.display = "none";
+        
+        filteredNews.forEach(item => {
+            const cardHtml = getNewsCardHtml(item);
+            newsList.insertAdjacentHTML("beforeend", cardHtml);
+        });
+    }
+}
+
+function getNewsCardHtml(newsItem, isNewRealtime = false) {
+    const animationClass = isNewRealtime ? "realtime-news-animation" : "";
+    const badgeClass = newsItem.category === "AI" ? "ai-badge" : "tech-badge";
+    const categoryLabel = newsItem.category === "AI" ? "AI" : "Công nghệ";
+    
+    // Định dạng ngày giờ thân thiện
+    const date = new Date(newsItem.createdAt);
+    const formattedTime = date.toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' }) + 
+        " " + date.toLocaleDateString("vi-VN", { day: '2-digit', month: '2-digit' });
+
+    return `
+        <div class="news-card ${animationClass}" data-category="${newsItem.category}">
+            <div class="news-card-header">
+                <span class="news-badge ${badgeClass}">${categoryLabel}</span>
+                <span class="news-time">${formattedTime}</span>
+            </div>
+            <h4 class="news-title">${newsItem.title}</h4>
+            <p class="news-content">${newsItem.content}</p>
+        </div>
+    `;
+}
+
+function handleIncomingRealtimeNews(newsItem) {
+    // Lưu vào bộ nhớ cục bộ
+    allNewsItems.unshift(newsItem);
+
+    // Nếu tin tức mới khớp với bộ lọc hiện tại, chèn lên đầu danh sách kèm hiệu ứng
+    if (currentNewsFilter === "all" || currentNewsFilter === newsItem.category) {
+        const newsList = document.getElementById("news-list");
+        const emptyState = document.getElementById("news-empty-state");
+
+        if (emptyState) emptyState.style.display = "none";
+
+        if (newsList) {
+            const cardHtml = getNewsCardHtml(newsItem, true);
+            newsList.insertAdjacentHTML("afterbegin", cardHtml);
+        }
+    }
+}
+
+function filterNews(category, btnElement) {
+    currentNewsFilter = category;
+
+    // Cập nhật trạng thái active cho nút bấm lọc
+    const filterButtons = document.querySelectorAll(".news-filter-btn");
+    filterButtons.forEach(btn => btn.classList.remove("active"));
+    
+    if (btnElement) {
+        btnElement.classList.add("active");
+    }
+
+    renderNews();
+}
+
+// Đăng ký toàn cục để các hàm inline onclick hoạt động được
+window.filterNews = filterNews;

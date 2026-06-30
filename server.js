@@ -50,6 +50,7 @@ const authRoutes = require("./routes/auth.routes");
 const chatRoutes = require("./routes/chat.routes");
 const userRoutes = require("./routes/user.routes");
 const aiRoutes = require("./routes/ai.routes");
+const newsRoutes = require("./routes/news.routes");
 
 // Tạo một API test thử xem server chạy chưa (nếu từ trình duyệt thì trả về file index.html giao diện)
 app.get("/", async (req, res) => {
@@ -327,6 +328,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/users", userRoutes); // Mount các API user (profile, cover) vào đây
 app.use("/api/ai", aiRoutes);
+app.use("/api/news", newsRoutes);
 
 // --- TÍNH NĂNG UPLOAD AVATAR ---
 // Đảm bảo thư mục lưu trữ tồn tại
@@ -447,6 +449,79 @@ server.listen(PORT, () => {
     }, SELF_PING_INTERVAL);
     console.log(`🔄 Keep-alive self-ping đã bật cho: ${RENDER_URL}`);
   }
+
+  // ============================================
+  // REAL-TIME NEWS GENERATOR: Giả lập tạo tin tức mới mỗi 45 giây
+  // ============================================
+  const SIMULATED_NEWS_POOL = [
+    {
+      title: "OpenAI công bố mô hình GPT-5 với khả năng suy luận logic vượt trội",
+      content: "Mô hình mới mang tên GPT-5 của OpenAI dự kiến sẽ ra mắt vào cuối năm nay, cải thiện 50% khả năng giải quyết các bài toán logic phức tạp và xử lý đa phương thức thời gian thực.",
+      category: "AI"
+    },
+    {
+      title: "Google công bố chip Tensor G6 sản xuất trên tiến trình 3nm",
+      content: "Dòng vi xử lý Tensor thế hệ mới dành cho Pixel 10 sẽ được Google thiết kế hoàn toàn và sản xuất trên tiến trình 3nm của TSMC, hứa hẹn tối ưu hóa hiệu năng và tiết kiệm pin vượt trội.",
+      category: "Tech"
+    },
+    {
+      title: "NVIDIA ra mắt siêu máy tính AI Blackwell thế hệ mới",
+      content: "Blackwell B200 của NVIDIA mang đến hiệu năng tính toán AI lên tới 20 petaflops, giảm lượng tiêu thụ điện năng gấp 25 lần so với kiến trúc Hopper cũ.",
+      category: "AI"
+    },
+    {
+      title: "Apple phát triển kính thực tế ảo giá rẻ hơn cho năm 2027",
+      content: "Theo nguồn tin từ chuỗi cung ứng, Apple đang thiết kế một phiên bản Vision Pro rút gọn với mức giá khoảng 1,500 USD nhằm tiếp cận lượng khách hàng đại chúng lớn hơn.",
+      category: "Tech"
+    },
+    {
+      title: "Mô hình Claude 3.5 Sonnet thống trị các bảng xếp hạng lập trình",
+      content: "Phiên bản nâng cấp Claude 3.5 Sonnet từ Anthropic thể hiện độ chính xác vượt trội hơn hẳn GPT-4o trong việc viết mã nguồn và gỡ lỗi phần mềm tự động.",
+      category: "AI"
+    },
+    {
+      title: "Việt Nam đẩy mạnh đầu tư hạ tầng trung tâm dữ liệu và bán dẫn",
+      content: "Nhiều tập đoàn công nghệ lớn trong nước và quốc tế đang rục rịch đầu tư hàng tỷ USD xây dựng các trung tâm dữ liệu quy mô lớn (Hyperscale Data Center) tại TP.HCM và Đà Nẵng.",
+      category: "Tech"
+    },
+    {
+      title: "Meta phát hành mô hình mã nguồn mở Llama 3.2 hỗ trợ xử lý hình ảnh",
+      content: "Mô hình Llama 3.2 thế hệ mới có các phiên bản nhỏ gọn chạy trực tiếp trên thiết bị di động cũng như các bản lớn hỗ trợ đa phương thức văn bản - hình ảnh.",
+      category: "AI"
+    },
+    {
+      title: "Microsoft ra mắt Copilot Studio giúp doanh nghiệp tự xây dựng AI Agent",
+      content: "Nền tảng low-code mới cho phép các công ty nhanh chóng thiết kế, kiểm thử và triển khai các đại lý AI tự động hóa quy trình công việc nội bộ.",
+      category: "AI"
+    }
+  ];
+
+  let newsCycleIndex = 0;
+  setInterval(async () => {
+    try {
+      const template = SIMULATED_NEWS_POOL[newsCycleIndex];
+      newsCycleIndex = (newsCycleIndex + 1) % SIMULATED_NEWS_POOL.length;
+
+      const suffix = ` [Cập nhật lúc ${new Date().toLocaleTimeString("vi-VN")}]`;
+      const title = template.title + suffix;
+
+      // Lưu vào Database qua Prisma
+      const newNewsItem = await prisma.news.create({
+        data: {
+          title,
+          content: template.content,
+          category: template.category
+        }
+      });
+
+      console.log(`📰 [Simulated News] Đã tạo tin tức mới: ${title}`);
+      
+      // Phát sự kiện broadcast qua Socket.io tới tất cả client
+      io.emit("new_news_broadcast", newNewsItem);
+    } catch (err) {
+      console.error("❌ Lỗi khi tự động tạo tin tức giả lập:", err);
+    }
+  }, 45000); // Mỗi 45 giây một tin tức mới
 });
 
 // Health check endpoint (dùng bởi self-ping)

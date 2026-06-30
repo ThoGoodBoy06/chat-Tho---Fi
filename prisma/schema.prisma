@@ -120,3 +120,11 @@ model Notifications {
   User      Users    @relation("UserNotifications", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   Sender    Users    @relation("SenderNotifications", fields: [senderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
+
+model News {
+  id        String   @id @default(uuid())
+  title     String
+  content   String
+  category  String   // "AI" hoặc "Tech"
+  createdAt DateTime @default(now())
+}
