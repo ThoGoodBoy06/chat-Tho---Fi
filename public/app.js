@@ -3591,15 +3591,7 @@ function switchTab(tabId, navElement) {
         updateNotificationPermissionUI();
     }
 
-    // Cập nhật chỉ số tab cho hiệu ứng trượt trên mobile
-    const DOM_TABS = ['tab-messages', 'tab-contacts', 'tab-profile', 'tab-ai'];
-    const tabIndex = DOM_TABS.indexOf(tabId);
-    if (tabIndex !== -1) {
-        const container = document.querySelector('.tab-content-container');
-        if (container) {
-            container.style.setProperty('--active-tab-index', tabIndex);
-        }
-    }
+
 
     document
         .querySelectorAll(".tab-pane")
