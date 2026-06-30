@@ -7310,8 +7310,7 @@ function getNewsCardHtml(newsItem, isNewRealtime = false) {
                 <span class="news-badge ${badgeClass}">${label}</span>
                 <span class="news-time">${formattedTime}</span>
             </div>
-            <h4 class="news-title">${newsItem.title}</h4>
-            <p class="news-content" style="max-height: none; opacity: 1; overflow: visible; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin-top: 8px;">${newsItem.content}</p>
+            <h4 class="news-title" style="margin-bottom: 0;">${newsItem.title}</h4>
         </div>
     `;
 }

@@ -53,6 +53,34 @@ const getNewsContent = async (req, res) => {
       fullContent = fullContent.replace(/<style[\s\S]*?<\/style>/gi, "");
       fullContent = fullContent.replace(/<div[^>]*class="[^"]*box-embed-video[^"]*"[^>]*>[\s\S]*?<\/div>/gi, "");
       fullContent = fullContent.replace(/<div[^>]*class="[^"]*insert-link-box[^"]*"[^>]*>[\s\S]*?<\/div>/gi, "");
+      
+      // Xử lý Lazy Loading của VNExpress: thay thế src bằng data-src hoặc data-original
+      fullContent = fullContent.replace(/<img([^>]+)>/gi, (imgTag, attributes) => {
+        let realSrc = "";
+        
+        // Trích xuất data-src
+        const dataSrcMatch = attributes.match(/data-src=["']([^"']+)["']/i);
+        if (dataSrcMatch) {
+          realSrc = dataSrcMatch[1];
+        } else {
+          // Trích xuất data-original nếu không có data-src
+          const dataOrigMatch = attributes.match(/data-original=["']([^"']+)["']/i);
+          if (dataOrigMatch) {
+            realSrc = dataOrigMatch[1];
+          }
+        }
+
+        if (realSrc) {
+          // Thay thế src cũ bằng src thực tế và xóa các thuộc tính lazy load
+          let newAttributes = attributes.replace(/src=["']([^"']*)["']/i, `src="${realSrc}"`);
+          if (!newAttributes.includes("src=")) {
+            newAttributes = ` src="${realSrc}"` + newAttributes;
+          }
+          return `<img${newAttributes}>`;
+        }
+        return imgTag;
+      });
+
       fullContent = fullContent.replace(/<table[^>]*class="[^"]*tplCaption[^"]*"[^>]*>([\s\S]*?)<\/table>/gi, (match, tableContent) => {
         // Giữ lại ảnh và chú thích ảnh gọn gàng hơn
         return `<div class="article-image-box" style="margin: 16px 0; text-align: center; background: var(--msg-receiver-bg); padding: 10px; border-radius: 12px;">${tableContent}</div>`;
