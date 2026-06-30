@@ -7213,6 +7213,15 @@ document.addEventListener("DOMContentLoaded", () => {
 let newsListLoaded = false;
 let allNewsItems = [];
 let currentNewsFilter = "all";
+let readNewsIds = [];
+try {
+    const saved = localStorage.getItem("read_news_ids");
+    if (saved) {
+        readNewsIds = JSON.parse(saved);
+    }
+} catch (e) {
+    console.error("Failed to load read news IDs:", e);
+}
 
 async function loadInitialNews() {
     const newsList = document.getElementById("news-list");
@@ -7299,16 +7308,24 @@ function getNewsCardHtml(newsItem, isNewRealtime = false) {
     const animationClass = isNewRealtime ? "realtime-news-animation" : "";
     const { label, badgeClass } = getCategoryDetails(newsItem.category);
     
+    // Kiểm tra trạng thái đã đọc hay chưa
+    const isRead = readNewsIds.includes(newsItem.id);
+    const readClass = isRead ? "read" : "";
+    const unreadDot = isRead ? "" : `<span class="unread-dot" id="unread-dot-${newsItem.id}"></span>`;
+
     // Định dạng ngày giờ thân thiện
     const date = new Date(newsItem.createdAt);
     const formattedTime = date.toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' }) + 
         " " + date.toLocaleDateString("vi-VN", { day: '2-digit', month: '2-digit' });
 
     return `
-        <div class="news-card ${animationClass}" data-category="${newsItem.category}" onclick="showNewsDetail('${newsItem.id}')" style="cursor: pointer;">
+        <div class="news-card ${animationClass} ${readClass}" id="news-card-${newsItem.id}" data-category="${newsItem.category}" onclick="showNewsDetail('${newsItem.id}')" style="cursor: pointer;">
             <div class="news-card-header">
                 <span class="news-badge ${badgeClass}">${label}</span>
-                <span class="news-time">${formattedTime}</span>
+                <span class="news-time" style="display: flex; align-items: center; gap: 6px;">
+                    ${formattedTime}
+                    ${unreadDot}
+                </span>
             </div>
             <h4 class="news-title" style="margin-bottom: 0;">${newsItem.title}</h4>
         </div>
@@ -7378,6 +7395,26 @@ async function showNewsDetail(newsId) {
 
     // Hiển thị màn hình chi tiết
     detailView.style.display = "flex";
+
+    // Đánh dấu đã đọc bài viết
+    if (!readNewsIds.includes(newsId)) {
+        readNewsIds.push(newsId);
+        try {
+            localStorage.setItem("read_news_ids", JSON.stringify(readNewsIds));
+        } catch (e) {
+            console.error(e);
+        }
+        
+        // Cập nhật giao diện của card tương ứng ngay lập tức
+        const card = document.getElementById(`news-card-${newsId}`);
+        if (card) {
+            card.classList.add("read");
+            const dot = document.getElementById(`unread-dot-${newsId}`);
+            if (dot) {
+                dot.remove();
+            }
+        }
+    }
 
     // Hiển thị biểu tượng tải dữ liệu
     detailBody.innerHTML = `
