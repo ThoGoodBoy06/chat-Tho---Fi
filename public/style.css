@@ -6500,22 +6500,41 @@ body[data-theme="dark"] .news-detail-badge.vietnam-badge {
 }
 
 .news-detail-body img {
-    max-width: 100%;
-    height: auto;
+    max-width: 100% !important;
+    height: auto !important;
     border-radius: 12px;
-    margin: 12px 0;
-    display: block;
-    margin-left: auto;
-    margin-right: auto;
+    margin: 8px auto !important;
+    display: block !important;
 }
 
-.news-detail-body figcaption {
-    font-size: 13px;
+/* VNExpress Caption Tables and Figures styling */
+.news-detail-body table.tplCaption,
+.news-detail-body figure.tplCaption,
+.news-detail-body .article-image-box {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 16px 0 !important;
+    background: var(--msg-receiver-bg);
+    border-radius: 12px;
+    overflow: hidden;
+    border-collapse: collapse;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+}
+
+.news-detail-body table.tplCaption td {
+    padding: 8px !important;
+    text-align: center !important;
+}
+
+.news-detail-body table.tplCaption td.Image,
+.news-detail-body figcaption,
+.news-detail-body .news-image-caption {
+    font-size: 12.5px;
     color: var(--text-light);
     text-align: center;
-    margin-top: 4px;
-    margin-bottom: 16px;
+    padding: 6px 12px 10px 12px !important;
     line-height: 1.4;
+    font-style: italic;
 }
 
 /* DARK MODE SUPPORT FOR DETAIL VIEW */

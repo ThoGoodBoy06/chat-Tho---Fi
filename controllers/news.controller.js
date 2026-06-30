@@ -89,10 +89,6 @@ const getNewsContent = async (req, res) => {
         return imgTag;
       });
 
-      fullContent = fullContent.replace(/<table[^>]*class="[^"]*tplCaption[^"]*"[^>]*>([\s\S]*?)<\/table>/gi, (match, tableContent) => {
-        // Giữ lại ảnh và chú thích ảnh gọn gàng hơn
-        return `<div class="article-image-box" style="margin: 16px 0; text-align: center; background: var(--msg-receiver-bg); padding: 10px; border-radius: 12px;">${tableContent}</div>`;
-      });
       fullContent = fullContent.trim();
     }
 
