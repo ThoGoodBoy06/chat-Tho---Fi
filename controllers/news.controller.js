@@ -82,6 +82,8 @@ const getNewsContent = async (req, res) => {
         return imgTag;
       });
 
+      // Strip all inline style attributes from the parsed HTML to resolve aspect-ratio positioning bugs
+      fullContent = fullContent.replace(/\sstyle=["']([^"']*)["']/gi, "");
       fullContent = fullContent.trim();
     }
 
