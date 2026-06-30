@@ -7312,10 +7312,14 @@ function getNewsCardHtml(newsItem, isNewRealtime = false) {
     const isRead = readNewsIds.includes(newsItem.id);
     const readClass = isRead ? "read" : "";
     
-    // Tạo nhãn "Đã đọc" / "Chưa đọc" thay vì chỉ có chấm đỏ
+    // Tạo nhãn "Đã đọc" / "Chưa đọc"
     const statusBadge = isRead 
         ? `<span class="read-status-badge read" id="status-badge-${newsItem.id}">Đã đọc</span>` 
         : `<span class="read-status-badge unread" id="status-badge-${newsItem.id}">Chưa đọc</span>`;
+
+    // Nhãn "Mới" cho tin cào trong vòng 6 tiếng gần đây
+    const isNew = (Date.now() - new Date(newsItem.createdAt).getTime()) < 6 * 60 * 60 * 1000;
+    const hotBadge = isNew ? `<span class="read-status-badge hot-new">MỚI</span>` : "";
 
     // Định dạng ngày giờ thân thiện
     const date = new Date(newsItem.createdAt);
@@ -7325,9 +7329,10 @@ function getNewsCardHtml(newsItem, isNewRealtime = false) {
     return `
         <div class="news-card ${animationClass} ${readClass}" id="news-card-${newsItem.id}" data-category="${newsItem.category}" onclick="showNewsDetail('${newsItem.id}')" style="cursor: pointer;">
             <div class="news-card-header">
-                <div style="display: flex; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
                     <span class="news-badge ${badgeClass}">${label}</span>
                     ${statusBadge}
+                    ${hotBadge}
                 </div>
                 <span class="news-time">${formattedTime}</span>
             </div>
