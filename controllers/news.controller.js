@@ -2,13 +2,31 @@ const prisma = require("../prisma");
 
 const getLatestNews = async (req, res) => {
   try {
-    const news = await prisma.news.findMany({
-      take: 40,
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-    return res.status(200).json({ success: true, data: news });
+    // Lấy song song tin tức của từng danh mục để tránh việc danh mục này đè mất danh mục kia
+    const [worldNews, vietnamNews, techAiNews] = await Promise.all([
+      prisma.news.findMany({
+        where: { category: "World" },
+        take: 50,
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.news.findMany({
+        where: { category: "Vietnam" },
+        take: 50,
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.news.findMany({
+        where: { category: "Tech_AI" },
+        take: 80, // Ưu tiên lấy nhiều tin Công nghệ & AI hơn cho người dùng học IT
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
+
+    // Gộp chung và sắp xếp lại theo thời gian giảm dần
+    const allNews = [...worldNews, ...vietnamNews, ...techAiNews].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    return res.status(200).json({ success: true, data: allNews });
   } catch (error) {
     console.error("Lỗi khi lấy tin tức:", error);
     return res.status(500).json({ success: false, message: "Lỗi máy chủ khi lấy tin tức." });
