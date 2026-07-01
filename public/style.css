@@ -391,8 +391,10 @@ p {
 
 .nav-badge {
     position: absolute;
-    top: -4px;
-    right: -6px;
+    top: 2px;
+    left: 50%;
+    right: auto;
+    transform: translate(2px, -6px);
     min-width: 16px;
     height: 16px;
     padding: 0 4px;
@@ -400,7 +402,6 @@ p {
     background-color: #EF4444;
     color: white;
     border-radius: 999px;
-    /* capsule thay vì tròn cố định */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -3429,7 +3430,6 @@ input:checked+.slider.round:before {
 
     /* ── NAV ICON WRAP (for glow effect) ── */
     .nav-icon-wrap {
-        position: relative;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -3515,10 +3515,10 @@ input:checked+.slider.round:before {
 
     /* ── BADGE ── */
     .nav-badge {
-        top: -4px;
-        right: -6px;
-        left: auto;
-        transform: none;
+        top: 2px;
+        left: 50%;
+        right: auto;
+        transform: translate(2px, -6px);
         z-index: 3;
     }
 
@@ -4033,53 +4033,6 @@ input:checked+.slider.round:before {
     position: fixed;
     top: 20px;
     left: 50%;
-
-    .nav-item {
-        flex: 1;
-        height: 56px;
-        flex-direction: column;
-        gap: 4px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        /* Hiệu ứng thu nhỏ khi nhấn (Press effect) */
-        transition: transform 0.15s cubic-bezier(0.2, 0, 0.2, 1) !important;
-    }
-
-    .nav-item:active {
-        transform: scale(0.85);
-        /* Nhấn vào sẽ thu nhỏ 15% */
-    }
-
-    .nav-item.active {
-        background: transparent;
-        box-shadow: none;
-    }
-
-    /* Hiệu ứng viên thuốc nảy ra (Active effect) */
-    .nav-item.active i {
-        background: var(--active-bg) !important;
-        padding: 6px 20px !important;
-        border-radius: 20px !important;
-        transform: scale(1.1);
-        /* Phình to nhẹ khi active */
-        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
-        color: var(--primary-color) !important;
-    }
-
-    .nav-item.active .nav-label {
-        color: var(--primary-color) !important;
-        font-weight: 700 !important;
-    }
-
-    .nav-label {
-        display: block;
-        font-size: 11px !important;
-        font-weight: 500;
-        transition: color 0.2s;
-    }
-
     transform: translateX(-50%);
     z-index: 1000000;
     display: flex;
