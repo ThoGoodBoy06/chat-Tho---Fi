@@ -391,8 +391,8 @@ p {
 
 .nav-badge {
     position: absolute;
-    top: 2px;
-    right: -4px;
+    top: -4px;
+    right: -6px;
     min-width: 16px;
     height: 16px;
     padding: 0 4px;
@@ -408,10 +408,10 @@ p {
     line-height: 1;
     font-weight: 700;
     white-space: nowrap;
-    /* không cho chữ xuống dòng */
     border: 2px solid var(--sidebar-bg);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    z-index: 3;
 }
 
 
@@ -3429,6 +3429,7 @@ input:checked+.slider.round:before {
 
     /* ── NAV ICON WRAP (for glow effect) ── */
     .nav-icon-wrap {
+        position: relative;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -3514,8 +3515,10 @@ input:checked+.slider.round:before {
 
     /* ── BADGE ── */
     .nav-badge {
-        top: 5px;
-        right: calc(50% - 22px);
+        top: -4px;
+        right: -6px;
+        left: auto;
+        transform: none;
         z-index: 3;
     }
 
