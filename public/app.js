@@ -397,6 +397,7 @@ function updateConversationUnreadBadgeLocal(conversationId) {
                 msgEl.style.color = "";
             }
         }
+        updateTotalMessagesBadge();
     } catch (err) {
         console.error("[DOM Error] Lỗi cập nhật badge đã xem cục bộ:", err);
     }
@@ -1330,6 +1331,7 @@ async function loadConversations() {
     } catch (error) {
         alert("Lỗi tải danh sách câu chuyện: " + error.message);
     }
+    updateTotalMessagesBadge();
 }
 
 // 2.5 Tìm kiếm người dùng bằng Tên
@@ -1507,7 +1509,10 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
             if (chatItem) {
                 chatItem.classList.add("active");
                 const badge = chatItem.querySelector(".unread-badge");
-                if (badge) badge.remove();
+                if (badge) {
+                    badge.remove();
+                    updateTotalMessagesBadge();
+                }
                 const msgTextEl = chatItem.querySelector(".chat-list-msg");
                 if (msgTextEl) {
                     msgTextEl.style.fontWeight = "normal";
@@ -1666,6 +1671,7 @@ function updateChatListUI(msg, isRead = false) {
 
         // 4. Đẩy item lên vị trí đầu tiên của danh sách
         userList.prepend(chatItem);
+        updateTotalMessagesBadge();
     } catch (error) {
         console.error("Lỗi trong updateChatListUI:", error);
     }
@@ -1825,6 +1831,46 @@ async function login() {
         alert("Lỗi kết nối máy chủ khi đăng nhập: " + error.message);
     } finally {
         hideLoading();
+    }
+}
+
+// --- HỆ THỐNG BADGE TIN NHẮN CHƯA ĐỌC ---
+function updateTotalMessagesBadge() {
+    const badgeEl = document.getElementById("messages-badge");
+    if (!badgeEl) return;
+
+    let totalUnread = 0;
+    const badges = document.querySelectorAll(".conversation-item .unread-badge");
+    badges.forEach(b => {
+        const text = b.innerText.trim();
+        if (text === "99+") {
+            totalUnread += 99;
+        } else {
+            const count = parseInt(text) || 0;
+            totalUnread += count;
+        }
+    });
+
+    if (totalUnread > 0) {
+        badgeEl.innerText = totalUnread > 99 ? "99+" : totalUnread;
+        badgeEl.style.display = "flex";
+    } else {
+        badgeEl.style.display = "none";
+    }
+}
+
+// --- HỆ THỐNG BADGE TIN TỨC CHƯA ĐỌC ---
+function updateNewsBadge() {
+    const badgeEl = document.getElementById("news-badge");
+    if (!badgeEl) return;
+
+    const unreadCount = allNewsItems.filter(item => !readNewsIds.includes(item.id)).length;
+
+    if (unreadCount > 0) {
+        badgeEl.innerText = unreadCount > 99 ? "99+" : unreadCount;
+        badgeEl.style.display = "flex";
+    } else {
+        badgeEl.style.display = "none";
     }
 }
 
@@ -7256,6 +7302,7 @@ async function loadInitialNews() {
             `;
         }
     }
+    updateNewsBadge();
 }
 
 function renderNews() {
@@ -7366,6 +7413,7 @@ function handleIncomingRealtimeNews(newsItem) {
             newsList.insertAdjacentHTML("afterbegin", cardHtml);
         }
     }
+    updateNewsBadge();
 }
 
 function filterNews(category, btnElement) {
@@ -7425,6 +7473,7 @@ async function showNewsDetail(newsId) {
 
         // Rerender lại toàn bộ danh sách để tự động đưa tin đã đọc xuống dưới và đẩy tin chưa đọc lên trên
         renderNews();
+        updateNewsBadge();
     }
 
     // Hiển thị biểu tượng tải dữ liệu
