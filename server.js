@@ -456,7 +456,9 @@ server.listen(PORT, () => {
   const FEEDS = [
     { url: "https://vnexpress.net/rss/the-gioi.rss", category: "World" },
     { url: "https://vnexpress.net/rss/thoi-su.rss", category: "Vietnam" },
-    { url: "https://vnexpress.net/rss/so-hoa.rss", category: "Tech_AI" }
+    { url: "https://tinhte.vn/rss", category: "Tech_AI" },
+    { url: "https://techcrunch.com/category/artificial-intelligence/feed/", category: "Tech_AI" },
+    { url: "https://news.ycombinator.com/rss", category: "Tech_AI" }
   ];
 
   async function updateRealNews(ioInstance) {
