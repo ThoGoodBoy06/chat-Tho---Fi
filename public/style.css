@@ -205,11 +205,11 @@ p {
 }
 
 #auth-logo {
-    width: 132px;
-    height: 132px;
+    width: 200px;
+    height: 200px;
     object-fit: contain;
-    margin-bottom: 14px;
-    border-radius: 30px;
+    margin-bottom: 18px;
+    border-radius: 42px;
     box-shadow: var(--shadow-md);
     transition: transform var(--transition-normal);
 }
