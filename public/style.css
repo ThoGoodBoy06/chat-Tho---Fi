@@ -197,17 +197,17 @@
                                                                                         }
                                                                                         
                                                                                         #auth-logo {
-                                                                                            width: 160px;
-                                                                                            height: 160px;
+                                                                                            width: 100px;
+                                                                                            height: 55px;
                                                                                             object-fit: contain;
                                                                                             margin-bottom: 18px;
-                                                                                            border-radius: 36px;
+                                                                                            border-radius: 42px;
                                                                                             box-shadow: var(--shadow-md);
                                                                                             transition: transform var(--transition-normal);
                                                                                         }
                                                                                         
                                                                                         #auth-logo:hover {
-                                                                                            transform: scale(1.08) rotate(3deg);
+                                                                                            transform: scale(2.08) rotate(3deg);
                                                                                         }
                                                                                         
                                                                                         .auth-card h1 {
