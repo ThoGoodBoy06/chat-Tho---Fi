@@ -1460,6 +1460,18 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
         const inputArea = document.getElementById("input-area");
         if (inputArea) {
             inputArea.classList.remove("is-typing");
+            // Force mobile styles dynamically to prevent cache/layout bugs on iOS
+            if (window.innerWidth <= 768) {
+                inputArea.style.setProperty('padding', '8px 10px 8px 10px', 'important');
+                const chatWindow = document.querySelector(".chat-window");
+                if (chatWindow) {
+                    chatWindow.style.setProperty('position', 'fixed', 'important');
+                    chatWindow.style.setProperty('top', '0', 'important');
+                    chatWindow.style.setProperty('left', '0', 'important');
+                    chatWindow.style.setProperty('right', '0', 'important');
+                    chatWindow.style.setProperty('bottom', '0', 'important');
+                }
+            }
         }
         const likeBtn = document.getElementById('like-btn');
         const sendBtn = document.getElementById('send-btn');
