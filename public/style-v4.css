@@ -3468,14 +3468,19 @@
                                                                                                 will-change: transform;
                                                                                                 background: var(--chat-bg) !important;
                                                                                             }
+                                                                                            #chat-screen.mobile-chat-active {
+                                                                                                flex-direction: column !important; /* Sửa lỗi WebKit/iOS không tính lại chiều cao khi ẩn sidebar trong column-reverse */
+                                                                                            }
                                                                                             #chat-screen.mobile-chat-active .chat-window {
                                                                                                 transform: translateX(0);
                                                                                             }
                                                                                             #chat-screen.mobile-chat-active .zalo-mobile-header {
                                                                                                 display: none !important;
+                                                                                                z-index: -1 !important;
                                                                                             }
                                                                                             #chat-screen.mobile-chat-active .sidebar {
                                                                                                 display: none !important;
+                                                                                                z-index: -1 !important;
                                                                                             }
                                                                                             /* Header Kính mờ */
                                                                                             .chat-header {
