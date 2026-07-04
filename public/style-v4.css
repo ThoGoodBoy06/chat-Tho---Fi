@@ -3198,7 +3198,7 @@
                                                                                             }
                                                                                             .chat-list-container {
                                                                                                 background: var(--msg-receiver-bg) !important;
-                                                                                                padding-bottom: 76px !important;
+                                                                                                padding-bottom: 68px !important;
                                                                                             }
 
                                                                                             .chat-window {
@@ -3233,7 +3233,7 @@
                                                                                                 padding-bottom: 0 !important;
                                                                                             }
                                                                                             .contacts-scroll-content {
-                                                                                                padding-bottom: 76px !important;
+                                                                                                padding-bottom: 68px !important;
                                                                                             }
 
                                                                                             .auth-card {
@@ -3340,7 +3340,7 @@
                                                                                                 min-width: unset !important;
                                                                                                 flex-shrink: 0;
                                                                                                 margin: 0 !important;
-                                                                                                height: 66px !important;
+                                                                                                height: 58px !important;
                                                                                                 border-radius: 0 !important;
                                                                                                 /* Loại bỏ góc bo capsule để làm tab bar tràn viền ngang */
                                                                                                 border-left: none !important;
@@ -3357,7 +3357,7 @@
                                                                                                 flex-direction: row;
                                                                                                 justify-content: space-around !important;
                                                                                                 align-items: center !important;
-                                                                                                padding: 8px 12px !important;
+                                                                                                padding: 4px 12px 6px 12px !important;
                                                                                                 gap: 0 !important;
                                                                                             }
 
@@ -3804,7 +3804,7 @@
                                                                                                 flex: 1;
                                                                                                 overflow-y: auto !important;
                                                                                                 -webkit-overflow-scrolling: touch !important;
-                                                                                                padding-bottom: 76px !important;
+                                                                                                padding-bottom: 68px !important;
                                                                                             }
 
                                                                                             .zalo-profile-header {
@@ -4058,7 +4058,7 @@
 
                                                                                             .ai-chat-input-area {
                                                                                                 padding: 12px 16px;
-                                                                                                padding-bottom: 76px !important;
+                                                                                                padding-bottom: 68px !important;
                                                                                             }
 
                                                                                             .ai-code-wrapper {
@@ -7641,7 +7641,7 @@
                                                                                             display: flex;
                                                                                             flex-direction: column;
                                                                                             gap: 16px;
-                                                                                            padding-bottom: 76px !important;
+                                                                                            padding-bottom: 68px !important;
                                                                                         }
 
                                                                                         .news-empty-state {
