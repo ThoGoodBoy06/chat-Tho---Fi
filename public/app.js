@@ -1340,6 +1340,18 @@ async function loadConversations() {
     updateTotalMessagesBadge();
 }
 
+function clearAndHideSearch() {
+    const searchResults = document.getElementById("search-results");
+    if (searchResults) {
+        searchResults.style.display = "none";
+        searchResults.innerHTML = "";
+    }
+    const searchInput = document.getElementById("search-input");
+    if (searchInput) searchInput.value = "";
+    const mobileSearchInput = document.getElementById("mobile-search-input");
+    if (mobileSearchInput) mobileSearchInput.value = "";
+}
+
 // 2.5 Tìm kiếm người dùng bằng Tên
 async function searchUser() {
     const searchEl = document.getElementById("search-input");
@@ -1377,8 +1389,8 @@ async function searchUser() {
             div.className = "search-result-item";
             div.innerHTML = `
         <div style="display: flex; align-items: center; gap: 12px;">
-          <div class="avatar" style="width:40px;height:40px;cursor:pointer;" onclick="showUserProfile('${user.id}')"><img src="${avatarUrl}" style="width:100%;height:100%;border-radius:50%;"></div>
-          <span style="font-weight:600;cursor:pointer;" onclick="showUserProfile('${user.id}')">${user.fullName}</span>
+          <div class="avatar" style="width:40px;height:40px;cursor:pointer;" onclick="showUserProfile('${user.id}'); clearAndHideSearch();"><img src="${avatarUrl}" style="width:100%;height:100%;border-radius:50%;"></div>
+          <span style="font-weight:600;cursor:pointer;" onclick="showUserProfile('${user.id}'); clearAndHideSearch();">${user.fullName}</span>
         </div>
         <button onclick="startChat('${user.id}', '${user.fullName}', '${avatarUrl}')" style="margin-top:12px;padding:8px;width:100%;background:var(--primary-color);color:white;border:none;border-radius:6px;cursor:pointer;">Nhắn tin</button>
       `;
@@ -1494,11 +1506,7 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
         }
 
         resetReadReceiptState(currentConversationId);
-        document.getElementById("search-results").style.display = "none";
-        document.getElementById("search-input").value = "";
-
-        const mobileSearch = document.getElementById("mobile-search-input");
-        if (mobileSearch) mobileSearch.value = "";
+        clearAndHideSearch();
 
         // Xóa unread-badge trên giao diện danh sách ngay lập tức (ẩn huy hiệu đi)
         const userList = document.getElementById("user-list");
@@ -3368,6 +3376,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 (mobileBellBtn && (e.target === mobileBellBtn || mobileBellBtn.contains(e.target)));
             if (!dropdown.contains(e.target) && !isClickInsideBell) {
                 dropdown.classList.remove("active");
+            }
+        }
+
+        // Tự động đóng và xóa nội dung tìm kiếm khi click ra ngoài
+        const searchResults = document.getElementById("search-results");
+        const searchInput = document.getElementById("search-input");
+        const mobileSearchInput = document.getElementById("mobile-search-input");
+        if (searchResults && searchResults.style.display !== "none") {
+            const isClickInsideSearch = (searchInput && (e.target === searchInput || searchInput.contains(e.target))) ||
+                (mobileSearchInput && (e.target === mobileSearchInput || mobileSearchInput.contains(e.target)));
+            if (!searchResults.contains(e.target) && !isClickInsideSearch) {
+                clearAndHideSearch();
             }
         }
     });

@@ -2090,6 +2090,9 @@
                                                                                         }
 
                                                                                         .zalo-profile-header {
+                                                                                            position: sticky;
+                                                                                            top: 0;
+                                                                                            z-index: 100;
                                                                                             padding: 24px 20px 16px;
                                                                                             display: flex;
                                                                                             justify-content: space-between;
@@ -3774,6 +3777,9 @@
                                                                                             }
 
                                                                                             .zalo-profile-header {
+                                                                                                position: sticky;
+                                                                                                top: 0;
+                                                                                                z-index: 100;
                                                                                                 background: var(--zalo-header-bg);
                                                                                                 color: white;
                                                                                                 display: flex;
