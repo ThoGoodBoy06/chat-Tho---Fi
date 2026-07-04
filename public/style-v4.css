@@ -3196,6 +3196,7 @@
                                                                                                 min-width: 100%;
                                                                                             }
                                                                                             .chat-list-container {
+                                                                                                background: var(--msg-receiver-bg) !important;
                                                                                                 padding-bottom: 76px !important;
                                                                                             }
 
