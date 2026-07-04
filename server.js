@@ -453,13 +453,37 @@ server.listen(PORT, () => {
     // ============================================
     // REAL-TIME NEWS SCRAPER (VIETNAMESE + SPECIALIZED TECH/AI RSS FEEDS)
     // ===================================================================
+
+    // Xóa tin tiếng Anh cũ (từ các nguồn đã bị loại bỏ) khi server khởi động
+    (async () => {
+        try {
+            const result = await prisma.news.deleteMany({
+                where: {
+                    OR: [
+                        { link: { contains: "theverge.com" } },
+                        { link: { contains: "arstechnica.com" } },
+                        { link: { contains: "bloomberg.com" } },
+                        { link: { contains: "reddit.com" } },
+                        { link: { contains: "techcrunch.com" } },
+                        { link: { contains: "wired.com" } },
+                    ]
+                }
+            });
+            if (result.count > 0) {
+                console.log(`🧹 Đã xóa ${result.count} tin tức tiếng Anh cũ khỏi database.`);
+            }
+        } catch (err) {
+            console.error("⚠️ Lỗi khi xóa tin tiếng Anh cũ:", err.message);
+        }
+    })();
+
     const FEEDS = [
         // === TIN THẾ GIỚI ===
         { url: "https://vnexpress.net/rss/the-gioi.rss", category: "World" },
         // === TIN VIỆT NAM ===
         { url: "https://vnexpress.net/rss/thoi-su.rss", category: "Vietnam" },
         { url: "https://dantri.com.vn/rss/xa-hoi.rss", category: "Vietnam" },
-        // === CÔNG NGHỆ & AI (Tiếng Việt) ===
+        // === CÔNG NGHỆ & AI (Báo Việt Nam) ===
         { url: "https://vnexpress.net/rss/cong-nghe.rss", category: "Tech_AI" },
         { url: "https://vnexpress.net/rss/so-hoa.rss", category: "Tech_AI" },
         { url: "https://tinhte.vn/rss", category: "Tech_AI" },
@@ -468,8 +492,13 @@ server.listen(PORT, () => {
         { url: "https://vietnamnet.vn/rss/cong-nghe.rss", category: "Tech_AI" },
         { url: "https://genk.vn/rss/ai.rss", category: "Tech_AI" },
         { url: "https://genk.vn/rss/cong-nghe.rss", category: "Tech_AI" },
-        { url: "https://ictnews.vietnamnet.vn/rss/home.rss", category: "Tech_AI" },
-        { url: "https://baomoi.com/cong-nghe.rss", category: "Tech_AI" }
+        // === TIN AI CHUYÊN SÂU (Google News RSS tiếng Việt) ===
+        { url: "https://news.google.com/rss/search?q=ChatGPT+OR+OpenAI&hl=vi&gl=VN&ceid=VN:vi", category: "Tech_AI" },
+        { url: "https://news.google.com/rss/search?q=Claude+AI+OR+Anthropic&hl=vi&gl=VN&ceid=VN:vi", category: "Tech_AI" },
+        { url: "https://news.google.com/rss/search?q=Gemini+AI+OR+Google+AI&hl=vi&gl=VN&ceid=VN:vi", category: "Tech_AI" },
+        { url: "https://news.google.com/rss/search?q=tr%C3%AD+tu%E1%BB%87+nh%C3%A2n+t%E1%BA%A1o+AI&hl=vi&gl=VN&ceid=VN:vi", category: "Tech_AI" },
+        { url: "https://news.google.com/rss/search?q=Meta+AI+OR+Facebook+AI+OR+Llama&hl=vi&gl=VN&ceid=VN:vi", category: "Tech_AI" },
+        { url: "https://news.google.com/rss/search?q=Apple+Intelligence+OR+iPhone+AI&hl=vi&gl=VN&ceid=VN:vi", category: "Tech_AI" },
     ];
 
     async function updateRealNews(ioInstance) {
@@ -479,7 +508,7 @@ server.listen(PORT, () => {
                     headers: {
                         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
                     },
-                    signal: AbortSignal.timeout(15000) // Timeout 15 giây cho mỗi nguồn
+                    signal: AbortSignal.timeout(15000)
                 });
                 const xmlText = await response.text();
 
@@ -503,6 +532,11 @@ server.listen(PORT, () => {
                     let pubDate = extractTag("pubDate");
                     let link = extractTag("link");
 
+                    // Google News RSS redirect: lấy link thật từ URL redirect
+                    if (link && link.includes("news.google.com/rss/articles")) {
+                        // Link sẽ redirect tới bài gốc, giữ nguyên link Google News
+                    }
+
                     // Clean up description
                     if (description.includes("<br/>")) {
                         description = description.split("<br/>").pop();
@@ -510,7 +544,18 @@ server.listen(PORT, () => {
                     description = description.replace(/<a[\s\S]*?<\/a>/g, "");
                     description = description.replace(/<[^>]*>?/gm, "").trim();
 
+                    // Bỏ qua tin tiếng Anh: kiểm tra nếu title chứa quá nhiều ký tự Latin
+                    // (tin tiếng Việt luôn có dấu, nên tỷ lệ ký tự ASCII thấp hơn)
                     if (title) {
+                        const nonAsciiCount = (title.match(/[^\x00-\x7F]/g) || []).length;
+                        const totalChars = title.replace(/\s/g, "").length;
+                        const vietnameseRatio = totalChars > 0 ? nonAsciiCount / totalChars : 0;
+                        
+                        // Nếu tỷ lệ ký tự tiếng Việt < 15%, bỏ qua (khả năng cao là tiếng Anh)
+                        if (vietnameseRatio < 0.15 && totalChars > 10) {
+                            continue;
+                        }
+
                         items.push({
                             title,
                             content: description,
@@ -520,7 +565,7 @@ server.listen(PORT, () => {
                     }
                 }
 
-                // Sắp xếp bài từ cũ đến mới để ghi nhận vào DB đúng thứ tự thời gian
+                // Sắp xếp bài từ cũ đến mới
                 items.reverse();
 
                 for (const item of items) {
@@ -546,12 +591,11 @@ server.listen(PORT, () => {
                 }
             } catch (error) {
                 console.error(`❌ Lỗi khi cào tin từ ${feed.url}:`, error.message);
-                // Tiếp tục với nguồn RSS tiếp theo, không dừng toàn bộ
             }
         }
     }
 
-    // Tải đồng bộ tin tức VNExpress ngay khi khởi động server
+    // Tải tin tức ngay khi khởi động server
     updateRealNews(null);
 
     // Định kỳ quét RSS sau mỗi 5 phút (300.000 ms) để tìm tin mới
