@@ -1924,7 +1924,7 @@
                                                                                             flex-shrink: 0;
                                                                                             background: var(--msg-receiver-bg);
                                                                                             z-index: 10;
-                                                                                            border-bottom: 8px solid var(--bg-color);
+                                                                                            border-bottom: 1px solid var(--border-color);
                                                                                         }
 
                                                                                         .contacts-scroll-content {
@@ -3196,7 +3196,7 @@
                                                                                                 min-width: 100%;
                                                                                             }
                                                                                             .chat-list-container {
-                                                                                                padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+                                                                                                padding-bottom: 24px !important;
                                                                                             }
 
                                                                                             .chat-window {
@@ -3231,7 +3231,7 @@
                                                                                                 padding-bottom: 0 !important;
                                                                                             }
                                                                                             .contacts-scroll-content {
-                                                                                                padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px)) !important;
+                                                                                                padding-bottom: 24px !important;
                                                                                             }
 
                                                                                             .auth-card {
@@ -3801,7 +3801,7 @@
                                                                                                 flex: 1;
                                                                                                 overflow-y: auto !important;
                                                                                                 -webkit-overflow-scrolling: touch !important;
-                                                                                                padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px)) !important;
+                                                                                                padding-bottom: 24px !important;
                                                                                             }
 
                                                                                             .zalo-profile-header {
@@ -7638,8 +7638,7 @@
                                                                                             display: flex;
                                                                                             flex-direction: column;
                                                                                             gap: 16px;
-                                                                                            padding-bottom: 90px;
-                                                                                            /* Thừa lề dưới để không bị tab bar che */
+                                                                                            padding-bottom: 24px;
                                                                                         }
 
                                                                                         .news-empty-state {
