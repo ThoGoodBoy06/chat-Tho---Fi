@@ -3191,42 +3191,43 @@
                                                                                             /* Tab Bar Viên Thuốc + Kính mờ (Bản Floating Capsule cực sang trọng) */
                                                                                             /* ── TAB BAR CONTAINER ── */
                                                                                             .sidebar {
-                                                                                                width: calc(100% - 24px) !important;
+                                                                                                width: 100% !important;
                                                                                                 min-width: unset !important;
                                                                                                 flex-shrink: 0;
-                                                                                                margin: 8px 12px 6px 12px !important;
-                                                                                                /* Fixed 6px bottom margin to sit extremely close to the iOS Home Indicator */
-                                                                                                height: 66px !important;
-                                                                                                /* Increased from 62px to 66px to make tab bar larger */
-                                                                                                border-radius: 34px !important;
-                                                                                                border: 1px solid rgba(255, 255, 255, 0.6) !important;
-                                                                                                background: rgba(255, 255, 255, 0.75) !important;
+                                                                                                margin: 0 !important; /* Ghim sát xuống mép viền dưới */
+                                                                                                height: calc(66px + env(safe-area-inset-bottom, 12px)) !important; /* Tăng chiều cao để phủ qua nút Home ảo */
+                                                                                                border-radius: 0 !important; /* Loại bỏ góc bo capsule để làm tab bar tràn viền ngang */
+                                                                                                border-left: none !important;
+                                                                                                border-right: none !important;
+                                                                                                border-bottom: none !important;
+                                                                                                border-top: 1px solid var(--border-color) !important;
+                                                                                                background: rgba(255, 255, 255, 0.85) !important;
                                                                                                 backdrop-filter: blur(28px) saturate(180%) !important;
                                                                                                 -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
                                                                                                 z-index: 90;
                                                                                                 box-sizing: border-box;
-                                                                                                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.10), 0 1.5px 0 rgba(255, 255, 255, 0.7) inset !important;
+                                                                                                box-shadow: 0 -3px 12px rgba(0, 0, 0, 0.05) !important;
                                                                                                 flex-direction: row;
-                                                                                                justify-content: flex-start !important;
-                                                                                                align-items: center;
-                                                                                                padding: 0 4px !important;
+                                                                                                justify-content: space-around !important;
+                                                                                                align-items: flex-start !important; /* Đưa các tabs lên trên phần đệm an toàn */
+                                                                                                padding: 8px 12px calc(4px + env(safe-area-inset-bottom, 12px)) 12px !important;
                                                                                                 position: relative;
                                                                                                 gap: 0 !important;
                                                                                             }
                                                                                             body[data-theme="dark"] .sidebar {
-                                                                                                background: rgba(22, 22, 30, 0.82) !important;
-                                                                                                border: 1px solid rgba(255, 255, 255, 0.10) !important;
-                                                                                                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.40), 0 1px 0 rgba(255, 255, 255, 0.06) inset !important;
+                                                                                                background: rgba(18, 18, 18, 0.85) !important;
+                                                                                                border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+                                                                                                border-left: none !important;
+                                                                                                border-right: none !important;
+                                                                                                border-bottom: none !important;
+                                                                                                box-shadow: 0 -3px 12px rgba(0, 0, 0, 0.3) !important;
                                                                                             }
                                                                                             /* ── SLIDING PILL INDICATOR ── */
                                                                                             .nav-slider-pill {
                                                                                                 position: absolute;
                                                                                                 height: 50px;
-                                                                                                /* Increased from 46px to 50px */
                                                                                                 top: 8px;
-                                                                                                /* Cân giữa chiều dọc của tab bar */
                                                                                                 border-radius: 26px;
-                                                                                                /* Increased from 24px to 26px */
                                                                                                 background: linear-gradient(135deg, var(--primary-color) 0%, #2563eb 100%);
                                                                                                 box-shadow: 0 4px 16px rgba(0, 104, 255, 0.35), 0 1px 0 rgba(255, 255, 255, 0.25) inset;
                                                                                                 transition: left 0.2s cubic-bezier(0.25, 1, 0.5, 1), width 0.2s cubic-bezier(0.25, 1, 0.5, 1);
@@ -3234,8 +3235,8 @@
                                                                                                 z-index: 0;
                                                                                                 will-change: left, width;
                                                                                                 /* Vị trí mặc định ban đầu cho tab Tin nhắn */
-                                                                                                left: 4px;
-                                                                                                width: calc((100% - 8px) / 5);
+                                                                                                left: 12px;
+                                                                                                width: calc((100% - 24px) / 5);
                                                                                             }
                                                                                             body[data-theme="dark"] .nav-slider-pill {
                                                                                                 background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
@@ -3243,10 +3244,8 @@
                                                                                             }
                                                                                             /* ── NAV ITEM ── */
                                                                                             .nav-item {
-                                                                                                width: calc((100% - 8px) / 5) !important;
-                                                                                                /* Force exact 25% of available content width */
+                                                                                                width: calc((100% - 24px) / 5) !important;
                                                                                                 flex: none !important;
-                                                                                                /* Prevent layout engine from shrinking/growing items */
                                                                                                 height: 50px;
                                                                                                 /* Increased from 46px to 50px */
                                                                                                 flex-direction: column;
