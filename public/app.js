@@ -1036,6 +1036,9 @@ function initizeChatSession(userData, userToken) {
     // Chuyển sang màn hình chat
     document.getElementById("auth-screen").style.display = "none";
     document.getElementById("chat-screen").style.display = "flex";
+    // Hiển thị Tab Bar (đã chuyển ra ngoài #chat-screen)
+    const tabBar = document.getElementById("main-tab-bar");
+    if (tabBar) tabBar.style.display = "";
 
     loadConversations();
     loadFriends();
@@ -1393,6 +1396,7 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
     }
     try {
         document.getElementById("chat-screen").classList.add("mobile-chat-active");
+        document.body.classList.add("mobile-chat-active");
         document.getElementById("chat-header-placeholder").style.display = "none";
         currentChatPartnerId = receiverId;
 
@@ -2845,6 +2849,7 @@ if (expandBtnUI) {
 // 10. Đóng khung trò chuyện trên di động
 function closeChatMobile() {
     document.getElementById("chat-screen").classList.remove("mobile-chat-active");
+    document.body.classList.remove("mobile-chat-active");
 }
 
 // 7. Sự kiện Gửi Hình ảnh
@@ -4107,6 +4112,10 @@ async function logout() {
 
     document.getElementById("chat-screen").style.display = "none";
     document.getElementById("chat-screen").classList.remove("mobile-chat-active");
+    document.body.classList.remove("mobile-chat-active");
+    // Ẩn Tab Bar (đã chuyển ra ngoài #chat-screen)
+    const tabBarLogout = document.getElementById("main-tab-bar");
+    if (tabBarLogout) tabBarLogout.style.display = "none";
     document.getElementById("auth-screen").style.display = "flex";
 
     const loginForm = document.getElementById("login-form");

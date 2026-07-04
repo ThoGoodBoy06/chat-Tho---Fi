@@ -3644,7 +3644,7 @@
                                                                                                 z-index: -1 !important;
                                                                                             }
 
-                                                                                            #chat-screen.mobile-chat-active .sidebar {
+                                                                                            body.mobile-chat-active .sidebar {
                                                                                                 display: none !important;
                                                                                                 z-index: -1 !important;
                                                                                             }

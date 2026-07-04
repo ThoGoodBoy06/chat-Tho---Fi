@@ -15,7 +15,7 @@
     <meta name="apple-mobile-web-app-title" content="Chat Tho-Fi" />
     <link rel="icon" href="icon.png" type="image/png" />
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
-    <link rel="stylesheet" href="style-v4.css?v=18" />
+    <link rel="stylesheet" href="style-v4.css?v=19" />
 </head>
 
 <body>
@@ -163,34 +163,35 @@
         </div>
     </div>
 
+    <!-- Thanh Điều Hướng Tab Bar (Đặt ngoài #chat-screen để tránh Containing Block trên iOS Safari) -->
+    <nav class="sidebar" id="main-tab-bar" style="display: none">
+        <div class="nav-slider-pill" id="nav-slider-pill"></div>
+        <div class="nav-item active" onclick="switchTab('tab-messages', this)" title="Tin nhắn">
+            <div class="nav-icon-wrap"><i class="fas fa-comment-dots"></i></div>
+            <span class="nav-label">Tin nhắn</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('tab-contacts', this)" title="Danh bạ">
+            <div class="nav-icon-wrap"><i class="fas fa-users"></i></div>
+            <span class="nav-label">Danh bạ</span>
+            <div class="nav-badge" id="contacts-badge" style="display: none">0</div>
+        </div>
+        <div class="nav-item" onclick="switchTab('tab-news', this)" title="Tin tức">
+            <div class="nav-icon-wrap"><i class="fas fa-newspaper"></i></div>
+            <span class="nav-label">Tin tức</span>
+            <div class="nav-badge" id="news-badge" style="display: none">0</div>
+        </div>
+        <div class="nav-item" onclick="switchTab('tab-ai', this)" title="Trợ lý AI">
+            <div class="nav-icon-wrap"><i class="fas fa-star"></i></div>
+            <span class="nav-label">Trợ lý AI</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('tab-profile', this)" title="Cá nhân">
+            <div class="nav-icon-wrap"><i class="fas fa-user-circle"></i></div>
+            <span class="nav-label">Cá nhân</span>
+        </div>
+    </nav>
+
     <!-- Màn hình Chat (Mặc định ẩn, đăng nhập xong mới hiện) -->
     <div id="chat-screen" style="display: none">
-        <!-- Thanh Điều Hướng (Navigation) -->
-        <nav class="sidebar">
-            <div class="nav-slider-pill" id="nav-slider-pill"></div>
-            <div class="nav-item active" onclick="switchTab('tab-messages', this)" title="Tin nhắn">
-                <div class="nav-icon-wrap"><i class="fas fa-comment-dots"></i></div>
-                <span class="nav-label">Tin nhắn</span>
-            </div>
-            <div class="nav-item" onclick="switchTab('tab-contacts', this)" title="Danh bạ">
-                <div class="nav-icon-wrap"><i class="fas fa-users"></i></div>
-                <span class="nav-label">Danh bạ</span>
-                <div class="nav-badge" id="contacts-badge" style="display: none">0</div>
-            </div>
-            <div class="nav-item" onclick="switchTab('tab-news', this)" title="Tin tức">
-                <div class="nav-icon-wrap"><i class="fas fa-newspaper"></i></div>
-                <span class="nav-label">Tin tức</span>
-                <div class="nav-badge" id="news-badge" style="display: none">0</div>
-            </div>
-            <div class="nav-item" onclick="switchTab('tab-ai', this)" title="Trợ lý AI">
-                <div class="nav-icon-wrap"><i class="fas fa-star"></i></div>
-                <span class="nav-label">Trợ lý AI</span>
-            </div>
-            <div class="nav-item" onclick="switchTab('tab-profile', this)" title="Cá nhân">
-                <div class="nav-icon-wrap"><i class="fas fa-user-circle"></i></div>
-                <span class="nav-label">Cá nhân</span>
-            </div>
-        </nav>
 
         <!-- Vùng Chứa Nội Dung Các Tabs -->
         <div class="tab-content-container">
