@@ -4604,16 +4604,26 @@ function handleIncomingCall(data) {
             stopVibration();
             stopRingtone();
 
-            const remoteAudio = document.getElementById("remote-audio");
-            if (remoteAudio) {
-                remoteAudio.play().catch(() => { });
-                remoteAudio.pause();
-            }
-
-            const remoteVideo = document.getElementById("remote-video");
-            if (remoteVideo) {
-                remoteVideo.play().catch(() => { });
-                remoteVideo.pause();
+            // Mở khóa autoplay trình duyệt bằng AudioContext (iOS Safari cần user gesture)
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const buffer = ctx.createBuffer(1, 1, 22050);
+                const source = ctx.createBufferSource();
+                source.buffer = buffer;
+                source.connect(ctx.destination);
+                source.start(0);
+                // Đánh dấu remoteAudio sẵn sàng phát khi ontrack gán srcObject
+                const remoteAudio = document.getElementById("remote-audio");
+                if (remoteAudio) {
+                    remoteAudio.muted = false;
+                    remoteAudio.volume = 1.0;
+                }
+                const remoteVideo = document.getElementById("remote-video");
+                if (remoteVideo) {
+                    remoteVideo.muted = false;
+                }
+            } catch (e) {
+                console.warn("Không thể mở khóa AudioContext:", e);
             }
 
             const success = await startCallSession(false);
@@ -4862,6 +4872,8 @@ async function startCallSession(isCaller, calleeInfo = null) {
                 const remoteVideo = document.getElementById("remote-video");
                 if (remoteVideo) {
                     remoteVideo.srcObject = stream;
+                    remoteVideo.muted = false;
+                    remoteVideo.volume = 1.0;
                     const playPromise = remoteVideo.play();
                     if (playPromise !== undefined) {
                         playPromise.catch((e) => {
@@ -5096,6 +5108,19 @@ function checkUrlParamsForCall() {
             document.getElementById("accept-call-btn").onclick = async () => {
                 stopVibration();
                 stopRingtone();
+                // Mở khóa autoplay trình duyệt bằng AudioContext (iOS Safari cần user gesture)
+                try {
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    const buf = ctx.createBuffer(1, 1, 22050);
+                    const src = ctx.createBufferSource();
+                    src.buffer = buf;
+                    src.connect(ctx.destination);
+                    src.start(0);
+                    const ra = document.getElementById("remote-audio");
+                    if (ra) { ra.muted = false; ra.volume = 1.0; }
+                    const rv = document.getElementById("remote-video");
+                    if (rv) { rv.muted = false; }
+                } catch (e) { console.warn("Không thể mở khóa AudioContext:", e); }
                 const success = await startCallSession(false);
                 if (success) {
                     socket.emit("accept_call", { callerId });
