@@ -3284,7 +3284,7 @@
                                                                                             }
 
                                                                                             #chat-screen {
-                                                                                                display: flex !important;
+                                                                                                display: flex;
                                                                                                 flex-direction: column !important;
                                                                                                 width: 100%;
                                                                                                 max-width: 100vw;
