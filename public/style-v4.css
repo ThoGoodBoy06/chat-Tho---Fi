@@ -3191,10 +3191,14 @@
                                                                                             /* Tab Bar Viên Thuốc + Kính mờ (Bản Floating Capsule cực sang trọng) */
                                                                                             /* ── TAB BAR CONTAINER ── */
                                                                                             .sidebar {
+                                                                                                position: fixed !important; /* Ghim cứng vào đáy màn hình thiết bị */
+                                                                                                bottom: 0 !important;
+                                                                                                left: 0 !important;
+                                                                                                right: 0 !important;
                                                                                                 width: 100% !important;
                                                                                                 min-width: unset !important;
                                                                                                 flex-shrink: 0;
-                                                                                                margin: 0 !important; /* Ghim sát xuống mép viền dưới */
+                                                                                                margin: 0 !important; 
                                                                                                 height: calc(66px + env(safe-area-inset-bottom, 12px)) !important; /* Tăng chiều cao để phủ qua nút Home ảo */
                                                                                                 border-radius: 0 !important; /* Loại bỏ góc bo capsule để làm tab bar tràn viền ngang */
                                                                                                 border-left: none !important;
@@ -3204,14 +3208,13 @@
                                                                                                 background: rgba(255, 255, 255, 0.85) !important;
                                                                                                 backdrop-filter: blur(28px) saturate(180%) !important;
                                                                                                 -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
-                                                                                                z-index: 90;
+                                                                                                z-index: 99999 !important; /* Đẩy z-index cao hẳn lên để luôn nằm trên cùng */
                                                                                                 box-sizing: border-box;
                                                                                                 box-shadow: 0 -3px 12px rgba(0, 0, 0, 0.05) !important;
                                                                                                 flex-direction: row;
                                                                                                 justify-content: space-around !important;
                                                                                                 align-items: flex-start !important; /* Đưa các tabs lên trên phần đệm an toàn */
                                                                                                 padding: 8px 12px calc(4px + env(safe-area-inset-bottom, 12px)) 12px !important;
-                                                                                                position: relative;
                                                                                                 gap: 0 !important;
                                                                                             }
                                                                                             body[data-theme="dark"] .sidebar {
@@ -3431,6 +3434,8 @@
                                                                                                 overflow: hidden;
                                                                                                 height: 100% !important;
                                                                                                 min-height: 0;
+                                                                                                padding-bottom: calc(66px + env(safe-area-inset-bottom, 12px)) !important; /* Chừa khoảng trống cho tab bar fixed */
+                                                                                                box-sizing: border-box !important;
                                                                                             }
                                                                                             .chat-list {
                                                                                                 width: 100%;
