@@ -1241,7 +1241,7 @@
 
                                                                                         .input-area {
                                                                                             padding: 6px 12px 6px 12px;
-                                                                                            padding-bottom: calc(6px + env(safe-area-inset-bottom, 8px));
+                                                                                            padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
                                                                                             background: var(--msg-receiver-bg);
                                                                                             border-top: 1px solid var(--border-color);
                                                                                             display: flex;
@@ -1573,7 +1573,7 @@
                                                                                             display: flex;
                                                                                             justify-content: space-between;
                                                                                             align-items: center;
-                                                                                            padding: 8px 12px calc(12px + env(safe-area-inset-bottom, 12px)) 12px;
+                                                                                            padding: 8px 12px calc(12px + env(safe-area-inset-bottom, 0px)) 12px;
                                                                                             border-top: 1px solid var(--border-color);
                                                                                             background: var(--msg-receiver-bg);
                                                                                             flex-shrink: 0;
@@ -3302,7 +3302,7 @@
                                                                                                 min-width: unset !important;
                                                                                                 flex-shrink: 0;
                                                                                                 margin: 0 !important;
-                                                                                                height: calc(66px + env(safe-area-inset-bottom, 12px)) !important;
+                                                                                                height: calc(66px + env(safe-area-inset-bottom, 0px)) !important;
                                                                                                 /* Tăng chiều cao để phủ qua nút Home ảo */
                                                                                                 border-radius: 0 !important;
                                                                                                 /* Loại bỏ góc bo capsule để làm tab bar tràn viền ngang */
@@ -3321,7 +3321,7 @@
                                                                                                 justify-content: space-around !important;
                                                                                                 align-items: flex-start !important;
                                                                                                 /* Đưa các tabs lên trên phần đệm an toàn */
-                                                                                                padding: 8px 12px calc(4px + env(safe-area-inset-bottom, 12px)) 12px !important;
+                                                                                                padding: 8px 12px calc(4px + env(safe-area-inset-bottom, 0px)) 12px !important;
                                                                                                 gap: 0 !important;
                                                                                             }
 
@@ -3573,7 +3573,7 @@
                                                                                                 height: 100% !important;
                                                                                                 height: -webkit-fill-available !important;
                                                                                                 min-height: 0;
-                                                                                                padding-bottom: calc(66px + env(safe-area-inset-bottom, 12px)) !important;
+                                                                                                padding-bottom: calc(66px + env(safe-area-inset-bottom, 0px)) !important;
                                                                                                 /* Chừa khoảng trống cho tab bar fixed */
                                                                                                 box-sizing: border-box !important;
                                                                                             }
@@ -3697,7 +3697,7 @@
                                                                                             .input-area {
                                                                                                 width: 100%;
                                                                                                 /* Cập nhật đệm đáy an toàn: cộng thêm 12px đệm cứng vào Home Indicator */
-                                                                                                padding: 8px 12px calc(12px + env(safe-area-inset-bottom, 12px)) 12px !important;
+                                                                                                padding: 8px 12px calc(12px + env(safe-area-inset-bottom, 0px)) 12px !important;
                                                                                                 background: var(--msg-receiver-bg) !important;
                                                                                                 align-items: center;
                                                                                                 gap: 8px;
