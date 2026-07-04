@@ -3181,7 +3181,7 @@
                                                                                                 height: 18px;
                                                                                             }
                                                                                             #chat-screen {
-                                                                                                flex-direction: column-reverse;
+                                                                                                display: block !important;
                                                                                                 width: 100%;
                                                                                                 max-width: 100vw;
                                                                                                 overflow: hidden;
@@ -3480,7 +3480,7 @@
                                                                                                 background: var(--chat-bg) !important;
                                                                                             }
                                                                                             #chat-screen.mobile-chat-active {
-                                                                                                flex-direction: column !important; /* Sửa lỗi WebKit/iOS không tính lại chiều cao khi ẩn sidebar trong column-reverse */
+                                                                                                display: block !important;
                                                                                             }
                                                                                             #chat-screen.mobile-chat-active .tab-content-container {
                                                                                                 padding-bottom: 0 !important;
