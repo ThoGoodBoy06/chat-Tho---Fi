@@ -1924,6 +1924,7 @@
                                                                                             flex-shrink: 0;
                                                                                             background: var(--msg-receiver-bg);
                                                                                             z-index: 10;
+                                                                                            border-bottom: 8px solid var(--bg-color);
                                                                                         }
 
                                                                                         .contacts-scroll-content {
