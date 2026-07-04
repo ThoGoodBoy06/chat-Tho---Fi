@@ -3453,9 +3453,10 @@
                                                                                                 position: fixed;
                                                                                                 top: 0;
                                                                                                 left: 0;
+                                                                                                right: 0;
+                                                                                                bottom: 0;
                                                                                                 width: 100%;
-                                                                                                height: 100vh;
-                                                                                                height: 100dvh;
+                                                                                                height: auto !important;
                                                                                                 z-index: 100;
                                                                                                 display: flex !important;
                                                                                                 flex-direction: column;
@@ -3471,6 +3472,9 @@
                                                                                             }
                                                                                             #chat-screen.mobile-chat-active .sidebar {
                                                                                                 display: none !important;
+                                                                                            }
+                                                                                            #chat-screen.mobile-chat-active .tab-pane.active {
+                                                                                                animation: none !important;
                                                                                             }
                                                                                             /* Header Kính mờ */
                                                                                             .chat-header {
@@ -3513,8 +3517,8 @@
                                                                                             }
                                                                                             .input-area {
                                                                                                 width: 100%;
-                                                                                                padding: 8px 10px 8px 10px !important;
-                                                                                                padding-bottom: calc(8px + env(safe-area-inset-bottom, 8px)) !important;
+                                                                                                padding: 8px 10px !important;
+                                                                                                padding-bottom: env(safe-area-inset-bottom, 8px) !important;
                                                                                                 background: var(--msg-receiver-bg) !important;
                                                                                                 align-items: center;
                                                                                                 gap: 8px;
