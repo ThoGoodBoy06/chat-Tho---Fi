@@ -3476,6 +3476,8 @@
                                                                                             }
                                                                                             #chat-screen.mobile-chat-active .tab-pane.active {
                                                                                                 animation: none !important;
+                                                                                                position: static !important;
+                                                                                                transform: none !important;
                                                                                             }
                                                                                             /* Header Kính mờ */
                                                                                             .chat-header {
