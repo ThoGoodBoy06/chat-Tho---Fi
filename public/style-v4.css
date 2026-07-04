@@ -3196,7 +3196,7 @@
                                                                                                 min-width: 100%;
                                                                                             }
                                                                                             .chat-list-container {
-                                                                                                padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px)) !important;
+                                                                                                padding-bottom: 76px !important;
                                                                                             }
 
                                                                                             .chat-window {
@@ -3231,7 +3231,7 @@
                                                                                                 padding-bottom: 0 !important;
                                                                                             }
                                                                                             .contacts-scroll-content {
-                                                                                                padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px)) !important;
+                                                                                                padding-bottom: 76px !important;
                                                                                             }
 
                                                                                             .auth-card {
@@ -3338,8 +3338,7 @@
                                                                                                 min-width: unset !important;
                                                                                                 flex-shrink: 0;
                                                                                                 margin: 0 !important;
-                                                                                                height: calc(66px + env(safe-area-inset-bottom, 0px)) !important;
-                                                                                                /* Tăng chiều cao để phủ qua nút Home ảo */
+                                                                                                height: 66px !important;
                                                                                                 border-radius: 0 !important;
                                                                                                 /* Loại bỏ góc bo capsule để làm tab bar tràn viền ngang */
                                                                                                 border-left: none !important;
@@ -3355,9 +3354,8 @@
                                                                                                 box-shadow: 0 -3px 12px rgba(0, 0, 0, 0.05) !important;
                                                                                                 flex-direction: row;
                                                                                                 justify-content: space-around !important;
-                                                                                                align-items: flex-start !important;
-                                                                                                /* Đưa các tabs lên trên phần đệm an toàn */
-                                                                                                padding: 8px 12px calc(4px + env(safe-area-inset-bottom, 0px)) 12px !important;
+                                                                                                align-items: center !important;
+                                                                                                padding: 8px 12px !important;
                                                                                                 gap: 0 !important;
                                                                                             }
 
@@ -3731,8 +3729,8 @@
 
                                                                                             .input-area {
                                                                                                 width: 100%;
-                                                                                                /* Cập nhật đệm đáy an toàn: cộng thêm 12px đệm cứng vào Home Indicator */
-                                                                                                padding: 8px 12px calc(12px + env(safe-area-inset-bottom, 0px)) 12px !important;
+                                                                                                /* Cập nhật đệm đáy an toàn: loại bỏ env(safe-area-inset-bottom) */
+                                                                                                padding: 8px 12px 12px 12px !important;
                                                                                                 background: var(--msg-receiver-bg) !important;
                                                                                                 align-items: center;
                                                                                                 gap: 8px;
@@ -3800,7 +3798,7 @@
                                                                                                 flex: 1;
                                                                                                 overflow-y: auto !important;
                                                                                                 -webkit-overflow-scrolling: touch !important;
-                                                                                                padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px)) !important;
+                                                                                                padding-bottom: 76px !important;
                                                                                             }
 
                                                                                             .zalo-profile-header {
@@ -4054,7 +4052,7 @@
 
                                                                                             .ai-chat-input-area {
                                                                                                 padding: 12px 16px;
-                                                                                                padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+                                                                                                padding-bottom: 76px !important;
                                                                                             }
 
                                                                                             .ai-code-wrapper {
@@ -7637,7 +7635,7 @@
                                                                                             display: flex;
                                                                                             flex-direction: column;
                                                                                             gap: 16px;
-                                                                                            padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px)) !important;
+                                                                                            padding-bottom: 76px !important;
                                                                                         }
 
                                                                                         .news-empty-state {
