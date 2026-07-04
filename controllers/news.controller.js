@@ -169,7 +169,16 @@ const getNewsContent = async(req, res) => {
 
         // Nếu chưa có link, trả về mô tả ngắn (đã clean HTML)
         if (!newsItem.link) {
-            const cleanContent = (newsItem.content || "").replace(/<[^>]*>?/gm, "").replace(/&nbsp;/g, " ").trim();
+            const cleanContent = (newsItem.content || "")
+                .replace(/&lt;/gi, "<")
+                .replace(/&gt;/gi, ">")
+                .replace(/&amp;/gi, "&")
+                .replace(/&quot;/gi, '"')
+                .replace(/&apos;/gi, "'")
+                .replace(/&nbsp;/gi, " ")
+                .replace(/<[^>]*>?/gm, "")
+                .replace(/\s+/g, " ")
+                .trim();
             return res.status(200).json({ success: true, data: `<p>${cleanContent || newsItem.title}</p>` });
         }
 
@@ -222,9 +231,16 @@ const getNewsContent = async(req, res) => {
         if (!fullContent || fullContent.length < 100) {
             // QUAN TRỌNG: Clean HTML thô khỏi content trước khi hiển thị
             const cleanContent = (newsItem.content || "")
-                .replace(/<a[\s\S]*?<\/a>/g, "")
+                .replace(/&lt;/gi, "<")
+                .replace(/&gt;/gi, ">")
+                .replace(/&amp;/gi, "&")
+                .replace(/&quot;/gi, '"')
+                .replace(/&apos;/gi, "'")
+                .replace(/&nbsp;/gi, " ")
+                .replace(/<a[^>]*>/gi, "")
+                .replace(/<\/a>/gi, "")
                 .replace(/<[^>]*>?/gm, "")
-                .replace(/&nbsp;/g, " ")
+                .replace(/\s+/g, " ")
                 .trim();
 
             let hostName = "Trang gốc";

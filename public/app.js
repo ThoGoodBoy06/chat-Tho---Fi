@@ -789,18 +789,21 @@ function initizeChatSession(userData, userToken) {
 
         // 4. Phát âm thanh và Rung điện thoại khi có tin nhắn mới từ người khác (Foreground)
         if (!isFromMe) {
-            // Khởi tạo Audio đối tượng và phát amthanhtinnhan.mp3
-            const notificationAudio = new Audio("amthanhtinnhan.mp3");
-            notificationAudio.play().catch((err) => {
-                console.warn("DOMException: Chính sách Auto-play của trình duyệt chặn phát âm thanh:", err.message);
-            });
+            // Chỉ phát âm thanh và rung nếu app ở Foreground (tránh phát trùng âm thanh hệ thống của iOS/Android)
+            if (!isAppInBackground) {
+                // Khởi tạo Audio đối tượng và phát amthanhtinnhan.mp3
+                const notificationAudio = new Audio("amthanhtinnhan.mp3");
+                notificationAudio.play().catch((err) => {
+                    console.warn("DOMException: Chính sách Auto-play của trình duyệt chặn phát âm thanh:", err.message);
+                });
 
-            // Rung phản hồi nhịp mạnh và lâu hơn (Rung 400ms, nghỉ 100ms, rung 400ms, nghỉ 100ms, rung 600ms)
-            if (navigator.vibrate) {
-                try {
-                    navigator.vibrate([400, 100, 400, 100, 600]);
-                } catch (err) {
-                    console.warn("Trình duyệt hoặc hệ điều hành từ chối cấp quyền rung:", err.message);
+                // Rung phản hồi nhịp mạnh và lâu hơn (Rung 400ms, nghỉ 100ms, rung 400ms, nghỉ 100ms, rung 600ms)
+                if (navigator.vibrate) {
+                    try {
+                        navigator.vibrate([400, 100, 400, 100, 600]);
+                    } catch (err) {
+                        console.warn("Trình duyệt hoặc hệ điều hành từ chối cấp quyền rung:", err.message);
+                    }
                 }
             }
 
