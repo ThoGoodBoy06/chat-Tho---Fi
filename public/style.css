@@ -3516,15 +3516,17 @@
                                                                                             }
                                                                                             .input-area {
                                                                                                 width: 100%;
-                                                                                                padding: 6px 10px;
-                                                                                                padding-bottom: calc(6px + env(safe-area-inset-bottom) * 0.4);
+                                                                                                padding: 8px 10px 8px 10px !important;
                                                                                                 background: var(--msg-receiver-bg) !important;
                                                                                                 align-items: center;
                                                                                                 gap: 8px;
                                                                                                 border-top: 1px solid var(--border-color) !important;
                                                                                             }
+                                                                                            .input-actions-left {
+                                                                                                padding-bottom: 0 !important;
+                                                                                            }
                                                                                             .input-area.emoji-open {
-                                                                                                padding-bottom: 6px !important;
+                                                                                                padding-bottom: 8px !important;
                                                                                             }
                                                                                             .input-actions-left-wrapper {
                                                                                                 overflow: hidden;
