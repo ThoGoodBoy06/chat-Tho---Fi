@@ -4517,6 +4517,7 @@ async function startCall(callType) {
             .setAttribute("style", "display: flex !important");
 
         modal.style.display = "flex";
+        document.body.classList.add("call-active");
 
         let myAvatarUrl = document.getElementById("my-avatar").src;
         if (myAvatarUrl && myAvatarUrl.startsWith(window.location.origin)) {
@@ -5083,6 +5084,7 @@ function checkUrlParamsForCall() {
             document.getElementById("active-call-actions").setAttribute("style", "display: none !important");
 
             modal.style.display = "flex";
+            document.body.classList.add("call-active");
             modal.style.zIndex = "99999";
 
             // Phát rung & nhạc chuông
@@ -5151,6 +5153,7 @@ function endCall(shouldEmit) {
 
     const modal = document.getElementById("call-modal");
     modal.style.display = "none";
+    document.body.classList.remove("call-active");
     modal.classList.remove("voice-call", "video-call", "in-call", "is-caller");
 
     document.getElementById("local-video").srcObject = null;
