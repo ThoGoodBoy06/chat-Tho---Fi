@@ -23,6 +23,7 @@
         "dotenv": "^17.4.2",
         "express": "^5.2.1",
         "firebase-admin": "^14.0.0",
+        "google-news-url-decoder": "^1.2.2",
         "helmet": "^8.2.0",
         "jsonwebtoken": "^9.0.3",
         "morgan": "^1.11.0",

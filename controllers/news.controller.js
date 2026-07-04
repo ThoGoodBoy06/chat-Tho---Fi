@@ -1,4 +1,6 @@
 const prisma = require("../prisma");
+const { GoogleDecoder } = require("google-news-url-decoder");
+const googleDecoder = new GoogleDecoder();
 
 const getLatestNews = async(req, res) => {
     try {
@@ -187,25 +189,25 @@ const getNewsContent = async(req, res) => {
         let actualUrl = newsItem.link;
 
         try {
-            // Nếu là link Google News, follow redirect để lấy URL bài báo thật
+            // Nếu là link Google News, giải mã URL bài báo thật từ Google News bằng GoogleDecoder
             if (actualUrl.includes("news.google.com")) {
                 try {
-                    const redirectRes = await fetch(actualUrl, {
+                    const decodedResult = await googleDecoder.decode(actualUrl);
+                    if (decodedResult.status && decodedResult.decoded_url) {
+                        actualUrl = decodedResult.decoded_url;
+                        console.log(`🔗 [Scraper] Google News decoded → ${actualUrl}`);
+                    }
+                    // Fetch nội dung bài viết thật sau khi đã giải mã URL
+                    const response = await fetch(actualUrl, {
                         headers: {
                             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                         },
-                        redirect: "follow",
                         signal: AbortSignal.timeout(10000)
                     });
-                    // Lấy URL thật sau khi redirect
-                    if (redirectRes.url && !redirectRes.url.includes("news.google.com") && !redirectRes.url.includes("consent.google.com")) {
-                        actualUrl = redirectRes.url;
-                        console.log(`🔗 [Scraper] Google News redirect → ${actualUrl}`);
-                    }
-                    const htmlText = await redirectRes.text();
+                    const htmlText = await response.text();
                     fullContent = extractArticleContent(actualUrl, htmlText);
                 } catch (redirectErr) {
-                    console.error(`⚠️ Lỗi redirect Google News:`, redirectErr.message);
+                    console.error(`⚠️ Lỗi giải mã/tải Google News URL:`, redirectErr.message);
                 }
             } else {
                 // Fetch trực tiếp cho các nguồn bình thường
