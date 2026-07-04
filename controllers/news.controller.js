@@ -95,14 +95,46 @@ const getNewsContent = async(req, res) => {
                 if (contentMatch) {
                     fullContent = contentMatch[1];
                 } else {
-                    // Fallback tìm thẻ article chung
+                    const articleMatch = htmlText.match(/<article[^>]*>([\s\S]*?)<\/article>/);
+                    if (articleMatch) {
+                        fullContent = articleMatch[1];
+                    }
+                }
+            } else if (newsItem.link.includes("vietnamnet.vn")) {
+                // VietnamNet sử dụng class "maincontent"
+                const contentMatch = htmlText.match(/<div[^>]*class="[^"]*maincontent[^"]*"[^>]*>([\s\S]*?)<\/div>/);
+                if (contentMatch) {
+                    fullContent = contentMatch[1];
+                } else {
+                    const articleMatch = htmlText.match(/<article[^>]*>([\s\S]*?)<\/article>/);
+                    if (articleMatch) {
+                        fullContent = articleMatch[1];
+                    }
+                }
+            } else if (newsItem.link.includes("genk.vn")) {
+                // Genk sử dụng class "knc-content"
+                const contentMatch = htmlText.match(/<div[^>]*class="[^"]*knc-content[^"]*"[^>]*>([\s\S]*?)<\/div>/);
+                if (contentMatch) {
+                    fullContent = contentMatch[1];
+                } else {
+                    const articleMatch = htmlText.match(/<article[^>]*>([\s\S]*?)<\/article>/);
+                    if (articleMatch) {
+                        fullContent = articleMatch[1];
+                    }
+                }
+            } else if (newsItem.link.includes("baomoi.com")) {
+                // Báo Mới sử dụng class "bm_B"
+                const contentMatch = htmlText.match(/<div[^>]*class="[^"]*bm_B[^"]*"[^>]*>([\s\S]*?)<\/div>/);
+                if (contentMatch) {
+                    fullContent = contentMatch[1];
+                } else {
                     const articleMatch = htmlText.match(/<article[^>]*>([\s\S]*?)<\/article>/);
                     if (articleMatch) {
                         fullContent = articleMatch[1];
                     }
                 }
             } else {
-                // Fallback cho các trang khác: tìm article hoặc div chứa nội dung
+                // Fallback cho các trang khác
                 let articleMatch = htmlText.match(/<article[^>]*>([\s\S]*?)<\/article>/);
                 if (articleMatch) {
                     fullContent = articleMatch[1];

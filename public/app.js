@@ -7512,7 +7512,11 @@ async function showNewsDetail(newsId) {
             <div style="text-align: center; padding: 40px 0;">
                 <i class="fas fa-exclamation-triangle" style="font-size: 36px; color: #ef4444; margin-bottom: 12px; display: block; margin-left: auto; margin-right: auto;"></i>
                 <p style="color: #ef4444; font-size: 13.5px;">Không thể tải nội dung chi tiết. Bạn có thể đọc trực tiếp tại nguồn báo:</p>
-                ${newsItem.link ? `<a href="${newsItem.link}" target="_blank" style="color: var(--primary-color); font-weight: 600; text-decoration: underline; font-size: 14px; margin-top: 12px; display: inline-block;">Đọc bài viết gốc trên VNExpress <i class="fas fa-external-link-alt"></i></a>` : ""}
+                ${newsItem.link ? (() => {
+                    let hostName = "trang gốc";
+                    try { hostName = new URL(newsItem.link).hostname.replace("www.", ""); } catch(e) {}
+                    return `<a href="${newsItem.link}" target="_blank" style="color: var(--primary-color); font-weight: 600; text-decoration: underline; font-size: 14px; margin-top: 12px; display: inline-block;">Đọc bài viết gốc trên ${hostName} <i class="fas fa-external-link-alt"></i></a>`;
+                })() : ""}
             </div>
         `;
     }

@@ -454,26 +454,33 @@ server.listen(PORT, () => {
     // REAL-TIME NEWS SCRAPER (VIETNAMESE + SPECIALIZED TECH/AI RSS FEEDS)
     // ===================================================================
     const FEEDS = [
+        // === TIN THẾ GIỚI ===
         { url: "https://vnexpress.net/rss/the-gioi.rss", category: "World" },
+        // === TIN VIỆT NAM ===
         { url: "https://vnexpress.net/rss/thoi-su.rss", category: "Vietnam" },
-        // === TIN CÔNG NGHỆ & AI CHUYÊN SÃU ===
+        { url: "https://dantri.com.vn/rss/xa-hoi.rss", category: "Vietnam" },
+        // === CÔNG NGHỆ & AI (Tiếng Việt) ===
         { url: "https://vnexpress.net/rss/cong-nghe.rss", category: "Tech_AI" },
+        { url: "https://vnexpress.net/rss/so-hoa.rss", category: "Tech_AI" },
         { url: "https://tinhte.vn/rss", category: "Tech_AI" },
         { url: "https://laodong.vn/rss/cong-nghe.rss", category: "Tech_AI" },
         { url: "https://dantri.com.vn/rss/cong-nghe.rss", category: "Tech_AI" },
-        // === AI & BIG TECH (tiếng Anh - tin quan trọng về AI/Meta/Google) ===
-        { url: "https://www.theverge.com/rss/index.xml", category: "Tech_AI" },
-        { url: "https://feeds.arstechnica.com/arstechnica/index", category: "Tech_AI" },
-        { url: "https://feeds.bloomberg.com/technology/news.rss", category: "Tech_AI" },
-        // === AI RESEARCH & MODELS ===
-        { url: "https://reddit.com/r/MachineLearning.rss", category: "Tech_AI" },
-        { url: "https://reddit.com/r/artificial.rss", category: "Tech_AI" }
+        { url: "https://vietnamnet.vn/rss/cong-nghe.rss", category: "Tech_AI" },
+        { url: "https://genk.vn/rss/ai.rss", category: "Tech_AI" },
+        { url: "https://genk.vn/rss/cong-nghe.rss", category: "Tech_AI" },
+        { url: "https://ictnews.vietnamnet.vn/rss/home.rss", category: "Tech_AI" },
+        { url: "https://baomoi.com/cong-nghe.rss", category: "Tech_AI" }
     ];
 
     async function updateRealNews(ioInstance) {
-        try {
-            for (const feed of FEEDS) {
-                const response = await fetch(feed.url);
+        for (const feed of FEEDS) {
+            try {
+                const response = await fetch(feed.url, {
+                    headers: {
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                    },
+                    signal: AbortSignal.timeout(15000) // Timeout 15 giây cho mỗi nguồn
+                });
                 const xmlText = await response.text();
 
                 const items = [];
@@ -500,8 +507,8 @@ server.listen(PORT, () => {
                     if (description.includes("<br/>")) {
                         description = description.split("<br/>").pop();
                     }
-                    description = description.replace(/<a[\s\S]*?<\/a>/g, ""); // remove anchor image link
-                    description = description.replace(/<[^>]*>?/gm, "").trim(); // remove general HTML tags
+                    description = description.replace(/<a[\s\S]*?<\/a>/g, "");
+                    description = description.replace(/<[^>]*>?/gm, "").trim();
 
                     if (title) {
                         items.push({
@@ -517,7 +524,6 @@ server.listen(PORT, () => {
                 items.reverse();
 
                 for (const item of items) {
-                    // Kiểm tra xem tin đã tồn tại trong DB chưa
                     const existing = await prisma.news.findFirst({
                         where: { title: item.title }
                     });
@@ -533,17 +539,15 @@ server.listen(PORT, () => {
                             }
                         });
 
-                        // console.log(`📰 [Real News] Đã tải thêm tin mới [${feed.category}]: ${item.title}`);
-
-                        // Phát sóng tới tất cả client nếu đây là lần quét định kỳ
                         if (ioInstance) {
                             ioInstance.emit("new_news_broadcast", newNewsItem);
                         }
                     }
                 }
+            } catch (error) {
+                console.error(`❌ Lỗi khi cào tin từ ${feed.url}:`, error.message);
+                // Tiếp tục với nguồn RSS tiếp theo, không dừng toàn bộ
             }
-        } catch (error) {
-            console.error("❌ Lỗi khi cập nhật tin tức từ VNExpress RSS:", error.message);
         }
     }
 
