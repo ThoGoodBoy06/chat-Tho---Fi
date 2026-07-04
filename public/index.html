@@ -15,7 +15,7 @@
     <meta name="apple-mobile-web-app-title" content="Chat Tho-Fi" />
     <link rel="icon" href="icon.png" type="image/png" />
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
-    <link rel="stylesheet" href="style-v4.css?v=25" />
+    <link rel="stylesheet" href="style-v4.css?v=27" />
 </head>
 
 <body>
@@ -360,37 +360,44 @@
             <!-- TAB 2: DANH BẠ & KẾT BẠN (NEW) -->
             <div id="tab-contacts" class="tab-pane">
                 <div class="contacts-container">
-                    <div class="zalo-profile-header">
-                        <h3>Danh bạ</h3>
-                    </div>
-                    <div class="contact-section">
-                        <h4>Tìm kiếm & Thêm bạn</h4>
-                        <div class="search-box" style="padding: 0; margin-bottom: 20px">
-                            <div class="search-input-wrapper">
-                                <i class="fas fa-search search-icon"></i>
-                                <input type="text" id="friend-search-input"
-                                    placeholder="Nhập Username hoặc Tên đầy đủ..."
-                                    onkeyup="if (event.key === 'Enter') searchUserForFriend();" />
+                    <!-- Khung cố định phía trên -->
+                    <div class="contacts-fixed-top">
+                        <div class="zalo-profile-header">
+                            <h3>Danh bạ</h3>
+                        </div>
+                        <div class="contact-section" style="border-bottom: none; padding-bottom: 12px;">
+                            <h4>Tìm kiếm & Thêm bạn</h4>
+                            <div class="search-box" style="padding: 0;">
+                                <div class="search-input-wrapper">
+                                    <i class="fas fa-search search-icon"></i>
+                                    <input type="text" id="friend-search-input"
+                                        placeholder="Nhập Username hoặc Tên đầy đủ..."
+                                        onkeyup="if (event.key === 'Enter') searchUserForFriend();" />
+                                </div>
                             </div>
                         </div>
-                        <div id="friend-search-results">
-                            <!-- Kết quả tìm kiếm sẽ hiện ở đây -->
-                        </div>
                     </div>
 
-                    <div class="contact-section">
-                        <h4>Lời mời kết bạn</h4>
-                        <div id="friend-requests-list">
-                            <!-- <p style="color: var(--text-light); text-align: center;">Không có lời mời kết bạn nào.</p> -->
+                    <!-- Khung cuộn danh sách phía dưới -->
+                    <div class="contacts-scroll-content">
+                        <div class="contact-section" style="padding: 0; border-bottom: none;">
+                            <div id="friend-search-results"></div>
                         </div>
-                    </div>
 
-                    <div class="contact-section">
-                        <h4>Bạn bè của tôi</h4>
-                        <div id="friends-list">
-                            <p style="color: var(--text-light); text-align: center">
-                                Chưa có bạn bè nào.
-                            </p>
+                        <div class="contact-section">
+                            <h4>Lời mời kết bạn</h4>
+                            <div id="friend-requests-list">
+                                <!-- <p style="color: var(--text-light); text-align: center;">Không có lời mời kết bạn nào.</p> -->
+                            </div>
+                        </div>
+
+                        <div class="contact-section">
+                            <h4>Bạn bè của tôi</h4>
+                            <div id="friends-list">
+                                <p style="color: var(--text-light); text-align: center">
+                                    Chưa có bạn bè nào.
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
