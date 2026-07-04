@@ -3200,6 +3200,7 @@
                                                                                                 box-shadow: none;
                                                                                                 height: auto !important;
                                                                                                 overflow-y: visible !important;
+                                                                                                padding-bottom: 40px !important;
                                                                                             }
 
                                                                                             .auth-card {
@@ -3584,7 +3585,6 @@
 
                                                                                             .tab-pane {
                                                                                                 height: 100% !important;
-                                                                                                height: -webkit-fill-available !important;
                                                                                                 width: 100%;
                                                                                             }
 
@@ -3760,6 +3760,7 @@
                                                                                                 padding: 0;
                                                                                                 height: auto !important;
                                                                                                 overflow-y: visible !important;
+                                                                                                padding-bottom: 40px !important;
                                                                                             }
 
                                                                                             .zalo-profile-header {
