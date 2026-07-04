@@ -1905,6 +1905,7 @@
                                                                                             align-items: flex-start;
                                                                                             justify-content: center;
                                                                                             overflow-y: auto;
+                                                                                            -webkit-overflow-scrolling: touch;
                                                                                             background: var(--bg-color);
                                                                                         }
 
@@ -2074,6 +2075,7 @@
                                                                                             align-items: flex-start;
                                                                                             justify-content: center;
                                                                                             overflow-y: auto;
+                                                                                            -webkit-overflow-scrolling: touch;
                                                                                         }
 
                                                                                         .zalo-profile-layout {
@@ -3196,6 +3198,8 @@
                                                                                                 max-width: 100%;
                                                                                                 margin-top: 0;
                                                                                                 box-shadow: none;
+                                                                                                height: auto !important;
+                                                                                                overflow-y: visible !important;
                                                                                             }
 
                                                                                             .auth-card {
@@ -3754,6 +3758,8 @@
                                                                                                 max-width: 100%;
                                                                                                 box-shadow: none;
                                                                                                 padding: 0;
+                                                                                                height: auto !important;
+                                                                                                overflow-y: visible !important;
                                                                                             }
 
                                                                                             .zalo-profile-header {
