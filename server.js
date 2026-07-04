@@ -454,9 +454,10 @@ server.listen(PORT, () => {
     // REAL-TIME NEWS SCRAPER (VIETNAMESE + SPECIALIZED TECH/AI RSS FEEDS)
     // ===================================================================
 
-    // Xóa tin tiếng Anh cũ (từ các nguồn đã bị loại bỏ) khi server khởi động
+    // Xóa tin tiếng Anh cũ + reset fullContent bị lỗi từ Google News
     (async () => {
         try {
+            // Xóa tin tiếng Anh cũ
             const result = await prisma.news.deleteMany({
                 where: {
                     OR: [
@@ -472,8 +473,19 @@ server.listen(PORT, () => {
             if (result.count > 0) {
                 console.log(`🧹 Đã xóa ${result.count} tin tức tiếng Anh cũ khỏi database.`);
             }
+
+            // Reset fullContent bị lỗi từ Google News (chứa raw HTML)
+            const resetResult = await prisma.news.updateMany({
+                where: {
+                    link: { contains: "news.google.com" }
+                },
+                data: { fullContent: null }
+            });
+            if (resetResult.count > 0) {
+                console.log(`🔄 Đã reset ${resetResult.count} bài Google News để cào lại nội dung.`);
+            }
         } catch (err) {
-            console.error("⚠️ Lỗi khi xóa tin tiếng Anh cũ:", err.message);
+            console.error("⚠️ Lỗi khi dọn dẹp database:", err.message);
         }
     })();
 
@@ -532,17 +544,23 @@ server.listen(PORT, () => {
                     let pubDate = extractTag("pubDate");
                     let link = extractTag("link");
 
-                    // Google News RSS redirect: lấy link thật từ URL redirect
-                    if (link && link.includes("news.google.com/rss/articles")) {
-                        // Link sẽ redirect tới bài gốc, giữ nguyên link Google News
+                    // Google News: xóa " - TênNguồn" ở cuối title (ví dụ: "Tiêu đề - CafeF")
+                    if (feed.url.includes("news.google.com") && title.includes(" - ")) {
+                        title = title.replace(/\s*-\s*[^-]+$/, "").trim();
                     }
 
-                    // Clean up description
-                    if (description.includes("<br/>")) {
-                        description = description.split("<br/>").pop();
+                    // Clean up description - xóa sạch HTML tags và entities
+                    if (description.includes("<br/>") || description.includes("<br>")) {
+                        description = description.split(/<br\s*\/?>/i).pop();
                     }
                     description = description.replace(/<a[\s\S]*?<\/a>/g, "");
-                    description = description.replace(/<[^>]*>?/gm, "").trim();
+                    description = description.replace(/<[^>]*>?/gm, "");
+                    description = description.replace(/&nbsp;/g, " ");
+                    description = description.replace(/&amp;/g, "&");
+                    description = description.replace(/&lt;/g, "<");
+                    description = description.replace(/&gt;/g, ">");
+                    description = description.replace(/&quot;/g, '"');
+                    description = description.trim();
 
                     // Bỏ qua tin tiếng Anh: kiểm tra nếu title chứa quá nhiều ký tự Latin
                     // (tin tiếng Việt luôn có dấu, nên tỷ lệ ký tự ASCII thấp hơn)
