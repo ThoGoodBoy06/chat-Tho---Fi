@@ -3198,7 +3198,7 @@
                                                                                             }
                                                                                             .chat-list-container {
                                                                                                 background: var(--msg-receiver-bg) !important;
-                                                                                                padding-bottom: 68px !important;
+                                                                                                padding-bottom: 74px !important;
                                                                                             }
 
                                                                                             .chat-window {
@@ -3233,7 +3233,7 @@
                                                                                                 padding-bottom: 0 !important;
                                                                                             }
                                                                                             .contacts-scroll-content {
-                                                                                                padding-bottom: 68px !important;
+                                                                                                padding-bottom: 74px !important;
                                                                                             }
 
                                                                                             .auth-card {
@@ -3340,7 +3340,7 @@
                                                                                                 min-width: unset !important;
                                                                                                 flex-shrink: 0;
                                                                                                 margin: 0 !important;
-                                                                                                height: 58px !important;
+                                                                                                height: 64px !important;
                                                                                                 border-radius: 0 !important;
                                                                                                 /* Loại bỏ góc bo capsule để làm tab bar tràn viền ngang */
                                                                                                 border-left: none !important;
@@ -3357,7 +3357,7 @@
                                                                                                 flex-direction: row;
                                                                                                 justify-content: space-around !important;
                                                                                                 align-items: center !important;
-                                                                                                padding: 4px 12px 6px 12px !important;
+                                                                                                padding: 5px 12px !important;
                                                                                                 gap: 0 !important;
                                                                                             }
 
@@ -3373,9 +3373,9 @@
                                                                                             /* ── SLIDING PILL INDICATOR ── */
                                                                                             .nav-slider-pill {
                                                                                                 position: absolute;
-                                                                                                height: 50px;
-                                                                                                top: 8px;
-                                                                                                border-radius: 26px;
+                                                                                                height: 54px;
+                                                                                                top: 5px;
+                                                                                                border-radius: 28px;
                                                                                                 background: linear-gradient(135deg, var(--primary-color) 0%, #2563eb 100%);
                                                                                                 box-shadow: 0 4px 16px rgba(0, 104, 255, 0.35), 0 1px 0 rgba(255, 255, 255, 0.25) inset;
                                                                                                 transition: left 0.2s cubic-bezier(0.25, 1, 0.5, 1), width 0.2s cubic-bezier(0.25, 1, 0.5, 1);
@@ -3396,8 +3396,7 @@
                                                                                             .nav-item {
                                                                                                 width: calc((100% - 24px) / 5) !important;
                                                                                                 flex: none !important;
-                                                                                                height: 50px;
-                                                                                                /* Increased from 46px to 50px */
+                                                                                                height: 54px;
                                                                                                 flex-direction: column;
                                                                                                 gap: 2px;
                                                                                                 display: flex;
@@ -3406,8 +3405,7 @@
                                                                                                 cursor: pointer;
                                                                                                 -webkit-tap-highlight-color: transparent;
                                                                                                 transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-                                                                                                border-radius: 26px;
-                                                                                                /* Increased from 24px to 26px */
+                                                                                                border-radius: 28px;
                                                                                                 position: relative;
                                                                                                 z-index: 1;
                                                                                                 overflow: visible;
@@ -3440,8 +3438,7 @@
 
                                                                                             /* ── ICON ── */
                                                                                             .nav-item i {
-                                                                                                font-size: 19px;
-                                                                                                /* Increased from 17px to 19px */
+                                                                                                font-size: 21px;
                                                                                                 color: var(--text-light);
                                                                                                 transition: color 0.25s ease, filter 0.25s ease;
                                                                                             }
@@ -3458,8 +3455,7 @@
                                                                                             /* ── LABEL ── */
                                                                                             .nav-label {
                                                                                                 display: block;
-                                                                                                font-size: 11.5px !important;
-                                                                                                /* Increased from 10px to 11.5px */
+                                                                                                font-size: 12.5px !important;
                                                                                                 font-weight: 600;
                                                                                                 letter-spacing: 0.01em;
                                                                                                 margin-top: 1px;
@@ -3804,7 +3800,7 @@
                                                                                                 flex: 1;
                                                                                                 overflow-y: auto !important;
                                                                                                 -webkit-overflow-scrolling: touch !important;
-                                                                                                padding-bottom: 68px !important;
+                                                                                                padding-bottom: 74px !important;
                                                                                             }
 
                                                                                             .zalo-profile-header {
@@ -4058,7 +4054,7 @@
 
                                                                                             .ai-chat-input-area {
                                                                                                 padding: 12px 16px;
-                                                                                                padding-bottom: 68px !important;
+                                                                                                padding-bottom: 74px !important;
                                                                                             }
 
                                                                                             .ai-code-wrapper {
@@ -7641,7 +7637,7 @@
                                                                                             display: flex;
                                                                                             flex-direction: column;
                                                                                             gap: 16px;
-                                                                                            padding-bottom: 68px !important;
+                                                                                            padding-bottom: 74px !important;
                                                                                         }
 
                                                                                         .news-empty-state {
