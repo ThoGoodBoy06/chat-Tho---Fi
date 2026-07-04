@@ -3198,7 +3198,7 @@
                                                                                             }
                                                                                             .chat-list-container {
                                                                                                 background: var(--msg-receiver-bg) !important;
-                                                                                                padding-bottom: 74px !important;
+                                                                                                padding-bottom: 72px !important;
                                                                                             }
 
                                                                                             .chat-window {
@@ -3233,7 +3233,7 @@
                                                                                                 padding-bottom: 0 !important;
                                                                                             }
                                                                                             .contacts-scroll-content {
-                                                                                                padding-bottom: 74px !important;
+                                                                                                padding-bottom: 72px !important;
                                                                                             }
 
                                                                                             .auth-card {
@@ -3340,7 +3340,7 @@
                                                                                                 min-width: unset !important;
                                                                                                 flex-shrink: 0;
                                                                                                 margin: 0 !important;
-                                                                                                height: 64px !important;
+                                                                                                height: 62px !important;
                                                                                                 border-radius: 0 !important;
                                                                                                 /* Loại bỏ góc bo capsule để làm tab bar tràn viền ngang */
                                                                                                 border-left: none !important;
@@ -3357,7 +3357,7 @@
                                                                                                 flex-direction: row;
                                                                                                 justify-content: space-around !important;
                                                                                                 align-items: center !important;
-                                                                                                padding: 5px 12px !important;
+                                                                                                padding: 8px 12px 0px 12px !important;
                                                                                                 gap: 0 !important;
                                                                                             }
 
@@ -3374,7 +3374,7 @@
                                                                                             .nav-slider-pill {
                                                                                                 position: absolute;
                                                                                                 height: 54px;
-                                                                                                top: 5px;
+                                                                                                top: 8px;
                                                                                                 border-radius: 28px;
                                                                                                 background: linear-gradient(135deg, var(--primary-color) 0%, #2563eb 100%);
                                                                                                 box-shadow: 0 4px 16px rgba(0, 104, 255, 0.35), 0 1px 0 rgba(255, 255, 255, 0.25) inset;
@@ -3800,7 +3800,7 @@
                                                                                                 flex: 1;
                                                                                                 overflow-y: auto !important;
                                                                                                 -webkit-overflow-scrolling: touch !important;
-                                                                                                padding-bottom: 74px !important;
+                                                                                                padding-bottom: 72px !important;
                                                                                             }
 
                                                                                             .zalo-profile-header {
@@ -4054,7 +4054,7 @@
 
                                                                                             .ai-chat-input-area {
                                                                                                 padding: 12px 16px;
-                                                                                                padding-bottom: 74px !important;
+                                                                                                padding-bottom: 72px !important;
                                                                                             }
 
                                                                                             .ai-code-wrapper {
@@ -7637,7 +7637,7 @@
                                                                                             display: flex;
                                                                                             flex-direction: column;
                                                                                             gap: 16px;
-                                                                                            padding-bottom: 74px !important;
+                                                                                            padding-bottom: 72px !important;
                                                                                         }
 
                                                                                         .news-empty-state {
