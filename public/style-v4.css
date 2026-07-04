@@ -3517,8 +3517,7 @@
                                                                                             }
                                                                                             .input-area {
                                                                                                 width: 100%;
-                                                                                                padding: 8px 10px !important;
-                                                                                                padding-bottom: env(safe-area-inset-bottom, 8px) !important;
+                                                                                                padding: 8px 10px 8px 10px !important;
                                                                                                 background: var(--msg-receiver-bg) !important;
                                                                                                 align-items: center;
                                                                                                 gap: 8px;
