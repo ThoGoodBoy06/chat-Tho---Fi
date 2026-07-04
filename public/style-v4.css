@@ -3185,6 +3185,7 @@
                                                                                         }
 
                                                                                         @media screen and (max-width: 768px) {
+                                                                                            #tab-messages.active,
                                                                                             #tab-contacts.active,
                                                                                             #tab-profile.active {
                                                                                                 display: flex !important;
@@ -3620,8 +3621,12 @@
 
                                                                                             .chat-list {
                                                                                                 width: 100%;
-                                                                                                height: 100%;
-                                                                                                background: var(--msg-receiver-bg);
+                                                                                                height: 100% !important;
+                                                                                                height: -webkit-fill-available !important;
+                                                                                                background: var(--msg-receiver-bg) !important;
+                                                                                                display: flex !important;
+                                                                                                flex-direction: column !important;
+                                                                                                overflow: hidden !important;
                                                                                             }
 
                                                                                             #user-list li {
