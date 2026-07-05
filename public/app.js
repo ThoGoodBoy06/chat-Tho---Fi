@@ -3140,6 +3140,7 @@ function closeChatMobile() {
     if (chatWindow) {
         chatWindow.style.removeProperty('height');
         chatWindow.style.removeProperty('top');
+        chatWindow.style.removeProperty('padding-bottom');
     }
     const chatHeader = document.getElementById('chat-header-container');
     if (chatHeader) {
@@ -8094,23 +8095,42 @@ function closeReactionsDetailModal(e) {
 window.closeReactionsDetailModal = closeReactionsDetailModal;
 
 // --- OPTIMIZATION FOR MOBILE KEYBOARD (VISUAL VIEWPORT) ---
-// Thay vì điều chỉnh height/top của cả khung chat gây giật (layout recalculation), chúng ta chỉ dịch chuyển Header
-// chạy theo Visual Viewport bằng GPU transform, còn lại cho phép trình duyệt cuộn tự nhiên 100% cực kỳ mượt mà.
+// Cố định chiều cao của toàn bộ khung chat (100%), chỉ đẩy phần nhập tin nhắn và danh sách chat bằng padding-bottom.
+// Điều này giúp tiêu đề (Header) hoàn toàn cố định ở đầu màn hình và không bao giờ bị trôi lệch khi gõ.
 if (window.visualViewport) {
     const handleViewportChange = () => {
         const isMobileChatActive = document.body.classList.contains('mobile-chat-active') || 
                                    document.getElementById('chat-screen')?.classList.contains('mobile-chat-active');
-        const chatHeader = document.getElementById('chat-header-container');
-        if (chatHeader && window.innerWidth <= 768 && isMobileChatActive) {
-            const offsetTop = window.visualViewport.offsetTop;
-            // Dịch chuyển Header xuống bằng GPU transform để giữ cố định ở đầu màn hình
-            chatHeader.style.transform = `translateY(${offsetTop}px)`;
-        } else if (chatHeader) {
-            chatHeader.style.transform = 'none';
+        const chatWindow = document.querySelector('.chat-window');
+        if (chatWindow && window.innerWidth <= 768) {
+            if (isMobileChatActive) {
+                const keyboardHeight = window.innerHeight - window.visualViewport.height;
+                // Thiết lập padding-bottom bằng độ cao bàn phím để đẩy cụm nhập tin nhắn lên
+                chatWindow.style.setProperty('padding-bottom', `${keyboardHeight}px`, 'important');
+                
+                // Đồng bộ cuộn tin nhắn xuống sát đáy mượt mà
+                const messagesDiv = document.getElementById("messages");
+                if (messagesDiv) {
+                    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                }
+            } else {
+                chatWindow.style.removeProperty('padding-bottom');
+            }
         }
     };
 
     window.visualViewport.addEventListener('resize', handleViewportChange);
     window.visualViewport.addEventListener('scroll', handleViewportChange);
 }
+
+// Chống trôi/cuộn trang tuyệt đối khi đang mở khung chat trên di động (đồng bộ và siêu mượt)
+window.addEventListener('scroll', function() {
+    const isMobileChatActive = document.body.classList.contains('mobile-chat-active') || 
+                               document.getElementById('chat-screen')?.classList.contains('mobile-chat-active');
+    if (isMobileChatActive && window.innerWidth <= 768) {
+        if (window.scrollY !== 0 || window.scrollX !== 0) {
+            window.scrollTo(0, 0);
+        }
+    }
+});
 

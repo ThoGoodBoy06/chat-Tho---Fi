@@ -3729,6 +3729,14 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         overflow: hidden !important;
     }
 
+    body.mobile-chat-active {
+        overflow: hidden !important;
+        position: fixed !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        height: -webkit-fill-available !important;
+    }
+
     #user-list li {
         padding: 14px 16px;
         border-bottom: 1px solid var(--border-color);
@@ -3752,12 +3760,9 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         left: 0 !important;
         right: 0 !important;
         bottom: 0 !important;
-        /* QUAN TRỌNG: Ghim chặt ở đáy màn hình */
         width: 100vw !important;
-        height: auto !important;
-        /* Dùng top/bottom để tránh lỗi tính toán viewport height trên iOS PWA */
+        height: 100% !important;
         z-index: 9999 !important;
-        /* Đẩy lên lớp cao nhất, vượt qua mọi UI khác */
         display: flex !important;
         flex-direction: column;
         transform: translateX(100%);
