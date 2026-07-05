@@ -3783,13 +3783,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         z-index: -1 !important;
     }
 
-    body.mobile-chat-active {
-        overflow: hidden !important;
-        position: fixed !important;
-        width: 100vw !important;
-        height: 100vh !important;
-        height: -webkit-fill-available !important;
-    }
+
 
     body.mobile-chat-active .sidebar {
         display: none !important;

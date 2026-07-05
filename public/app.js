@@ -3141,6 +3141,10 @@ function closeChatMobile() {
         chatWindow.style.removeProperty('height');
         chatWindow.style.removeProperty('top');
     }
+    const chatHeader = document.getElementById('chat-header-container');
+    if (chatHeader) {
+        chatHeader.style.transform = 'none';
+    }
 }
 
 // 7. Sự kiện Gửi Hình ảnh
@@ -8090,29 +8094,19 @@ function closeReactionsDetailModal(e) {
 window.closeReactionsDetailModal = closeReactionsDetailModal;
 
 // --- OPTIMIZATION FOR MOBILE KEYBOARD (VISUAL VIEWPORT) ---
-// Tự động điều chỉnh kích thước khung chat khớp với chiều cao thực tế khi bàn phím ảo hiển thị
+// Thay vì điều chỉnh height/top của cả khung chat gây giật (layout recalculation), chúng ta chỉ dịch chuyển Header
+// chạy theo Visual Viewport bằng GPU transform, còn lại cho phép trình duyệt cuộn tự nhiên 100% cực kỳ mượt mà.
 if (window.visualViewport) {
     const handleViewportChange = () => {
         const isMobileChatActive = document.body.classList.contains('mobile-chat-active') || 
                                    document.getElementById('chat-screen')?.classList.contains('mobile-chat-active');
-        const chatWindow = document.querySelector('.chat-window');
-        if (chatWindow && window.innerWidth <= 768) {
-            if (isMobileChatActive) {
-                const viewportHeight = window.visualViewport.height;
-                const offsetTop = window.visualViewport.offsetTop;
-                // Thiết lập CSS inline có !important để ghi đè quy tắc style-v4.css
-                chatWindow.style.setProperty('height', `${viewportHeight}px`, 'important');
-                chatWindow.style.setProperty('top', `${offsetTop}px`, 'important');
-                
-                // Đồng bộ cuộn tin nhắn xuống sát đáy theo kích thước bàn phím (mượt mà, không giật)
-                const messagesDiv = document.getElementById("messages");
-                if (messagesDiv) {
-                    messagesDiv.scrollTop = messagesDiv.scrollHeight;
-                }
-            } else {
-                chatWindow.style.removeProperty('height');
-                chatWindow.style.removeProperty('top');
-            }
+        const chatHeader = document.getElementById('chat-header-container');
+        if (chatHeader && window.innerWidth <= 768 && isMobileChatActive) {
+            const offsetTop = window.visualViewport.offsetTop;
+            // Dịch chuyển Header xuống bằng GPU transform để giữ cố định ở đầu màn hình
+            chatHeader.style.transform = `translateY(${offsetTop}px)`;
+        } else if (chatHeader) {
+            chatHeader.style.transform = 'none';
         }
     };
 
