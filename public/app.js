@@ -1061,6 +1061,11 @@ function initizeChatSession(userData, userToken) {
                     content.style.color = "var(--text-light)";
                     content.style.background = "transparent";
                     content.style.border = "1px solid var(--border-color)";
+                    content.style.boxShadow = "";
+                    content.style.padding = "";
+                    
+                    msgEl.classList.remove("emoji-only-message");
+                    content.classList.remove("emoji-only-1", "emoji-only-2", "emoji-only-3");
                 }
                 const actions = msgEl.querySelector(".message-actions");
                 if (actions) actions.remove();
@@ -1083,6 +1088,16 @@ function initizeChatSession(userData, userToken) {
                 const content = msgEl.querySelector(".message-content");
                 if (content) {
                     content.innerText = newContent;
+
+                    // Reset và tính toán lại các class emoji-only
+                    msgEl.classList.remove("emoji-only-message");
+                    content.classList.remove("emoji-only-1", "emoji-only-2", "emoji-only-3");
+                    
+                    const emojiCount = getEmojiOnlyCount(newContent);
+                    if (emojiCount > 0) {
+                        msgEl.classList.add("emoji-only-message");
+                        content.classList.add(`emoji-only-${emojiCount}`);
+                    }
 
                     const editedLabel = document.createElement("span");
                     editedLabel.className = "edited-label";
@@ -2727,7 +2742,6 @@ function displayMessage(msg, targetContainer = null) {
             isHorizontalDrag = false;
             dragX = 0;
             messageBody.style.transition = "none";
-            messageBody.setPointerCapture(e.pointerId);
         });
 
         messageBody.addEventListener("pointermove", (e) => {
@@ -2737,6 +2751,7 @@ function displayMessage(msg, targetContainer = null) {
 
             if (!isHorizontalDrag && Math.abs(diffX) > 8 && Math.abs(diffX) > Math.abs(diffY) * 1.2) {
                 isHorizontalDrag = true;
+                messageBody.setPointerCapture(e.pointerId); // Chỉ capture khi thực sự kéo ngang
             }
 
             if (isHorizontalDrag) {
@@ -3078,6 +3093,16 @@ if (messageInput) {
         const inputArea = document.getElementById('input-area');
         if (inputArea) inputArea.classList.add('is-typing');
         if (typeof closeEmojiPicker === "function") closeEmojiPicker();
+        // Tự động cuộn xuống cuối khi bàn phím ảo đẩy lên
+        setTimeout(() => {
+            const messagesDiv = document.getElementById("messages");
+            if (messagesDiv) {
+                messagesDiv.scrollTo({
+                    top: messagesDiv.scrollHeight,
+                    behavior: "smooth"
+                });
+            }
+        }, 300);
     });
 
     // Khi người dùng bấm ra ngoài (Blur) -> hiển thị lại menu trái nếu ô nhập trống
@@ -3109,32 +3134,50 @@ function closeChatMobile() {
 // 7. Sự kiện Gửi Hình ảnh
 const imageUploadInput = document.getElementById("image-upload");
 if (imageUploadInput) {
-    imageUploadInput.addEventListener("change", function (e) {
+    imageUploadInput.addEventListener("change", async function (e) {
         const file = e.target.files[0];
         if (!file) return;
 
-        const reader = new FileReader();
-        reader.onload = function (event) {
-            const base64Image = event.target.result;
-            sendMessage(base64Image);
-        };
-        reader.readAsDataURL(file);
+        try {
+            showLoading("Đang xử lý và nén ảnh...");
+            const compressedBase64 = await compressImage(file, 1200, 1200, 0.85);
+            hideLoading();
+            sendMessage(compressedBase64);
+        } catch (err) {
+            console.error("Lỗi nén ảnh:", err);
+            hideLoading();
+            // Fallback gửi ảnh gốc nếu lỗi nén
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                sendMessage(event.target.result);
+            };
+            reader.readAsDataURL(file);
+        }
     });
 }
 
 // Sự kiện Chụp và gửi hình ảnh qua Camera
 const cameraUploadInput = document.getElementById("camera-upload");
 if (cameraUploadInput) {
-    cameraUploadInput.addEventListener("change", function (e) {
+    cameraUploadInput.addEventListener("change", async function (e) {
         const file = e.target.files[0];
         if (!file) return;
 
-        const reader = new FileReader();
-        reader.onload = function (event) {
-            const base64Image = event.target.result;
-            sendMessage(base64Image);
-        };
-        reader.readAsDataURL(file);
+        try {
+            showLoading("Đang xử lý và nén ảnh...");
+            const compressedBase64 = await compressImage(file, 1200, 1200, 0.85);
+            hideLoading();
+            sendMessage(compressedBase64);
+        } catch (err) {
+            console.error("Lỗi nén ảnh từ camera:", err);
+            hideLoading();
+            // Fallback gửi ảnh gốc nếu lỗi nén
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                sendMessage(event.target.result);
+            };
+            reader.readAsDataURL(file);
+        }
     });
 }
 
