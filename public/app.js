@@ -3088,12 +3088,19 @@ if (messageInput) {
         }, 1500);
     });
 
-    const scrollToBottom = () => {
+    const scrollToBottomSmooth = () => {
         const messagesDiv = document.getElementById("messages");
         if (messagesDiv) {
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            let start = Date.now();
+            const timer = setInterval(() => {
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                if (Date.now() - start > 350) {
+                    clearInterval(timer);
+                }
+            }, 16);
         }
     };
+    window.scrollToBottomSmooth = scrollToBottomSmooth;
 
     // Khi người dùng bấm click vào ô nhập (Focus) -> thu gọn menu trái để nhường chỗ
     messageInput.addEventListener("focus", function () {
@@ -3112,10 +3119,10 @@ if (messageInput) {
                 inputArea.style.removeProperty("top");
                 inputArea.style.removeProperty("z-index");
                 
-                scrollToBottom();
+                scrollToBottomSmooth();
             }, 30);
         } else {
-            scrollToBottom();
+            scrollToBottomSmooth();
         }
     });
 
@@ -3123,7 +3130,7 @@ if (messageInput) {
     messageInput.addEventListener("click", function () {
         const inputArea = document.getElementById('input-area');
         if (inputArea) inputArea.classList.add('is-typing');
-        scrollToBottom();
+        scrollToBottomSmooth();
     });
 
     // Khi người dùng bấm ra ngoài (Blur) -> hiển thị lại menu trái nếu ô nhập trống
@@ -8126,9 +8133,8 @@ if (window.visualViewport) {
         }
 
         // Tự động đẩy danh sách tin nhắn xuống cuối cùng để hiển thị tin nhắn mới nhất
-        const messagesDiv = document.getElementById("messages");
-        if (messagesDiv) {
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        if (typeof window.scrollToBottomSmooth === "function") {
+            window.scrollToBottomSmooth();
         }
     };
 
