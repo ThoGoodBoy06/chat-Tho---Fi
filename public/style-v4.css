@@ -3735,7 +3735,6 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         width: 100% !important;
         height: 100% !important;
         overflow: hidden !important;
-        touch-action: none !important;
     }
 
     #user-list li {
@@ -3880,6 +3879,10 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         transition: max-width 0.3s ease, opacity 0.2s ease;
         max-width: 160px;
         opacity: 1;
+    }
+
+    .input-area.is-typing .input-actions-left-wrapper {
+        display: none !important;
     }
 
     /* expand-actions-btn handled globally */
