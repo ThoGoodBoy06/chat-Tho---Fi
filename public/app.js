@@ -2590,13 +2590,16 @@ function displayMessage(msg, targetContainer = null) {
         EMOJIS.forEach((emoji) => {
             const emojiSpan = document.createElement("span");
             emojiSpan.innerText = emoji;
-            emojiSpan.onclick = (e) => {
+            const handleReact = (e) => {
                 e.stopPropagation();
+                e.preventDefault();
                 const currentMsgId = messageElement.dataset.messageId;
                 reactToMessage(currentMsgId, emoji);
                 reactionPalette.classList.remove("show");
                 hideMobileOverlay();
             };
+            emojiSpan.onclick = handleReact;
+            emojiSpan.addEventListener("touchend", handleReact, { passive: false });
             reactionPalette.appendChild(emojiSpan);
         });
         reactBtn.appendChild(reactionPalette);

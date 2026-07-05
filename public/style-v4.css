@@ -1296,6 +1296,7 @@ RIGHT WINDOW & CHAT MESSAGES
 
 .message.show-mobile-actions {
     z-index: 201;
+    overflow: visible !important;
 }
 
 /* ==========================================================================
@@ -4010,7 +4011,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         position: absolute !important;
         top: 100% !important;
         margin-top: 8px;
-        z-index: 101;
+        z-index: 202 !important;
         width: max-content;
         min-width: 280px;
         max-width: 90vw;
@@ -4019,6 +4020,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         padding: 0 !important;
         opacity: 1;
         visibility: visible;
+        pointer-events: auto !important;
     }
 
     .my-message.show-mobile-actions .message-actions {
@@ -4049,10 +4051,15 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         opacity: 1 !important;
         visibility: visible !important;
         width: 100%;
+        pointer-events: auto !important;
+        z-index: 202 !important;
     }
 
     .message.show-mobile-actions .reaction-palette span {
         font-size: 22px !important;
+        pointer-events: auto !important;
+        cursor: pointer !important;
+        -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1) !important;
     }
 
     .message.show-mobile-actions .more-menu {
