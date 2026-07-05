@@ -25,6 +25,125 @@ document.addEventListener(
     true,
 );
 
+// --- HỆ THỐNG ÂM THANH SYNTHETIC (WEB AUDIO API) ---
+const ChatSounds = {
+    _ctx: null,
+    
+    _init() {
+        if (!this._ctx) {
+            this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (this._ctx.state === "suspended") {
+            this._ctx.resume();
+        }
+        return this._ctx;
+    },
+
+    playSend() {
+        try {
+            const ctx = this._init();
+            const now = ctx.currentTime;
+            
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            
+            // Âm thanh gửi: Quét tần số nhanh từ thấp lên cao (Swoosh/Pop)
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(160, now);
+            osc.frequency.exponentialRampToValueAtTime(750, now + 0.12);
+            
+            gain.gain.setValueAtTime(0.01, now);
+            gain.gain.linearRampToValueAtTime(0.18, now + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+            
+            osc.start(now);
+            osc.stop(now + 0.15);
+        } catch (e) {
+            console.warn("Lỗi phát âm thanh gửi:", e.message);
+        }
+    },
+
+    playReceive() {
+        try {
+            const ctx = this._init();
+            const now = ctx.currentTime;
+            
+            // Âm thanh nhận: Chuông đôi ấm áp (ding-dong)
+            const osc1 = ctx.createOscillator();
+            const osc2 = ctx.createOscillator();
+            const gain = ctx.createGain();
+            
+            osc1.connect(gain);
+            osc2.connect(gain);
+            gain.connect(ctx.destination);
+            
+            osc1.type = "sine";
+            osc1.frequency.setValueAtTime(523.25, now); // nốt Đô (C5)
+            
+            osc2.type = "sine";
+            osc2.frequency.setValueAtTime(659.25, now + 0.08); // nốt Mi (E5)
+            
+            gain.gain.setValueAtTime(0.01, now);
+            gain.gain.linearRampToValueAtTime(0.15, now + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.05, now + 0.08);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+            
+            osc1.start(now);
+            osc1.stop(now + 0.12);
+            
+            osc2.start(now + 0.08);
+            osc2.stop(now + 0.35);
+        } catch (e) {
+            console.warn("Lỗi phát âm thanh nhận:", e.message);
+        }
+    },
+
+    playReact() {
+        try {
+            const ctx = this._init();
+            const now = ctx.currentTime;
+            
+            // Bộ dao động 1: Quét tần số đi lên để tạo tiếng nước nảy (bubble rise)
+            const osc1 = ctx.createOscillator();
+            const gain1 = ctx.createGain();
+            osc1.connect(gain1);
+            gain1.connect(ctx.destination);
+            
+            osc1.type = "sine";
+            osc1.frequency.setValueAtTime(350, now);
+            osc1.frequency.exponentialRampToValueAtTime(1200, now + 0.08);
+            
+            gain1.gain.setValueAtTime(0.01, now);
+            gain1.gain.linearRampToValueAtTime(0.12, now + 0.02);
+            gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+            
+            osc1.start(now);
+            osc1.stop(now + 0.09);
+            
+            // Bộ dao động 2: Một tiếng Ping kim loại cao tần cực ngắn ở đỉnh của tiếng nẩy
+            const osc2 = ctx.createOscillator();
+            const gain2 = ctx.createGain();
+            osc2.connect(gain2);
+            gain2.connect(ctx.destination);
+            
+            osc2.type = "sine";
+            osc2.frequency.setValueAtTime(1600, now + 0.03); // Nốt cao tần tinh tế
+            
+            gain2.gain.setValueAtTime(0.001, now + 0.03);
+            gain2.gain.linearRampToValueAtTime(0.08, now + 0.04);
+            gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+            
+            osc2.start(now + 0.03);
+            osc2.stop(now + 0.13);
+        } catch (e) {
+            console.warn("Lỗi phát âm thanh cảm xúc:", e.message);
+        }
+    }
+};
+
 // --- QUẢN LÝ APP STATE (CAPACITOR / TRÌNH DUYỆT) ---
 let isAppInBackground = false;
 document.addEventListener("visibilitychange", () => {
@@ -791,11 +910,8 @@ function initizeChatSession(userData, userToken) {
         if (!isFromMe) {
             // Chỉ phát âm thanh và rung nếu app ở Foreground (tránh phát trùng âm thanh hệ thống của iOS/Android)
             if (!isAppInBackground) {
-                // Khởi tạo Audio đối tượng và phát amthanhtinnhan.mp3
-                const notificationAudio = new Audio("amthanhtinnhan.mp3");
-                notificationAudio.play().catch((err) => {
-                    console.warn("DOMException: Chính sách Auto-play của trình duyệt chặn phát âm thanh:", err.message);
-                });
+                // Phát âm thanh nhận tin nhắn synthetic
+                ChatSounds.playReceive();
 
                 // Rung phản hồi nhịp mạnh và lâu hơn (Rung 400ms, nghỉ 100ms, rung 400ms, nghỉ 100ms, rung 600ms)
                 if (navigator.vibrate) {
@@ -985,10 +1101,44 @@ function initizeChatSession(userData, userToken) {
     socket.on("message_reacted", ({ messageId, reactions, reaction, isRemoved }) => {
         const msgEl = document.getElementById(`msg-${messageId}`);
         if (msgEl) {
-            renderReactions(msgEl, reactions);
-            // Chỉ nổ hiệu ứng nếu không phải là hành động gỡ cảm xúc
+            // Xác định ai là người thực hiện hành động thả/gỡ cảm xúc bằng cách so sánh dataset
+            const oldReactions = msgEl.dataset.reactions ? JSON.parse(msgEl.dataset.reactions) : {};
+            let changerId = null;
+            
+            // Chuyển đổi dữ liệu mới nếu ở dạng chuỗi
+            let newReactions = reactions;
+            if (typeof newReactions === "string") {
+                try { newReactions = JSON.parse(newReactions); } catch(e) { newReactions = {}; }
+            }
+            newReactions = newReactions || {};
+            
+            const newKeys = Object.keys(newReactions);
+            const oldKeys = Object.keys(oldReactions);
+            
+            for (const key of newKeys) {
+                if (newReactions[key] !== oldReactions[key]) {
+                    changerId = key;
+                    break;
+                }
+            }
+            if (!changerId) {
+                for (const key of oldKeys) {
+                    if (newReactions[key] === undefined) {
+                        changerId = key;
+                        break;
+                    }
+                }
+            }
+            
+            // Render giao diện mới
+            renderReactions(msgEl, newReactions);
+            
+            // Chỉ phát âm thanh và nổ hiệu ứng nếu không phải mình làm và là hành động thả cảm xúc
             if (reaction && !isRemoved) {
-                createReactionBurst(messageId, reaction);
+                if (changerId && !isSameId(changerId, myId)) {
+                    createReactionBurst(messageId, reaction);
+                    ChatSounds.playReact();
+                }
             }
         }
     });
@@ -2112,6 +2262,26 @@ async function removeFriend(friendId) {
     }
 }
 
+// Đếm số lượng emoji nếu tin nhắn chỉ chứa toàn emoji (tối đa 3 emoji)
+function getEmojiOnlyCount(text) {
+    if (!text) return 0;
+    const cleanText = text.trim();
+    if (!cleanText) return 0;
+
+    // Regex khớp chính xác các emoji bao gồm cả skin tones và ZWJ sequences
+    const emojiRegex = /(\p{Extended_Pictographic}|\p{Emoji_Presentation})(\u200d\p{Extended_Pictographic})*/gu;
+    const matches = cleanText.match(emojiRegex) || [];
+    
+    const joined = matches.join("");
+    const cleanJoined = joined.replace(/[\s\uFE0F]/g, "");
+    const cleanInput = cleanText.replace(/[\s\uFE0F]/g, "");
+    
+    if (cleanJoined === cleanInput && matches.length > 0 && matches.length <= 3) {
+        return matches.length;
+    }
+    return 0;
+}
+
 // 4. Hiển thị tin nhắn lên màn hình
 function displayMessage(msg, targetContainer = null) {
     // CHỐT CHẶN: Nếu tin nhắn đã được render (bởi Socket) thì bỏ qua để tránh trùng lặp
@@ -2304,6 +2474,14 @@ function displayMessage(msg, targetContainer = null) {
             messageContent.style.padding = "0";
         } else {
             messageContent.innerText = msg.content;
+
+            // Xử lý Emoji cỡ lớn nếu tin nhắn chỉ chứa từ 1 đến 3 emoji
+            const emojiCount = getEmojiOnlyCount(msg.content);
+            if (emojiCount > 0) {
+                messageElement.classList.add("emoji-only-message");
+                messageContent.classList.add(`emoji-only-${emojiCount}`);
+            }
+
             if (msg.isEdited) {
                 const editedLabel = document.createElement("span");
                 editedLabel.className = "edited-label";
@@ -2788,6 +2966,7 @@ function sendMessage(imageContent = null) {
     };
     currentChatMessages.push(optimisticMsg);
     displayMessage(optimisticMsg);
+    ChatSounds.playSend();
     updateChatListUI(optimisticMsg, true);
 
     const payload = { content };
@@ -3049,6 +3228,7 @@ async function recallMessage(messageId) {
 
 // 12. Gửi cảm xúc vào tin nhắn
 async function reactToMessage(messageId, reaction) {
+    ChatSounds.playReact();
     try {
         const res = await fetch(`${API_URL}/chat/messages/${messageId}/react`, {
             method: "POST",
@@ -3083,6 +3263,12 @@ function renderReactions(messageElement, reactions) {
         messageElement.querySelector(".message-content");
 
     if (!content) return;
+
+    // Lưu trữ cảm xúc vào dataset của phần tử tin nhắn chính để so sánh sau này
+    const msgEl = content.closest(".message");
+    if (msgEl) {
+        msgEl.dataset.reactions = JSON.stringify(reactions || {});
+    }
 
     let reactionsContainer = content.querySelector(".message-reactions");
     if (!reactionsContainer) {
@@ -7831,12 +8017,18 @@ function openReactionsDetailModal(reactions) {
 
     renderList(entries.map(([userId, emoji]) => ({ userId, emoji })));
     modal.style.display = "flex";
+    setTimeout(() => {
+        modal.classList.add("show");
+    }, 10);
 }
 
 function closeReactionsDetailModal(e) {
     const modal = document.getElementById("reactions-detail-modal");
-    if (modal && (e.target === modal || e.type === "close")) {
-        modal.style.display = "none";
+    if (modal && (e === true || e.target === modal || e.type === "close")) {
+        modal.classList.remove("show");
+        setTimeout(() => {
+            modal.style.display = "none";
+        }, 250);
     }
 }
 

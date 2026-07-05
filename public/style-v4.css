@@ -897,6 +897,34 @@
                                                                                             box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
                                                                                         }
 
+                                                                                        /* LARGE EMOJI MESSAGES (MESSENGER STYLE) */
+                                                                                        .emoji-only-message .message-content {
+                                                                                            background: transparent !important;
+                                                                                            border: none !important;
+                                                                                            box-shadow: none !important;
+                                                                                            padding: 2px 0 !important;
+                                                                                            overflow: visible !important;
+                                                                                        }
+
+                                                                                        .my-message.emoji-only-message .message-content {
+                                                                                            color: inherit !important;
+                                                                                        }
+
+                                                                                        .emoji-only-1 {
+                                                                                            font-size: 52px !important;
+                                                                                            line-height: 1.15 !important;
+                                                                                        }
+
+                                                                                        .emoji-only-2 {
+                                                                                            font-size: 42px !important;
+                                                                                            line-height: 1.15 !important;
+                                                                                        }
+
+                                                                                        .emoji-only-3 {
+                                                                                            font-size: 32px !important;
+                                                                                            line-height: 1.15 !important;
+                                                                                        }
+
                                                                                         .message.other-message .sender-name {
                                                                                             font-weight: 500;
                                                                                             font-size: 12px;
