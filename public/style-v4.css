@@ -746,6 +746,7 @@
                                                                                             min-width: 0;
                                                                                             transition: background-color 0.25s ease;
                                                                                             will-change: background-color;
+                                                                                            position: relative;
                                                                                         }
 
                                                                                         .chat-header {
@@ -820,6 +821,19 @@
                                                                                             display: flex;
                                                                                             flex-direction: column;
                                                                                             position: relative;
+                                                                                            animation: messageSlideIn 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+                                                                                            will-change: transform, opacity;
+                                                                                        }
+
+                                                                                        @keyframes messageSlideIn {
+                                                                                            from {
+                                                                                                opacity: 0;
+                                                                                                transform: translateY(12px) scale(0.97);
+                                                                                            }
+                                                                                            to {
+                                                                                                opacity: 1;
+                                                                                                transform: translateY(0) scale(1);
+                                                                                            }
                                                                                         }
 
                                                                                         .message-body {
@@ -8039,4 +8053,57 @@
                                                                                             color: #ffffff;
                                                                                             box-shadow: 0 2px 8px rgba(255, 0, 85, 0.35);
                                                                                             animation: hot-pulse 1.4s infinite alternate;
+                                                                                        }
+
+                                                                                        /* SCROLL TO BOTTOM BUTTON */
+                                                                                        .scroll-to-bottom-btn {
+                                                                                            position: absolute;
+                                                                                            bottom: 85px;
+                                                                                            right: 24px;
+                                                                                            width: 42px;
+                                                                                            height: 42px;
+                                                                                            border-radius: 50%;
+                                                                                            background: rgba(255, 255, 255, 0.9);
+                                                                                            backdrop-filter: blur(8px);
+                                                                                            -webkit-backdrop-filter: blur(8px);
+                                                                                            border: 1px solid var(--border-color);
+                                                                                            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+                                                                                            color: var(--text-dark);
+                                                                                            display: flex;
+                                                                                            align-items: center;
+                                                                                            justify-content: center;
+                                                                                            font-size: 15px;
+                                                                                            cursor: pointer;
+                                                                                            z-index: 99;
+                                                                                            opacity: 0;
+                                                                                            transform: translateY(12px) scale(0.8);
+                                                                                            pointer-events: none;
+                                                                                            transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.2s, box-shadow 0.2s;
+                                                                                        }
+
+                                                                                        .scroll-to-bottom-btn.visible {
+                                                                                            opacity: 1;
+                                                                                            transform: translateY(0) scale(1);
+                                                                                            pointer-events: auto;
+                                                                                        }
+
+                                                                                        .scroll-to-bottom-btn:hover {
+                                                                                            background: #ffffff;
+                                                                                            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+                                                                                            transform: translateY(-2px) scale(1.05);
+                                                                                        }
+
+                                                                                        .scroll-to-bottom-btn:active {
+                                                                                            transform: translateY(0) scale(0.95);
+                                                                                        }
+
+                                                                                        body[data-theme="dark"] .scroll-to-bottom-btn {
+                                                                                            background: rgba(30, 30, 40, 0.9);
+                                                                                            border-color: rgba(255, 255, 255, 0.08);
+                                                                                            color: #e4e6eb;
+                                                                                            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+                                                                                        }
+
+                                                                                        body[data-theme="dark"] .scroll-to-bottom-btn:hover {
+                                                                                            background: rgba(45, 45, 55, 0.95);
                                                                                         }

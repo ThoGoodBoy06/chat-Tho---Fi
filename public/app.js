@@ -2174,7 +2174,10 @@ function displayMessage(msg, targetContainer = null) {
             targetContainer.appendChild(messageElement);
         } else {
             messagesDiv.appendChild(messageElement);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            messagesDiv.scrollTo({
+                top: messagesDiv.scrollHeight,
+                behavior: "smooth"
+            });
         }
         return;
     }
@@ -2206,7 +2209,10 @@ function displayMessage(msg, targetContainer = null) {
         messageElement.appendChild(metaElement);
 
         messagesDiv.appendChild(messageElement);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        messagesDiv.scrollTo({
+            top: messagesDiv.scrollHeight,
+            behavior: "smooth"
+        });
         return;
     }
 
@@ -2654,7 +2660,10 @@ function displayMessage(msg, targetContainer = null) {
         // updateReadReceiptsDOM() được gọi một lần duy nhất sau khi toàn bộ tin nhắn đã render xong
         // (trong startChat / reloadCurrentChat / socket receive_message). Không gọi ở đây để tránh flicker.
         requestAnimationFrame(() => {
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            messagesDiv.scrollTo({
+                top: messagesDiv.scrollHeight,
+                behavior: "smooth"
+            });
         });
     }
 }
@@ -7312,6 +7321,29 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (installAuthBtn) {
         installAuthBtn.addEventListener("click", triggerPwaInstall);
+    }
+
+    // --- NÚT CUỘN XUỐNG DƯỚI (SCROLL TO BOTTOM BUTTON) ---
+    const messagesDiv = document.getElementById("messages");
+    const scrollBtn = document.getElementById("scroll-to-bottom-btn");
+
+    if (messagesDiv && scrollBtn) {
+        messagesDiv.addEventListener("scroll", () => {
+            const distanceFromBottom = messagesDiv.scrollHeight - messagesDiv.scrollTop - messagesDiv.clientHeight;
+            // Nếu người dùng cuộn lên quá 300px thì hiện nút
+            if (distanceFromBottom > 300) {
+                scrollBtn.classList.add("visible");
+            } else {
+                scrollBtn.classList.remove("visible");
+            }
+        });
+
+        scrollBtn.addEventListener("click", () => {
+            messagesDiv.scrollTo({
+                top: messagesDiv.scrollHeight,
+                behavior: "smooth"
+            });
+        });
     }
 
     // Không tự động kích hoạt trên iOS (chỉ hỗ trợ Android/Chrome thông qua event beforeinstallprompt)
