@@ -3088,30 +3088,11 @@ if (messageInput) {
         }, 1500);
     });
 
-    let scrollTimer = null;
-    const keepScrollZero = () => {
-        window.scrollTo(0, 0);
-        document.body.scrollTop = 0;
-        document.documentElement.scrollTop = 0;
-    };
-
-    const lockScrollAndScrollToBottom = () => {
+    const scrollToBottom = () => {
         const messagesDiv = document.getElementById("messages");
         if (messagesDiv) {
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
-        if (scrollTimer) clearInterval(scrollTimer);
-        let count = 0;
-        scrollTimer = setInterval(() => {
-            keepScrollZero();
-            if (messagesDiv) {
-                messagesDiv.scrollTop = messagesDiv.scrollHeight;
-            }
-            count++;
-            if (count > 15) {
-                clearInterval(scrollTimer);
-            }
-        }, 30);
     };
 
     // Khi người dùng bấm click vào ô nhập (Focus) -> thu gọn menu trái để nhường chỗ
@@ -3119,14 +3100,14 @@ if (messageInput) {
         const inputArea = document.getElementById('input-area');
         if (inputArea) inputArea.classList.add('is-typing');
         if (typeof closeEmojiPicker === "function") closeEmojiPicker();
-        lockScrollAndScrollToBottom();
+        scrollToBottom();
     });
 
     // Đảm bảo click/tap vào ô nhập cũng lập tức thu gọn menu chức năng trái
     messageInput.addEventListener("click", function () {
         const inputArea = document.getElementById('input-area');
         if (inputArea) inputArea.classList.add('is-typing');
-        lockScrollAndScrollToBottom();
+        scrollToBottom();
     });
 
     // Khi người dùng bấm ra ngoài (Blur) -> hiển thị lại menu trái nếu ô nhập trống
@@ -3135,7 +3116,6 @@ if (messageInput) {
         if (this.value.trim().length === 0) {
             if (inputArea) inputArea.classList.remove('is-typing');
         }
-        if (scrollTimer) clearInterval(scrollTimer);
     });
 }
 
@@ -8123,17 +8103,30 @@ if (window.visualViewport) {
                 // Thiết lập CSS inline có !important để ghi đè quy tắc style-v4.css
                 chatWindow.style.setProperty('height', `${viewportHeight}px`, 'important');
                 chatWindow.style.setProperty('top', `${offsetTop}px`, 'important');
+                
+                // Đồng bộ cuộn tin nhắn xuống sát đáy theo kích thước bàn phím (mượt mà, không giật)
+                const messagesDiv = document.getElementById("messages");
+                if (messagesDiv) {
+                    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                }
             } else {
                 chatWindow.style.removeProperty('height');
                 chatWindow.style.removeProperty('top');
             }
         }
-        // Ép toàn bộ khung cuộn ngoài về 0 để tránh trình duyệt đẩy giao diện lên
-        window.scrollTo(0, 0);
-        document.body.scrollTop = 0;
-        document.documentElement.scrollTop = 0;
     };
 
     window.visualViewport.addEventListener('resize', handleViewportChange);
     window.visualViewport.addEventListener('scroll', handleViewportChange);
-}
+}
+
+// Chống trôi/cuộn layout viewport khi đang mở khung chat trên di động (chạy đồng bộ, siêu mượt)
+window.addEventListener('scroll', function() {
+    const isMobileChatActive = document.body.classList.contains('mobile-chat-active') || 
+                               document.getElementById('chat-screen')?.classList.contains('mobile-chat-active');
+    if (isMobileChatActive && window.innerWidth <= 768) {
+        if (window.scrollY !== 0 || window.scrollX !== 0) {
+            window.scrollTo(0, 0);
+        }
+    }
+});
