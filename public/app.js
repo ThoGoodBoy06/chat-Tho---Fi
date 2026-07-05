@@ -3088,17 +3088,45 @@ if (messageInput) {
         }, 1500);
     });
 
+    let scrollTimer = null;
+    const keepScrollZero = () => {
+        window.scrollTo(0, 0);
+        document.body.scrollTop = 0;
+        document.documentElement.scrollTop = 0;
+    };
+
+    const lockScrollAndScrollToBottom = () => {
+        const messagesDiv = document.getElementById("messages");
+        if (messagesDiv) {
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        if (scrollTimer) clearInterval(scrollTimer);
+        let count = 0;
+        scrollTimer = setInterval(() => {
+            keepScrollZero();
+            if (messagesDiv) {
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }
+            count++;
+            if (count > 15) {
+                clearInterval(scrollTimer);
+            }
+        }, 30);
+    };
+
     // Khi người dùng bấm click vào ô nhập (Focus) -> thu gọn menu trái để nhường chỗ
     messageInput.addEventListener("focus", function () {
         const inputArea = document.getElementById('input-area');
         if (inputArea) inputArea.classList.add('is-typing');
         if (typeof closeEmojiPicker === "function") closeEmojiPicker();
+        lockScrollAndScrollToBottom();
     });
 
     // Đảm bảo click/tap vào ô nhập cũng lập tức thu gọn menu chức năng trái
     messageInput.addEventListener("click", function () {
         const inputArea = document.getElementById('input-area');
         if (inputArea) inputArea.classList.add('is-typing');
+        lockScrollAndScrollToBottom();
     });
 
     // Khi người dùng bấm ra ngoài (Blur) -> hiển thị lại menu trái nếu ô nhập trống
@@ -3107,6 +3135,7 @@ if (messageInput) {
         if (this.value.trim().length === 0) {
             if (inputArea) inputArea.classList.remove('is-typing');
         }
+        if (scrollTimer) clearInterval(scrollTimer);
     });
 }
 
