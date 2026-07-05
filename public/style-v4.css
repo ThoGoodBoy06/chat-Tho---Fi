@@ -1761,13 +1761,17 @@
 
                                                                                         .send-btn {
                                                                                             color: #0084ff;
-                                                                                            font-size: 20px;
+                                                                                            font-size: 24px !important;
                                                                                             transition: transform var(--transition-fast);
                                                                                         }
 
                                                                                         .send-btn:hover {
                                                                                             color: var(--primary-hover);
                                                                                             transform: scale(1.1);
+                                                                                        }
+
+                                                                                        .send-like-btn {
+                                                                                            font-size: 26px !important;
                                                                                         }
 
                                                                                         /* ==========================================================================
@@ -2887,6 +2891,7 @@
                                                                                         .message-body {
                                                                                             transition: transform 0.15s ease-out;
                                                                                             position: relative;
+                                                                                            will-change: transform;
                                                                                         }
 
                                                                                         .swipe-reply-indicator {
@@ -2905,6 +2910,7 @@
                                                                                             opacity: 0;
                                                                                             transition: opacity 0.1s, transform 0.1s;
                                                                                             pointer-events: none;
+                                                                                            will-change: transform, opacity;
                                                                                         }
 
                                                                                         .swipe-reply-indicator.active {
@@ -3758,6 +3764,14 @@
 
                                                                                             .input-actions-left {
                                                                                                 padding-bottom: 0 !important;
+                                                                                            }
+
+                                                                                            .input-actions-right {
+                                                                                                display: flex !important;
+                                                                                                align-items: center !important;
+                                                                                                align-self: center !important;
+                                                                                                height: 38px !important;
+                                                                                                margin-left: 12px !important;
                                                                                             }
 
                                                                                             .input-area.emoji-open {
@@ -4890,6 +4904,20 @@
 
                                                                                         body[data-theme="dark"] .ai-message.ai-bot .ai-avatar {
                                                                                             border: 1px solid rgba(255, 255, 255, 0.1);
+                                                                                        }
+
+                                                                                        .message-content {
+                                                                                            padding: 12px 16px;
+                                                                                            font-size: 15px;
+                                                                                            line-height: 1.5;
+                                                                                            word-wrap: break-word;
+                                                                                            word-break: break-word;
+                                                                                            overflow-wrap: break-word;
+                                                                                            max-width: 100%;
+                                                                                            min-width: 0;
+                                                                                            position: relative;
+                                                                                            box-shadow: var(--shadow-sm);
+                                                                                            touch-action: manipulation;
                                                                                         }
 
                                                                                         .ai-message .ai-bubble {
@@ -8106,4 +8134,107 @@
 
                                                                                         body[data-theme="dark"] .scroll-to-bottom-btn:hover {
                                                                                             background: rgba(45, 45, 55, 0.95);
+                                                                                        }
+
+                                                                                        /* HEART POP ANIMATION (DOUBLE CLICK REACTION) */
+                                                                                        @keyframes heartPop {
+                                                                                            0% {
+                                                                                                transform: translate(-50%, -50%) scale(0) rotate(-15deg);
+                                                                                                opacity: 0;
+                                                                                            }
+                                                                                            15% {
+                                                                                                transform: translate(-50%, -50%) scale(1.4) rotate(10deg);
+                                                                                                opacity: 0.9;
+                                                                                            }
+                                                                                            30% {
+                                                                                                transform: translate(-50%, -50%) scale(1.2) rotate(-5deg);
+                                                                                                opacity: 1;
+                                                                                            }
+                                                                                            75% {
+                                                                                                transform: translate(-50%, -50%) scale(1.2) rotate(-5deg);
+                                                                                                opacity: 1;
+                                                                                            }
+                                                                                            100% {
+                                                                                                transform: translate(-50%, -50%) scale(0.6) translateY(-45px) rotate(15deg);
+                                                                                                opacity: 0;
+                                                                                            }
+                                                                                        }
+
+                                                                                        .heart-pop-animation {
+                                                                                            position: absolute;
+                                                                                            top: 50%;
+                                                                                            left: 50%;
+                                                                                            transform: translate(-50%, -50%);
+                                                                                            font-size: 42px;
+                                                                                            color: #ff3b30;
+                                                                                            pointer-events: none;
+                                                                                            z-index: 100;
+                                                                                            animation: heartPop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+                                                                                            text-shadow: 0 4px 12px rgba(255, 59, 48, 0.4);
+                                                                                            will-change: transform, opacity;
+                                                                                        }
+
+                                                                                        /* REACTIONS DETAIL MODAL */
+                                                                                        .reactions-modal-card {
+                                                                                            max-width: 400px !important;
+                                                                                            width: 90% !important;
+                                                                                            padding: 20px !important;
+                                                                                            border-radius: 16px !important;
+                                                                                            background: var(--bg-color) !important;
+                                                                                            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
+                                                                                            border: 1px solid var(--border-color) !important;
+                                                                                        }
+
+                                                                                        .reactions-modal-tab {
+                                                                                            padding: 6px 12px;
+                                                                                            font-size: 14px;
+                                                                                            font-weight: 600;
+                                                                                            border-radius: 20px;
+                                                                                            cursor: pointer;
+                                                                                            background: transparent;
+                                                                                            color: var(--text-light);
+                                                                                            transition: all 0.2s;
+                                                                                            border: none;
+                                                                                            outline: none;
+                                                                                        }
+
+                                                                                        .reactions-modal-tab.active {
+                                                                                            background: var(--active-bg);
+                                                                                            color: var(--primary-color);
+                                                                                        }
+
+                                                                                        .reactions-modal-item {
+                                                                                            display: flex;
+                                                                                            align-items: center;
+                                                                                            justify-content: space-between;
+                                                                                            padding: 6px 8px;
+                                                                                            border-radius: 8px;
+                                                                                            transition: background-color 0.2s;
+                                                                                        }
+
+                                                                                        .reactions-modal-item:hover {
+                                                                                            background-color: var(--active-bg);
+                                                                                        }
+
+                                                                                        .reactions-modal-user-info {
+                                                                                            display: flex;
+                                                                                            align-items: center;
+                                                                                            gap: 12px;
+                                                                                        }
+
+                                                                                        .reactions-modal-avatar {
+                                                                                            width: 40px;
+                                                                                            height: 40px;
+                                                                                            border-radius: 50%;
+                                                                                            object-fit: cover;
+                                                                                        }
+
+                                                                                        .reactions-modal-name {
+                                                                                            font-size: 15px;
+                                                                                            font-weight: 600;
+                                                                                            color: var(--text-dark);
+                                                                                        }
+
+                                                                                        .reactions-modal-emoji {
+                                                                                            font-size: 20px;
                                                                                         }

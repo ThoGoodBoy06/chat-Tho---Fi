@@ -10,7 +10,7 @@ function formatUrl(url) {
 // TỰ ĐỘNG THAY THẾ ẢNH LỖI (404) BẰNG ẢNH MẶC ĐỊNH
 document.addEventListener(
     "error",
-    function(e) {
+    function (e) {
         if (e.target.tagName && e.target.tagName.toLowerCase() === "img") {
             const fallback =
                 "https://ui-avatars.com/api/?name=User&background=random";
@@ -315,8 +315,8 @@ function getReadReceiptTarget(myMessages) {
     // Fallback: tìm tin nhắn của mình được đọc cuối cùng theo data attribute
     return (
         [...myMessages]
-        .reverse()
-        .find((message) => message.dataset.isRead === "true") || null
+            .reverse()
+            .find((message) => message.dataset.isRead === "true") || null
     );
 }
 
@@ -537,7 +537,7 @@ function showMobileOverlay(messageEl) {
 }
 
 // Hệ thống gài quét lỗi toàn cục
-window.onerror = function(msg, url, lineNo, columnNo, error) {
+window.onerror = function (msg, url, lineNo, columnNo, error) {
     if (
         typeof msg === "string" &&
         (msg.includes("ResizeObserver") ||
@@ -635,10 +635,10 @@ function initizeChatSession(userData, userToken) {
     document.getElementById("profile-name").innerText = myName;
     if (document.getElementById("my-avatar-profile"))
         document.getElementById("my-avatar-profile").src =
-        document.getElementById("my-avatar").src;
+            document.getElementById("my-avatar").src;
     if (document.getElementById("profile-bio"))
         document.getElementById("profile-bio").innerText =
-        userData.bio || "Chưa có tiểu sử";
+            userData.bio || "Chưa có tiểu sử";
     if (document.getElementById("my-cover")) {
         const coverUrl = userData.coverPhoto || userData.coverImage;
         if (coverUrl) {
@@ -711,7 +711,7 @@ function initizeChatSession(userData, userToken) {
     });
 
     // Nghe khi mình chấp nhận lời mời của ai đó
-    socket.on("you_accepted_friend_request", async(newFriend) => {
+    socket.on("you_accepted_friend_request", async (newFriend) => {
         alert(`Bạn và ${newFriend.fullName} đã trở thành bạn bè!`);
         try {
             await fetch(`${API_URL}/chat/conversations`, {
@@ -722,13 +722,13 @@ function initizeChatSession(userData, userToken) {
                 },
                 body: JSON.stringify({ receiverId: newFriend.id }),
             });
-        } catch (e) {}
+        } catch (e) { }
         loadConversations();
         loadFriends();
     });
 
     // Nghe khi lời mời của mình được chấp nhận
-    socket.on("friend_request_accepted", async(userWhoAccepted) => {
+    socket.on("friend_request_accepted", async (userWhoAccepted) => {
         alert(`${userWhoAccepted.fullName} đã chấp nhận lời mời của bạn!`);
         try {
             await fetch(`${API_URL}/chat/conversations`, {
@@ -739,7 +739,7 @@ function initizeChatSession(userData, userToken) {
                 },
                 body: JSON.stringify({ receiverId: userWhoAccepted.id }),
             });
-        } catch (e) {}
+        } catch (e) { }
         loadConversations();
     });
 
@@ -1113,13 +1113,13 @@ function setupFirebaseMessaging(userToken) {
                         if (currentToken) {
                             console.log("🔥 Đã lấy được FCM Token:", currentToken);
                             fetch(`${API_URL}/users/fcm-token`, {
-                                    method: "POST",
-                                    headers: {
-                                        "Content-Type": "application/json",
-                                        Authorization: `Bearer ${userToken}`,
-                                    },
-                                    body: JSON.stringify({ fcmToken: currentToken }),
-                                })
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                    Authorization: `Bearer ${userToken}`,
+                                },
+                                body: JSON.stringify({ fcmToken: currentToken }),
+                            })
                                 .then(res => res.json())
                                 .then(data => {
                                     console.log("💾 Đã lưu thành công FCM Token lên server:", data);
@@ -1135,8 +1135,8 @@ function setupFirebaseMessaging(userToken) {
             } else {
                 // Fallback nếu trình duyệt không hỗ trợ Service Worker
                 messaging.getToken({
-                        vapidKey: "BBtraQSvar7RExe_T8aVhoA3TebgLw0S-ucoMcuV-Oef-H7ULkJGWyBctnxfY5tLnawpWQ9Wn8Aihi-wJaLiGu0",
-                    })
+                    vapidKey: "BBtraQSvar7RExe_T8aVhoA3TebgLw0S-ucoMcuV-Oef-H7ULkJGWyBctnxfY5tLnawpWQ9Wn8Aihi-wJaLiGu0",
+                })
                     .then((currentToken) => {
                         if (currentToken) {
                             console.log("🔥 Đã lấy được FCM Token (fallback):", currentToken);
@@ -1281,9 +1281,9 @@ async function loadConversations() {
                     conv._count && conv._count.Messages ? conv._count.Messages : 0;
                 const unreadBadgeHtml =
                     unreadCount > 0 ?
-                    `<span class="unread-badge">${unreadCount > 99 ? "99+" : unreadCount
+                        `<span class="unread-badge">${unreadCount > 99 ? "99+" : unreadCount
                         }</span>` :
-                    "";
+                        "";
                 const msgStyle =
                     unreadCount > 0 ? "font-weight: 600; color: var(--text-dark);" : "";
 
@@ -1445,8 +1445,8 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
 
         // Luôn fetch profile mới nhất để đảm bảo trạng thái hoạt động chính xác nhất
         fetch(`/api/users/${receiverId}/profile`, {
-                headers: { Authorization: `Bearer ${token}` }
-            })
+            headers: { Authorization: `Bearer ${token}` }
+        })
             .then(res => res.json())
             .then(profileData => {
                 if (profileData && isSameId(receiverId, currentChatPartnerId)) {
@@ -1480,7 +1480,7 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
         }
         const likeBtn = document.getElementById('like-btn');
         const sendBtn = document.getElementById('send-btn');
-        if (likeBtn) likeBtn.style.display = 'block';
+        if (likeBtn) likeBtn.style.display = 'flex';
         if (sendBtn) sendBtn.style.display = 'none';
 
         const res = await fetch(`${API_URL}/chat/conversations`, {
@@ -1544,8 +1544,8 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
 
         const resMsg = await fetch(
             `${API_URL}/chat/${currentConversationId}/messages?limit=50`, {
-                headers: { Authorization: `Bearer ${token}` },
-            },
+            headers: { Authorization: `Bearer ${token}` },
+        },
         );
 
         if (!resMsg.ok) {
@@ -1699,8 +1699,8 @@ async function reloadCurrentChat() {
     try {
         const resMsg = await fetch(
             `${API_URL}/chat/${currentConversationId}/messages?limit=50`, {
-                headers: { Authorization: `Bearer ${token}` },
-            },
+            headers: { Authorization: `Bearer ${token}` },
+        },
         );
         if (!resMsg.ok) {
             const errorText = await resMsg.text();
@@ -1751,7 +1751,7 @@ function setupInfiniteScroll(messagesDiv) {
     if (_scrollListenerAttached) return; // Chỉ gắn 1 lần
     _scrollListenerAttached = true;
 
-    messagesDiv.addEventListener("scroll", debounce(function() {
+    messagesDiv.addEventListener("scroll", debounce(function () {
         // Khi cuộn gần đến đầu khung chat (cách top < 80px)
         if (messagesDiv.scrollTop < 80 && hasMoreMessages && !isLoadingMoreMessages) {
             loadOlderMessages();
@@ -1761,7 +1761,7 @@ function setupInfiniteScroll(messagesDiv) {
 
 function debounce(fn, delay) {
     let timer;
-    return function(...args) {
+    return function (...args) {
         clearTimeout(timer);
         timer = setTimeout(() => fn.apply(this, args), delay);
     };
@@ -1783,8 +1783,8 @@ async function loadOlderMessages() {
 
         const res = await fetch(
             `${API_URL}/chat/${currentConversationId}/messages?limit=50&before=${oldestMsg.id}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            },
+            headers: { Authorization: `Bearer ${token}` },
+        },
         );
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -2529,76 +2529,103 @@ function displayMessage(msg, targetContainer = null) {
 
         renderReactions(messageBody, msg.reactions);
 
-        // Vuốt kéo để trả lời trên Mobile (Swipe right to reply)
-        let swipeStartX = 0;
-        let swipeStartY = 0;
-        let isHorizontalSwipe = false;
-        let lastTranslateX = 0;
+        // Vuốt kéo để trả lời (Swipe left/right to reply on mobile and desktop)
+        let isDragging = false;
+        let startX = 0;
+        let startY = 0;
+        let isHorizontalDrag = false;
+        let dragX = 0;
 
         const swipeIndicator = document.createElement("div");
         swipeIndicator.className = "swipe-reply-indicator";
         swipeIndicator.innerHTML = '<i class="fas fa-reply"></i>';
         messageElement.appendChild(swipeIndicator);
 
-        messageBody.addEventListener("touchstart", (e) => {
-            if (window.innerWidth > 768) return;
-            swipeStartX = e.touches[0].clientX;
-            swipeStartY = e.touches[0].clientY;
-            isHorizontalSwipe = false;
-            lastTranslateX = 0;
+        messageBody.addEventListener("pointerdown", (e) => {
+            if (e.button !== 0) return; // Chỉ nhận chuột trái
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            isHorizontalDrag = false;
+            dragX = 0;
             messageBody.style.transition = "none";
-        }, { passive: true });
+            messageBody.setPointerCapture(e.pointerId);
+        });
 
-        messageBody.addEventListener("touchmove", (e) => {
-            if (window.innerWidth > 768) return;
-            const diffX = e.touches[0].clientX - swipeStartX;
-            const diffY = e.touches[0].clientY - swipeStartY;
+        messageBody.addEventListener("pointermove", (e) => {
+            if (!isDragging) return;
+            const diffX = e.clientX - startX;
+            const diffY = e.clientY - startY;
 
-            if (!isHorizontalSwipe && Math.abs(diffX) > 10 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
-                isHorizontalSwipe = true;
+            if (!isHorizontalDrag && Math.abs(diffX) > 8 && Math.abs(diffX) > Math.abs(diffY) * 1.2) {
+                isHorizontalDrag = true;
             }
 
-            if (isHorizontalSwipe) {
-                if (diffX > 0) {
-                    e.preventDefault();
-                    lastTranslateX = Math.min(diffX, 70);
-                    messageBody.style.transform = `translateX(${lastTranslateX}px)`;
+            if (isHorizontalDrag) {
+                if (e.cancelable) e.preventDefault();
 
-                    if (lastTranslateX >= 45) {
-                        swipeIndicator.classList.add("active");
-                    } else {
-                        swipeIndicator.classList.remove("active");
-                    }
+                // Công thức cản lực kéo vô hạn (rubber-banding) giống iOS / Messenger
+                const maxDrag = 80;
+                dragX = Math.sign(diffX) * (maxDrag * (1 - Math.exp(-Math.abs(diffX) / 65)));
+                messageBody.style.transform = `translateX(${dragX}px)`;
+
+                // Định vị indicator nằm bên trái hay bên phải dựa vào hướng kéo
+                if (dragX > 0) {
+                    swipeIndicator.style.left = "-45px";
+                    swipeIndicator.style.right = "auto";
+                } else {
+                    swipeIndicator.style.left = "auto";
+                    swipeIndicator.style.right = "-45px";
                 }
-            }
-        }, { passive: false });
 
-        messageBody.addEventListener("touchend", () => {
-            if (window.innerWidth > 768) return;
-            messageBody.style.transition = "transform 0.2s ease-out";
-            messageBody.style.transform = "translateX(0px)";
-            swipeIndicator.classList.remove("active");
+                // Tăng kích thước phóng to dần của icon theo khoảng cách vuốt
+                const scale = Math.min(1.1, Math.abs(dragX) / 40);
+                swipeIndicator.style.transform = `translateY(-50%) scale(${scale})`;
+                swipeIndicator.style.opacity = Math.min(1, Math.abs(dragX) / 30);
 
-            if (isHorizontalSwipe && lastTranslateX >= 45) {
-                setReplyMode(msg.id);
-                if (navigator.vibrate) {
-                    try {
-                        navigator.vibrate(30);
-                    } catch (err) {}
+                if (Math.abs(dragX) >= 40) {
+                    swipeIndicator.classList.add("active");
+                } else {
+                    swipeIndicator.classList.remove("active");
                 }
             }
         });
 
+        const endDrag = (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+
+            // Hiệu ứng đàn hồi nẩy lò xo cực mượt (easeOutBack)
+            messageBody.style.transition = "transform 0.3s cubic-bezier(0.175, 0.885, 0.45, 1.4)";
+            messageBody.style.transform = "translateX(0px)";
+
+            swipeIndicator.classList.remove("active");
+            swipeIndicator.style.opacity = "";
+            swipeIndicator.style.transform = "";
+
+            if (isHorizontalDrag && Math.abs(dragX) >= 40) {
+                setReplyMode(msg.id);
+                if (navigator.vibrate) {
+                    try {
+                        navigator.vibrate(30);
+                    } catch (err) { }
+                }
+            }
+        };
+
+        messageBody.addEventListener("pointerup", endDrag);
+        messageBody.addEventListener("pointercancel", endDrag);
+
         // Xử lý nhấn giữ trên di động
         let pressTimer;
         let isLongPress = false;
-        let startY = 0;
+        let longPressStartY = 0;
 
         messageContent.addEventListener(
             "touchstart",
             (e) => {
                 if (window.innerWidth > 768) return;
-                startY = e.touches[0].clientY;
+                longPressStartY = e.touches[0].clientY;
                 isLongPress = false;
                 pressTimer = setTimeout(() => {
                     isLongPress = true;
@@ -2611,7 +2638,7 @@ function displayMessage(msg, targetContainer = null) {
 
         const cancelPress = (e) => {
             if (e && e.type === "touchmove") {
-                if (Math.abs(e.touches[0].clientY - startY) > 10) {
+                if (Math.abs(e.touches[0].clientY - longPressStartY) > 10) {
                     clearTimeout(pressTimer);
                 }
             } else {
@@ -2628,6 +2655,37 @@ function displayMessage(msg, targetContainer = null) {
             if (window.innerWidth <= 768) {
                 e.preventDefault();
             }
+        });
+
+        // Xử lý Double click / Double tap thả tim giống Messenger
+        let lastTap = 0;
+
+        const handleDoubleTap = (e) => {
+            reactToMessage(msg.id, "❤️");
+
+            // Hiển thị hiệu ứng trái tim bay giữa tin nhắn
+            const heart = document.createElement("div");
+            heart.className = "heart-pop-animation";
+            heart.innerHTML = "❤️";
+            messageContent.appendChild(heart);
+            setTimeout(() => heart.remove(), 800);
+        };
+
+        // Cho mobile (Tránh trễ 300ms click và tránh zoom)
+        messageContent.addEventListener("touchend", (e) => {
+            const currentTime = new Date().getTime();
+            const tapLength = currentTime - lastTap;
+            if (tapLength < 300 && tapLength > 0) {
+                e.preventDefault();
+                handleDoubleTap(e);
+            }
+            lastTap = currentTime;
+        });
+
+        // Cho desktop
+        messageContent.addEventListener("dblclick", (e) => {
+            e.preventDefault();
+            handleDoubleTap(e);
         });
     }
 
@@ -2687,7 +2745,7 @@ function sendMessage(imageContent = null) {
         // Trả UI về mặc định
         const inputArea = document.getElementById('input-area');
         if (inputArea) inputArea.classList.remove('is-typing');
-        if (document.getElementById('like-btn')) document.getElementById('like-btn').style.display = 'block';
+        if (document.getElementById('like-btn')) document.getElementById('like-btn').style.display = 'flex';
         if (document.getElementById('send-btn')) document.getElementById('send-btn').style.display = 'none';
 
         editMessageApi(messageIdToEdit, content);
@@ -2701,7 +2759,7 @@ function sendMessage(imageContent = null) {
         input.style.height = 'auto';
         const inputArea = document.getElementById('input-area');
         if (inputArea) inputArea.classList.remove('is-typing');
-        if (document.getElementById('like-btn')) document.getElementById('like-btn').style.display = 'block';
+        if (document.getElementById('like-btn')) document.getElementById('like-btn').style.display = 'flex';
         if (document.getElementById('send-btn')) document.getElementById('send-btn').style.display = 'none';
     }
 
@@ -2739,13 +2797,13 @@ function sendMessage(imageContent = null) {
     cancelReply();
 
     fetch(`${API_URL}/chat/${currentConversationId}/messages`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(payload),
-        })
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+    })
         .then((response) => response.json())
         .then((data) => {
             if (data.success) {
@@ -2777,14 +2835,14 @@ function sendMessage(imageContent = null) {
 // 6. Bấm phím Enter để gửi & Sự kiện gõ phím
 const messageInput = document.getElementById("message-input");
 if (messageInput) {
-    messageInput.addEventListener("keydown", function(e) {
+    messageInput.addEventListener("keydown", function (e) {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             sendMessage();
         }
     });
 
-    messageInput.addEventListener("input", function() {
+    messageInput.addEventListener("input", function () {
         // Tự động giãn dòng nhưng giới hạn tối đa
         this.style.height = 'auto';
         const newHeight = Math.min(this.scrollHeight, 80); // Giới hạn max 80px
@@ -2798,14 +2856,14 @@ if (messageInput) {
         if (this.value.trim().length > 0) {
             if (inputArea) inputArea.classList.add('is-typing');
             if (likeBtn) likeBtn.style.display = 'none';
-            if (sendBtn) sendBtn.style.display = 'block';
+            if (sendBtn) sendBtn.style.display = 'flex';
         } else {
             if (document.activeElement === messageInput) {
                 if (inputArea) inputArea.classList.add('is-typing');
             } else {
                 if (inputArea) inputArea.classList.remove('is-typing');
             }
-            if (likeBtn) likeBtn.style.display = 'block';
+            if (likeBtn) likeBtn.style.display = 'flex';
             if (sendBtn) sendBtn.style.display = 'none';
         }
 
@@ -2837,14 +2895,14 @@ if (messageInput) {
     });
 
     // Khi người dùng bấm click vào ô nhập (Focus) -> thu gọn menu trái để nhường chỗ
-    messageInput.addEventListener("focus", function() {
+    messageInput.addEventListener("focus", function () {
         const inputArea = document.getElementById('input-area');
         if (inputArea) inputArea.classList.add('is-typing');
         if (typeof closeEmojiPicker === "function") closeEmojiPicker();
     });
 
     // Khi người dùng bấm ra ngoài (Blur) -> hiển thị lại menu trái nếu ô nhập trống
-    messageInput.addEventListener("blur", function() {
+    messageInput.addEventListener("blur", function () {
         const inputArea = document.getElementById('input-area');
         if (this.value.trim().length === 0) {
             if (inputArea) inputArea.classList.remove('is-typing');
@@ -2855,7 +2913,7 @@ if (messageInput) {
 // Xử lý nút mũi tên mở rộng lại cụm ảnh/file khi đang gõ
 const expandBtnUI = document.getElementById('expand-btn');
 if (expandBtnUI) {
-    expandBtnUI.addEventListener('click', function() {
+    expandBtnUI.addEventListener('click', function () {
         const inputArea = document.getElementById('input-area');
         if (inputArea) {
             inputArea.classList.remove('is-typing');
@@ -2872,12 +2930,28 @@ function closeChatMobile() {
 // 7. Sự kiện Gửi Hình ảnh
 const imageUploadInput = document.getElementById("image-upload");
 if (imageUploadInput) {
-    imageUploadInput.addEventListener("change", function(e) {
+    imageUploadInput.addEventListener("change", function (e) {
         const file = e.target.files[0];
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = function(event) {
+        reader.onload = function (event) {
+            const base64Image = event.target.result;
+            sendMessage(base64Image);
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+// Sự kiện Chụp và gửi hình ảnh qua Camera
+const cameraUploadInput = document.getElementById("camera-upload");
+if (cameraUploadInput) {
+    cameraUploadInput.addEventListener("change", function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (event) {
             const base64Image = event.target.result;
             sendMessage(base64Image);
         };
@@ -2888,7 +2962,7 @@ if (imageUploadInput) {
 // Sự kiện Gửi Tệp tin (File/Document)
 const fileUploadInput = document.getElementById("file-upload");
 if (fileUploadInput) {
-    fileUploadInput.addEventListener("change", function(e) {
+    fileUploadInput.addEventListener("change", function (e) {
         const file = e.target.files[0];
         if (!file) return;
 
@@ -2898,7 +2972,7 @@ if (fileUploadInput) {
         }
 
         const reader = new FileReader();
-        reader.onload = function(event) {
+        reader.onload = function (event) {
             const base64Data = event.target.result;
             const filePayload = {
                 fileName: file.name,
@@ -2914,7 +2988,7 @@ if (fileUploadInput) {
 // 9. Sự kiện Tải lên Avatar Mới
 const avatarUploadInput = document.getElementById("avatar-upload");
 if (avatarUploadInput) {
-    avatarUploadInput.addEventListener("change", async function(e) {
+    avatarUploadInput.addEventListener("change", async function (e) {
         const file = e.target.files[0];
         if (!file) return;
 
@@ -3029,6 +3103,12 @@ function renderReactions(messageElement, reactions) {
     const uniqueEmojis = [...new Set(Object.values(reactions))];
     const count = Object.keys(reactions).length;
     reactionsContainer.innerText = `${uniqueEmojis.join("")} ${count}`;
+
+    // Đăng ký click mở chi tiết cảm xúc giống Messenger
+    reactionsContainer.onclick = (e) => {
+        e.stopPropagation();
+        openReactionsDetailModal(reactions);
+    };
 }
 
 // --- HIỆU ỨNG NỔ CẢM XÚC GIỐNG MESSENGER ---
@@ -3086,7 +3166,7 @@ function createReactionBurst(messageId, emoji) {
 // 1. Chống chụm ngón tay (Pinch Zoom)
 document.addEventListener(
     "touchmove",
-    function(e) {
+    function (e) {
         if (e.touches.length > 1) {
             e.preventDefault();
         }
@@ -3110,7 +3190,7 @@ function getNicknameForUser(userId, conversationId) {
                     try {
                         const nicks = JSON.parse(item.dataset.nicknames);
                         if (nicks[userId]) return nicks[userId];
-                    } catch (e) {}
+                    } catch (e) { }
                 }
             }
         }
@@ -3624,7 +3704,7 @@ async function openOtherUserProfileModal(userId) {
         }
 
         if (callBtn) {
-            callBtn.onclick = async() => {
+            callBtn.onclick = async () => {
                 closeOtherUserProfileModal();
                 await startChat(user.id, user.name, formatUrl(user.profileAvatarUrl));
                 startCall("voice");
@@ -3632,7 +3712,7 @@ async function openOtherUserProfileModal(userId) {
         }
 
         if (videoBtn) {
-            videoBtn.onclick = async() => {
+            videoBtn.onclick = async () => {
                 closeOtherUserProfileModal();
                 await startChat(user.id, user.name, formatUrl(user.profileAvatarUrl));
                 startCall("video");
@@ -3906,7 +3986,7 @@ async function sendAiMessage() {
                 try {
                     const errData = await response.json();
                     if (errData && errData.error) errorMsg = errData.error;
-                } catch (e) {}
+                } catch (e) { }
             }
             throw new Error(errorMsg);
         }
@@ -7384,7 +7464,7 @@ async function loadInitialNews() {
         if (json.success && Array.isArray(json.data)) {
             allNewsItems = json.data;
             newsListLoaded = true;
-            
+
             // Làm sạch readNewsIds: chỉ giữ lại IDs thuộc về tin tức hiện tại
             const validIds = new Set(allNewsItems.map(item => item.id));
             readNewsIds = readNewsIds.filter(id => validIds.has(id));
@@ -7393,7 +7473,7 @@ async function loadInitialNews() {
             } catch (e) {
                 console.error("Failed to save cleaned read news IDs:", e);
             }
-            
+
             renderNews();
         } else {
             throw new Error(json.message || "Không thể tải dữ liệu.");
@@ -7606,10 +7686,10 @@ async function showNewsDetail(newsId) {
                 <i class="fas fa-exclamation-triangle" style="font-size: 36px; color: #ef4444; margin-bottom: 12px; display: block; margin-left: auto; margin-right: auto;"></i>
                 <p style="color: #ef4444; font-size: 13.5px;">Không thể tải nội dung chi tiết. Bạn có thể đọc trực tiếp tại nguồn báo:</p>
                 ${newsItem.link ? (() => {
-                    let hostName = "trang gốc";
-                    try { hostName = new URL(newsItem.link).hostname.replace("www.", ""); } catch(e) {}
-                    return `<a href="${newsItem.link}" target="_blank" style="color: var(--primary-color); font-weight: 600; text-decoration: underline; font-size: 14px; margin-top: 12px; display: inline-block;">Đọc bài viết gốc trên ${hostName} <i class="fas fa-external-link-alt"></i></a>`;
-                })() : ""}
+                let hostName = "trang gốc";
+                try { hostName = new URL(newsItem.link).hostname.replace("www.", ""); } catch (e) { }
+                return `<a href="${newsItem.link}" target="_blank" style="color: var(--primary-color); font-weight: 600; text-decoration: underline; font-size: 14px; margin-top: 12px; display: inline-block;">Đọc bài viết gốc trên ${hostName} <i class="fas fa-external-link-alt"></i></a>`;
+            })() : ""}
             </div>
         `;
     }
@@ -7627,3 +7707,137 @@ window.filterNews = filterNews;
 window.openNewsLink = openNewsLink;
 window.showNewsDetail = showNewsDetail;
 window.closeNewsDetail = closeNewsDetail;
+
+// --- QUẢN LÝ CHI TIẾT CẢM XÚC (REACTIONS DETAIL MODAL) ---
+function getUserNameFromCache(userId) {
+    if (isSameId(userId, myId)) {
+        return "Bạn";
+    }
+    if (currentChatPartnerId && isSameId(userId, currentChatPartnerId)) {
+        const nickname = (currentNicknames && currentNicknames[currentChatPartnerId]);
+        if (nickname) return nickname;
+        const headerName = document.getElementById("chat-header-name");
+        if (headerName) return headerName.innerText;
+        return "Đối tác";
+    }
+    if (currentNicknames && currentNicknames[userId]) {
+        return currentNicknames[userId];
+    }
+    for (let i = currentChatMessages.length - 1; i >= 0; i--) {
+        const m = currentChatMessages[i];
+        if (m.senderId && isSameId(m.senderId, userId) && m.Users && m.Users.fullName) {
+            return m.Users.fullName;
+        }
+    }
+    const chatListItems = document.querySelectorAll(".chat-list-container li");
+    for (const li of chatListItems) {
+        if (li.dataset.nicknames) {
+            try {
+                const nicks = JSON.parse(li.dataset.nicknames);
+                if (nicks[userId]) return nicks[userId];
+            } catch (err) { }
+        }
+    }
+    return "Người dùng khác";
+}
+
+function getUserAvatarFromCache(userId) {
+    if (isSameId(userId, myId)) {
+        const myAv = document.getElementById("my-avatar");
+        return myAv ? myAv.src : "/default-avatar.png";
+    }
+    if (currentChatPartnerId && isSameId(userId, currentChatPartnerId)) {
+        const partnerAv = document.querySelector("#chat-header-avatar img");
+        if (partnerAv) return partnerAv.src;
+    }
+    const li = document.querySelector(`.chat-list-container li[data-user-id="${userId}"] img`);
+    if (li) return li.src;
+
+    const messageLi = document.querySelector(`.message[data-sender-id="${userId}"] .avatar img`);
+    if (messageLi) return messageLi.src;
+
+    return "/default-avatar.png";
+}
+
+function openReactionsDetailModal(reactions) {
+    const modal = document.getElementById("reactions-detail-modal");
+    if (!modal) return;
+
+    const tabsContainer = document.getElementById("reactions-modal-tabs");
+    const listContainer = document.getElementById("reactions-modal-list");
+    if (!tabsContainer || !listContainer) return;
+
+    tabsContainer.innerHTML = "";
+    listContainer.innerHTML = "";
+
+    let reactionMap = reactions;
+    if (typeof reactions === "string") {
+        try {
+            reactionMap = JSON.parse(reactions);
+        } catch (e) {
+            reactionMap = {};
+        }
+    }
+
+    const entries = Object.entries(reactionMap);
+    if (entries.length === 0) return;
+
+    const emojiGroups = {};
+    entries.forEach(([userId, emoji]) => {
+        if (!emojiGroups[emoji]) emojiGroups[emoji] = [];
+        emojiGroups[emoji].push({ userId, emoji });
+    });
+
+    const renderList = (filteredEntries) => {
+        listContainer.innerHTML = "";
+        filteredEntries.forEach(({ userId, emoji }) => {
+            const name = getUserNameFromCache(userId);
+            const avatar = getUserAvatarFromCache(userId);
+
+            const item = document.createElement("div");
+            item.className = "reactions-modal-item";
+            item.innerHTML = `
+                <div class="reactions-modal-user-info">
+                    <img src="${avatar}" class="reactions-modal-avatar" onerror="this.src='/default-avatar.png'">
+                    <span class="reactions-modal-name">${name}</span>
+                </div>
+                <span class="reactions-modal-emoji">${emoji}</span>
+            `;
+            listContainer.appendChild(item);
+        });
+    };
+
+    const allTab = document.createElement("button");
+    allTab.className = "reactions-modal-tab active";
+    allTab.innerText = `Tất cả (${entries.length})`;
+    allTab.onclick = () => {
+        document.querySelectorAll(".reactions-modal-tab").forEach(t => t.classList.remove("active"));
+        allTab.classList.add("active");
+        renderList(entries.map(([userId, emoji]) => ({ userId, emoji })));
+    };
+    tabsContainer.appendChild(allTab);
+
+    Object.entries(emojiGroups).forEach(([emoji, group]) => {
+        const tab = document.createElement("button");
+        tab.className = "reactions-modal-tab";
+        tab.innerText = `${emoji} ${group.length}`;
+        tab.onclick = () => {
+            document.querySelectorAll(".reactions-modal-tab").forEach(t => t.classList.remove("active"));
+            tab.classList.add("active");
+            renderList(group);
+        };
+        tabsContainer.appendChild(tab);
+    });
+
+    renderList(entries.map(([userId, emoji]) => ({ userId, emoji })));
+    modal.style.display = "flex";
+}
+
+function closeReactionsDetailModal(e) {
+    const modal = document.getElementById("reactions-detail-modal");
+    if (modal && (e.target === modal || e.type === "close")) {
+        modal.style.display = "none";
+    }
+}
+
+window.closeReactionsDetailModal = closeReactionsDetailModal;

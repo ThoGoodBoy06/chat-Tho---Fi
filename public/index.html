@@ -321,7 +321,8 @@
                         <div class="input-actions-left-wrapper" id="action-left-wrapper">
                             <div class="input-actions-left">
                                 <i class="fas fa-camera icon-btn"
-                                    onclick="alert('Tính năng Camera đang phát triển')"></i>
+                                    onclick="document.getElementById('camera-upload').click()"></i>
+                                <input type="file" id="camera-upload" accept="image/*" capture="environment" hidden />
                                 <i class="fas fa-image icon-btn"
                                     onclick="document.getElementById('image-upload').click()"></i>
                                 <input type="file" id="image-upload" accept="image/*" hidden />
@@ -339,10 +340,12 @@
                         </div>
 
                         <div class="input-actions-right">
-                            <i class="fas fa-thumbs-up icon-btn send-like-btn" id="like-btn"
-                                onclick="sendMessage('👍')"></i>
-                            <i class="fas fa-paper-plane icon-btn send-btn" id="send-btn" onclick="sendMessage()"
-                                style="display: none;"></i>
+                            <button class="icon-btn send-like-btn" id="like-btn" onclick="sendMessage('👍')" style="background: transparent; border: none; padding: 0; outline: none; display: flex;">
+                                <i class="fas fa-thumbs-up"></i>
+                            </button>
+                            <button class="icon-btn send-btn" id="send-btn" onclick="sendMessage()" style="display: none; background: transparent; border: none; padding: 0; outline: none;">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
                         </div>
                     </div>
 
@@ -882,6 +885,26 @@
                         style="padding: 10px 12px; margin: 0; min-height: 42px; display: flex; align-items: center; justify-content: center;"
                         title="Xóa"><i class="fas fa-trash-alt"></i></button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal chi tiết cảm xúc (Reactions Detail Modal) -->
+    <div id="reactions-detail-modal" class="custom-modal-overlay" style="display: none;" onclick="closeReactionsDetailModal(event)">
+        <div class="custom-modal-card reactions-modal-card" onclick="event.stopPropagation()">
+            <div class="chat-info-close">
+                <i class="fas fa-times" onclick="document.getElementById('reactions-detail-modal').style.display = 'none'"></i>
+            </div>
+            <h3 class="reactions-modal-title" style="margin-bottom: 12px; font-size: 18px; font-weight: 700;">Cảm xúc về tin nhắn</h3>
+            
+            <!-- Tabs phân loại cảm xúc -->
+            <div class="reactions-modal-tabs" id="reactions-modal-tabs" style="display: flex; gap: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 12px; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch;">
+                <!-- Sẽ được điền động bằng JS -->
+            </div>
+            
+            <!-- Danh sách người thả cảm xúc -->
+            <div class="reactions-modal-list" id="reactions-modal-list" style="max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 4px;">
+                <!-- Sẽ được điền động bằng JS -->
             </div>
         </div>
     </div>
