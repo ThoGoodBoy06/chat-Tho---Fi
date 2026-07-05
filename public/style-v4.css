@@ -6191,12 +6191,16 @@
    ========================================================================== */
 
                                                                                         #tab-news {
-                                                                                            display: flex !important;
+                                                                                            display: none;
                                                                                             flex-direction: column !important;
                                                                                             height: 100% !important;
                                                                                             height: -webkit-fill-available !important;
                                                                                             overflow: hidden !important;
                                                                                             width: 100%;
+                                                                                        }
+
+                                                                                        #tab-news.active {
+                                                                                            display: flex !important;
                                                                                         }
 
                                                                                         .news-container {
