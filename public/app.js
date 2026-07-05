@@ -3100,7 +3100,23 @@ if (messageInput) {
         const inputArea = document.getElementById('input-area');
         if (inputArea) inputArea.classList.add('is-typing');
         if (typeof closeEmojiPicker === "function") closeEmojiPicker();
-        scrollToBottom();
+        
+        // HACK: Đưa ô nhập liệu lên top tạm thời để đánh lừa iOS Safari không cuộn layout viewport
+        if (inputArea && window.innerWidth <= 768) {
+            inputArea.style.setProperty("position", "fixed", "important");
+            inputArea.style.setProperty("top", "0px", "important");
+            inputArea.style.setProperty("z-index", "99999", "important");
+            
+            setTimeout(() => {
+                inputArea.style.removeProperty("position");
+                inputArea.style.removeProperty("top");
+                inputArea.style.removeProperty("z-index");
+                
+                scrollToBottom();
+            }, 30);
+        } else {
+            scrollToBottom();
+        }
     });
 
     // Đảm bảo click/tap vào ô nhập cũng lập tức thu gọn menu chức năng trái
@@ -3115,6 +3131,10 @@ if (messageInput) {
         const inputArea = document.getElementById('input-area');
         if (this.value.trim().length === 0) {
             if (inputArea) inputArea.classList.remove('is-typing');
+        }
+        if (window.innerWidth <= 768) {
+            window.scrollTo(0, 0);
+            document.body.scrollTop = 0;
         }
     });
 }
@@ -3136,16 +3156,8 @@ if (expandBtnUI) {
 function closeChatMobile() {
     document.getElementById("chat-screen").classList.remove("mobile-chat-active");
     document.body.classList.remove("mobile-chat-active");
-    const chatWindow = document.querySelector('.chat-window');
-    if (chatWindow) {
-        chatWindow.style.removeProperty('height');
-        chatWindow.style.removeProperty('top');
-        chatWindow.style.removeProperty('padding-bottom');
-    }
-    const chatHeader = document.getElementById('chat-header-container');
-    if (chatHeader) {
-        chatHeader.style.transform = 'none';
-    }
+    document.documentElement.style.removeProperty('--vv-height');
+    document.documentElement.style.removeProperty('--vv-offset');
 }
 
 // 7. Sự kiện Gửi Hình ảnh
@@ -8095,46 +8107,35 @@ function closeReactionsDetailModal(e) {
 window.closeReactionsDetailModal = closeReactionsDetailModal;
 
 // --- OPTIMIZATION FOR MOBILE KEYBOARD (VISUAL VIEWPORT) ---
-// Cố định chiều cao của toàn bộ khung chat (100%), chỉ đẩy phần nhập tin nhắn và danh sách chat bằng padding-bottom.
-// Đồng thời ghim giữ thanh Header ở đầu màn hình bằng GPU transform để tránh trôi lệch khi gõ chữ.
+// Chuyển giao hoàn toàn quyền kiểm soát tính toán cho CSS thông qua CSS Variables để đạt hiệu năng 60/120fps.
 if (window.visualViewport) {
     const handleViewportChange = () => {
-        const isMobileChatActive = document.body.classList.contains('mobile-chat-active') || 
-                                   document.getElementById('chat-screen')?.classList.contains('mobile-chat-active');
-        const chatWindow = document.querySelector('.chat-window');
-        const chatHeader = document.getElementById('chat-header-container');
-        
-        if (window.innerWidth <= 768 && isMobileChatActive) {
-            const viewportHeight = window.visualViewport.height;
-            const offsetTop = window.visualViewport.offsetTop;
-            const keyboardHeight = window.innerHeight - viewportHeight;
-            
-            // 1. Đẩy cụm nhập tin nhắn lên sát bàn phím bằng padding-bottom
-            if (chatWindow) {
-                chatWindow.style.setProperty('padding-bottom', `${keyboardHeight}px`, 'important');
-            }
-            
-            // 2. Định vị Header cố định ở đỉnh màn hình bằng transform (chạy trên GPU, siêu mượt)
-            if (chatHeader) {
-                chatHeader.style.transform = `translateY(${offsetTop}px)`;
-            }
-            
-            // 3. Cuộn danh sách tin nhắn xuống cuối
-            const messagesDiv = document.getElementById("messages");
-            if (messagesDiv) {
-                messagesDiv.scrollTop = messagesDiv.scrollHeight;
-            }
-        } else {
-            if (chatWindow) {
-                chatWindow.style.removeProperty('padding-bottom');
-            }
-            if (chatHeader) {
-                chatHeader.style.transform = 'none';
-            }
+        // Chỉ giới hạn can thiệp khi người dùng đang mở tính năng chat trên mobile
+        if (window.innerWidth > 768 || !document.body.classList.contains("mobile-chat-active")) return;
+
+        const vv = window.visualViewport;
+        const root = document.documentElement;
+
+        // Truyền thông số kích thước và độ dịch chuyển vào CSS Variables
+        root.style.setProperty('--vv-height', `${vv.height}px`);
+        root.style.setProperty('--vv-offset', `${vv.offsetTop}px`);
+
+        // Cưỡng ép vô hiệu hóa hành vi cuộn gốc (pan) cứng đầu của iOS Safari
+        if (vv.offsetTop > 0) {
+            window.scrollTo(0, 0);
+        }
+
+        // Tự động đẩy danh sách tin nhắn xuống cuối cùng để hiển thị tin nhắn mới nhất
+        const messagesDiv = document.getElementById("messages");
+        if (messagesDiv) {
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
     };
 
     window.visualViewport.addEventListener('resize', handleViewportChange);
     window.visualViewport.addEventListener('scroll', handleViewportChange);
+    
+    // Gọi hàm một lần lúc khởi tạo màn hình để thiết lập thông số mặc định cho CSS Variables
+    handleViewportChange();
 }
 
