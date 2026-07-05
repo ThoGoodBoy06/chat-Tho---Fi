@@ -3093,16 +3093,6 @@ if (messageInput) {
         const inputArea = document.getElementById('input-area');
         if (inputArea) inputArea.classList.add('is-typing');
         if (typeof closeEmojiPicker === "function") closeEmojiPicker();
-        // Tự động cuộn xuống cuối khi bàn phím ảo đẩy lên
-        setTimeout(() => {
-            const messagesDiv = document.getElementById("messages");
-            if (messagesDiv) {
-                messagesDiv.scrollTo({
-                    top: messagesDiv.scrollHeight,
-                    behavior: "smooth"
-                });
-            }
-        }, 300);
     });
 
     // Đảm bảo click/tap vào ô nhập cũng lập tức thu gọn menu chức năng trái
