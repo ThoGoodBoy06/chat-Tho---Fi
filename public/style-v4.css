@@ -3198,7 +3198,7 @@
                                                                                             }
                                                                                             .chat-list-container {
                                                                                                 background: var(--msg-receiver-bg) !important;
-                                                                                                padding-bottom: 80px !important;
+                                                                                                padding-bottom: 68px !important;
                                                                                             }
 
                                                                                             .chat-window {
@@ -3233,7 +3233,7 @@
                                                                                                 padding-bottom: 0 !important;
                                                                                             }
                                                                                             .contacts-scroll-content {
-                                                                                                padding-bottom: 80px !important;
+                                                                                                padding-bottom: 68px !important;
                                                                                             }
 
                                                                                             .auth-card {
@@ -3332,15 +3332,15 @@
                                                                                             .sidebar {
                                                                                                 order: 3 !important;
                                                                                                 position: fixed !important;
-                                                                                                /* Ghim cứng vào đáy màn hình thiết bị và bù trừ safe-area để kéo sát đáy */
-                                                                                                bottom: calc(-1 * env(safe-area-inset-bottom, 0px)) !important;
+                                                                                                /* Ghim cứng vào sát đáy màn hình thiết bị */
+                                                                                                bottom: 0 !important;
                                                                                                 left: 0 !important;
                                                                                                 right: 0 !important;
                                                                                                 width: 100% !important;
                                                                                                 min-width: unset !important;
                                                                                                 flex-shrink: 0;
                                                                                                 margin: 0 !important;
-                                                                                                height: calc(70px + env(safe-area-inset-bottom, 0px)) !important;
+                                                                                                height: 60px !important;
                                                                                                 border-radius: 0 !important;
                                                                                                 /* Loại bỏ góc bo capsule để làm tab bar tràn viền ngang */
                                                                                                 border-left: none !important;
@@ -3357,7 +3357,7 @@
                                                                                                 flex-direction: row;
                                                                                                 justify-content: space-around !important;
                                                                                                 align-items: flex-start !important;
-                                                                                                padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px)) 12px !important;
+                                                                                                padding: 4px 12px 2px 12px !important;
                                                                                                 gap: 0 !important;
                                                                                             }
 
@@ -3374,7 +3374,7 @@
                                                                                             .nav-slider-pill {
                                                                                                 position: absolute;
                                                                                                 height: 54px;
-                                                                                                top: 8px;
+                                                                                                top: 4px;
                                                                                                 border-radius: 28px;
                                                                                                 background: linear-gradient(135deg, var(--primary-color) 0%, #2563eb 100%);
                                                                                                 box-shadow: 0 4px 16px rgba(0, 104, 255, 0.35), 0 1px 0 rgba(255, 255, 255, 0.25) inset;
@@ -3800,7 +3800,7 @@
                                                                                                 flex: 1;
                                                                                                 overflow-y: auto !important;
                                                                                                 -webkit-overflow-scrolling: touch !important;
-                                                                                                padding-bottom: 80px !important;
+                                                                                                padding-bottom: 68px !important;
                                                                                             }
 
                                                                                             .zalo-profile-header {
@@ -4054,7 +4054,7 @@
 
                                                                                             .ai-chat-input-area {
                                                                                                 padding: 12px 16px;
-                                                                                                padding-bottom: 80px !important;
+                                                                                                padding-bottom: 68px !important;
                                                                                             }
 
                                                                                             .ai-code-wrapper {
@@ -6480,7 +6480,7 @@
                                                                                             flex: 1;
                                                                                             overflow-y: auto;
                                                                                             padding: 24px;
-                                                                                            padding-bottom: 80px;
+                                                                                            padding-bottom: 68px;
                                                                                         }
 
                                                                                         .news-detail-title {
@@ -7133,7 +7133,7 @@
                                                                                             flex: 1;
                                                                                             overflow-y: auto;
                                                                                             padding: 24px;
-                                                                                            padding-bottom: 80px;
+                                                                                            padding-bottom: 68px;
                                                                                         }
 
                                                                                         .news-detail-title {
@@ -7637,7 +7637,7 @@
                                                                                             display: flex;
                                                                                             flex-direction: column;
                                                                                             gap: 16px;
-                                                                                            padding-bottom: 80px !important;
+                                                                                            padding-bottom: 68px !important;
                                                                                         }
 
                                                                                         .news-empty-state {
@@ -7866,7 +7866,7 @@
                                                                                             flex: 1;
                                                                                             overflow-y: auto;
                                                                                             padding: 24px;
-                                                                                            padding-bottom: 80px;
+                                                                                            padding-bottom: 68px;
                                                                                         }
 
                                                                                         .news-detail-title {
