@@ -8119,14 +8119,4 @@ if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', handleViewportChange);
     window.visualViewport.addEventListener('scroll', handleViewportChange);
 }
-
-// Chống trôi/cuộn layout viewport khi đang mở khung chat trên di động (chạy đồng bộ, siêu mượt)
-window.addEventListener('scroll', function() {
-    const isMobileChatActive = document.body.classList.contains('mobile-chat-active') || 
-                               document.getElementById('chat-screen')?.classList.contains('mobile-chat-active');
-    if (isMobileChatActive && window.innerWidth <= 768) {
-        if (window.scrollY !== 0 || window.scrollX !== 0) {
-            window.scrollTo(0, 0);
-        }
-    }
-});
+
