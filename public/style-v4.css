@@ -1353,12 +1353,13 @@ INPUT AREA FOR CHAT (MESSENGER STYLE)
 /* Nút mũi tên > dùng để mở lại menu khi đang gõ */
 
 .expand-actions-btn {
-    padding-bottom: 6px;
-    display: none;
+    display: none !important;
 }
 
 .input-area.is-typing .expand-actions-btn {
-    display: block;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Khung bọc Textarea (đã tối ưu lại kích thước) */
@@ -3866,14 +3867,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         opacity: 1;
     }
 
-    .expand-actions-btn {
-        display: none;
-        padding-bottom: 6px;
-    }
-
-    .input-area.is-typing .expand-actions-btn {
-        display: block;
-    }
+    /* expand-actions-btn handled globally */
 
     .input-wrapper {
         flex: 1 !important;
