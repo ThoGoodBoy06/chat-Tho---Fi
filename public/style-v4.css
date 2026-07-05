@@ -6190,10 +6190,20 @@
    TIN TỨC (NEWS) STYLE SECTION
    ========================================================================== */
 
+                                                                                        #tab-news {
+                                                                                            display: flex !important;
+                                                                                            flex-direction: column !important;
+                                                                                            height: 100% !important;
+                                                                                            height: -webkit-fill-available !important;
+                                                                                            overflow: hidden !important;
+                                                                                            width: 100%;
+                                                                                        }
+
                                                                                         .news-container {
                                                                                             display: flex;
                                                                                             flex-direction: column;
-                                                                                            height: 100%;
+                                                                                            height: 100% !important;
+                                                                                            height: -webkit-fill-available !important;
                                                                                             width: 100%;
                                                                                             background: var(--bg-color);
                                                                                             overflow: hidden;
@@ -6247,7 +6257,8 @@
 
                                                                                         .news-list {
                                                                                             flex: 1;
-                                                                                            overflow-y: auto;
+                                                                                            overflow-y: auto !important;
+                                                                                            -webkit-overflow-scrolling: touch !important;
                                                                                             padding: 20px;
                                                                                             display: flex;
                                                                                             flex-direction: column;
@@ -6848,7 +6859,8 @@
                                                                                         .news-container {
                                                                                             display: flex;
                                                                                             flex-direction: column;
-                                                                                            height: 100%;
+                                                                                            height: 100% !important;
+                                                                                            height: -webkit-fill-available !important;
                                                                                             width: 100%;
                                                                                             background: var(--bg-color);
                                                                                             overflow: hidden;
@@ -6902,7 +6914,8 @@
 
                                                                                         .news-list {
                                                                                             flex: 1;
-                                                                                            overflow-y: auto;
+                                                                                            overflow-y: auto !important;
+                                                                                            -webkit-overflow-scrolling: touch !important;
                                                                                             padding: 20px;
                                                                                             display: flex;
                                                                                             flex-direction: column;
@@ -7584,7 +7597,8 @@
                                                                                         .news-container {
                                                                                             display: flex;
                                                                                             flex-direction: column;
-                                                                                            height: 100%;
+                                                                                            height: 100% !important;
+                                                                                            height: -webkit-fill-available !important;
                                                                                             width: 100%;
                                                                                             background: var(--bg-color);
                                                                                             overflow: hidden;
@@ -7638,7 +7652,8 @@
 
                                                                                         .news-list {
                                                                                             flex: 1;
-                                                                                            overflow-y: auto;
+                                                                                            overflow-y: auto !important;
+                                                                                            -webkit-overflow-scrolling: touch !important;
                                                                                             padding: 20px;
                                                                                             display: flex;
                                                                                             flex-direction: column;
