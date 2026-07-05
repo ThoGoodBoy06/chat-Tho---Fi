@@ -3105,6 +3105,12 @@ if (messageInput) {
         }, 300);
     });
 
+    // Đảm bảo click/tap vào ô nhập cũng lập tức thu gọn menu chức năng trái
+    messageInput.addEventListener("click", function () {
+        const inputArea = document.getElementById('input-area');
+        if (inputArea) inputArea.classList.add('is-typing');
+    });
+
     // Khi người dùng bấm ra ngoài (Blur) -> hiển thị lại menu trái nếu ô nhập trống
     messageInput.addEventListener("blur", function () {
         const inputArea = document.getElementById('input-area');
@@ -3117,7 +3123,9 @@ if (messageInput) {
 // Xử lý nút mũi tên mở rộng lại cụm ảnh/file khi đang gõ
 const expandBtnUI = document.getElementById('expand-btn');
 if (expandBtnUI) {
-    expandBtnUI.addEventListener('click', function () {
+    expandBtnUI.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
         const inputArea = document.getElementById('input-area');
         if (inputArea) {
             inputArea.classList.remove('is-typing');
@@ -3129,6 +3137,11 @@ if (expandBtnUI) {
 function closeChatMobile() {
     document.getElementById("chat-screen").classList.remove("mobile-chat-active");
     document.body.classList.remove("mobile-chat-active");
+    const chatWindow = document.querySelector('.chat-window');
+    if (chatWindow) {
+        chatWindow.style.removeProperty('height');
+        chatWindow.style.removeProperty('top');
+    }
 }
 
 // 7. Sự kiện Gửi Hình ảnh
@@ -8076,3 +8089,29 @@ function closeReactionsDetailModal(e) {
 }
 
 window.closeReactionsDetailModal = closeReactionsDetailModal;
+
+// --- OPTIMIZATION FOR MOBILE KEYBOARD (VISUAL VIEWPORT) ---
+// Tự động điều chỉnh kích thước khung chat khớp với chiều cao thực tế khi bàn phím ảo hiển thị
+if (window.visualViewport) {
+    const handleViewportChange = () => {
+        const isMobileChatActive = document.body.classList.contains('mobile-chat-active') || 
+                                   document.getElementById('chat-screen')?.classList.contains('mobile-chat-active');
+        const chatWindow = document.querySelector('.chat-window');
+        if (chatWindow && window.innerWidth <= 768) {
+            if (isMobileChatActive) {
+                const viewportHeight = window.visualViewport.height;
+                const offsetTop = window.visualViewport.offsetTop;
+                // Thiết lập CSS inline có !important để ghi đè quy tắc style-v4.css
+                chatWindow.style.setProperty('height', `${viewportHeight}px`, 'important');
+                chatWindow.style.setProperty('top', `${offsetTop}px`, 'important');
+            } else {
+                chatWindow.style.removeProperty('height');
+                chatWindow.style.removeProperty('top');
+            }
+        }
+        document.body.scrollTop = 0;
+    };
+
+    window.visualViewport.addEventListener('resize', handleViewportChange);
+    window.visualViewport.addEventListener('scroll', handleViewportChange);
+}
