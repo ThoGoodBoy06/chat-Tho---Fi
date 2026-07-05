@@ -8099,9 +8099,12 @@ if (window.visualViewport) {
                 chatWindow.style.removeProperty('top');
             }
         }
+        // Ép toàn bộ khung cuộn ngoài về 0 để tránh trình duyệt đẩy giao diện lên
+        window.scrollTo(0, 0);
         document.body.scrollTop = 0;
+        document.documentElement.scrollTop = 0;
     };
 
     window.visualViewport.addEventListener('resize', handleViewportChange);
     window.visualViewport.addEventListener('scroll', handleViewportChange);
-}
+}
