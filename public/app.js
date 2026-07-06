@@ -623,6 +623,8 @@ function showMobileOverlay(messageEl) {
     if (!overlay) {
         overlay = document.createElement("div");
         overlay.id = "mobile-action-overlay";
+        const chatArea = document.querySelector(".chat-window") || document.body;
+        chatArea.appendChild(overlay);
         overlay.addEventListener("click", hideMobileOverlay);
         overlay.addEventListener("touchstart", hideMobileOverlay, {
             passive: true,
@@ -631,8 +633,6 @@ function showMobileOverlay(messageEl) {
             passive: false,
         });
     }
-    // Đưa overlay làm con trực tiếp của tin nhắn đang tương tác để đồng bộ stacking context
-    messageEl.appendChild(overlay);
 
     hideMobileOverlay();
     messageEl.classList.add("show-mobile-actions");
