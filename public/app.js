@@ -1758,10 +1758,17 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
             updateReadReceiptsDOM();
             emitMarkMessagesRead();
 
-            // Scroll xuống cuối 1 lần duy nhất sau khi render xong
+            // Cuộn xuống cuối ngay lập tức và cuộn lại sau khi kết xuất để đảm bảo luôn hiển thị tin nhắn mới nhất
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
             requestAnimationFrame(() => {
                 messagesDiv.scrollTop = messagesDiv.scrollHeight;
             });
+            setTimeout(() => {
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }, 50);
+            setTimeout(() => {
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }, 150);
 
             // Tự động đồng bộ tin nhắn cuối cùng vào sidebar khi mở phòng chat để tránh lệch giao diện
             if (dataMsg.data.length > 0) {
@@ -2498,7 +2505,7 @@ function displayMessage(msg, targetContainer = null) {
                     msg.content.startsWith("http") ||
                     msg.content.match(/\.(jpeg|jpg|gif|png)(\?.*)?$/i)))
         ) {
-            messageContent.innerHTML = `<img src="${msg.content}" class="message-image" loading="lazy" onclick="openLightbox(this.src)" alt="Ảnh tin nhắn" />`;
+            messageContent.innerHTML = `<img src="${msg.content}" class="message-image" loading="lazy" onload="if(typeof window.scrollToBottomInstant === 'function') window.scrollToBottomInstant()" onclick="openLightbox(this.src)" alt="Ảnh tin nhắn" />`;
             messageContent.style.background = "transparent";
             messageContent.style.padding = "0";
         } else {
@@ -3125,6 +3132,14 @@ if (messageInput) {
         }
     };
     window.scrollToBottomSmooth = scrollToBottomSmooth;
+
+    const scrollToBottomInstant = () => {
+        const messagesDiv = document.getElementById("messages");
+        if (messagesDiv) {
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+    };
+    window.scrollToBottomInstant = scrollToBottomInstant;
 
     // Khi người dùng bấm click vào ô nhập (Focus) -> thu gọn menu trái để nhường chỗ
     messageInput.addEventListener("focus", function () {
