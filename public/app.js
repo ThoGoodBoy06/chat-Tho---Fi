@@ -326,6 +326,9 @@ function unlockBrowserAudio() {
             });
     }
 
+    // Tải và giải mã sẵn tệp dialtone.mp3 vào bộ nhớ đệm ngay khi người dùng tương tác lần đầu
+    loadDialtoneBuffer();
+
     const UNLOCK_EVENTS = ["click", "touchstart", "touchend", "mousedown", "keydown"];
     isAudioUnlocked = true;
     UNLOCK_EVENTS.forEach(event => {
@@ -4807,12 +4810,13 @@ let dialtoneGainNode = null;
 async function loadDialtoneBuffer() {
     if (dialtoneBuffer) return dialtoneBuffer;
     try {
-        const response = await fetch("/dialtone.mp3");
-        const arrayBuffer = await response.arrayBuffer();
         if (!dialtoneAudioContext) {
             dialtoneAudioContext = new (window.AudioContext || window.webkitAudioContext)();
         }
+        const response = await fetch("/dialtone.mp3");
+        const arrayBuffer = await response.arrayBuffer();
         dialtoneBuffer = await dialtoneAudioContext.decodeAudioData(arrayBuffer);
+        console.log("🎵 dialtone.mp3 đã được tải và giải mã sẵn sàng trong bộ nhớ!");
         return dialtoneBuffer;
     } catch (e) {
         console.error("Lỗi khi tải hoặc giải mã dialtone.mp3:", e);
@@ -4820,27 +4824,31 @@ async function loadDialtoneBuffer() {
     }
 }
 
-async function playOutgoingRingtone() {
+function playOutgoingRingtone() {
     try {
-        const buffer = await loadDialtoneBuffer();
-        if (!buffer) {
+        if (!dialtoneBuffer) {
+            console.warn("dialtone.mp3 chưa tải xong, sử dụng fallback HTMLAudioElement");
             const ringtone = document.getElementById("outgoing-ringtone");
             if (ringtone) {
                 ringtone.volume = 1.0;
                 ringtone.currentTime = 0;
                 ringtone.play().catch(e => console.warn(e));
             }
+            loadDialtoneBuffer();
             return;
         }
 
         stopOutgoingRingtone();
 
+        if (!dialtoneAudioContext) {
+            dialtoneAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
         if (dialtoneAudioContext.state === "suspended") {
-            await dialtoneAudioContext.resume();
+            dialtoneAudioContext.resume();
         }
 
         dialtoneSource = dialtoneAudioContext.createBufferSource();
-        dialtoneSource.buffer = buffer;
+        dialtoneSource.buffer = dialtoneBuffer;
         dialtoneSource.loop = true;
 
         dialtoneGainNode = dialtoneAudioContext.createGain();
