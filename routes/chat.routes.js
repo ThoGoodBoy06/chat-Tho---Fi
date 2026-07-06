@@ -18,5 +18,6 @@ router.post("/:conversationId/messages", chatController.sendMessage);
 router.patch("/messages/:messageId/recall", chatController.recallMessage);
 router.post("/messages/:messageId/react", chatController.reactToMessage);
 router.patch("/messages/:messageId/edit", chatController.editMessage);
+router.delete("/messages/:messageId/me", chatController.deleteMessageForMe);
 
 module.exports = router;

@@ -4,7 +4,7 @@ require("dotenv").config();
 try {
     const { execSync } = require("child_process");
     console.log("🔄 Đang tiến hành đồng bộ hóa cấu trúc Database (Prisma generate & db push)...");
-    execSync("npx prisma generate && npx prisma db push --accept-data-loss", { stdio: "inherit" });
+    execSync("node node_modules/prisma/build/index.js generate && node node_modules/prisma/build/index.js db push --accept-data-loss", { stdio: "inherit" });
     console.log("✅ Đồng bộ hóa Database thành công!");
 } catch (err) {
     console.error("⚠️ Cảnh báo: Lỗi tự động đồng bộ hóa Database:", err.message);
