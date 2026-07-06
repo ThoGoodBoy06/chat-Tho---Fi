@@ -4876,6 +4876,9 @@ function stopOutgoingRingtone() {
 async function startCall(callType) {
     if (!currentChatPartnerId) return alert("Vui lòng chọn một người để gọi.");
 
+    // Phát nhạc chờ cuộc gọi đi đồng bộ ngay lập tức để giữ gesture context trên di động
+    playOutgoingRingtone();
+
     callTypeGlobal = callType;
     currentCallPartnerId = currentChatPartnerId;
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -5008,8 +5011,8 @@ async function startCall(callType) {
             }
         }, 30000);
 
-        playOutgoingRingtone();
     } catch (err) {
+        stopOutgoingRingtone();
         console.error("Lỗi trong startCall:", err);
         alert("Không thể thực hiện cuộc gọi: " + err.message);
     }
