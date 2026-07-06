@@ -5638,10 +5638,11 @@ function endCall(shouldEmit) {
     document.removeEventListener("click", playRemoteAudioSafely);
     document.removeEventListener("touchstart", playRemoteAudioSafely);
 
-    const modal = document.getElementById("call-modal");
-    modal.style.display = "none";
+    if (modal) {
+        modal.style.display = "none";
+        modal.classList.remove("voice-call", "video-call", "in-call", "is-caller");
+    }
     document.body.classList.remove("call-active");
-    modal.classList.remove("voice-call", "video-call", "in-call", "is-caller");
 
     document.getElementById("local-video").srcObject = null;
     document.getElementById("remote-video").srcObject = null;
