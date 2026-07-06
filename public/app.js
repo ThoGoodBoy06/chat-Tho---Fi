@@ -604,6 +604,7 @@ function getPartnerAvatar() {
 function hideMobileOverlay() {
     const overlay = document.getElementById("mobile-action-overlay");
     if (overlay) overlay.classList.remove("show");
+    document.body.classList.remove("overlay-active");
     document
         .querySelectorAll(".message.show-mobile-actions")
         .forEach((m) => {
@@ -635,6 +636,7 @@ function showMobileOverlay(messageEl) {
     }
 
     hideMobileOverlay();
+    document.body.classList.add("overlay-active");
     messageEl.classList.add("show-mobile-actions");
     overlay.classList.add("show");
 

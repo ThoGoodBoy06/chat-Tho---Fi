@@ -3788,6 +3788,14 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         z-index: 9998 !important;
     }
 
+    body.overlay-active .chat-header,
+    body.overlay-active .input-area,
+    body.overlay-active .message:not(.show-mobile-actions) {
+        opacity: 0.35 !important;
+        pointer-events: none !important;
+        transition: opacity 0.2s ease;
+    }
+
     #chat-screen.mobile-chat-active .tab-content-container {
         padding-bottom: 0 !important;
     }
