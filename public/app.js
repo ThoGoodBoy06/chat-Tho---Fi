@@ -8207,9 +8207,16 @@ if (window.visualViewport) {
         root.style.setProperty('--vv-offset', `${vv.offsetTop}px`);
 
         // Cưỡng ép vô hiệu hóa hành vi cuộn gốc (pan) cứng đầu của iOS Safari
-        if (vv.offsetTop > 0) {
+        if (vv.offsetTop > 0 || window.scrollY > 0 || document.documentElement.scrollTop > 0) {
             window.scrollTo(0, 0);
         }
+
+        // Đệm thêm một nhịp trễ ngắn để triệt tiêu hoàn toàn độ trễ đóng bàn phím của iOS
+        setTimeout(() => {
+            if (window.scrollY > 0 || document.documentElement.scrollTop > 0) {
+                window.scrollTo(0, 0);
+            }
+        }, 100);
 
         // Tự động đẩy danh sách tin nhắn xuống cuối cùng để hiển thị tin nhắn mới nhất
         if (typeof window.scrollToBottomSmooth === "function") {
@@ -8220,6 +8227,19 @@ if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', handleViewportChange);
     window.visualViewport.addEventListener('scroll', handleViewportChange);
     
+    // Đăng ký sự kiện focusout để đảm bảo màn hình trả về vị trí gốc ngay khi ô nhập mất tiêu điểm
+    document.addEventListener('focusout', (e) => {
+        if (e.target && e.target.id === 'message-input') {
+            window.scrollTo(0, 0);
+            setTimeout(() => {
+                window.scrollTo(0, 0);
+                if (typeof window.scrollToBottomSmooth === "function") {
+                    window.scrollToBottomSmooth();
+                }
+            }, 80);
+        }
+    });
+
     // Gọi hàm một lần lúc khởi tạo màn hình để thiết lập thông số mặc định cho CSS Variables
     handleViewportChange();
 }
