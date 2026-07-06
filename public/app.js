@@ -1572,6 +1572,7 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
     if (!receiverId) {
         return alert("Lỗi: Không tìm thấy ID người nhận tin nhắn.");
     }
+    try {
         // Đảm bảo chuyển tab về tab tin nhắn để ẩn hoàn toàn các tab danh bạ/tin tức khác ở chế độ nền
         const navMessages = document.querySelector('.nav-item[onclick*="tab-messages"]');
         if (navMessages) {
