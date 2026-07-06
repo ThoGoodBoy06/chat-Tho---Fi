@@ -694,7 +694,12 @@
 
     <!-- Element phát nhạc chờ tút tút khi người gọi đi đang chờ -->
     <audio id="outgoing-ringtone" loop preload="auto">
-        <source src="dialtone.mp3" type="audio/mpeg" />
+        <source src="tuttut.mp3" type="audio/mpeg" />
+    </audio>
+
+    <!-- Element phát âm thanh khi gác máy -->
+    <audio id="hangup-sound" preload="auto">
+        <source src="amthanhtat.mp3" type="audio/mpeg" />
     </audio>
 
     <!-- Element phát âm thanh tin nhắn -->
@@ -1081,7 +1086,7 @@
 
     <!-- Import Socket.IO và file xử lý logic -->
     <script src="/socket.io/socket.io.js"></script>
-    <script src="app.js?v=34066"></script>
+    <script src="app.js?v=34067"></script>
 </body>
 
 </html>

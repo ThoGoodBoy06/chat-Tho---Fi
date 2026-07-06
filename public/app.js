@@ -254,19 +254,22 @@ function isChatAreaVisible() {
 const AudioBuffers = {
     message: null,
     ringtone: null,
-    dialtone: null
+    dialtone: null,
+    hangup: null
 };
 
 let audioCtx = null;
 let activeSources = {
     message: null,
     ringtone: null,
-    dialtone: null
+    dialtone: null,
+    hangup: null
 };
 let activeGains = {
     message: null,
     ringtone: null,
-    dialtone: null
+    dialtone: null,
+    hangup: null
 };
 
 function getAudioContext() {
@@ -294,7 +297,8 @@ async function preloadSound(key, url) {
 function preloadAllSounds() {
     preloadSound("message", "/amthanhtinnhan.mp3");
     preloadSound("ringtone", "/ringtone.mp3");
-    preloadSound("dialtone", "/dialtone.mp3");
+    preloadSound("dialtone", "/tuttut.mp3");
+    preloadSound("hangup", "/amthanhtat.mp3");
 }
 
 function playWebAudio(key, loop = false, gainValue = 4.5) {
@@ -311,6 +315,7 @@ function playWebAudio(key, loop = false, gainValue = 4.5) {
             if (key === "message") fallbackEl = document.getElementById("message-sound");
             else if (key === "ringtone") fallbackEl = document.getElementById("incoming-ringtone");
             else if (key === "dialtone") fallbackEl = document.getElementById("outgoing-ringtone");
+            else if (key === "hangup") fallbackEl = document.getElementById("hangup-sound");
             
             if (fallbackEl) {
                 fallbackEl.volume = 1.0;
@@ -357,6 +362,7 @@ function stopWebAudio(key) {
         if (key === "message") fallbackEl = document.getElementById("message-sound");
         else if (key === "ringtone") fallbackEl = document.getElementById("incoming-ringtone");
         else if (key === "dialtone") fallbackEl = document.getElementById("outgoing-ringtone");
+        else if (key === "hangup") fallbackEl = document.getElementById("hangup-sound");
         
         if (fallbackEl) {
             fallbackEl.pause();
@@ -5593,10 +5599,17 @@ function checkUrlParamsForCall() {
 
 // 6. Kết thúc cuộc gọi
 function endCall(shouldEmit) {
+    const modal = document.getElementById("call-modal");
+    const isCallActive = modal && modal.style.display === "flex";
+
     stopCallTimer();
     stopVibration();
     stopRingtone();
     stopOutgoingRingtone();
+
+    if (isCallActive) {
+        playWebAudio("hangup", false, 4.5);
+    }
 
     if (callTimeoutTimer) {
         clearTimeout(callTimeoutTimer);
