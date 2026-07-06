@@ -50,13 +50,12 @@ const ChatSounds = {
             osc.connect(gain);
             gain.connect(ctx.destination);
             
-            // Âm thanh gửi: Quét tần số nhanh từ thấp lên cao (Swoosh/Pop)
             osc.type = "sine";
             osc.frequency.setValueAtTime(160, now);
             osc.frequency.exponentialRampToValueAtTime(750, now + 0.12);
             
             gain.gain.setValueAtTime(0.01, now);
-            gain.gain.linearRampToValueAtTime(0.18, now + 0.02);
+            gain.gain.linearRampToValueAtTime(0.65, now + 0.02); // Tăng cường độ từ 0.18 lên 0.65 (siêu to)
             gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
             
             osc.start(now);
@@ -67,22 +66,7 @@ const ChatSounds = {
     },
 
     playReceive() {
-        try {
-            const msgSound = document.getElementById("message-sound");
-            if (msgSound) {
-                msgSound.currentTime = 0;
-                msgSound.play().catch((err) => {
-                    console.warn("Lỗi phát âm thanh amthanhtinnhan.mp3 qua thẻ DOM:", err.message);
-                });
-            } else {
-                const audio = new Audio("/amthanhtinnhan.mp3");
-                audio.play().catch((err) => {
-                    console.warn("Lỗi phát âm thanh amthanhtinnhan.mp3 qua đối tượng Audio:", err.message);
-                });
-            }
-        } catch (e) {
-            console.warn("Lỗi phát âm thanh nhận:", e.message);
-        }
+        playWebAudio("message", false, 4.5);
     },
 
     playReact() {
@@ -90,7 +74,6 @@ const ChatSounds = {
             const ctx = this._init();
             const now = ctx.currentTime;
             
-            // Bộ dao động 1: Quét tần số đi lên để tạo tiếng nước nảy (bubble rise)
             const osc1 = ctx.createOscillator();
             const gain1 = ctx.createGain();
             osc1.connect(gain1);
@@ -101,23 +84,22 @@ const ChatSounds = {
             osc1.frequency.exponentialRampToValueAtTime(1200, now + 0.08);
             
             gain1.gain.setValueAtTime(0.01, now);
-            gain1.gain.linearRampToValueAtTime(0.12, now + 0.02);
+            gain1.gain.linearRampToValueAtTime(0.55, now + 0.02); // Tăng cường độ lên 0.55
             gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
             
             osc1.start(now);
             osc1.stop(now + 0.09);
             
-            // Bộ dao động 2: Một tiếng Ping kim loại cao tần cực ngắn ở đỉnh của tiếng nẩy
             const osc2 = ctx.createOscillator();
             const gain2 = ctx.createGain();
             osc2.connect(gain2);
             gain2.connect(ctx.destination);
             
             osc2.type = "sine";
-            osc2.frequency.setValueAtTime(1600, now + 0.03); // Nốt cao tần tinh tế
+            osc2.frequency.setValueAtTime(1600, now + 0.03);
             
             gain2.gain.setValueAtTime(0.001, now + 0.03);
-            gain2.gain.linearRampToValueAtTime(0.08, now + 0.04);
+            gain2.gain.linearRampToValueAtTime(0.60, now + 0.04); // Tăng cường độ lên 0.60
             gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
             
             osc2.start(now + 0.03);
@@ -268,66 +250,171 @@ function isChatAreaVisible() {
     return true;
 }
 
+// --- HỆ THỐNG PHÁT VÀ KHUẾCH ĐẠI ÂM THANH UNIFIED (WEB AUDIO API) ---
+const AudioBuffers = {
+    message: null,
+    ringtone: null,
+    dialtone: null
+};
+
+let audioCtx = null;
+let activeSources = {
+    message: null,
+    ringtone: null,
+    dialtone: null
+};
+let activeGains = {
+    message: null,
+    ringtone: null,
+    dialtone: null
+};
+
+function getAudioContext() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    return audioCtx;
+}
+
+async function preloadSound(key, url) {
+    if (AudioBuffers[key]) return AudioBuffers[key];
+    try {
+        const response = await fetch(url);
+        const arrayBuffer = await response.arrayBuffer();
+        const ctx = getAudioContext();
+        AudioBuffers[key] = await ctx.decodeAudioData(arrayBuffer);
+        console.log(`🎵 Đã giải mã và nạp bộ nhớ đệm âm thanh: ${key} (${url})`);
+        return AudioBuffers[key];
+    } catch (e) {
+        console.warn(`Lỗi tải/giải mã âm thanh ${key}:`, e.message);
+        return null;
+    }
+}
+
+function preloadAllSounds() {
+    preloadSound("message", "/amthanhtinnhan.mp3");
+    preloadSound("ringtone", "/ringtone.mp3");
+    preloadSound("dialtone", "/dialtone.mp3");
+}
+
+function playWebAudio(key, loop = false, gainValue = 4.5) {
+    try {
+        const ctx = getAudioContext();
+        if (ctx.state === "suspended") {
+            ctx.resume();
+        }
+
+        const buffer = AudioBuffers[key];
+        if (!buffer) {
+            console.warn(`Âm thanh ${key} chưa tải xong, phát dự phòng bằng HTMLAudioElement`);
+            let fallbackEl = null;
+            if (key === "message") fallbackEl = document.getElementById("message-sound");
+            else if (key === "ringtone") fallbackEl = document.getElementById("incoming-ringtone");
+            else if (key === "dialtone") fallbackEl = document.getElementById("outgoing-ringtone");
+            
+            if (fallbackEl) {
+                fallbackEl.volume = 1.0;
+                fallbackEl.currentTime = 0;
+                fallbackEl.play().catch(e => console.warn(e));
+            }
+            return;
+        }
+
+        stopWebAudio(key);
+
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.loop = loop;
+
+        const gainNode = ctx.createGain();
+        gainNode.gain.value = gainValue; // Khuếch đại âm lượng lên gấp gainValue lần (mức to vượt trần)
+
+        source.connect(gainNode);
+        gainNode.connect(ctx.destination);
+
+        source.start(0);
+
+        activeSources[key] = source;
+        activeGains[key] = gainNode;
+    } catch (e) {
+        console.warn(`Lỗi phát Web Audio ${key}:`, e.message);
+    }
+}
+
+function stopWebAudio(key) {
+    try {
+        if (activeSources[key]) {
+            activeSources[key].stop();
+            activeSources[key].disconnect();
+            activeSources[key] = null;
+        }
+        if (activeGains[key]) {
+            activeGains[key].disconnect();
+            activeGains[key] = null;
+        }
+
+        let fallbackEl = null;
+        if (key === "message") fallbackEl = document.getElementById("message-sound");
+        else if (key === "ringtone") fallbackEl = document.getElementById("incoming-ringtone");
+        else if (key === "dialtone") fallbackEl = document.getElementById("outgoing-ringtone");
+        
+        if (fallbackEl) {
+            fallbackEl.pause();
+            fallbackEl.currentTime = 0;
+        }
+    } catch (e) {
+        console.warn(`Lỗi dừng Web Audio ${key}:`, e.message);
+    }
+}
+
 // --- MỞ KHÓA ÂM THANH TRÌNH DUYỆT (CHỐNG CHẶN AUTOPLAY) ---
-// --- MỞ KHÓA ÂM THANH TRÌNH DUYỆT (CHỐNG CHẶN AUTOPLAY BẰNG SILENT AUDIO) ---
 let isAudioUnlocked = false;
 
 function unlockBrowserAudio() {
     if (isAudioUnlocked) return;
 
-    // 1. Mở khóa âm thanh báo tin nhắn (amthanhtinnhan.mp3)
+    // 1. Mở khóa AudioContext
+    const ctx = getAudioContext();
+    if (ctx.state === "suspended") {
+        ctx.resume();
+    }
+
+    // 2. Mở khóa dự phòng các thẻ Audio của hệ thống bằng volume 0
     const msgSound = document.getElementById("message-sound");
     if (msgSound) {
         const originalVol = msgSound.volume;
         msgSound.volume = 0;
-        msgSound.play()
-            .then(() => {
-                msgSound.pause();
-                msgSound.currentTime = 0;
-                msgSound.volume = originalVol;
-            })
-            .catch((err) => {
-                msgSound.volume = originalVol;
-                console.warn("Lỗi unlock msgSound:", err.message);
-            });
+        msgSound.play().then(() => {
+            msgSound.pause();
+            msgSound.currentTime = 0;
+            msgSound.volume = originalVol;
+        }).catch(err => { msgSound.volume = originalVol; });
     }
 
-    // 2. Mở khóa nhạc chuông cuộc gọi đến (ringtone.mp3)
     const incomingRingtone = document.getElementById("incoming-ringtone");
     if (incomingRingtone) {
         const originalVol = incomingRingtone.volume;
         incomingRingtone.volume = 0;
-        incomingRingtone.play()
-            .then(() => {
-                incomingRingtone.pause();
-                incomingRingtone.currentTime = 0;
-                incomingRingtone.volume = originalVol;
-            })
-            .catch((err) => {
-                incomingRingtone.volume = originalVol;
-                console.warn("Lỗi unlock incomingRingtone:", err.message);
-            });
+        incomingRingtone.play().then(() => {
+            incomingRingtone.pause();
+            incomingRingtone.currentTime = 0;
+            incomingRingtone.volume = originalVol;
+        }).catch(err => { incomingRingtone.volume = originalVol; });
     }
 
-    // 3. Mở khóa nhạc chuông chờ cuộc gọi đi (dialtone.mp3)
     const outgoingRingtone = document.getElementById("outgoing-ringtone");
     if (outgoingRingtone) {
         const originalVol = outgoingRingtone.volume;
         outgoingRingtone.volume = 0;
-        outgoingRingtone.play()
-            .then(() => {
-                outgoingRingtone.pause();
-                outgoingRingtone.currentTime = 0;
-                outgoingRingtone.volume = originalVol;
-            })
-            .catch((err) => {
-                outgoingRingtone.volume = originalVol;
-                console.warn("Lỗi unlock outgoingRingtone:", err.message);
-            });
+        outgoingRingtone.play().then(() => {
+            outgoingRingtone.pause();
+            outgoingRingtone.currentTime = 0;
+            outgoingRingtone.volume = originalVol;
+        }).catch(err => { outgoingRingtone.volume = originalVol; });
     }
 
-    // Tải và giải mã sẵn tệp dialtone.mp3 vào bộ nhớ đệm ngay khi người dùng tương tác lần đầu
-    loadDialtoneBuffer();
+    // 3. Tải trước toàn bộ âm thanh
+    preloadAllSounds();
 
     const UNLOCK_EVENTS = ["click", "touchstart", "touchend", "mousedown", "keydown"];
     isAudioUnlocked = true;
@@ -4785,99 +4872,19 @@ function stopVibration() {
 }
 
 function playRingtone() {
-    const ringtone = document.getElementById("incoming-ringtone");
-    if (ringtone) {
-        ringtone.currentTime = 0;
-        ringtone
-            .play()
-            .catch((e) => console.warn("Trình duyệt chặn tự động phát âm thanh:", e));
-    }
+    playWebAudio("ringtone", true, 4.5);
 }
 
 function stopRingtone() {
-    const ringtone = document.getElementById("incoming-ringtone");
-    if (ringtone) {
-        ringtone.pause();
-        ringtone.currentTime = 0;
-    }
-}
-
-let dialtoneAudioContext = null;
-let dialtoneBuffer = null;
-let dialtoneSource = null;
-let dialtoneGainNode = null;
-
-async function loadDialtoneBuffer() {
-    if (dialtoneBuffer) return dialtoneBuffer;
-    try {
-        if (!dialtoneAudioContext) {
-            dialtoneAudioContext = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        const response = await fetch("/dialtone.mp3");
-        const arrayBuffer = await response.arrayBuffer();
-        dialtoneBuffer = await dialtoneAudioContext.decodeAudioData(arrayBuffer);
-        console.log("🎵 dialtone.mp3 đã được tải và giải mã sẵn sàng trong bộ nhớ!");
-        return dialtoneBuffer;
-    } catch (e) {
-        console.error("Lỗi khi tải hoặc giải mã dialtone.mp3:", e);
-        return null;
-    }
+    stopWebAudio("ringtone");
 }
 
 function playOutgoingRingtone() {
-    try {
-        if (!dialtoneBuffer) {
-            console.warn("dialtone.mp3 chưa tải xong, sử dụng fallback HTMLAudioElement");
-            const ringtone = document.getElementById("outgoing-ringtone");
-            if (ringtone) {
-                ringtone.volume = 1.0;
-                ringtone.currentTime = 0;
-                ringtone.play().catch(e => console.warn(e));
-            }
-            loadDialtoneBuffer();
-            return;
-        }
-
-        stopOutgoingRingtone();
-
-        if (!dialtoneAudioContext) {
-            dialtoneAudioContext = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        if (dialtoneAudioContext.state === "suspended") {
-            dialtoneAudioContext.resume();
-        }
-
-        dialtoneSource = dialtoneAudioContext.createBufferSource();
-        dialtoneSource.buffer = dialtoneBuffer;
-        dialtoneSource.loop = true;
-
-        dialtoneGainNode = dialtoneAudioContext.createGain();
-        dialtoneGainNode.gain.value = 3.5; // Khuếch đại lên 3.5 lần (cực to)
-
-        dialtoneSource.connect(dialtoneGainNode);
-        dialtoneGainNode.connect(dialtoneAudioContext.destination);
-
-        dialtoneSource.start(0);
-    } catch (e) {
-        console.warn("Lỗi phát dialtone qua Web Audio API:", e);
-    }
+    playWebAudio("dialtone", true, 4.5);
 }
 
 function stopOutgoingRingtone() {
-    try {
-        if (dialtoneSource) {
-            dialtoneSource.stop();
-            dialtoneSource.disconnect();
-            dialtoneSource = null;
-        }
-        const ringtone = document.getElementById("outgoing-ringtone");
-        if (ringtone) {
-            ringtone.pause();
-            ringtone.currentTime = 0;
-        }
-    } catch (e) {
-        console.warn("Lỗi dừng dialtone:", e);
-    }
+    stopWebAudio("dialtone");
 }
 
 // 1. Bắt đầu cuộc gọi (Người gọi)
@@ -8236,4 +8243,4 @@ if (window.visualViewport) {
     // Gọi hàm một lần lúc khởi tạo màn hình để thiết lập thông số mặc định cho CSS Variables
     handleViewportChange();
 }
-
+
