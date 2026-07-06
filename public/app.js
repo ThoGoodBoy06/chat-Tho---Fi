@@ -2435,10 +2435,11 @@ function displayMessage(msg, targetContainer = null) {
             targetContainer.appendChild(messageElement);
         } else {
             messagesDiv.appendChild(messageElement);
-            messagesDiv.scrollTo({
-                top: messagesDiv.scrollHeight,
-                behavior: "smooth"
-            });
+            if (typeof window.scrollToBottomSmooth === "function") {
+                window.scrollToBottomSmooth();
+            } else {
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }
         }
         return;
     }
@@ -2470,10 +2471,11 @@ function displayMessage(msg, targetContainer = null) {
         messageElement.appendChild(metaElement);
 
         messagesDiv.appendChild(messageElement);
-        messagesDiv.scrollTo({
-            top: messagesDiv.scrollHeight,
-            behavior: "smooth"
-        });
+        if (typeof window.scrollToBottomSmooth === "function") {
+            window.scrollToBottomSmooth();
+        } else {
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
         return;
     }
 
@@ -2989,12 +2991,11 @@ function displayMessage(msg, targetContainer = null) {
         messagesDiv.appendChild(messageElement);
         // updateReadReceiptsDOM() được gọi một lần duy nhất sau khi toàn bộ tin nhắn đã render xong
         // (trong startChat / reloadCurrentChat / socket receive_message). Không gọi ở đây để tránh flicker.
-        requestAnimationFrame(() => {
-            messagesDiv.scrollTo({
-                top: messagesDiv.scrollHeight,
-                behavior: "smooth"
-            });
-        });
+        if (typeof window.scrollToBottomSmooth === "function") {
+            window.scrollToBottomSmooth();
+        } else {
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
     }
 }
 // 5. Gửi tin nhắn bất đồng bộ
