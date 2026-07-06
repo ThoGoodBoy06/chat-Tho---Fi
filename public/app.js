@@ -8224,3 +8224,22 @@ if (window.visualViewport) {
     handleViewportChange();
 }
 
+// --- ĐÓNG MÀN HÌNH CHÀO SPLASH SCREEN ---
+function hideSplashScreen() {
+    setTimeout(() => {
+        const splash = document.getElementById("splash-screen");
+        if (splash) {
+            splash.classList.add("fade-out");
+            setTimeout(() => {
+                splash.remove();
+            }, 500);
+        }
+    }, 1800); // Hiển thị màn hình chào trong 1.8 giây giống Zalo
+}
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", hideSplashScreen);
+} else {
+    hideSplashScreen();
+}
+

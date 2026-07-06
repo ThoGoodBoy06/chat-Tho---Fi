@@ -8399,3 +8399,71 @@ body[data-theme="dark"] .scroll-to-bottom-btn:hover {
 .reactions-modal-emoji {
     font-size: 20px;
 }
+
+/* --- MÀN HÌNH CHÀO SPLASH SCREEN GIỐNG ZALO --- */
+#splash-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(135deg, #0068ff 0%, #0050c8 100%);
+    z-index: 9999999; /* Đảm bảo luôn nằm trên cùng của ứng dụng */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.5s cubic-bezier(0.25, 0.8, 0.25, 1), visibility 0.5s ease;
+    opacity: 1;
+    visibility: visible;
+}
+
+#splash-screen.fade-out {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.splash-content {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.splash-logo {
+    width: 110px;
+    height: 110px;
+    object-fit: contain;
+    border-radius: 28px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+    margin-bottom: 22px;
+    transform: scale(0.85);
+    opacity: 0;
+    animation: logoZoomScale 0.8s cubic-bezier(0.25, 0.8, 0.25, 1) 0.15s forwards;
+}
+
+.splash-title {
+    font-size: 27px;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: 0.8px;
+    font-family: 'Outfit', 'Inter', sans-serif;
+    opacity: 0;
+    transform: translateY(18px);
+    animation: titleSlideUpFade 0.8s cubic-bezier(0.25, 0.8, 0.25, 1) 0.35s forwards;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Các keyframe hoạt ảnh mượt mà */
+@keyframes logoZoomScale {
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes titleSlideUpFade {
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}

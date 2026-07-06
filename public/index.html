@@ -14,10 +14,18 @@
     <meta name="apple-mobile-web-app-title" content="Chat Tho-Fi" />
     <link rel="icon" href="icon.png" type="image/png" />
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
-    <link rel="stylesheet" href="style-v4.css?v=65" />
+    <link rel="stylesheet" href="style-v4.css?v=66" />
 </head>
 
 <body>
+    <!-- Màn hình chào Splash Screen giống Zalo -->
+    <div id="splash-screen">
+        <div class="splash-content">
+            <img src="tho_fi_logo.png" alt="Logo Tho-Fi" class="splash-logo" />
+            <h1 class="splash-title">Chat Tho-Fi</h1>
+        </div>
+    </div>
+
     <!-- Màn hình Loading toàn cục (Chính giữa màn hình) -->
     <div id="global-loading" style="
         display: none;
@@ -1086,7 +1094,7 @@
 
     <!-- Import Socket.IO và file xử lý logic -->
     <script src="/socket.io/socket.io.js"></script>
-    <script src="app.js?v=34068"></script>
+    <script src="app.js?v=34069"></script>
 </body>
 
 </html>
