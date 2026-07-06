@@ -8381,7 +8381,7 @@ body[data-theme="dark"] .scroll-to-bottom-btn:hover {
 /* Tiêu đề chữ nổi bật với màu trắng tuyết và hiệu ứng bóng đổ sắc nét */
 
 .splash-title {
-    font-size: 40px;
+    font-size: 25px;
     font-weight: 800;
     letter-spacing: 2px;
     font-family: 'Outfit', 'Inter', sans-serif;
