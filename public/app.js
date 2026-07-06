@@ -275,64 +275,61 @@ let isAudioUnlocked = false;
 function unlockBrowserAudio() {
     if (isAudioUnlocked) return;
 
-    // Chuỗi base64 của một file âm thanh WAV siêu nhỏ và im lặng hoàn toàn
-    const silentSrc = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAAA";
-
-    // 1. Mở khóa âm thanh báo tin nhắn
+    // 1. Mở khóa âm thanh báo tin nhắn (amthanhtinnhan.mp3)
     const msgSound = document.getElementById("message-sound");
     if (msgSound) {
-        const originalSrc = msgSound.src;
-        msgSound.src = silentSrc;
+        const originalVol = msgSound.volume;
+        msgSound.volume = 0;
         msgSound.play()
             .then(() => {
                 msgSound.pause();
-                msgSound.src = originalSrc;
-                msgSound.load(); // Nạp lại file âm thanh gốc vào bộ nhớ
+                msgSound.currentTime = 0;
+                msgSound.volume = originalVol;
             })
-            .catch(() => {
-                msgSound.src = originalSrc;
-                msgSound.load();
+            .catch((err) => {
+                msgSound.volume = originalVol;
+                console.warn("Lỗi unlock msgSound:", err.message);
             });
     }
 
-    // 2. Mở khóa nhạc chuông cuộc gọi đến
+    // 2. Mở khóa nhạc chuông cuộc gọi đến (ringtone.mp3)
     const incomingRingtone = document.getElementById("incoming-ringtone");
     if (incomingRingtone) {
-        const originalSrc = incomingRingtone.src;
-        incomingRingtone.src = silentSrc;
+        const originalVol = incomingRingtone.volume;
+        incomingRingtone.volume = 0;
         incomingRingtone.play()
             .then(() => {
                 incomingRingtone.pause();
-                incomingRingtone.src = originalSrc;
-                incomingRingtone.load(); // Nạp lại file âm thanh gốc vào bộ nhớ
+                incomingRingtone.currentTime = 0;
+                incomingRingtone.volume = originalVol;
             })
-            .catch(() => {
-                incomingRingtone.src = originalSrc;
-                incomingRingtone.load();
+            .catch((err) => {
+                incomingRingtone.volume = originalVol;
+                console.warn("Lỗi unlock incomingRingtone:", err.message);
             });
     }
 
-    // 3. Mở khóa nhạc chuông chờ cuộc gọi đi
+    // 3. Mở khóa nhạc chuông chờ cuộc gọi đi (dialtone.mp3)
     const outgoingRingtone = document.getElementById("outgoing-ringtone");
     if (outgoingRingtone) {
-        const originalSrc = outgoingRingtone.src;
-        outgoingRingtone.src = silentSrc;
+        const originalVol = outgoingRingtone.volume;
+        outgoingRingtone.volume = 0;
         outgoingRingtone.play()
             .then(() => {
                 outgoingRingtone.pause();
-                outgoingRingtone.src = originalSrc;
-                outgoingRingtone.load(); // Nạp lại file âm thanh gốc vào bộ nhớ
+                outgoingRingtone.currentTime = 0;
+                outgoingRingtone.volume = originalVol;
             })
-            .catch(() => {
-                outgoingRingtone.src = originalSrc;
-                outgoingRingtone.load();
+            .catch((err) => {
+                outgoingRingtone.volume = originalVol;
+                console.warn("Lỗi unlock outgoingRingtone:", err.message);
             });
     }
 
     isAudioUnlocked = true;
     document.removeEventListener("click", unlockBrowserAudio);
     document.removeEventListener("touchstart", unlockBrowserAudio);
-    console.log("🔊 Tất cả kênh âm thanh đã được mở khóa bằng dữ liệu im lặng thành công!");
+    console.log("🔊 Tất cả kênh âm thanh đã được mở khóa trực tiếp thành công!");
 }
 document.addEventListener("click", unlockBrowserAudio);
 document.addEventListener("touchstart", unlockBrowserAudio);
