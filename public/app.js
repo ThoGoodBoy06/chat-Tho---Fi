@@ -379,41 +379,7 @@ function unlockBrowserAudio() {
         ctx.resume();
     }
 
-    // 2. Mở khóa dự phòng các thẻ Audio của hệ thống bằng volume 0
-    const msgSound = document.getElementById("message-sound");
-    if (msgSound) {
-        const originalVol = msgSound.volume;
-        msgSound.volume = 0;
-        msgSound.play().then(() => {
-            msgSound.pause();
-            msgSound.currentTime = 0;
-            msgSound.volume = originalVol;
-        }).catch(err => { msgSound.volume = originalVol; });
-    }
-
-    const incomingRingtone = document.getElementById("incoming-ringtone");
-    if (incomingRingtone) {
-        const originalVol = incomingRingtone.volume;
-        incomingRingtone.volume = 0;
-        incomingRingtone.play().then(() => {
-            incomingRingtone.pause();
-            incomingRingtone.currentTime = 0;
-            incomingRingtone.volume = originalVol;
-        }).catch(err => { incomingRingtone.volume = originalVol; });
-    }
-
-    const outgoingRingtone = document.getElementById("outgoing-ringtone");
-    if (outgoingRingtone) {
-        const originalVol = outgoingRingtone.volume;
-        outgoingRingtone.volume = 0;
-        outgoingRingtone.play().then(() => {
-            outgoingRingtone.pause();
-            outgoingRingtone.currentTime = 0;
-            outgoingRingtone.volume = originalVol;
-        }).catch(err => { outgoingRingtone.volume = originalVol; });
-    }
-
-    // 3. Tải trước toàn bộ âm thanh
+    // 2. Tải trước toàn bộ âm thanh vào bộ nhớ đệm
     preloadAllSounds();
 
     const UNLOCK_EVENTS = ["click", "touchstart", "touchend", "mousedown", "keydown"];
