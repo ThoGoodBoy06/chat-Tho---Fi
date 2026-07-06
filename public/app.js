@@ -326,13 +326,18 @@ function unlockBrowserAudio() {
             });
     }
 
+    const UNLOCK_EVENTS = ["click", "touchstart", "touchend", "mousedown", "keydown"];
     isAudioUnlocked = true;
-    document.removeEventListener("click", unlockBrowserAudio);
-    document.removeEventListener("touchstart", unlockBrowserAudio);
+    UNLOCK_EVENTS.forEach(event => {
+        document.removeEventListener(event, unlockBrowserAudio);
+    });
     console.log("🔊 Tất cả kênh âm thanh đã được mở khóa trực tiếp thành công!");
 }
-document.addEventListener("click", unlockBrowserAudio);
-document.addEventListener("touchstart", unlockBrowserAudio);
+
+const UNLOCK_EVENTS = ["click", "touchstart", "touchend", "mousedown", "keydown"];
+UNLOCK_EVENTS.forEach(event => {
+    document.addEventListener(event, unlockBrowserAudio, { passive: true });
+});
 
 // Cơ chế unlock rung (Vibration Gesture Lock) cho thiết bị di động
 let isVibrationUnlocked = false;
