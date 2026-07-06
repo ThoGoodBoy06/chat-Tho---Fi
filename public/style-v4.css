@@ -1282,7 +1282,7 @@ RIGHT WINDOW & CHAT MESSAGES
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0, 0, 0, 0.4);
+    background: rgba(0, 0, 0, 0.01);
     z-index: 200 !important;
     opacity: 0;
     visibility: hidden;
@@ -3791,9 +3791,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
     body.overlay-active .chat-header,
     body.overlay-active .input-area,
     body.overlay-active .message:not(.show-mobile-actions) {
-        opacity: 0.35 !important;
         pointer-events: none !important;
-        transition: opacity 0.2s ease;
     }
 
     #chat-screen.mobile-chat-active .tab-content-container {
