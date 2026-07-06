@@ -624,8 +624,6 @@ function showMobileOverlay(messageEl) {
     if (!overlay) {
         overlay = document.createElement("div");
         overlay.id = "mobile-action-overlay";
-        const chatArea = document.querySelector(".chat-window") || document.body;
-        chatArea.appendChild(overlay);
         overlay.addEventListener("click", hideMobileOverlay);
         overlay.addEventListener("touchstart", hideMobileOverlay, {
             passive: true,
@@ -633,6 +631,13 @@ function showMobileOverlay(messageEl) {
         overlay.addEventListener("touchmove", (e) => e.preventDefault(), {
             passive: false,
         });
+    }
+    const messagesDiv = document.getElementById("messages");
+    if (messagesDiv) {
+        messagesDiv.appendChild(overlay);
+    } else {
+        const chatArea = document.querySelector(".chat-window") || document.body;
+        chatArea.appendChild(overlay);
     }
 
     hideMobileOverlay();
