@@ -8407,8 +8407,8 @@ body[data-theme="dark"] .scroll-to-bottom-btn:hover {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: linear-gradient(135deg, #0068ff 0%, #0050c8 100%);
-    z-index: 9999999; /* Đảm bảo luôn nằm trên cùng của ứng dụng */
+    background: linear-gradient(135deg, #090d1a 0%, #004ecc 100%); /* Nền xanh đậm gradient cao cấp tránh trùng màu với logo */
+    z-index: 9999999;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -8429,28 +8429,40 @@ body[data-theme="dark"] .scroll-to-bottom-btn:hover {
     align-items: center;
 }
 
-.splash-logo {
-    width: 110px;
-    height: 110px;
-    object-fit: contain;
-    border-radius: 28px;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
-    margin-bottom: 22px;
+/* Container logo màu trắng tinh khôi dạng App Icon để làm nổi bật logo màu xanh/tím */
+.splash-logo-container {
+    width: 120px;
+    height: 120px;
+    background: #ffffff;
+    border-radius: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.35);
+    margin-bottom: 24px;
     transform: scale(0.85);
     opacity: 0;
     animation: logoZoomScale 0.8s cubic-bezier(0.25, 0.8, 0.25, 1) 0.15s forwards;
+    padding: 12px;
 }
 
+.splash-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+/* Tiêu đề chữ nổi bật với màu trắng tuyết và hiệu ứng bóng đổ sắc nét */
 .splash-title {
-    font-size: 27px;
+    font-size: 28px;
     font-weight: 700;
     color: #ffffff;
-    letter-spacing: 0.8px;
+    letter-spacing: 1px;
     font-family: 'Outfit', 'Inter', sans-serif;
     opacity: 0;
     transform: translateY(18px);
     animation: titleSlideUpFade 0.8s cubic-bezier(0.25, 0.8, 0.25, 1) 0.35s forwards;
-    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    text-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
 /* Các keyframe hoạt ảnh mượt mà */
