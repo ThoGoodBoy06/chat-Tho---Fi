@@ -4799,27 +4799,76 @@ function stopRingtone() {
     }
 }
 
-function playOutgoingRingtone() {
-    const ringtone = document.getElementById("outgoing-ringtone");
-    if (ringtone) {
-        ringtone.volume = 1.0;
-        ringtone.currentTime = 0;
-        const playPromise = ringtone.play();
-        if (playPromise !== undefined) {
-            playPromise.catch((e) =>
-                console.warn("Trình duyệt chặn tự động phát âm thanh:", e),
-            );
+let dialtoneAudioContext = null;
+let dialtoneBuffer = null;
+let dialtoneSource = null;
+let dialtoneGainNode = null;
+
+async function loadDialtoneBuffer() {
+    if (dialtoneBuffer) return dialtoneBuffer;
+    try {
+        const response = await fetch("/dialtone.mp3");
+        const arrayBuffer = await response.arrayBuffer();
+        if (!dialtoneAudioContext) {
+            dialtoneAudioContext = new (window.AudioContext || window.webkitAudioContext)();
         }
-    } else {
-        console.error("Không tìm thấy thẻ <audio id='outgoing-ringtone'>!");
+        dialtoneBuffer = await dialtoneAudioContext.decodeAudioData(arrayBuffer);
+        return dialtoneBuffer;
+    } catch (e) {
+        console.error("Lỗi khi tải hoặc giải mã dialtone.mp3:", e);
+        return null;
+    }
+}
+
+async function playOutgoingRingtone() {
+    try {
+        const buffer = await loadDialtoneBuffer();
+        if (!buffer) {
+            const ringtone = document.getElementById("outgoing-ringtone");
+            if (ringtone) {
+                ringtone.volume = 1.0;
+                ringtone.currentTime = 0;
+                ringtone.play().catch(e => console.warn(e));
+            }
+            return;
+        }
+
+        stopOutgoingRingtone();
+
+        if (dialtoneAudioContext.state === "suspended") {
+            await dialtoneAudioContext.resume();
+        }
+
+        dialtoneSource = dialtoneAudioContext.createBufferSource();
+        dialtoneSource.buffer = buffer;
+        dialtoneSource.loop = true;
+
+        dialtoneGainNode = dialtoneAudioContext.createGain();
+        dialtoneGainNode.gain.value = 3.5; // Khuếch đại lên 3.5 lần (cực to)
+
+        dialtoneSource.connect(dialtoneGainNode);
+        dialtoneGainNode.connect(dialtoneAudioContext.destination);
+
+        dialtoneSource.start(0);
+    } catch (e) {
+        console.warn("Lỗi phát dialtone qua Web Audio API:", e);
     }
 }
 
 function stopOutgoingRingtone() {
-    const ringtone = document.getElementById("outgoing-ringtone");
-    if (ringtone) {
-        ringtone.pause();
-        ringtone.currentTime = 0;
+    try {
+        if (dialtoneSource) {
+            dialtoneSource.stop();
+            dialtoneSource.disconnect();
+            dialtoneSource = null;
+        }
+        const ringtone = document.getElementById("outgoing-ringtone");
+        if (ringtone) {
+            ringtone.pause();
+            ringtone.currentTime = 0;
+        }
+    } catch (e) {
+        console.warn("Lỗi dừng dialtone:", e);
     }
 }
 
