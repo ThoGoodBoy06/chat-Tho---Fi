@@ -3766,7 +3766,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         display: flex !important;
         flex-direction: column;
         transform: translateX(100%);
-        transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), height 0.35s cubic-bezier(0.25, 0.8, 0.25, 1), top 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
         background: var(--chat-bg) !important;
         bottom: auto !important;
         padding-bottom: 0 !important;
@@ -3774,6 +3774,13 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
 
     #chat-screen.mobile-chat-active {
         display: block !important;
+        background: var(--chat-bg) !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        z-index: 9998 !important;
     }
 
     #chat-screen.mobile-chat-active .tab-content-container {
