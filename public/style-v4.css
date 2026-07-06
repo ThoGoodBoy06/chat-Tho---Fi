@@ -57,6 +57,7 @@ body[data-theme="dark"] {
     --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.25);
 }
 
+
 /* ==========================================================================
 RESET & GLOBAL BASICS
 ========================================================================== */
@@ -114,6 +115,7 @@ body {
     touch-action: pan-y;
 }
 
+
 /* Typography Hierarchy */
 
 h1,
@@ -146,6 +148,7 @@ p {
     margin: 0;
 }
 
+
 /* Emojis, icons and custom scrollbar */
 
 ::-webkit-scrollbar {
@@ -165,6 +168,7 @@ p {
 ::-webkit-scrollbar-thumb:hover {
     background: rgba(117, 137, 163, 0.4);
 }
+
 
 /* ==========================================================================
 AUTH SCREEN (LOGIN / REGISTER)
@@ -196,7 +200,6 @@ AUTH SCREEN (LOGIN / REGISTER)
         opacity: 0;
         transform: translateY(10px);
     }
-
     to {
         opacity: 1;
         transform: translateY(0);
@@ -331,6 +334,7 @@ AUTH SCREEN (LOGIN / REGISTER)
     text-decoration: underline;
 }
 
+
 /* ==========================================================================
 APP CONTAINER & NAVIGATION (SIDEBAR)
 ========================================================================== */
@@ -341,6 +345,7 @@ APP CONTAINER & NAVIGATION (SIDEBAR)
     height: 100%;
     background: var(--bg-color);
 }
+
 
 /* Premium Left vertical sidebar */
 
@@ -418,26 +423,23 @@ APP CONTAINER & NAVIGATION (SIDEBAR)
     z-index: 3;
 }
 
+
 /* Shake animation for call indicators */
 
 @keyframes shake {
-
     10%,
     90% {
         transform: translate3d(-1px, 0, 0);
     }
-
     20%,
     80% {
         transform: translate3d(2px, 0, 0);
     }
-
     30%,
     50%,
     70% {
         transform: translate3d(-3px, 0, 0);
     }
-
     40%,
     60% {
         transform: translate3d(3px, 0, 0);
@@ -471,17 +473,18 @@ APP CONTAINER & NAVIGATION (SIDEBAR)
     animation: tabContentFadeIn 0.12s ease-out forwards;
 }
 
+
 /* Khai báo khung hình chuyển động (Tối ưu hóa chỉ dùng opacity) */
 
 @keyframes tabContentFadeIn {
     from {
         opacity: 0;
     }
-
     to {
         opacity: 1;
     }
 }
+
 
 /* ==========================================================================
 TAB 1: MESSAGE VIEW & SIDE CHAT LIST
@@ -606,6 +609,7 @@ TAB 1: MESSAGE VIEW & SIDE CHAT LIST
     display: flex;
     gap: 4px;
 }
+
 
 /* Search bar styling */
 
@@ -754,6 +758,7 @@ TAB 1: MESSAGE VIEW & SIDE CHAT LIST
     height: 20px;
 }
 
+
 /* ==========================================================================
 RIGHT WINDOW & CHAT MESSAGES
 ========================================================================== */
@@ -834,6 +839,7 @@ RIGHT WINDOW & CHAT MESSAGES
     position: relative;
 }
 
+
 /* Chat bubble styling with soft shadows and offset curves */
 
 .message {
@@ -850,7 +856,6 @@ RIGHT WINDOW & CHAT MESSAGES
         opacity: 0;
         transform: translateY(12px) scale(0.97);
     }
-
     to {
         opacity: 1;
         transform: translateY(0) scale(1);
@@ -918,7 +923,9 @@ RIGHT WINDOW & CHAT MESSAGES
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
+
 /* LARGE EMOJI MESSAGES (MESSENGER STYLE) */
+
 .emoji-only-message .message-content {
     background: transparent !important;
     border: none !important;
@@ -998,6 +1005,7 @@ RIGHT WINDOW & CHAT MESSAGES
     margin-left: 12px;
 }
 
+
 /* Hover Reactions & Actions bar */
 
 .message-actions {
@@ -1036,6 +1044,7 @@ RIGHT WINDOW & CHAT MESSAGES
     color: var(--primary-color);
     transform: scale(1.05);
 }
+
 
 /* Reaction Palette dropdown */
 
@@ -1085,6 +1094,7 @@ RIGHT WINDOW & CHAT MESSAGES
     transform: scale(1.3) translateY(-2px);
 }
 
+
 /* More menu settings dropdown */
 
 .more-menu {
@@ -1133,6 +1143,7 @@ RIGHT WINDOW & CHAT MESSAGES
     color: #EF4444;
 }
 
+
 /* Thể hiện các cảm xúc tin nhắn */
 
 .message-reactions {
@@ -1154,6 +1165,7 @@ RIGHT WINDOW & CHAT MESSAGES
     animation: popInBounce 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
+
 /* Tạo hiệu ứng nảy nhẹ khi hiển thị cảm xúc */
 
 @keyframes popInBounce {
@@ -1161,16 +1173,15 @@ RIGHT WINDOW & CHAT MESSAGES
         transform: scale(0.3);
         opacity: 0;
     }
-
     70% {
         transform: scale(1.15);
     }
-
     100% {
         transform: scale(1);
         opacity: 1;
     }
 }
+
 
 /* Đảm bảo bong bóng tin nhắn đủ rộng và cao khi có cảm xúc, tránh đè chữ */
 
@@ -1179,6 +1190,7 @@ RIGHT WINDOW & CHAT MESSAGES
     padding-bottom: 18px !important;
 }
 
+
 /* Vị trí cảm xúc: Tin nhắn của tôi (bên phải) -> Cảm xúc nằm góc dưới bên trái */
 
 .my-message .message-content .message-reactions {
@@ -1186,12 +1198,14 @@ RIGHT WINDOW & CHAT MESSAGES
     left: 18px;
 }
 
+
 /* Vị trí cảm xúc: Tin nhắn đối phương (bên trái) -> Cảm xúc nằm góc dưới bên phải */
 
 .other-message .message-content .message-reactions {
     left: auto;
     right: 18px;
 }
+
 
 /* Hiệu ứng nổ hạt cảm xúc (Messenger-like Burst Animation) */
 
@@ -1210,17 +1224,16 @@ RIGHT WINDOW & CHAT MESSAGES
         transform: translate(-50%, -50%) translate(0, 0) scale(0.3);
         opacity: 1;
     }
-
     15% {
         transform: translate(-50%, -50%) translate(0, 0) scale(1.3);
         opacity: 1;
     }
-
     100% {
         transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0.7);
         opacity: 0;
     }
 }
+
 
 /* Giao diện nút 3 chấm và menu dropdown xoá hội thoại */
 
@@ -1274,6 +1287,7 @@ RIGHT WINDOW & CHAT MESSAGES
     background: var(--hover-bg);
 }
 
+
 /* Mobile actions overlay */
 
 #mobile-action-overlay {
@@ -1300,9 +1314,12 @@ RIGHT WINDOW & CHAT MESSAGES
     overflow: visible !important;
 }
 
+
 /* ==========================================================================
 INPUT AREA FOR CHAT (MESSENGER STYLE)
 ========================================================================== */
+
+
 /* Input Area for Chat */
 
 .input-area {
@@ -1339,6 +1356,7 @@ INPUT AREA FOR CHAT (MESSENGER STYLE)
     padding-bottom: 6px;
 }
 
+
 /* Style cho các icon xanh (ảnh, file, mic...) */
 
 .input-area .icon-btn {
@@ -1352,6 +1370,7 @@ INPUT AREA FOR CHAT (MESSENGER STYLE)
     transform: scale(0.9);
 }
 
+
 /* Nút mũi tên > dùng để mở lại menu khi đang gõ */
 
 .expand-actions-btn {
@@ -1363,6 +1382,7 @@ INPUT AREA FOR CHAT (MESSENGER STYLE)
     align-items: center;
     justify-content: center;
 }
+
 
 /* Khung bọc Textarea (đã tối ưu lại kích thước) */
 
@@ -1385,6 +1405,7 @@ INPUT AREA FOR CHAT (MESSENGER STYLE)
     border-color: var(--primary-color);
     box-shadow: 0 0 0 2px rgba(0, 132, 255, 0.15);
 }
+
 
 /* Textarea tự động giãn */
 
@@ -1434,6 +1455,7 @@ INPUT AREA FOR CHAT (MESSENGER STYLE)
     color: var(--primary-color);
 }
 
+
 /* ==========================================================================
 SKELETON LOADING (SHIMMER EFFECT)
 ========================================================================== */
@@ -1452,6 +1474,7 @@ body[data-theme="dark"] .skeleton-friend-item {
     --skeleton-shimmer: linear-gradient(90deg, #22222b 25%, #2d2d38 50%, #22222b 75%);
 }
 
+
 /* Hiệu ứng quét shimmer */
 
 .skeleton-avatar,
@@ -1466,11 +1489,11 @@ body[data-theme="dark"] .skeleton-friend-item {
     0% {
         background-position: 200% 0;
     }
-
     100% {
         background-position: -200% 0;
     }
 }
+
 
 /* Giao diện khung xương cho danh sách chat bên trái */
 
@@ -1512,6 +1535,7 @@ body[data-theme="dark"] .skeleton-friend-item {
     height: 10px;
 }
 
+
 /* Giao diện khung xương cho tin nhắn bên phải */
 
 .skeleton-message-container {
@@ -1548,6 +1572,7 @@ body[data-theme="dark"] .skeleton-friend-item {
     border-bottom-left-radius: 4px;
 }
 
+
 /* Giao diện khung xương cho danh sách bạn bè */
 
 .skeleton-friend-item {
@@ -1561,6 +1586,7 @@ body[data-theme="dark"] .skeleton-friend-item {
     margin-bottom: 12px;
     box-shadow: var(--shadow-sm);
 }
+
 
 /* ===== EMOJI PICKER ===== */
 
@@ -1596,12 +1622,12 @@ body[data-theme="dark"] .skeleton-friend-item {
         opacity: 0;
         transform: translateY(10px) scale(0.95);
     }
-
     to {
         opacity: 1;
         transform: translateY(0) scale(1);
     }
 }
+
 
 /* Search box */
 
@@ -1641,6 +1667,7 @@ body[data-theme="dark"] .skeleton-friend-item {
 .emoji-search-box input::placeholder {
     color: var(--text-light);
 }
+
 
 /* Category tabs */
 
@@ -1695,6 +1722,7 @@ body[data-theme="dark"] .skeleton-friend-item {
     font-size: 16px;
     color: var(--text-light);
 }
+
 
 /* Emoji grid */
 
@@ -1764,10 +1792,10 @@ body[data-theme="dark"] .skeleton-friend-item {
     font-size: 13px;
 }
 
+
 /* Mobile responsive */
 
 @media (max-width: 768px) {
-
     #message-input,
     #ai-message-input,
     .search-box input,
@@ -1778,9 +1806,6 @@ body[data-theme="dark"] .skeleton-friend-item {
     #custom-prompt-input {
         font-size: 16px !important;
     }
-
-
-
     .emoji-picker-panel {
         position: relative;
         bottom: unset;
@@ -1796,11 +1821,9 @@ body[data-theme="dark"] .skeleton-friend-item {
         border-top: 1px solid var(--border-color);
         animation: none;
     }
-
     .emoji-items {
         grid-template-columns: repeat(8, 1fr);
     }
-
     .emoji-item {
         font-size: 26px;
         padding: 5px 2px;
@@ -1815,6 +1838,7 @@ body[data-theme="dark"] .skeleton-friend-item {
     margin-left: 20px;
 }
 
+
 /* Nút ghi âm luôn hiện bên phải (không bị thu gọn khi is-typing) */
 
 .voice-record-btn-always {
@@ -1827,6 +1851,7 @@ body[data-theme="dark"] .skeleton-friend-item {
 .voice-record-btn-always:active {
     transform: scale(0.9);
 }
+
 
 /* Ẩn nút ghi âm khi đang có nút Gửi (có chữ trong ô nhập) */
 
@@ -1849,9 +1874,12 @@ body[data-theme="dark"] .skeleton-friend-item {
     font-size: 26px !important;
 }
 
+
 /* ==========================================================================
 TYPING INDICATORS
 ========================================================================== */
+
+
 /* Typing indicators */
 
 .typing-indicator {
@@ -1886,17 +1914,16 @@ TYPING INDICATORS
 }
 
 @keyframes bounce {
-
     0%,
     80%,
     100% {
         transform: scale(0);
     }
-
     40% {
         transform: scale(1);
     }
 }
+
 
 /* Image lightbox */
 
@@ -1914,6 +1941,7 @@ TYPING INDICATORS
     opacity: 0;
     transition: opacity 0.3s ease;
 }
+
 
 /* Empty placeholder design (Image 0) */
 
@@ -1938,12 +1966,10 @@ TYPING INDICATORS
 }
 
 @keyframes floatEmpty {
-
     0%,
     100% {
         transform: translateY(0);
     }
-
     50% {
         transform: translateY(-8px);
     }
@@ -1989,6 +2015,7 @@ TYPING INDICATORS
 .btn-start-chat:active {
     transform: translateY(0);
 }
+
 
 /* ==========================================================================
 TAB 2: CONTACTS & FRIEND CARDS
@@ -2173,6 +2200,7 @@ TAB 2: CONTACTS & FRIEND CARDS
     color: #B91C1C !important;
 }
 
+
 /* ==========================================================================
 TAB 3: PERSONAL PROFILE WITH GRADIENT CIRCLE
 ========================================================================== */
@@ -2355,6 +2383,7 @@ TAB 3: PERSONAL PROFILE WITH GRADIENT CIRCLE
     font-size: 14px;
 }
 
+
 /* ==========================================================================
 TAB 4: NOTIFICATIONS LIST WITH GROUPING & BADGES (IMAGE 3)
 ========================================================================== */
@@ -2455,6 +2484,7 @@ TAB 4: NOTIFICATIONS LIST WITH GROUPING & BADGES (IMAGE 3)
     color: var(--text-light);
 }
 
+
 /* ==========================================================================
 TAB 5: SETTINGS & NATIVE iOS TOGGLE (IMAGE 4)
 ========================================================================== */
@@ -2541,6 +2571,7 @@ input:checked+.slider.round:before {
 .logout-btn-danger:active {
     transform: translateY(0);
 }
+
 
 /* ==========================================================================
 WEBRTC CALL SYSTEM MODAL (NATIVE iOS STYLE)
@@ -2700,11 +2731,9 @@ body.call-active {
     0% {
         box-shadow: 0 0 0 0 rgba(52, 199, 89, 0.7);
     }
-
     70% {
         box-shadow: 0 0 0 20px rgba(52, 199, 89, 0);
     }
-
     100% {
         box-shadow: 0 0 0 0 rgba(52, 199, 89, 0);
     }
@@ -2839,6 +2868,7 @@ body.call-active {
     color: #8e8e93;
 }
 
+
 /* ==========================================================================
 REPLY, FILE MESSAGING, & OPTIMISTIC SPINNER
 ========================================================================== */
@@ -2860,7 +2890,6 @@ REPLY, FILE MESSAGING, & OPTIMISTIC SPINNER
         transform: translateY(100%);
         opacity: 0;
     }
-
     to {
         transform: translateY(0);
         opacity: 1;
@@ -2949,17 +2978,14 @@ REPLY, FILE MESSAGING, & OPTIMISTIC SPINNER
         box-shadow: 0 0 0 0 rgba(10, 138, 110, 0.7);
         transform: scale(1);
     }
-
     25% {
         box-shadow: 0 0 15px 5px rgba(10, 138, 110, 0.5);
         transform: scale(1.02);
     }
-
     50% {
         box-shadow: 0 0 15px 5px rgba(10, 138, 110, 0.5);
         transform: scale(1.02);
     }
-
     100% {
         box-shadow: 0 0 0 0 rgba(10, 138, 110, 0);
         transform: scale(1);
@@ -3096,7 +3122,6 @@ REPLY, FILE MESSAGING, & OPTIMISTIC SPINNER
         opacity: 1;
         transform: scale(1);
     }
-
     to {
         opacity: 0.6;
         transform: scale(1.15);
@@ -3129,6 +3154,7 @@ REPLY, FILE MESSAGING, & OPTIMISTIC SPINNER
         transform: rotate(360deg);
     }
 }
+
 
 /* ==========================================================================
 CUSTOM DIALOG MODALS (CONFIRM & PROMPT)
@@ -3269,6 +3295,7 @@ CUSTOM DIALOG MODALS (CONFIRM & PROMPT)
     color: white !important;
 }
 
+
 /* ==========================================================================
 RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
 ========================================================================== */
@@ -3288,11 +3315,22 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
 
 @media screen and (max-width: 768px) {
     /* --- HIỆU ỨNG CHẠM NHẠY BÉN TRÊN MOBILE (ACTIVE TOUCH FEEDBACK) --- */
-    a, button, input, select, textarea, .nav-item, #user-list li, .action-btn, .mobile-back-btn, .expand-actions-btn, #send-btn, #like-btn, .btn {
+    a,
+    button,
+    input,
+    select,
+    textarea,
+    .nav-item,
+    #user-list li,
+    .action-btn,
+    .mobile-back-btn,
+    .expand-actions-btn,
+    #send-btn,
+    #like-btn,
+    .btn {
         -webkit-tap-highlight-color: transparent !important;
         outline: none !important;
     }
-
     .nav-item:active,
     .mobile-back-btn:active,
     .expand-actions-btn:active,
@@ -3307,13 +3345,11 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         opacity: 0.8 !important;
         transition: transform 0.05s cubic-bezier(0.25, 1, 0.5, 1) !important;
     }
-
     #user-list li:active {
         background-color: var(--hover-bg) !important;
         transform: scale(0.99) !important;
         transition: background-color 0.1s ease, transform 0.05s ease !important;
     }
-
     #tab-messages.active,
     #tab-contacts.active,
     #tab-profile.active {
@@ -3321,37 +3357,30 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         flex-direction: row !important;
         overflow: hidden !important;
     }
-
     .chat-list {
         width: 100%;
         min-width: 100%;
     }
-
     .chat-list-container {
         background: var(--msg-receiver-bg) !important;
         padding-bottom: 68px !important;
     }
-
     .chat-window {
         display: none;
         width: 100%;
     }
-
     #chat-screen.mobile-chat-active .chat-list {
         display: none;
     }
-
     #chat-screen.mobile-chat-active .chat-window {
         display: flex;
     }
-
     .back-btn {
         display: flex;
         margin-right: 8px;
         font-size: 18px;
         color: white !important;
     }
-
     .contacts-container {
         max-width: 100%;
         margin-top: 0;
@@ -3363,69 +3392,56 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         flex-direction: column !important;
         padding-bottom: 0 !important;
     }
-
     .contacts-scroll-content {
         padding-bottom: 68px !important;
     }
-
     .auth-card {
         width: 92%;
         padding: 36px 24px;
     }
-
     .message {
         max-width: 90% !important;
     }
-
     .chat-header {
         padding: 10px 16px !important;
         background: #0068ff !important;
         color: white !important;
         border-bottom: none !important;
     }
-
     .chat-header-text h3 {
         font-size: 15px;
         color: white !important;
     }
-
     .input-area {
         padding: 10px 12px;
         gap: 6px;
     }
-
     .input-wrapper {
         flex: 1 !important;
         min-width: 0 !important;
         width: 100% !important;
     }
-
     #messages {
         padding: 16px;
     }
-
     input,
     textarea,
     button {
         font-size: 16px !important;
     }
-
     .message.my-message {
         align-items: flex-end !important;
         width: 100%;
     }
-
     .my-message .message-body {
         margin-right: 0 !important;
         padding-right: 0 !important;
         justify-content: flex-end !important;
         max-width: 80% !important;
     }
-
     .other-message .message-body {
         max-width: 80% !important;
     }
-
     .my-message .message-meta {
         align-self: flex-end !important;
         margin-right: 0px !important;
@@ -3434,7 +3450,6 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         position: relative;
         z-index: 2;
     }
-
     .my-message .message-status {
         display: inline-flex !important;
         align-items: center;
@@ -3442,12 +3457,10 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         min-width: 18px;
         min-height: 18px;
     }
-
     .read-receipt-avatar {
         width: 18px;
         height: 18px;
     }
-
     #chat-screen {
         display: flex;
         flex-direction: column !important;
@@ -3458,7 +3471,6 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         height: 100dvh !important;
         height: -webkit-fill-available !important;
     }
-
     /* Tab Bar Viên Thuốc + Kính mờ (Bản Floating Capsule cực sang trọng) */
     /* ── TAB BAR CONTAINER ── */
     .sidebar {
@@ -3492,7 +3504,6 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         padding: 4px 12px 2px 12px !important;
         gap: 0 !important;
     }
-
     body[data-theme="dark"] .sidebar {
         background: rgba(18, 18, 18, 0.85) !important;
         border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
@@ -3501,7 +3512,6 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         border-bottom: none !important;
         box-shadow: 0 -3px 12px rgba(0, 0, 0, 0.3) !important;
     }
-
     /* ── SLIDING PILL INDICATOR ── */
     .nav-slider-pill {
         position: absolute;
@@ -3518,12 +3528,10 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         left: 12px;
         width: calc((100% - 24px) / 5);
     }
-
     body[data-theme="dark"] .nav-slider-pill {
         background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
         box-shadow: 0 4px 20px rgba(37, 99, 235, 0.45);
     }
-
     /* ── NAV ITEM ── */
     .nav-item {
         width: calc((100% - 24px) / 5) !important;
@@ -3542,12 +3550,10 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         z-index: 1;
         overflow: visible;
     }
-
     .nav-item:active {
         transform: scale(0.88) !important;
         transition: transform 0.1s ease !important;
     }
-
     /* Active pill handled by slider, no background needed */
     .nav-item.active {
         background: transparent !important;
@@ -3555,7 +3561,6 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         border: none !important;
         transform: translateY(-1px);
     }
-
     /* ── NAV ICON WRAP (for glow effect) ── */
     .nav-icon-wrap {
         display: flex;
@@ -3563,18 +3568,15 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         justify-content: center;
         transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
-
     .nav-item.active .nav-icon-wrap {
         animation: icon-bounce 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
     }
-
     /* ── ICON ── */
     .nav-item i {
         font-size: 21px;
         color: var(--text-light);
         transition: color 0.25s ease, filter 0.25s ease;
     }
-
     .nav-item.active i {
         color: #ffffff !important;
         filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.6));
@@ -3583,7 +3585,6 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         -webkit-background-clip: unset !important;
         -webkit-text-fill-color: initial !important;
     }
-
     /* ── LABEL ── */
     .nav-label {
         display: block;
@@ -3596,13 +3597,11 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         color: var(--text-light);
         transition: color 0.25s ease, transform 0.3s ease;
     }
-
     .nav-item.active .nav-label {
         color: #ffffff !important;
         font-weight: 700 !important;
         transform: scale(1.05);
     }
-
     /* ── RIPPLE ── */
     .nav-ripple {
         position: absolute;
@@ -3613,33 +3612,27 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         pointer-events: none;
         z-index: 2;
     }
-
     @keyframes nav-ripple-anim {
         to {
             transform: scale(4);
             opacity: 0;
         }
     }
-
     /* ── ANIMATIONS ── */
     @keyframes icon-bounce {
         0% {
             transform: scale(0.65) rotate(-12deg);
         }
-
         60% {
             transform: scale(1.28) rotate(6deg);
         }
-
         80% {
             transform: scale(0.94) rotate(-2deg);
         }
-
         100% {
             transform: scale(1.0) rotate(0deg);
         }
     }
-
     /* ── BADGE ── */
     .nav-badge {
         top: -4px;
@@ -3648,13 +3641,11 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         transform: none;
         z-index: 3;
     }
-
     .ai-header {
         height: calc(60px + env(safe-area-inset-top, 0px)) !important;
         padding-top: env(safe-area-inset-top, 0px) !important;
         box-sizing: border-box !important;
     }
-
     .zalo-mobile-header {
         order: 1 !important;
         display: flex !important;
@@ -3673,7 +3664,6 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         width: 100%;
         height: calc(56px + env(safe-area-inset-top, 0px));
     }
-
     .mobile-search-wrapper {
         flex: 1;
         display: flex;
@@ -3684,12 +3674,10 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         gap: 8px;
         box-sizing: border-box;
     }
-
     .mobile-search-icon {
         font-size: 14px !important;
         color: rgba(255, 255, 255, 0.8) !important;
     }
-
     .zalo-mobile-header input {
         flex: 1;
         background: transparent !important;
@@ -3700,11 +3688,9 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         padding: 0 !important;
         margin: 0 !important;
     }
-
     .zalo-mobile-header input::placeholder {
         color: rgba(255, 255, 255, 0.75);
     }
-
     .mobile-add-btn {
         background: transparent !important;
         border: none !important;
@@ -3719,15 +3705,12 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         padding: 0 !important;
         margin: 0 !important;
     }
-
     .sidebar-header {
         display: none !important;
     }
-
     .chat-list .search-box {
         display: none;
     }
-
     .tab-content-container {
         order: 2 !important;
         flex: 1;
@@ -3740,13 +3723,11 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         padding-bottom: 0 !important;
         box-sizing: border-box !important;
     }
-
     .tab-pane {
         height: 100% !important;
         height: -webkit-fill-available !important;
         width: 100%;
     }
-
     .chat-list {
         width: 100%;
         height: 100% !important;
@@ -3756,11 +3737,9 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         flex-direction: column !important;
         overflow: hidden !important;
     }
-
     #chat-screen.mobile-chat-active .chat-list {
         display: none !important;
     }
-
     html:has(body.mobile-chat-active),
     body.mobile-chat-active {
         position: fixed !important;
@@ -3768,24 +3747,20 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         height: 100% !important;
         overflow: hidden !important;
     }
-
     #user-list li {
         padding: 14px 16px;
         border-bottom: 1px solid var(--border-color);
         gap: 8px !important;
     }
-
     .chat-list-time {
         font-size: 10px !important;
         color: var(--text-light) !important;
     }
-
     .chat-list-msg,
     .last-message {
         font-size: 14px !important;
         color: #707070 !important;
     }
-
     .chat-window {
         position: fixed !important;
         top: var(--vv-offset, 0px) !important;
@@ -3802,7 +3777,6 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         bottom: auto !important;
         padding-bottom: 0 !important;
     }
-
     #chat-screen.mobile-chat-active {
         display: block !important;
         background: var(--chat-bg) !important;
@@ -3813,33 +3787,25 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         height: 100% !important;
         z-index: 9998 !important;
     }
-
     body.overlay-active .chat-header,
     body.overlay-active .input-area,
     body.overlay-active .message:not(.show-mobile-actions) {
         pointer-events: none !important;
     }
-
     #chat-screen.mobile-chat-active .tab-content-container {
         padding-bottom: 0 !important;
     }
-
     #chat-screen.mobile-chat-active .chat-window {
         transform: translateX(0);
     }
-
     #chat-screen.mobile-chat-active .zalo-mobile-header {
         display: none !important;
         z-index: -1 !important;
     }
-
-
-
     body.mobile-chat-active .sidebar {
         display: none !important;
         z-index: -1 !important;
     }
-
     /* Header Kính mờ */
     .chat-header {
         position: relative !important;
@@ -3857,22 +3823,18 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         box-shadow: none !important;
         height: auto !important;
     }
-
     body[data-theme="dark"] .chat-header {
         background: rgba(30, 30, 30, 0.85) !important;
     }
-
     .chat-header h3,
     .chat-header-text h3 {
         color: var(--text-dark) !important;
         font-size: 17px !important;
     }
-
     .chat-header-text .status {
         color: var(--text-light) !important;
         font-size: 12px !important;
     }
-
     .chat-header-actions .icon-btn,
     .chat-header-actions i,
     .chat-header-info .icon-btn,
@@ -3880,14 +3842,12 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
     .back-btn {
         color: var(--primary-color) !important;
     }
-
     .back-btn {
         display: flex !important;
         margin-right: 12px;
         font-size: 20px;
         color: white !important;
     }
-
     .input-area {
         position: relative !important;
         flex-shrink: 0 !important;
@@ -3902,11 +3862,9 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         /* Đảm bảo thanh nhập liệu không bao giờ bị bóp chiều cao */
         margin-bottom: 0 !important;
     }
-
     .input-actions-left {
         padding-bottom: 0 !important;
     }
-
     .input-actions-right {
         display: flex !important;
         align-items: center !important;
@@ -3914,24 +3872,19 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         height: 38px !important;
         margin-left: 12px !important;
     }
-
     .input-area.emoji-open {
         padding-bottom: 8px !important;
     }
-
     .input-actions-left-wrapper {
         overflow: hidden;
         transition: max-width 0.3s ease, opacity 0.2s ease;
         max-width: 160px;
         opacity: 1;
     }
-
     .input-area.is-typing .input-actions-left-wrapper {
         display: none !important;
     }
-
     /* expand-actions-btn handled globally */
-
     .input-wrapper {
         flex: 1 !important;
         min-width: 0 !important;
@@ -3939,13 +3892,11 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         border: none !important;
         padding: 6px 12px !important;
     }
-
     .input-wrapper:focus-within {
         background: var(--msg-receiver-bg) !important;
         border-color: var(--primary-color) !important;
         box-shadow: 0 0 0 2px rgba(0, 132, 255, 0.15) !important;
     }
-
     #messages {
         position: relative !important;
         padding: 16px 12px;
@@ -3954,9 +3905,9 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         overflow-y: auto !important;
         -webkit-overflow-scrolling: touch !important;
         overscroll-behavior-y: contain !important;
-        touch-action: pan-y !important; /* bảo vệ cuộn tin nhắn trên thiết bị cảm ứng */
+        touch-action: pan-y !important;
+        /* bảo vệ cuộn tin nhắn trên thiết bị cảm ứng */
     }
-
     .zalo-profile-layout {
         max-width: 100%;
         box-shadow: none;
@@ -3968,14 +3919,12 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         flex-direction: column !important;
         padding-bottom: 0 !important;
     }
-
     .personal-main-content {
         flex: 1;
         overflow-y: auto !important;
         -webkit-overflow-scrolling: touch !important;
         padding-bottom: 68px !important;
     }
-
     .zalo-profile-header {
         position: sticky;
         top: 0;
@@ -3987,25 +3936,21 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         padding: 16px;
         padding-top: calc(16px + env(safe-area-inset-top));
     }
-
     .zalo-profile-header h3 {
         margin: 0;
         font-size: 18px;
         flex: 1;
         color: white;
     }
-
     .zalo-profile-header i {
         font-size: 20px;
         color: white;
     }
-
     .profile-tab-cover {
         aspect-ratio: 16 / 9;
         max-height: 240px;
         flex-shrink: 0;
     }
-
     .profile-info-card {
         display: flex;
         align-items: center;
@@ -4015,7 +3960,6 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         border-bottom: 1px solid var(--border-color);
         flex-shrink: 0;
     }
-
     .profile-info-card .profile-avatar-wrapper {
         position: static;
         transform: none;
@@ -4025,36 +3969,30 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         margin-right: 16px;
         flex-shrink: 0;
     }
-
     .profile-text-info {
         text-align: left;
         flex: 1;
         min-width: 0;
     }
-
     .profile-text-info #profile-name {
         margin: 0 0 4px 0;
         font-size: 18px;
         font-weight: 600;
         color: var(--text-dark);
     }
-
     .profile-text-info #profile-bio {
         margin: 0;
         font-size: 13px;
         color: var(--text-light);
     }
-
     .message-actions {
         display: none !important;
     }
-
     .message.show-mobile-actions .message-body {
         position: relative !important;
         z-index: 251 !important;
         pointer-events: auto !important;
     }
-
     .message.show-mobile-actions .message-actions {
         display: flex !important;
         flex-direction: column !important;
@@ -4073,17 +4011,14 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         visibility: visible;
         pointer-events: auto !important;
     }
-
     .my-message.show-mobile-actions .message-actions {
         right: 0 !important;
         left: auto !important;
     }
-
     .other-message.show-mobile-actions .message-actions {
         left: 0 !important;
         right: auto !important;
     }
-
     .message.show-mobile-actions .reaction-palette {
         position: relative !important;
         top: auto !important;
@@ -4105,14 +4040,12 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         pointer-events: auto !important;
         z-index: 253 !important;
     }
-
     .message.show-mobile-actions .reaction-palette span {
         font-size: 22px !important;
         pointer-events: auto !important;
         cursor: pointer !important;
         -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1) !important;
     }
-
     .message.show-mobile-actions .more-menu {
         position: relative !important;
         top: auto !important;
@@ -4133,11 +4066,9 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         visibility: visible !important;
         width: 100%;
     }
-
     .message.show-mobile-actions .more-menu::after {
         display: none !important;
     }
-
     .message.show-mobile-actions .menu-item {
         display: flex !important;
         flex-direction: column !important;
@@ -4151,7 +4082,6 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         text-align: center !important;
         gap: 8px !important;
     }
-
     .message.show-mobile-actions .menu-item::before {
         font-family: "Font Awesome 6 Free";
         font-weight: 900;
@@ -4164,22 +4094,18 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         background: rgba(255, 255, 255, 0.15);
         border-radius: 50%;
     }
-
     .message.show-mobile-actions .menu-item.text-danger {
         color: #ff4d4f !important;
     }
-
     .message.show-mobile-actions .menu-item.text-danger::before {
         content: "\f2ea";
         color: #ff4d4f;
         background: rgba(255, 77, 79, 0.15);
     }
-
     .message.show-mobile-actions .menu-item:not(.text-danger):not(.reply-action):not(.copy-action):not(.edit-action)::before {
         content: "\f2ed";
         color: #e5e5e5;
     }
-
     .message.show-mobile-actions .action-item {
         width: 100%;
         height: auto;
@@ -4190,26 +4116,21 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         margin: 0;
         padding: 0;
     }
-
     .message.show-mobile-actions .action-item>i {
         display: none !important;
     }
-
     .message {
         max-width: 100% !important;
     }
-
     .message.my-message {
         align-self: flex-end !important;
     }
-
     .message.show-mobile-actions.flip-up .message-actions {
         top: auto !important;
         bottom: 100% !important;
         margin-top: 0 !important;
         margin-bottom: 8px !important;
     }
-
     .ai-container {
         max-width: 100vw;
         border-left: none;
@@ -4218,36 +4139,29 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         height: -webkit-fill-available !important;
         width: 100%;
     }
-
     .ai-chat-history {
         padding: 16px;
         gap: 12px;
     }
-
     .ai-message {
         max-width: 95%;
     }
-
     .ai-message.ai-bot {
         max-width: 100%;
         width: 100%;
     }
-
     .ai-message .ai-bubble {
         font-size: 14px;
     }
-
     .ai-chat-input-area {
         padding: 12px 16px;
         padding-bottom: 68px !important;
     }
-
     .ai-code-wrapper {
         max-width: calc(100vw - 32px);
         width: 100%;
         touch-action: pan-x pan-y !important;
     }
-
     .ai-code-block pre {
         font-size: 12px !important;
         overflow-x: auto !important;
@@ -4257,6 +4171,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         -webkit-overflow-scrolling: touch !important;
     }
 }
+
 
 /* ==========================================================================
 TOP TOAST NOTIFICATION FOR NEW MESSAGES
@@ -4339,6 +4254,7 @@ TOP TOAST NOTIFICATION FOR NEW MESSAGES
     text-overflow: ellipsis;
 }
 
+
 /* Dark Mode support */
 
 body[data-theme="dark"] .new-message-toast {
@@ -4364,7 +4280,6 @@ body[data-theme="dark"] .new-message-toast .toast-msg-text {
         opacity: 0;
         transform: translateY(-20px) scale(0.95);
     }
-
     to {
         opacity: 1;
         transform: translateY(0) scale(1);
@@ -4376,12 +4291,12 @@ body[data-theme="dark"] .new-message-toast .toast-msg-text {
         opacity: 1;
         transform: translateY(0) scale(1);
     }
-
     to {
         opacity: 0;
         transform: translateY(-10px) scale(0.95);
     }
 }
+
 
 /* ==========================================================================
 MOBILE WEB & PWA EXPERIENCES (APP-LIKE OPTIMIZATIONS)
@@ -4407,6 +4322,7 @@ body {
     scrollbar-width: none !important;
     -ms-overflow-style: none !important;
 }
+
 
 /* ==========================================================================
 USER PROFILE MODAL (ZALO STYLE)
@@ -4624,6 +4540,7 @@ USER PROFILE MODAL (ZALO STYLE)
     color: var(--text-dark);
 }
 
+
 /* ==========================================================================
 OTHER USER PROFILE FLOATING MODAL (DESKTOP & MOBILE CENTERED)
 ========================================================================== */
@@ -4695,7 +4612,6 @@ OTHER USER PROFILE FLOATING MODAL (DESKTOP & MOBILE CENTERED)
     from {
         transform: rotate(0deg);
     }
-
     to {
         transform: rotate(360deg);
     }
@@ -4864,6 +4780,7 @@ OTHER USER PROFILE FLOATING MODAL (DESKTOP & MOBILE CENTERED)
     color: var(--text-dark);
 }
 
+
 /* ==========================================================================
 TAB AI: ASSISTANT CHAT SYSTEM
 ========================================================================== */
@@ -5023,7 +4940,6 @@ body[data-theme="dark"] .ai-welcome-logo {
         opacity: 0;
         transform: translateY(8px);
     }
-
     to {
         opacity: 1;
         transform: translateY(0);
@@ -5250,13 +5166,11 @@ body[data-theme="dark"] .ai-typing-indicator span {
 }
 
 @keyframes ai-bounce {
-
     0%,
     80%,
     100% {
         transform: scale(0);
     }
-
     40% {
         transform: scale(1.0);
     }
@@ -5267,7 +5181,6 @@ body[data-theme="dark"] .ai-typing-indicator span {
         align-items: flex-end;
         background: rgba(0, 0, 0, 0.55);
     }
-
     .profile-modal-card {
         width: 100%;
         max-width: 100%;
@@ -5286,11 +5199,9 @@ body[data-theme="dark"] .ai-typing-indicator span {
         box-sizing: border-box;
         flex-shrink: 0;
     }
-
     #user-profile-modal.active .profile-modal-card {
         transform: translateY(0);
     }
-
     .profile-cover {
         height: 150px;
         min-height: 150px;
@@ -5300,7 +5211,6 @@ body[data-theme="dark"] .ai-typing-indicator span {
         background: #c9d6df;
         overflow: hidden;
     }
-
     .profile-cover img {
         display: block;
         width: 100%;
@@ -5308,7 +5218,6 @@ body[data-theme="dark"] .ai-typing-indicator span {
         object-fit: cover;
         content-visibility: visible;
     }
-
     .profile-modal-avatar-header {
         display: flex;
         justify-content: center;
@@ -5316,7 +5225,6 @@ body[data-theme="dark"] .ai-typing-indicator span {
         height: 45px;
         flex-shrink: 0;
     }
-
     .profile-avatar {
         position: absolute;
         top: -45px;
@@ -5329,7 +5237,6 @@ body[data-theme="dark"] .ai-typing-indicator span {
         overflow: hidden;
         flex-shrink: 0;
     }
-
     .profile-avatar img {
         display: block;
         width: 100%;
@@ -5337,7 +5244,6 @@ body[data-theme="dark"] .ai-typing-indicator span {
         border-radius: 50%;
         object-fit: cover;
     }
-
     .profile-info {
         display: flex;
         flex-direction: column;
@@ -5347,19 +5253,16 @@ body[data-theme="dark"] .ai-typing-indicator span {
         padding: 10px 20px 14px;
         flex-shrink: 0;
     }
-
     .profile-info h2 {
         font-size: 18px;
         font-weight: 600;
         margin: 0;
     }
-
     .profile-info .profile-bio {
         font-size: 13px;
         color: var(--text-secondary, var(--text-light));
         margin: 0;
     }
-
     .profile-actions {
         display: flex;
         justify-content: center;
@@ -5367,7 +5270,6 @@ body[data-theme="dark"] .ai-typing-indicator span {
         padding: 0 24px 16px;
         flex-shrink: 0;
     }
-
     .profile-action-btn i {
         width: 52px;
         height: 52px;
@@ -5378,12 +5280,10 @@ body[data-theme="dark"] .ai-typing-indicator span {
         justify-content: center;
         color: white;
     }
-
     .profile-action-btn span {
         font-size: 11px;
         color: var(--text-dark);
     }
-
     .profile-modal-close {
         position: absolute;
         top: 10px;
@@ -5403,13 +5303,11 @@ body[data-theme="dark"] .ai-typing-indicator span {
         z-index: 10;
         backdrop-filter: blur(4px);
     }
-
     #other-user-profile-modal {
         align-items: center !important;
         justify-content: center !important;
         background: rgba(0, 0, 0, 0.6) !important;
     }
-
     #other-user-profile-modal .floating-profile-card {
         width: 340px !important;
         max-width: 88vw !important;
@@ -5420,7 +5318,6 @@ body[data-theme="dark"] .ai-typing-indicator span {
         margin: auto !important;
         padding-bottom: 0 !important;
     }
-
     #other-user-profile-modal.active .floating-profile-card {
         transform: scale(1) translateY(0) !important;
     }
@@ -5653,12 +5550,10 @@ body:not([data-theme="dark"]) .ai-code-expand-btn:hover {
         touch-action: pan-y !important;
         overflow-y: auto !important;
     }
-
     .ai-code-wrapper {
         max-width: calc(100vw - 32px) !important;
         touch-action: pan-x pan-y !important;
     }
-
     .ai-code-block pre {
         font-size: 12px !important;
         overflow-x: auto !important;
@@ -5732,6 +5627,7 @@ body[data-theme="dark"] .ai-quota-bar-footer {
     color: #71717a;
 }
 
+
 /* Kiểu tin nhắn Hệ Thống (System Message) trong khung chat */
 
 .message.system-message {
@@ -5761,12 +5657,14 @@ body[data-theme="dark"] .ai-quota-bar-footer {
     font-weight: 500;
 }
 
+
 /* Các accent khác đổi màu theo chủ đề chat */
 
 #send-btn,
 #like-btn {
     color: var(--theme-accent) !important;
 }
+
 
 /* Định dạng lưới chọn chủ đề chat trong Modal */
 
@@ -5816,6 +5714,7 @@ body[data-theme="dark"] .ai-quota-bar-footer {
 #theme-modal .custom-modal-card {
     transform: none !important;
 }
+
 
 /* ==========================================================================
 CHAT INFO PANEL (Panel thông tin cuộc trò chuyện)
@@ -5941,6 +5840,7 @@ body[data-theme="dark"] .chat-info-action-icon {
     transform: none !important;
 }
 
+
 /* ==========================================================================
 NICKNAME MODAL STYLES (Đổi biệt danh cuộc trò chuyện)
 ========================================================================== */
@@ -6043,6 +5943,7 @@ NICKNAME MODAL STYLES (Đổi biệt danh cuộc trò chuyện)
     transform: none !important;
 }
 
+
 /* ==========================================================================
 PERSONAL PROFILE MODAL & SETTINGS MODAL (ZALO STYLE)
 ========================================================================== */
@@ -6080,6 +5981,7 @@ PERSONAL PROFILE MODAL & SETTINGS MODAL (ZALO STYLE)
     max-height: 90vh;
     overflow-y: auto;
 }
+
 
 /* Zalo Personal Tab Styling */
 
@@ -6166,6 +6068,7 @@ PERSONAL PROFILE MODAL & SETTINGS MODAL (ZALO STYLE)
     transform: translateX(4px);
 }
 
+
 /* ==========================================================================
 NOTIFICATIONS DROPDOWN POPUP
 ========================================================================== */
@@ -6229,7 +6132,6 @@ NOTIFICATIONS DROPDOWN POPUP
         opacity: 0;
         transform: translateY(-8px);
     }
-
     to {
         opacity: 1;
         transform: translateY(0);
@@ -6240,6 +6142,7 @@ NOTIFICATIONS DROPDOWN POPUP
     display: none;
     /* Ẩn trên desktop */
 }
+
 
 /* Thích ứng trên thiết bị di động */
 
@@ -6257,7 +6160,6 @@ NOTIFICATIONS DROPDOWN POPUP
         /* Đè lên toàn bộ app */
         background: var(--bg-color) !important;
     }
-
     .notifications-dropdown-header {
         padding: 12px 16px !important;
         padding-top: calc(14px + env(safe-area-inset-top, 0px)) !important;
@@ -6269,13 +6171,11 @@ NOTIFICATIONS DROPDOWN POPUP
         gap: 12px;
         justify-content: flex-start;
     }
-
     .notifications-dropdown-header h4 {
         flex: 1;
         font-size: 16px !important;
         margin: 0;
     }
-
     .notifications-back-btn {
         display: inline-flex !important;
         align-items: center;
@@ -6291,11 +6191,9 @@ NOTIFICATIONS DROPDOWN POPUP
         margin-right: 12px;
         -webkit-tap-highlight-color: transparent;
     }
-
     .notifications-dropdown-list {
         max-height: calc(100vh - 64px - env(safe-area-inset-top, 0px)) !important;
     }
-
     /* Vô hiệu hóa chọn chữ mặc định trên di động khi nhấn giữ tin nhắn */
     .message-content,
     .message-content *,
@@ -6307,6 +6205,7 @@ NOTIFICATIONS DROPDOWN POPUP
         user-select: none !important;
     }
 }
+
 
 /* ===== PHONG CÁCH NỔI BẬT CHO NÚT TẢI APP PWA ===== */
 
@@ -6351,6 +6250,7 @@ NOTIFICATIONS DROPDOWN POPUP
     font-size: 14px !important;
 }
 
+
 /* Nút Tải App ngoài màn hình Auth */
 
 #install-app-auth-btn {
@@ -6374,16 +6274,15 @@ NOTIFICATIONS DROPDOWN POPUP
 }
 
 @keyframes pulseDownloadIcon {
-
     0%,
     100% {
         transform: translateY(0) scale(1);
     }
-
     50% {
         transform: translateY(-3px) scale(1.1);
     }
 }
+
 
 /* ==========================================================================
 TIN TỨC (NEWS) STYLE SECTION
@@ -6479,6 +6378,7 @@ TIN TỨC (NEWS) STYLE SECTION
     text-align: center;
 }
 
+
 /* PREMIUM NEWS CARD */
 
 .news-card {
@@ -6560,6 +6460,7 @@ TIN TỨC (NEWS) STYLE SECTION
     margin-top: 10px;
 }
 
+
 /* News Card Footer Accordion Transition */
 
 .news-card-footer {
@@ -6577,6 +6478,7 @@ TIN TỨC (NEWS) STYLE SECTION
     padding-top: 8px;
 }
 
+
 /* Animations khi có tin mới thời gian thực chèn vào đầu danh sách */
 
 @keyframes slideInFromTop {
@@ -6588,7 +6490,6 @@ TIN TỨC (NEWS) STYLE SECTION
         padding-bottom: 0;
         margin-bottom: 0;
     }
-
     100% {
         opacity: 1;
         transform: translateY(0);
@@ -6600,6 +6501,7 @@ TIN TỨC (NEWS) STYLE SECTION
     animation: slideInFromTop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
     overflow: hidden;
 }
+
 
 /* DARK MODE SUPPORT FOR NEWS */
 
@@ -6635,6 +6537,7 @@ body[data-theme="dark"] .news-detail-badge.vietnam-badge {
     background: rgba(220, 38, 38, 0.2);
     color: #fca5a5;
 }
+
 
 /* TRANG CHI TIẾT BÀI BÁO ĐỘC LẬP */
 
@@ -6734,6 +6637,7 @@ body[data-theme="dark"] .news-detail-badge.vietnam-badge {
     display: block !important;
 }
 
+
 /* VNExpress Caption Tables and Figures styling */
 
 .news-detail-body table.tplCaption,
@@ -6765,6 +6669,7 @@ body[data-theme="dark"] .news-detail-badge.vietnam-badge {
     font-style: italic;
 }
 
+
 /* DARK MODE SUPPORT FOR DETAIL VIEW */
 
 body[data-theme="dark"] .news-detail-view {
@@ -6778,6 +6683,7 @@ body[data-theme="dark"] .news-detail-header {
 body[data-theme="dark"] .news-detail-meta {
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
+
 
 /* READ / UNREAD STATUS BADGES */
 
@@ -6805,6 +6711,7 @@ body[data-theme="dark"] .news-detail-meta {
     color: #4b5563;
 }
 
+
 /* HOT NEW BADGE */
 
 .read-status-badge.hot-new {
@@ -6819,12 +6726,12 @@ body[data-theme="dark"] .news-detail-meta {
         transform: scale(1);
         box-shadow: 0 2px 6px rgba(255, 0, 85, 0.3);
     }
-
     100% {
         transform: scale(1.05);
         box-shadow: 0 2px 12px rgba(255, 0, 85, 0.6);
     }
 }
+
 
 /* DARK MODE STATUS BADGES */
 
@@ -6899,7 +6806,6 @@ body[data-theme="dark"] .read-status-badge.hot-new {
         opacity: 0;
         transform: translateY(-8px);
     }
-
     to {
         opacity: 1;
         transform: translateY(0);
@@ -6910,6 +6816,7 @@ body[data-theme="dark"] .read-status-badge.hot-new {
     display: none;
     /* Ẩn trên desktop */
 }
+
 
 /* Thích ứng trên thiết bị di động */
 
@@ -6927,7 +6834,6 @@ body[data-theme="dark"] .read-status-badge.hot-new {
         /* Đè lên toàn bộ app */
         background: var(--bg-color) !important;
     }
-
     .notifications-dropdown-header {
         padding: 12px 16px !important;
         padding-top: calc(14px + env(safe-area-inset-top, 0px)) !important;
@@ -6939,13 +6845,11 @@ body[data-theme="dark"] .read-status-badge.hot-new {
         gap: 12px;
         justify-content: flex-start;
     }
-
     .notifications-dropdown-header h4 {
         flex: 1;
         font-size: 16px !important;
         margin: 0;
     }
-
     .notifications-back-btn {
         display: inline-flex !important;
         align-items: center;
@@ -6961,11 +6865,9 @@ body[data-theme="dark"] .read-status-badge.hot-new {
         margin-right: 12px;
         -webkit-tap-highlight-color: transparent;
     }
-
     .notifications-dropdown-list {
         max-height: calc(100vh - 64px - env(safe-area-inset-top, 0px)) !important;
     }
-
     /* Vô hiệu hóa chọn chữ mặc định trên di động khi nhấn giữ tin nhắn */
     .message-content,
     .message-content *,
@@ -6977,6 +6879,7 @@ body[data-theme="dark"] .read-status-badge.hot-new {
         user-select: none !important;
     }
 }
+
 
 /* ===== PHONG CÁCH NỔI BẬT CHO NÚT TẢI APP PWA ===== */
 
@@ -7021,6 +6924,7 @@ body[data-theme="dark"] .read-status-badge.hot-new {
     font-size: 14px !important;
 }
 
+
 /* Nút Tải App ngoài màn hình Auth */
 
 #install-app-auth-btn {
@@ -7044,16 +6948,15 @@ body[data-theme="dark"] .read-status-badge.hot-new {
 }
 
 @keyframes pulseDownloadIcon {
-
     0%,
     100% {
         transform: translateY(0) scale(1);
     }
-
     50% {
         transform: translateY(-3px) scale(1.1);
     }
 }
+
 
 /* ==========================================================================
 TIN TỨC (NEWS) STYLE SECTION
@@ -7136,6 +7039,7 @@ TIN TỨC (NEWS) STYLE SECTION
     text-align: center;
 }
 
+
 /* PREMIUM NEWS CARD */
 
 .news-card {
@@ -7217,6 +7121,7 @@ TIN TỨC (NEWS) STYLE SECTION
     margin-top: 10px;
 }
 
+
 /* News Card Footer Accordion Transition */
 
 .news-card-footer {
@@ -7234,6 +7139,7 @@ TIN TỨC (NEWS) STYLE SECTION
     padding-top: 8px;
 }
 
+
 /* Animations khi có tin mới thời gian thực chèn vào đầu danh sách */
 
 @keyframes slideInFromTop {
@@ -7245,7 +7151,6 @@ TIN TỨC (NEWS) STYLE SECTION
         padding-bottom: 0;
         margin-bottom: 0;
     }
-
     100% {
         opacity: 1;
         transform: translateY(0);
@@ -7257,6 +7162,7 @@ TIN TỨC (NEWS) STYLE SECTION
     animation: slideInFromTop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
     overflow: hidden;
 }
+
 
 /* DARK MODE SUPPORT FOR NEWS */
 
@@ -7292,6 +7198,7 @@ body[data-theme="dark"] .news-detail-badge.vietnam-badge {
     background: rgba(220, 38, 38, 0.2);
     color: #fca5a5;
 }
+
 
 /* TRANG CHI TIẾT BÀI BÁO ĐỘC LẬP */
 
@@ -7391,6 +7298,7 @@ body[data-theme="dark"] .news-detail-badge.vietnam-badge {
     display: block !important;
 }
 
+
 /* VNExpress Caption Tables and Figures styling */
 
 .news-detail-body table.tplCaption,
@@ -7422,6 +7330,7 @@ body[data-theme="dark"] .news-detail-badge.vietnam-badge {
     font-style: italic;
 }
 
+
 /* DARK MODE SUPPORT FOR DETAIL VIEW */
 
 body[data-theme="dark"] .news-detail-view {
@@ -7435,6 +7344,7 @@ body[data-theme="dark"] .news-detail-header {
 body[data-theme="dark"] .news-detail-meta {
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
+
 
 /* READ / UNREAD STATUS BADGES */
 
@@ -7462,6 +7372,7 @@ body[data-theme="dark"] .news-detail-meta {
     color: #4b5563;
 }
 
+
 /* HOT NEW BADGE */
 
 .read-status-badge.hot-new {
@@ -7476,12 +7387,12 @@ body[data-theme="dark"] .news-detail-meta {
         transform: scale(1);
         box-shadow: 0 2px 6px rgba(255, 0, 85, 0.3);
     }
-
     100% {
         transform: scale(1.05);
         box-shadow: 0 2px 12px rgba(255, 0, 85, 0.6);
     }
 }
+
 
 /* DARK MODE STATUS BADGES */
 
@@ -7503,6 +7414,7 @@ body[data-theme="dark"] .read-status-badge.hot-new {
     animation: hot-pulse 1.4s infinite alternate;
 }
 
+
 /* DARK MODE SUPPORT FOR DETAIL VIEW */
 
 body[data-theme="dark"] .news-detail-view {
@@ -7516,6 +7428,7 @@ body[data-theme="dark"] .news-detail-header {
 body[data-theme="dark"] .news-detail-meta {
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
+
 
 /* READ / UNREAD STATUS BADGES */
 
@@ -7543,6 +7456,7 @@ body[data-theme="dark"] .news-detail-meta {
     color: #4b5563;
 }
 
+
 /* HOT NEW BADGE */
 
 .read-status-badge.hot-new {
@@ -7557,12 +7471,12 @@ body[data-theme="dark"] .news-detail-meta {
         transform: scale(1);
         box-shadow: 0 2px 6px rgba(255, 0, 85, 0.3);
     }
-
     100% {
         transform: scale(1.05);
         box-shadow: 0 2px 12px rgba(255, 0, 85, 0.6);
     }
 }
+
 
 /* DARK MODE STATUS BADGES */
 
@@ -7637,7 +7551,6 @@ body[data-theme="dark"] .read-status-badge.hot-new {
         opacity: 0;
         transform: translateY(-8px);
     }
-
     to {
         opacity: 1;
         transform: translateY(0);
@@ -7648,6 +7561,7 @@ body[data-theme="dark"] .read-status-badge.hot-new {
     display: none;
     /* Ẩn trên desktop */
 }
+
 
 /* Thích ứng trên thiết bị di động */
 
@@ -7665,7 +7579,6 @@ body[data-theme="dark"] .read-status-badge.hot-new {
         /* Đè lên toàn bộ app */
         background: var(--bg-color) !important;
     }
-
     .notifications-dropdown-header {
         padding: 12px 16px !important;
         padding-top: calc(14px + env(safe-area-inset-top, 0px)) !important;
@@ -7677,13 +7590,11 @@ body[data-theme="dark"] .read-status-badge.hot-new {
         gap: 12px;
         justify-content: flex-start;
     }
-
     .notifications-dropdown-header h4 {
         flex: 1;
         font-size: 16px !important;
         margin: 0;
     }
-
     .notifications-back-btn {
         display: inline-flex !important;
         align-items: center;
@@ -7699,11 +7610,9 @@ body[data-theme="dark"] .read-status-badge.hot-new {
         margin-right: 12px;
         -webkit-tap-highlight-color: transparent;
     }
-
     .notifications-dropdown-list {
         max-height: calc(100vh - 64px - env(safe-area-inset-top, 0px)) !important;
     }
-
     /* Vô hiệu hóa chọn chữ mặc định trên di động khi nhấn giữ tin nhắn */
     .message-content,
     .message-content *,
@@ -7715,6 +7624,7 @@ body[data-theme="dark"] .read-status-badge.hot-new {
         user-select: none !important;
     }
 }
+
 
 /* ===== PHONG CÁCH NỔI BẬT CHO NÚT TẢI APP PWA ===== */
 
@@ -7759,6 +7669,7 @@ body[data-theme="dark"] .read-status-badge.hot-new {
     font-size: 14px !important;
 }
 
+
 /* Nút Tải App ngoài màn hình Auth */
 
 #install-app-auth-btn {
@@ -7782,16 +7693,15 @@ body[data-theme="dark"] .read-status-badge.hot-new {
 }
 
 @keyframes pulseDownloadIcon {
-
     0%,
     100% {
         transform: translateY(0) scale(1);
     }
-
     50% {
         transform: translateY(-3px) scale(1.1);
     }
 }
+
 
 /* ==========================================================================
 TIN TỨC (NEWS) STYLE SECTION
@@ -7873,6 +7783,7 @@ TIN TỨC (NEWS) STYLE SECTION
     text-align: center;
 }
 
+
 /* PREMIUM NEWS CARD */
 
 .news-card {
@@ -7954,6 +7865,7 @@ TIN TỨC (NEWS) STYLE SECTION
     margin-top: 10px;
 }
 
+
 /* News Card Footer Accordion Transition */
 
 .news-card-footer {
@@ -7971,6 +7883,7 @@ TIN TỨC (NEWS) STYLE SECTION
     padding-top: 8px;
 }
 
+
 /* Animations khi có tin mới thời gian thực chèn vào đầu danh sách */
 
 @keyframes slideInFromTop {
@@ -7982,7 +7895,6 @@ TIN TỨC (NEWS) STYLE SECTION
         padding-bottom: 0;
         margin-bottom: 0;
     }
-
     100% {
         opacity: 1;
         transform: translateY(0);
@@ -7994,6 +7906,7 @@ TIN TỨC (NEWS) STYLE SECTION
     animation: slideInFromTop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
     overflow: hidden;
 }
+
 
 /* DARK MODE SUPPORT FOR NEWS */
 
@@ -8029,6 +7942,7 @@ body[data-theme="dark"] .news-detail-badge.vietnam-badge {
     background: rgba(220, 38, 38, 0.2);
     color: #fca5a5;
 }
+
 
 /* TRANG CHI TIẾT BÀI BÁO ĐỘC LẬP */
 
@@ -8128,6 +8042,7 @@ body[data-theme="dark"] .news-detail-badge.vietnam-badge {
     display: block !important;
 }
 
+
 /* VNExpress Caption Tables and Figures styling */
 
 .news-detail-body table.tplCaption,
@@ -8159,6 +8074,7 @@ body[data-theme="dark"] .news-detail-badge.vietnam-badge {
     font-style: italic;
 }
 
+
 /* DARK MODE SUPPORT FOR DETAIL VIEW */
 
 body[data-theme="dark"] .news-detail-view {
@@ -8172,6 +8088,7 @@ body[data-theme="dark"] .news-detail-header {
 body[data-theme="dark"] .news-detail-meta {
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
+
 
 /* READ / UNREAD STATUS BADGES */
 
@@ -8199,6 +8116,7 @@ body[data-theme="dark"] .news-detail-meta {
     color: #4b5563;
 }
 
+
 /* HOT NEW BADGE */
 
 .read-status-badge.hot-new {
@@ -8213,12 +8131,12 @@ body[data-theme="dark"] .news-detail-meta {
         transform: scale(1);
         box-shadow: 0 2px 6px rgba(255, 0, 85, 0.3);
     }
-
     100% {
         transform: scale(1.05);
         box-shadow: 0 2px 12px rgba(255, 0, 85, 0.6);
     }
 }
+
 
 /* DARK MODE STATUS BADGES */
 
@@ -8240,7 +8158,9 @@ body[data-theme="dark"] .read-status-badge.hot-new {
     animation: hot-pulse 1.4s infinite alternate;
 }
 
+
 /* SCROLL TO BOTTOM BUTTON */
+
 .scroll-to-bottom-btn {
     position: absolute;
     bottom: 85px;
@@ -8293,28 +8213,26 @@ body[data-theme="dark"] .scroll-to-bottom-btn:hover {
     background: rgba(45, 45, 55, 0.95);
 }
 
+
 /* HEART POP ANIMATION (DOUBLE CLICK REACTION) */
+
 @keyframes heartPop {
     0% {
         transform: translate(-50%, -50%) scale(0) rotate(-15deg);
         opacity: 0;
     }
-
     15% {
         transform: translate(-50%, -50%) scale(1.4) rotate(10deg);
         opacity: 0.9;
     }
-
     30% {
         transform: translate(-50%, -50%) scale(1.2) rotate(-5deg);
         opacity: 1;
     }
-
     75% {
         transform: translate(-50%, -50%) scale(1.2) rotate(-5deg);
         opacity: 1;
     }
-
     100% {
         transform: translate(-50%, -50%) scale(0.6) translateY(-45px) rotate(15deg);
         opacity: 0;
@@ -8335,7 +8253,9 @@ body[data-theme="dark"] .scroll-to-bottom-btn:hover {
     will-change: transform, opacity;
 }
 
+
 /* REACTIONS DETAIL MODAL */
+
 .reactions-modal-card {
     max-width: 400px !important;
     width: 90% !important;
@@ -8400,14 +8320,17 @@ body[data-theme="dark"] .scroll-to-bottom-btn:hover {
     font-size: 20px;
 }
 
+
 /* --- MÀN HÌNH CHÀO SPLASH SCREEN GIỐNG ZALO --- */
+
 #splash-screen {
     position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: linear-gradient(135deg, #090d1a 0%, #004ecc 100%); /* Nền xanh đậm gradient cao cấp tránh trùng màu với logo */
+    background: linear-gradient(135deg, #090d1a 0%, #004ecc 100%);
+    /* Nền xanh đậm gradient cao cấp tránh trùng màu với logo */
     z-index: 9999999;
     display: flex;
     align-items: center;
@@ -8429,7 +8352,9 @@ body[data-theme="dark"] .scroll-to-bottom-btn:hover {
     align-items: center;
 }
 
+
 /* Container logo màu trắng tinh khôi dạng App Icon để làm nổi bật logo màu xanh/tím */
+
 .splash-logo-container {
     width: 120px;
     height: 120px;
@@ -8452,20 +8377,35 @@ body[data-theme="dark"] .scroll-to-bottom-btn:hover {
     object-fit: contain;
 }
 
+
 /* Tiêu đề chữ nổi bật với màu trắng tuyết và hiệu ứng bóng đổ sắc nét */
+
 .splash-title {
-    font-size: 28px;
-    font-weight: 700;
-    color: #ffffff;
-    letter-spacing: 1px;
+    font-size: 40px;
+    font-weight: 800;
+    letter-spacing: 2px;
     font-family: 'Outfit', 'Inter', sans-serif;
     opacity: 0;
-    transform: translateY(18px);
-    animation: titleSlideUpFade 0.8s cubic-bezier(0.25, 0.8, 0.25, 1) 0.35s forwards;
-    text-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+    transform: translateY(30px);
+    animation: titleSlideUpFade 1s cubic-bezier(0.25, 0.8, 0.25, 1) 0.2s forwards;
+    /* Gradient Text */
+    background: linear-gradient(135deg, #00ff88, #00ccff, #ff00ff, #00ff88);
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    /* Glow Effect */
+    filter: drop-shadow(0 0 20px rgba(0, 255, 136, 0.6)) drop-shadow(0 0 40px rgba(0, 204, 255, 0.3));
+    /* Text Shadow Alternative */
+    text-shadow: 0 0 30px rgba(0, 255, 136, 0.4), 0 0 60px rgba(0, 204, 255, 0.2);
+    margin-bottom: 20px;
+    position: relative;
+    animation: titleSlideUpFade 1s cubic-bezier(0.25, 0.8, 0.25, 1) 0.2s forwards, titleGlow 3s ease-in-out 1.2s infinite;
 }
 
+
 /* Các keyframe hoạt ảnh mượt mà */
+
 @keyframes logoZoomScale {
     to {
         transform: scale(1);
