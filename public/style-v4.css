@@ -3766,7 +3766,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         display: flex !important;
         flex-direction: column;
         transform: translateX(100%);
-        transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), height 0.28s cubic-bezier(0.3, 0.85, 0.4, 1), top 0.28s cubic-bezier(0.3, 0.85, 0.4, 1);
+        transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
         background: var(--chat-bg) !important;
         bottom: auto !important;
         padding-bottom: 0 !important;

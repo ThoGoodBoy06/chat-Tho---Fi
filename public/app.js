@@ -3091,16 +3091,23 @@ if (messageInput) {
         }, 1500);
     });
 
+    let scrollAnimationId = null;
     const scrollToBottomSmooth = () => {
         const messagesDiv = document.getElementById("messages");
         if (messagesDiv) {
+            if (scrollAnimationId) {
+                cancelAnimationFrame(scrollAnimationId);
+            }
             let start = Date.now();
-            const timer = setInterval(() => {
+            const scrollLoop = () => {
                 messagesDiv.scrollTop = messagesDiv.scrollHeight;
-                if (Date.now() - start > 350) {
-                    clearInterval(timer);
+                if (Date.now() - start < 350) {
+                    scrollAnimationId = requestAnimationFrame(scrollLoop);
+                } else {
+                    scrollAnimationId = null;
                 }
-            }, 16);
+            };
+            scrollAnimationId = requestAnimationFrame(scrollLoop);
         }
     };
     window.scrollToBottomSmooth = scrollToBottomSmooth;
