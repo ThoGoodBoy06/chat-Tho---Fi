@@ -3287,6 +3287,32 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
 }
 
 @media screen and (max-width: 768px) {
+    /* --- HIỆU ỨNG CHẠM NHẠY BÉN TRÊN MOBILE (ACTIVE TOUCH FEEDBACK) --- */
+    a, button, input, select, textarea, .nav-item, #user-list li, .action-btn, .mobile-back-btn, .expand-actions-btn, #send-btn, #like-btn, .btn {
+        -webkit-tap-highlight-color: transparent !important;
+        outline: none !important;
+    }
+
+    .nav-item:active,
+    .mobile-back-btn:active,
+    .expand-actions-btn:active,
+    #send-btn:active,
+    #like-btn:active,
+    .chat-header-actions .action-btn:active,
+    .input-actions-left button:active,
+    .btn:active,
+    #login-btn:active,
+    #register-btn:active {
+        transform: scale(0.94) !important;
+        opacity: 0.8 !important;
+        transition: transform 0.05s cubic-bezier(0.25, 1, 0.5, 1) !important;
+    }
+
+    #user-list li:active {
+        background-color: var(--hover-bg) !important;
+        transform: scale(0.99) !important;
+        transition: background-color 0.1s ease, transform 0.05s ease !important;
+    }
 
     #tab-messages.active,
     #tab-contacts.active,
