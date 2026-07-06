@@ -1283,7 +1283,7 @@ RIGHT WINDOW & CHAT MESSAGES
     width: 100vw;
     height: 100vh;
     background: rgba(0, 0, 0, 0.4);
-    z-index: 200;
+    z-index: 100 !important;
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.2s, visibility 0.2s;
@@ -4002,6 +4002,12 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
 
     .message-actions {
         display: none !important;
+    }
+
+    .message.show-mobile-actions .message-body {
+        position: relative !important;
+        z-index: 202 !important;
+        pointer-events: auto !important;
     }
 
     .message.show-mobile-actions .message-actions {
