@@ -3730,6 +3730,10 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         overflow: hidden !important;
     }
 
+    #chat-screen.mobile-chat-active .chat-list {
+        display: none !important;
+    }
+
     html:has(body.mobile-chat-active),
     body.mobile-chat-active {
         position: fixed !important;
