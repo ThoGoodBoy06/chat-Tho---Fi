@@ -1643,6 +1643,13 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
 
         document.getElementById("chat-screen").classList.add("mobile-chat-active");
         document.body.classList.add("mobile-chat-active");
+        
+        // Di chuyển header ra ngoài .chat-window để tránh bị giật và bị che khuất
+        const mobileHeader = document.getElementById("chat-header-container");
+        const mobileChatScreen = document.getElementById("chat-screen");
+        if (mobileHeader && mobileChatScreen) {
+            mobileChatScreen.insertBefore(mobileHeader, mobileChatScreen.firstChild);
+        }
         document.getElementById("chat-header-placeholder").style.display = "none";
         currentChatPartnerId = receiverId;
 
@@ -3271,6 +3278,13 @@ function closeChatMobile() {
     document.documentElement.style.removeProperty('--vv-height');
     document.documentElement.style.removeProperty('--vv-offset');
     document.documentElement.style.removeProperty('--keyboard-shift');
+    
+    // Trả header lại vào trong .chat-window để hiển thị bình thường trên desktop
+    const mobileHeader = document.getElementById("chat-header-container");
+    const mobileChatWindow = document.querySelector(".chat-window");
+    if (mobileHeader && mobileChatWindow) {
+        mobileChatWindow.insertBefore(mobileHeader, mobileChatWindow.firstChild);
+    }
 }
 
 // 7. Sự kiện Gửi Hình ảnh
@@ -4668,6 +4682,13 @@ async function logout() {
     document.getElementById("chat-screen").style.display = "none";
     document.getElementById("chat-screen").classList.remove("mobile-chat-active");
     document.body.classList.remove("mobile-chat-active");
+    
+    // Trả header lại vào trong .chat-window để hiển thị bình thường trên desktop
+    const mobileHeader = document.getElementById("chat-header-container");
+    const mobileChatWindow = document.querySelector(".chat-window");
+    if (mobileHeader && mobileChatWindow) {
+        mobileChatWindow.insertBefore(mobileHeader, mobileChatWindow.firstChild);
+    }
     // Ẩn Tab Bar (đã chuyển ra ngoài #chat-screen)
     const tabBarLogout = document.getElementById("main-tab-bar");
     if (tabBarLogout) tabBarLogout.style.display = "none";
