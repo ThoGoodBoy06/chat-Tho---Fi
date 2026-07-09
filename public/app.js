@@ -3270,6 +3270,7 @@ function closeChatMobile() {
     document.body.classList.remove("mobile-chat-active");
     document.documentElement.style.removeProperty('--vv-height');
     document.documentElement.style.removeProperty('--vv-offset');
+    document.documentElement.style.removeProperty('--keyboard-shift');
 }
 
 // 7. Sự kiện Gửi Hình ảnh
@@ -8292,6 +8293,9 @@ if (window.visualViewport) {
         root.style.setProperty('--vv-height', `${vv.height}px`);
         root.style.setProperty('--vv-offset', `${vv.offsetTop}px`);
         
+        const shift = vv.height + vv.offsetTop - window.innerHeight;
+        root.style.setProperty('--keyboard-shift', `${shift}px`);
+        
         // Cập nhật cuộn tin nhắn ngay trong frame vẽ để neo bám mượt mà
         if (typeof window.scrollToBottomInstant === "function") {
             window.scrollToBottomInstant();
@@ -8313,8 +8317,10 @@ if (window.visualViewport) {
     document.addEventListener('focusout', (e) => {
         if (e.target && e.target.id === 'message-input') {
             window.scrollTo(0, 0);
+            root.style.setProperty('--keyboard-shift', '0px');
             setTimeout(() => {
                 window.scrollTo(0, 0);
+                root.style.setProperty('--keyboard-shift', '0px');
                 if (typeof window.scrollToBottomSmooth === "function") {
                     window.scrollToBottomSmooth();
                 }

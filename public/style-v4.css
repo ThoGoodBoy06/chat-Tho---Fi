@@ -3763,10 +3763,10 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
     }
     .chat-window {
         position: fixed !important;
-        top: var(--vv-offset, 0px) !important;
+        top: 0 !important;
         left: 0 !important;
         right: 0 !important;
-        height: var(--vv-height, 100%) !important;
+        height: 100% !important;
         width: 100vw !important;
         z-index: 9999 !important;
         display: flex !important;
@@ -3861,7 +3861,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         position: relative !important;
         flex-shrink: 0 !important;
         width: 100%;
-        transform: none !important;
+        transform: translateY(var(--keyboard-shift, 0px)) !important;
         /* Cập nhật đệm đáy an toàn: loại bỏ env(safe-area-inset-bottom) */
         padding: 8px 12px 12px 12px !important;
         background: var(--msg-receiver-bg) !important;
@@ -3913,6 +3913,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
     #messages {
         position: relative !important;
         padding: 16px 12px;
+        padding-bottom: calc(16px - var(--keyboard-shift, 0px)) !important;
         background: transparent !important;
         flex: 1 !important;
         overflow-y: auto !important;
