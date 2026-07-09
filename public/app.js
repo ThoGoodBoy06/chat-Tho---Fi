@@ -3223,11 +3223,10 @@ if (messageInput) {
         if (inputArea) inputArea.classList.add('is-typing');
         if (typeof closeEmojiPicker === "function") closeEmojiPicker();
 
-        if (window.innerWidth <= 768) {
-            setTimeout(() => {
-                scrollToBottomInstant();
-            }, 50);
-        } else {
+        // Trên mobile: KHÔNG tự gọi scrollToBottomInstant ở đây nữa.
+        // Việc neo cuộn đã được visualViewport 'resize' (debounce 120ms) đảm nhiệm
+        // sau khi bàn phím lên xong hẳn, tránh 2 nguồn gọi chồng chéo.
+        if (window.innerWidth > 768) {
             scrollToBottomSmooth();
         }
     });
@@ -3236,9 +3235,7 @@ if (messageInput) {
     messageInput.addEventListener("click", function() {
         const inputArea = document.getElementById('input-area');
         if (inputArea) inputArea.classList.add('is-typing');
-        if (window.innerWidth <= 768) {
-            scrollToBottomInstant();
-        } else {
+        if (window.innerWidth > 768) {
             scrollToBottomSmooth();
         }
     });
@@ -3249,10 +3246,8 @@ if (messageInput) {
         if (this.value.trim().length === 0) {
             if (inputArea) inputArea.classList.remove('is-typing');
         }
-        if (window.innerWidth <= 768) {
-            window.scrollTo(0, 0);
-            document.body.scrollTop = 0;
-        }
+        // Việc trả viewport về vị trí gốc đã do 'focusout' + visualViewport lo,
+        // không cần window.scrollTo thủ công ở đây nữa.
     });
 }
 
@@ -8284,44 +8279,56 @@ function closeReactionsDetailModal(e) {
 window.closeReactionsDetailModal = closeReactionsDetailModal;
 
 // --- OPTIMIZATION FOR MOBILE KEYBOARD (VISUAL VIEWPORT) ---
-// Chuyển giao hoàn toàn quyền kiểm soát tính toán cho CSS thông qua CSS Variables để đạt hiệu năng 60/120fps.
 if (window.visualViewport) {
-    const handleViewportChange = () => {
-        // Chỉ giới hạn can thiệp khi người dùng đang mở tính năng chat trên mobile
-        if (window.innerWidth > 768 || !document.body.classList.contains("mobile-chat-active")) return;
+    const vv = window.visualViewport;
+    const root = document.documentElement;
 
-        const vv = window.visualViewport;
-        const root = document.documentElement;
+    let rafId = null;
+    let settleTimer = null;
 
-        // Truyền thông số kích thước và độ dịch chuyển vào CSS Variables
+    // Dù resize/scroll bắn ra bao nhiêu lần trong 1 khung hình,
+    // CHỈ ghi DOM đúng 1 LẦN DUY NHẤT mỗi requestAnimationFrame
+    const applyViewportVars = () => {
+        rafId = null;
         root.style.setProperty('--vv-height', `${vv.height}px`);
         root.style.setProperty('--vv-offset', `${vv.offsetTop}px`);
+    };
 
+    const handleViewportChange = () => {
+        if (window.innerWidth > 768 || !document.body.classList.contains("mobile-chat-active")) return;
 
-
-        // Tự động đẩy danh sách tin nhắn xuống cuối cùng để hiển thị tin nhắn mới nhất
-        if (typeof window.scrollToBottomInstant === "function") {
-            window.scrollToBottomInstant();
+        if (rafId === null) {
+            rafId = requestAnimationFrame(applyViewportVars);
         }
+
+        // Chỉ cuộn xuống đáy SAU KHI bàn phím đã dừng hẳn (debounce 120ms),
+        // không cuộn giữa chừng animation -> triệt tiêu xung đột cuộn
+        clearTimeout(settleTimer);
+        settleTimer = setTimeout(() => {
+            if (typeof window.scrollToBottomInstant === "function") {
+                window.scrollToBottomInstant();
+            }
+        }, 120);
     };
 
     window.visualViewport.addEventListener('resize', handleViewportChange);
     window.visualViewport.addEventListener('scroll', handleViewportChange);
-    
-    // Đăng ký sự kiện focusout để đảm bảo màn hình trả về vị trí gốc ngay khi ô nhập mất tiêu điểm
+
+    // Không tự ý gọi window.scrollTo() nữa khi mất tiêu điểm.
+    // Để chính sự kiện 'resize' ở trên (đã debounce) làm việc đó,
+    // tránh việc JS và animation nội bộ của iOS giành quyền cuộn cùng lúc.
     document.addEventListener('focusout', (e) => {
         if (e.target && e.target.id === 'message-input') {
-            window.scrollTo(0, 0);
-            setTimeout(() => {
-                window.scrollTo(0, 0);
-                if (typeof window.scrollToBottomSmooth === "function") {
-                    window.scrollToBottomSmooth();
+            requestAnimationFrame(() => {
+                if (vv.offsetTop === 0 && Math.abs(vv.height - window.innerHeight) < 2) {
+                    if (typeof window.scrollToBottomSmooth === "function") {
+                        window.scrollToBottomSmooth();
+                    }
                 }
-            }, 80);
+            });
         }
     });
 
-    // Gọi hàm một lần lúc khởi tạo màn hình để thiết lập thông số mặc định cho CSS Variables
     handleViewportChange();
 }
 
