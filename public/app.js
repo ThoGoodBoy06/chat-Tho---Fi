@@ -1644,11 +1644,10 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
         document.getElementById("chat-screen").classList.add("mobile-chat-active");
         document.body.classList.add("mobile-chat-active");
         
-        // Di chuyển header ra ngoài .chat-window để tránh bị giật và bị che khuất
+        // Di chuyển header ra ngoài làm con trực tiếp của body để tránh bị giật và bị che khuất
         const mobileHeader = document.getElementById("chat-header-container");
-        const mobileChatScreen = document.getElementById("chat-screen");
-        if (mobileHeader && mobileChatScreen) {
-            mobileChatScreen.insertBefore(mobileHeader, mobileChatScreen.firstChild);
+        if (mobileHeader) {
+            document.body.appendChild(mobileHeader);
         }
         document.getElementById("chat-header-placeholder").style.display = "none";
         currentChatPartnerId = receiverId;
