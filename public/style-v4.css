@@ -75,7 +75,7 @@ body {
     height: -webkit-fill-available !important;
     width: 100%;
     max-width: 100vw;
-    overflow-x: hidden;
+    overflow: hidden !important;
     overscroll-behavior: none;
     -webkit-user-select: none;
     -moz-user-select: none;
@@ -1330,7 +1330,7 @@ INPUT AREA FOR CHAT (MESSENGER STYLE)
     display: flex;
     align-items: center;
     gap: 8px;
-    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    transition: padding 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .input-actions-left-wrapper {
@@ -3882,7 +3882,11 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         opacity: 1;
     }
     .input-area.is-typing .input-actions-left-wrapper {
-        display: none !important;
+        max-width: 0 !important;
+        opacity: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        pointer-events: none !important;
     }
     /* expand-actions-btn handled globally */
     .input-wrapper {

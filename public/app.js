@@ -3135,6 +3135,13 @@ if (messageInput) {
         const newHeight = Math.min(this.scrollHeight, 80); // Giới hạn max 80px
         this.style.height = newHeight + 'px';
         this.style.overflowY = this.scrollHeight > 80 ? 'scroll' : 'hidden';
+
+        // Neo cuộn danh sách tin nhắn để không bị lệch khi chiều cao ô nhập thay đổi
+        if (window.innerWidth <= 768) {
+            scrollToBottomInstant();
+        } else {
+            scrollToBottomSmooth();
+        }
         // Logic của Messenger: Thay Like thành Gửi, thu gọn menu trái
         const inputArea = document.getElementById('input-area');
         const likeBtn = document.getElementById('like-btn');
@@ -3216,19 +3223,10 @@ if (messageInput) {
         if (inputArea) inputArea.classList.add('is-typing');
         if (typeof closeEmojiPicker === "function") closeEmojiPicker();
 
-        // HACK: Đưa ô nhập liệu lên top tạm thời để đánh lừa iOS Safari không cuộn layout viewport
-        if (inputArea && window.innerWidth <= 768) {
-            inputArea.style.setProperty("position", "fixed", "important");
-            inputArea.style.setProperty("top", "0px", "important");
-            inputArea.style.setProperty("z-index", "99999", "important");
-
+        if (window.innerWidth <= 768) {
             setTimeout(() => {
-                inputArea.style.removeProperty("position");
-                inputArea.style.removeProperty("top");
-                inputArea.style.removeProperty("z-index");
-
-                scrollToBottomSmooth();
-            }, 30);
+                scrollToBottomInstant();
+            }, 50);
         } else {
             scrollToBottomSmooth();
         }
@@ -3238,7 +3236,11 @@ if (messageInput) {
     messageInput.addEventListener("click", function() {
         const inputArea = document.getElementById('input-area');
         if (inputArea) inputArea.classList.add('is-typing');
-        scrollToBottomSmooth();
+        if (window.innerWidth <= 768) {
+            scrollToBottomInstant();
+        } else {
+            scrollToBottomSmooth();
+        }
     });
 
     // Khi người dùng bấm ra ngoài (Blur) -> hiển thị lại menu trái nếu ô nhập trống
@@ -8308,8 +8310,8 @@ if (window.visualViewport) {
         }, 100);
 
         // Tự động đẩy danh sách tin nhắn xuống cuối cùng để hiển thị tin nhắn mới nhất
-        if (typeof window.scrollToBottomSmooth === "function") {
-            window.scrollToBottomSmooth();
+        if (typeof window.scrollToBottomInstant === "function") {
+            window.scrollToBottomInstant();
         }
     };
 
