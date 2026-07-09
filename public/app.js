@@ -8284,14 +8284,18 @@ if (window.visualViewport) {
     const root = document.documentElement;
 
     let rafId = null;
-    let settleTimer = null;
 
     // Dù resize/scroll bắn ra bao nhiêu lần trong 1 khung hình,
-    // CHỈ ghi DOM đúng 1 LẦN DUY NHẤT mỗi requestAnimationFrame
+    // CHỈ ghi DOM và cuộn tin nhắn đúng 1 LẦN DUY NHẤT mỗi requestAnimationFrame
     const applyViewportVars = () => {
         rafId = null;
         root.style.setProperty('--vv-height', `${vv.height}px`);
         root.style.setProperty('--vv-offset', `${vv.offsetTop}px`);
+        
+        // Cập nhật cuộn tin nhắn ngay trong frame vẽ để neo bám mượt mà
+        if (typeof window.scrollToBottomInstant === "function") {
+            window.scrollToBottomInstant();
+        }
     };
 
     const handleViewportChange = () => {
@@ -8300,32 +8304,21 @@ if (window.visualViewport) {
         if (rafId === null) {
             rafId = requestAnimationFrame(applyViewportVars);
         }
-
-        // Chỉ cuộn xuống đáy SAU KHI bàn phím đã dừng hẳn (debounce 120ms),
-        // không cuộn giữa chừng animation -> triệt tiêu xung đột cuộn
-        clearTimeout(settleTimer);
-        settleTimer = setTimeout(() => {
-            if (typeof window.scrollToBottomInstant === "function") {
-                window.scrollToBottomInstant();
-            }
-        }, 120);
     };
 
     window.visualViewport.addEventListener('resize', handleViewportChange);
     window.visualViewport.addEventListener('scroll', handleViewportChange);
 
-    // Không tự ý gọi window.scrollTo() nữa khi mất tiêu điểm.
-    // Để chính sự kiện 'resize' ở trên (đã debounce) làm việc đó,
-    // tránh việc JS và animation nội bộ của iOS giành quyền cuộn cùng lúc.
+    // Khi mất tiêu điểm (đóng bàn phím), đưa trang về vị trí gốc và cuộn mượt
     document.addEventListener('focusout', (e) => {
         if (e.target && e.target.id === 'message-input') {
-            requestAnimationFrame(() => {
-                if (vv.offsetTop === 0 && Math.abs(vv.height - window.innerHeight) < 2) {
-                    if (typeof window.scrollToBottomSmooth === "function") {
-                        window.scrollToBottomSmooth();
-                    }
+            window.scrollTo(0, 0);
+            setTimeout(() => {
+                window.scrollTo(0, 0);
+                if (typeof window.scrollToBottomSmooth === "function") {
+                    window.scrollToBottomSmooth();
                 }
-            });
+            }, 80);
         }
     });
 

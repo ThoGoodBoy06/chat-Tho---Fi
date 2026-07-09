@@ -3763,7 +3763,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
     }
     .chat-window {
         position: fixed !important;
-        top: 0 !important;                 /* Không còn phụ thuộc offsetTop */
+        top: var(--vv-offset, 0px) !important;
         left: 0 !important;
         right: 0 !important;
         height: var(--vv-height, 100%) !important;
@@ -3771,14 +3771,11 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         z-index: 9999 !important;
         display: flex !important;
         flex-direction: column;
-        /* Bù offsetTop bằng transform (chỉ tốn GPU compositing, KHÔNG reflow) */
-        transform: translateX(100%) translateY(var(--vv-offset, 0px));
-        transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1),
-                    height 0.18s ease-out;
+        transform: translateX(100%);
+        transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
         background: var(--chat-bg) !important;
         bottom: auto !important;
         padding-bottom: 0 !important;
-        will-change: transform;
     }
     #chat-screen.mobile-chat-active {
         display: block !important;
@@ -3799,7 +3796,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         padding-bottom: 0 !important;
     }
     #chat-screen.mobile-chat-active .chat-window {
-        transform: translateX(0) translateY(var(--vv-offset, 0px));
+        transform: translateX(0);
     }
     #chat-screen.mobile-chat-active .zalo-mobile-header {
         display: none !important;
