@@ -1,16 +1,16 @@
 const SERVER_URL = window.location.origin;
 const API_URL = `${SERVER_URL}/api`;
 
-// --- NHẬN FCM TOKEN TỪ FLUTTER HYBRID BRIDGE ---
+// --- NHáº¬N FCM TOKEN Tá»ª FLUTTER HYBRID BRIDGE ---
 window.onFlutterFcmTokenReceived = function(fcmTokenVal) {
-    console.log("🔥 Đã nhận native FCM Token từ Flutter:", fcmTokenVal);
+    console.log("ðŸ”¥ ÄÃ£ nháº­n native FCM Token tá»« Flutter:", fcmTokenVal);
     const userToken = localStorage.getItem("authToken");
     if (!userToken) {
-        console.log("💾 Chưa đăng nhập, lưu tạm native FCM Token...");
+        console.log("ðŸ’¾ ChÆ°a Ä‘Äƒng nháº­p, lÆ°u táº¡m native FCM Token...");
         window.cachedFlutterFcmToken = fcmTokenVal;
         return;
     }
-    console.log("💾 Đang gửi native FCM Token lên Server...");
+    console.log("ðŸ’¾ Äang gá»­i native FCM Token lÃªn Server...");
     fetch(`${API_URL}/users/fcm-token`, {
         method: "POST",
         headers: {
@@ -20,8 +20,8 @@ window.onFlutterFcmTokenReceived = function(fcmTokenVal) {
         body: JSON.stringify({ fcmToken: fcmTokenVal }),
     })
     .then(res => res.json())
-    .then(data => console.log("✅ Đã lưu native FCM Token thành công:", data))
-    .catch(err => console.error("❌ Lỗi gửi native FCM Token:", err));
+    .then(data => console.log("âœ… ÄÃ£ lÆ°u native FCM Token thÃ nh cÃ´ng:", data))
+    .catch(err => console.error("âŒ Lá»—i gá»­i native FCM Token:", err));
 };
 if (window.flutterFcmToken) {
     window.onFlutterFcmTokenReceived(window.flutterFcmToken);
@@ -34,7 +34,7 @@ function formatUrl(url) {
     return SERVER_URL + url;
 }
 
-// TỰ ĐỘNG THAY THẾ ẢNH LỖI (404) BẰNG ẢNH MẶC ĐỊNH
+// Tá»° Äá»˜NG THAY THáº¾ áº¢NH Lá»–I (404) Báº°NG áº¢NH Máº¶C Äá»ŠNH
 document.addEventListener(
     "error",
     function(e) {
@@ -52,18 +52,37 @@ document.addEventListener(
     true,
 );
 
-// --- HỆ THỐNG ÂM THANH SYNTHETIC (WEB AUDIO API) ---
+// --- Há»† THá»NG Ã‚M THANH SYNTHETIC (WEB AUDIO API) ---
 const ChatSounds = {
     _ctx: null,
+    _unlocked: false, // FIX iOS: ÄÃ¡nh dáº¥u Ä‘Ã£ unlock AudioContext bá»Ÿi user gesture chÆ°a
 
     _init() {
         if (!this._ctx) {
             this._ctx = new(window.AudioContext || window.webkitAudioContext)();
         }
         if (this._ctx.state === "suspended") {
-            this._ctx.resume();
+            this._ctx.resume().catch(() => {});
         }
         return this._ctx;
+    },
+
+    // FIX iOS #9: Unlock AudioContext khi user tÆ°Æ¡ng tÃ¡c láº§n Ä‘áº§u
+    // iOS Safari/WKWebView yÃªu cáº§u user gesture Ä‘á»ƒ khá»Ÿi táº¡o AudioContext
+    unlock() {
+        if (this._unlocked) return;
+        try {
+            const ctx = this._init();
+            // Táº¡o buffer rá»—ng 1 sample Ä‘á»ƒ "Ä‘Ã¡nh thá»©c" AudioContext
+            const buf = ctx.createBuffer(1, 1, 22050);
+            const src = ctx.createBufferSource();
+            src.buffer = buf;
+            src.connect(ctx.destination);
+            src.start(0);
+            this._unlocked = true;
+        } catch (e) {
+            console.warn("KhÃ´ng thá»ƒ unlock AudioContext:", e.message);
+        }
     },
 
     playSend() {
@@ -82,13 +101,13 @@ const ChatSounds = {
             osc.frequency.exponentialRampToValueAtTime(750, now + 0.12);
 
             gain.gain.setValueAtTime(0.01, now);
-            gain.gain.linearRampToValueAtTime(0.65, now + 0.02); // Tăng cường độ từ 0.18 lên 0.65 (siêu to)
+            gain.gain.linearRampToValueAtTime(0.65, now + 0.02); // TÄƒng cÆ°á»ng Ä‘á»™ tá»« 0.18 lÃªn 0.65 (siÃªu to)
             gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
 
             osc.start(now);
             osc.stop(now + 0.15);
         } catch (e) {
-            console.warn("Lỗi phát âm thanh gửi:", e.message);
+            console.warn("Lá»—i phÃ¡t Ã¢m thanh gá»­i:", e.message);
         }
     },
 
@@ -111,7 +130,7 @@ const ChatSounds = {
             osc1.frequency.exponentialRampToValueAtTime(1200, now + 0.08);
 
             gain1.gain.setValueAtTime(0.01, now);
-            gain1.gain.linearRampToValueAtTime(0.55, now + 0.02); // Tăng cường độ lên 0.55
+            gain1.gain.linearRampToValueAtTime(0.55, now + 0.02); // TÄƒng cÆ°á»ng Ä‘á»™ lÃªn 0.55
             gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
 
             osc1.start(now);
@@ -126,39 +145,39 @@ const ChatSounds = {
             osc2.frequency.setValueAtTime(1600, now + 0.03);
 
             gain2.gain.setValueAtTime(0.001, now + 0.03);
-            gain2.gain.linearRampToValueAtTime(0.60, now + 0.04); // Tăng cường độ lên 0.60
+            gain2.gain.linearRampToValueAtTime(0.60, now + 0.04); // TÄƒng cÆ°á»ng Ä‘á»™ lÃªn 0.60
             gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
 
             osc2.start(now + 0.03);
             osc2.stop(now + 0.13);
         } catch (e) {
-            console.warn("Lỗi phát âm thanh cảm xúc:", e.message);
+            console.warn("Lá»—i phÃ¡t Ã¢m thanh cáº£m xÃºc:", e.message);
         }
     }
 };
 
-// --- QUẢN LÝ APP STATE (CAPACITOR / TRÌNH DUYỆT) ---
+// --- QUáº¢N LÃ APP STATE (CAPACITOR / TRÃŒNH DUYá»†T) ---
 let isAppInBackground = false;
 document.addEventListener("visibilitychange", () => {
     isAppInBackground = document.visibilityState === "hidden";
 
     if (isAppInBackground) {
-        // Gửi sự kiện chạy ngầm (go_offline) lên socket server
+        // Gá»­i sá»± kiá»‡n cháº¡y ngáº§m (go_offline) lÃªn socket server
         if (typeof socket !== "undefined" && socket && socket.connected && myId) {
             socket.emit("go_offline");
         }
     } else {
-        // Gửi sự kiện mở lại app (go_online) lên socket server
+        // Gá»­i sá»± kiá»‡n má»Ÿ láº¡i app (go_online) lÃªn socket server
         if (typeof socket !== "undefined" && socket && socket.connected && myId) {
             socket.emit("go_online");
         }
 
-        // 1. Kéo lại tin nhắn bị lỡ trong lúc trình duyệt ngủ đông (mất kết nối Socket)
+        // 1. KÃ©o láº¡i tin nháº¯n bá»‹ lá»¡ trong lÃºc trÃ¬nh duyá»‡t ngá»§ Ä‘Ã´ng (máº¥t káº¿t ná»‘i Socket)
         if (typeof loadConversations === "function") loadConversations();
         if (typeof reloadCurrentChat === "function" && currentConversationId)
             reloadCurrentChat();
 
-        // 2. Dọn dẹp các thông báo Toast cũ bị kẹt
+        // 2. Dá»n dáº¹p cÃ¡c thÃ´ng bÃ¡o Toast cÅ© bá»‹ káº¹t
         setTimeout(() => {
             document.querySelectorAll(".new-message-toast").forEach((toast) => {
                 toast.classList.add("hiding");
@@ -186,7 +205,7 @@ let mediaRecorder = null;
 let audioChunks = [];
 let isRecording = false;
 
-// --- PAGINATION STATE (Tối ưu hiệu năng) ---
+// --- PAGINATION STATE (Tá»‘i Æ°u hiá»‡u nÄƒng) ---
 let hasMoreMessages = false;
 let isLoadingMoreMessages = false;
 
@@ -217,7 +236,7 @@ function escapeHTML(str) {
         .replace(/'/g, "&#039;");
 }
 
-// Nén ảnh bằng Canvas ở Client-side trước khi tải lên server để tối ưu hóa RAM & băng thông
+// NÃ©n áº£nh báº±ng Canvas á»Ÿ Client-side trÆ°á»›c khi táº£i lÃªn server Ä‘á»ƒ tá»‘i Æ°u hÃ³a RAM & bÄƒng thÃ´ng
 function compressImage(file, maxWidth, maxHeight, quality) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -256,7 +275,7 @@ function compressImage(file, maxWidth, maxHeight, quality) {
     });
 }
 
-// Kiểm tra xem người dùng có đang thực sự nhìn vào khung chat không
+// Kiá»ƒm tra xem ngÆ°á»i dÃ¹ng cÃ³ Ä‘ang thá»±c sá»± nhÃ¬n vÃ o khung chat khÃ´ng
 function isChatAreaVisible() {
     if (!document.hasFocus()) return false;
 
@@ -277,7 +296,7 @@ function isChatAreaVisible() {
     return true;
 }
 
-// --- HỆ THỐNG PHÁT VÀ KHUẾCH ĐẠI ÂM THANH UNIFIED (WEB AUDIO API) ---
+// --- Há»† THá»NG PHÃT VÃ€ KHUáº¾CH Äáº I Ã‚M THANH UNIFIED (WEB AUDIO API) ---
 const AudioBuffers = {
     message: null,
     ringtone: null,
@@ -313,10 +332,10 @@ async function preloadSound(key, url) {
         const arrayBuffer = await response.arrayBuffer();
         const ctx = getAudioContext();
         AudioBuffers[key] = await ctx.decodeAudioData(arrayBuffer);
-        console.log(`🎵 Đã giải mã và nạp bộ nhớ đệm âm thanh: ${key} (${url})`);
+        console.log(`ðŸŽµ ÄÃ£ giáº£i mÃ£ vÃ  náº¡p bá»™ nhá»› Ä‘á»‡m Ã¢m thanh: ${key} (${url})`);
         return AudioBuffers[key];
     } catch (e) {
-        console.warn(`Lỗi tải/giải mã âm thanh ${key}:`, e.message);
+        console.warn(`Lá»—i táº£i/giáº£i mÃ£ Ã¢m thanh ${key}:`, e.message);
         return null;
     }
 }
@@ -337,7 +356,7 @@ function playWebAudio(key, loop = false, gainValue = 4.5) {
 
         const buffer = AudioBuffers[key];
         if (!buffer) {
-            console.warn(`Âm thanh ${key} chưa tải xong, phát dự phòng bằng HTMLAudioElement`);
+            console.warn(`Ã‚m thanh ${key} chÆ°a táº£i xong, phÃ¡t dá»± phÃ²ng báº±ng HTMLAudioElement`);
             let fallbackEl = null;
             if (key === "message") fallbackEl = document.getElementById("message-sound");
             else if (key === "ringtone") fallbackEl = document.getElementById("incoming-ringtone");
@@ -359,7 +378,7 @@ function playWebAudio(key, loop = false, gainValue = 4.5) {
         source.loop = loop;
 
         const gainNode = ctx.createGain();
-        gainNode.gain.value = gainValue; // Khuếch đại âm lượng lên gấp gainValue lần (mức to vượt trần)
+        gainNode.gain.value = gainValue; // Khuáº¿ch Ä‘áº¡i Ã¢m lÆ°á»£ng lÃªn gáº¥p gainValue láº§n (má»©c to vÆ°á»£t tráº§n)
 
         source.connect(gainNode);
         gainNode.connect(ctx.destination);
@@ -369,7 +388,7 @@ function playWebAudio(key, loop = false, gainValue = 4.5) {
         activeSources[key] = source;
         activeGains[key] = gainNode;
     } catch (e) {
-        console.warn(`Lỗi phát Web Audio ${key}:`, e.message);
+        console.warn(`Lá»—i phÃ¡t Web Audio ${key}:`, e.message);
     }
 }
 
@@ -396,31 +415,35 @@ function stopWebAudio(key) {
             fallbackEl.currentTime = 0;
         }
     } catch (e) {
-        console.warn(`Lỗi dừng Web Audio ${key}:`, e.message);
+        console.warn(`Lá»—i dá»«ng Web Audio ${key}:`, e.message);
     }
 }
 
-// --- MỞ KHÓA ÂM THANH TRÌNH DUYỆT (CHỐNG CHẶN AUTOPLAY) ---
+// --- Má»ž KHÃ“A Ã‚M THANH TRÃŒNH DUYá»†T (CHá»NG CHáº¶N AUTOPLAY) ---
 let isAudioUnlocked = false;
 
 function unlockBrowserAudio() {
     if (isAudioUnlocked) return;
-
-    // 1. Mở khóa AudioContext
+    isAudioUnlocked = true;
+    // FIX iOS #9: Unlock ChatSounds AudioContext cÃ¹ng lÃºc
+    if (typeof ChatSounds !== 'undefined' && ChatSounds.unlock) {
+        ChatSounds.unlock();
+    }
+    
+    // 1. Má»Ÿ khÃ³a AudioContext
     const ctx = getAudioContext();
     if (ctx.state === "suspended") {
         ctx.resume();
     }
 
-    // 2. Tải trước toàn bộ âm thanh vào bộ nhớ đệm
+    // 2. Táº£i trÆ°á»›c toÃ n bá»™ Ã¢m thanh vÃ o bá»™ nhá»› Ä‘á»‡m
     preloadAllSounds();
 
     const UNLOCK_EVENTS = ["click", "touchstart", "touchend", "mousedown", "keydown"];
-    isAudioUnlocked = true;
     UNLOCK_EVENTS.forEach(event => {
         document.removeEventListener(event, unlockBrowserAudio);
     });
-    console.log("🔊 Tất cả kênh âm thanh đã được mở khóa trực tiếp thành công!");
+    console.log("ðŸ”Š Táº¥t cáº£ kÃªnh Ã¢m thanh Ä‘Ã£ Ä‘Æ°á»£c má»Ÿ khÃ³a trá»±c tiáº¿p thÃ nh cÃ´ng!");
 }
 
 const UNLOCK_EVENTS = ["click", "touchstart", "touchend", "mousedown", "keydown"];
@@ -428,17 +451,17 @@ UNLOCK_EVENTS.forEach(event => {
     document.addEventListener(event, unlockBrowserAudio, { passive: true });
 });
 
-// Cơ chế unlock rung (Vibration Gesture Lock) cho thiết bị di động
+// CÆ¡ cháº¿ unlock rung (Vibration Gesture Lock) cho thiáº¿t bá»‹ di Ä‘á»™ng
 let isVibrationUnlocked = false;
 
 function unlockBrowserVibration() {
     if (isVibrationUnlocked) return;
     if (typeof navigator !== "undefined" && navigator.vibrate) {
         try {
-            navigator.vibrate(10); // Rung nhẹ 10ms để giải phóng Gesture Lock của trình duyệt
+            navigator.vibrate(10); // Rung nháº¹ 10ms Ä‘á»ƒ giáº£i phÃ³ng Gesture Lock cá»§a trÃ¬nh duyá»‡t
             isVibrationUnlocked = true;
         } catch (e) {
-            console.warn("Lỗi unlock rung điện thoại:", e);
+            console.warn("Lá»—i unlock rung Ä‘iá»‡n thoáº¡i:", e);
         }
     }
     document.removeEventListener("click", unlockBrowserVibration);
@@ -467,8 +490,8 @@ function createReadReceiptAvatar() {
         getPartnerAvatar() ||
         "https://ui-avatars.com/api/?name=User&background=random";
     avatar.className = "read-receipt-avatar";
-    avatar.title = "Đã xem";
-    avatar.alt = "Đã xem";
+    avatar.title = "ÄÃ£ xem";
+    avatar.alt = "ÄÃ£ xem";
     return avatar;
 }
 
@@ -486,7 +509,7 @@ function renderSentStatus(statusEl) {
 
     const icon = document.createElement("i");
     icon.className = "fas fa-check-circle sent-icon";
-    statusEl.append(icon, document.createTextNode(" Đã gửi"));
+    statusEl.append(icon, document.createTextNode(" ÄÃ£ gá»­i"));
 }
 
 function getMessageStatus(messageEl) {
@@ -503,10 +526,10 @@ function getReadReceiptTarget(myMessages) {
             `msg-${readReceiptState.lastReadMessageId}`,
         );
         if (target && target.classList.contains("my-message")) return target;
-        // Nếu lastReadMessageId không khớp DOM (tin nhắn chưa render), lấy tin cuối có isRead=true
+        // Náº¿u lastReadMessageId khÃ´ng khá»›p DOM (tin nháº¯n chÆ°a render), láº¥y tin cuá»‘i cÃ³ isRead=true
     }
 
-    // Fallback: tìm tin nhắn của mình được đọc cuối cùng theo data attribute
+    // Fallback: tÃ¬m tin nháº¯n cá»§a mÃ¬nh Ä‘Æ°á»£c Ä‘á»c cuá»‘i cÃ¹ng theo data attribute
     return (
         [...myMessages]
         .reverse()
@@ -530,7 +553,7 @@ function updateReadReceiptsDOM(readInfo = null) {
         const messagesDiv = document.getElementById("messages");
         if (!messagesDiv) return;
 
-        // Guard: chỉ cập nhật nếu readReceiptState thuộc conversation hiện tại
+        // Guard: chá»‰ cáº­p nháº­t náº¿u readReceiptState thuá»™c conversation hiá»‡n táº¡i
         if (
             readReceiptState.conversationId &&
             !isSameId(readReceiptState.conversationId, currentConversationId)
@@ -542,23 +565,23 @@ function updateReadReceiptsDOM(readInfo = null) {
 
         const targetMessage = getReadReceiptTarget(myMessages);
 
-        // Bước 1: Xóa sạch toàn bộ trạng thái cũ trên tất cả tin nhắn của mình
+        // BÆ°á»›c 1: XÃ³a sáº¡ch toÃ n bá»™ tráº¡ng thÃ¡i cÅ© trÃªn táº¥t cáº£ tin nháº¯n cá»§a mÃ¬nh
         myMessages.forEach((message) =>
             clearMessageStatus(getMessageStatus(message)),
         );
 
         if (targetMessage) {
-            // Bước 2: Đánh dấu dataset cho các tin nhắn đã được đọc
+            // BÆ°á»›c 2: ÄÃ¡nh dáº¥u dataset cho cÃ¡c tin nháº¯n Ä‘Ã£ Ä‘Æ°á»£c Ä‘á»c
             markMessagesReadThrough(myMessages, targetMessage);
 
-            // Bước 3: Hiển thị avatar "Đã xem" ngay bên dưới tin nhắn được đọc cuối cùng
+            // BÆ°á»›c 3: Hiá»ƒn thá»‹ avatar "ÄÃ£ xem" ngay bÃªn dÆ°á»›i tin nháº¯n Ä‘Æ°á»£c Ä‘á»c cuá»‘i cÃ¹ng
             const targetStatusEl = getMessageStatus(targetMessage);
             if (targetStatusEl) {
                 targetStatusEl.classList.add("read");
                 targetStatusEl.appendChild(createReadReceiptAvatar());
             }
 
-            // Bước 4: Hiển thị "Đã gửi" cho TẤT CẢ tin nhắn của mình SAU targetMessage
+            // BÆ°á»›c 4: Hiá»ƒn thá»‹ "ÄÃ£ gá»­i" cho Táº¤T Cáº¢ tin nháº¯n cá»§a mÃ¬nh SAU targetMessage
             const targetIndex = myMessages.indexOf(targetMessage);
             myMessages.forEach((message, index) => {
                 if (index > targetIndex) {
@@ -566,18 +589,18 @@ function updateReadReceiptsDOM(readInfo = null) {
                 }
             });
         } else {
-            // Chưa có ai đọc: chỉ hiển thị "Đã gửi" ở tin nhắn CUỐI CÙNG
+            // ChÆ°a cÃ³ ai Ä‘á»c: chá»‰ hiá»ƒn thá»‹ "ÄÃ£ gá»­i" á»Ÿ tin nháº¯n CUá»I CÃ™NG
             const lastMyMessage = myMessages[myMessages.length - 1];
             if (lastMyMessage) {
                 renderSentStatus(getMessageStatus(lastMyMessage));
             }
         }
     } catch (error) {
-        console.error("[DOM Error] Lỗi khi cập nhật avatar Đã xem:", error);
+        console.error("[DOM Error] Lá»—i khi cáº­p nháº­t avatar ÄÃ£ xem:", error);
     }
 }
 
-// Cập nhật badge chưa đọc và kiểu chữ thường của Item Chat cục bộ khi nhận sự kiện đã đọc từ Socket
+// Cáº­p nháº­t badge chÆ°a Ä‘á»c vÃ  kiá»ƒu chá»¯ thÆ°á»ng cá»§a Item Chat cá»¥c bá»™ khi nháº­n sá»± kiá»‡n Ä‘Ã£ Ä‘á»c tá»« Socket
 function updateConversationUnreadBadgeLocal(conversationId) {
     try {
         const li = document.querySelector(`li[data-conversation-id="${conversationId}"]`);
@@ -593,7 +616,7 @@ function updateConversationUnreadBadgeLocal(conversationId) {
         }
         updateTotalMessagesBadge();
     } catch (err) {
-        console.error("[DOM Error] Lỗi cập nhật badge đã xem cục bộ:", err);
+        console.error("[DOM Error] Lá»—i cáº­p nháº­t badge Ä‘Ã£ xem cá»¥c bá»™:", err);
     }
 }
 
@@ -605,7 +628,7 @@ function emitMarkMessagesRead() {
     });
 }
 
-// --- BIẾN TOÀN CỤC CHO WEBRTC ---
+// --- BIáº¾N TOÃ€N Cá»¤C CHO WEBRTC ---
 let peerConnection;
 let localStream;
 let callTypeGlobal;
@@ -618,7 +641,7 @@ let callStartTime = 0;
 let vibrateInterval = null;
 let callTimeoutTimer = null;
 
-// --- BIẾN TOÀN CỤC CHO CÁC TÍNH NĂNG TÙY CHỌN ---
+// --- BIáº¾N TOÃ€N Cá»¤C CHO CÃC TÃNH NÄ‚NG TÃ™Y CHá»ŒN ---
 let isScreenSharing = false;
 let screenStream = null;
 let isNoiseCancellationEnabled = true;
@@ -646,8 +669,8 @@ const stunServers = {
     iceCandidatePoolSize: 10,
 };
 
-// --- QUẢN LÝ OVERLAY LOADING TOÀN CỤC ---
-function showLoading(text = "Đang xử lý...") {
+// --- QUáº¢N LÃ OVERLAY LOADING TOÃ€N Cá»¤C ---
+function showLoading(text = "Äang xá»­ lÃ½...") {
     const loadingEl = document.getElementById("global-loading");
     const textEl = document.getElementById("loading-text");
     if (textEl) textEl.innerText = text;
@@ -659,7 +682,7 @@ function hideLoading() {
     if (loadingEl) loadingEl.style.display = "none";
 }
 
-// --- HÀM HỖ TRỢ: Lấy Avatar đối tác an toàn tuyệt đối ---
+// --- HÃ€M Há»– TRá»¢: Láº¥y Avatar Ä‘á»‘i tÃ¡c an toÃ n tuyá»‡t Ä‘á»‘i ---
 function getPartnerAvatar() {
     const avatarEl = document.getElementById("current-chat-avatar");
     if (avatarEl) {
@@ -675,7 +698,7 @@ function getPartnerAvatar() {
     )}&background=random`;
 }
 
-// --- QUẢN LÝ OVERLAY TRÊN MOBILE ---
+// --- QUáº¢N LÃ OVERLAY TRÃŠN MOBILE ---
 function hideMobileOverlay() {
     const overlay = document.getElementById("mobile-action-overlay");
     if (overlay) overlay.classList.remove("show");
@@ -722,13 +745,13 @@ function showMobileOverlay(messageEl) {
 
     // Kiem tra vi tri tin nhan: neu gan day man hinh, dao nguoc action panel len tren
     requestAnimationFrame(() => {
-        // Cuộn tin nhắn vào vị trí hiển thị tốt nhất (ở giữa màn hình) để tránh bị che khuất bởi bàn phím hoặc input area
+        // Cuá»™n tin nháº¯n vÃ o vá»‹ trÃ­ hiá»ƒn thá»‹ tá»‘t nháº¥t (á»Ÿ giá»¯a mÃ n hÃ¬nh) Ä‘á»ƒ trÃ¡nh bá»‹ che khuáº¥t bá»Ÿi bÃ n phÃ­m hoáº·c input area
         messageEl.scrollIntoView({ behavior: "smooth", block: "center" });
 
         setTimeout(() => {
             const rect = messageEl.getBoundingClientRect();
             const spaceBelow = window.innerHeight - rect.bottom;
-            // Cần ít nhất 270px cho reaction palette + menu
+            // Cáº§n Ã­t nháº¥t 270px cho reaction palette + menu
             if (spaceBelow < 270) {
                 messageEl.classList.add("flip-up");
             } else {
@@ -738,7 +761,7 @@ function showMobileOverlay(messageEl) {
     });
 }
 
-// Hệ thống gài quét lỗi toàn cục
+// Há»‡ thá»‘ng gÃ i quÃ©t lá»—i toÃ n cá»¥c
 window.onerror = function(msg, url, lineNo, columnNo, error) {
     if (
         typeof msg === "string" &&
@@ -748,11 +771,11 @@ window.onerror = function(msg, url, lineNo, columnNo, error) {
     ) {
         return true;
     }
-    console.error("Lỗi hệ thống:", msg);
+    console.error("Lá»—i há»‡ thá»‘ng:", msg);
     return false;
 };
 
-// 0. Chuyển đổi giữa Đăng nhập / Đăng ký
+// 0. Chuyá»ƒn Ä‘á»•i giá»¯a ÄÄƒng nháº­p / ÄÄƒng kÃ½
 function toggleAuth(type) {
     if (type === "register") {
         document.getElementById("login-form").style.display = "none";
@@ -763,7 +786,7 @@ function toggleAuth(type) {
     }
 }
 
-// 0.6 Ẩn/hiển thị mật khẩu
+// 0.6 áº¨n/hiá»ƒn thá»‹ máº­t kháº©u
 function togglePassword(inputId, icon) {
     const input = document.getElementById(inputId);
     if (input.type === "password") {
@@ -777,16 +800,16 @@ function togglePassword(inputId, icon) {
     }
 }
 
-// 0.5 Xử lý đăng ký
+// 0.5 Xá»­ lÃ½ Ä‘Äƒng kÃ½
 async function register() {
     const fullName = document.getElementById("reg-fullname").value;
     const username = document.getElementById("reg-username").value;
     const password = document.getElementById("reg-password").value;
 
     if (!fullName || !username || !password)
-        return alert("Vui lòng nhập đầy đủ thông tin!");
+        return alert("Vui lÃ²ng nháº­p Ä‘áº§y Ä‘á»§ thÃ´ng tin!");
 
-    showLoading("Đăng ký...");
+    showLoading("ÄÄƒng kÃ½...");
     try {
         const res = await fetch(`${API_URL}/auth/register`, {
             method: "POST",
@@ -795,21 +818,21 @@ async function register() {
         });
         const data = await res.json();
         if (data.success) {
-            alert("Đăng ký thành công! Đang tự động đăng nhập...");
+            alert("ÄÄƒng kÃ½ thÃ nh cÃ´ng! Äang tá»± Ä‘á»™ng Ä‘Äƒng nháº­p...");
             document.getElementById("login-username").value = username;
             document.getElementById("login-password").value = password;
             login();
         } else {
-            alert("Lỗi đăng ký: " + data.message);
+            alert("Lá»—i Ä‘Äƒng kÃ½: " + data.message);
         }
     } catch (error) {
-        alert("Lỗi kết nối máy chủ khi đăng ký: " + error.message);
+        alert("Lá»—i káº¿t ná»‘i mÃ¡y chá»§ khi Ä‘Äƒng kÃ½: " + error.message);
     } finally {
         hideLoading();
     }
 }
 
-// 1. Khởi tạo phiên làm việc (sau khi đăng nhập hoặc tự động đăng nhập thành công)
+// 1. Khá»Ÿi táº¡o phiÃªn lÃ m viá»‡c (sau khi Ä‘Äƒng nháº­p hoáº·c tá»± Ä‘á»™ng Ä‘Äƒng nháº­p thÃ nh cÃ´ng)
 function initizeChatSession(userData, userToken) {
     token = userToken;
     myId = userData.id;
@@ -821,10 +844,10 @@ function initizeChatSession(userData, userToken) {
         window.cachedFlutterFcmToken = null;
     }
 
-    // Cập nhật lời chào Trợ lý AI khi khởi tạo session
+    // Cáº­p nháº­t lá»i chÃ o Trá»£ lÃ½ AI khi khá»Ÿi táº¡o session
     const welcomeTitle = document.getElementById("ai-welcome-title");
     if (welcomeTitle) {
-        welcomeTitle.innerText = `Hôm nay bạn thế nào, ${myUsername || "bạn"}?`;
+        welcomeTitle.innerText = `HÃ´m nay báº¡n tháº¿ nÃ o, ${myUsername || "báº¡n"}?`;
     }
 
     document.getElementById("my-name").innerText = myName;
@@ -832,20 +855,20 @@ function initizeChatSession(userData, userToken) {
         formatUrl(userData.avatar) :
         `https://ui-avatars.com/api/?name=${encodeURIComponent(myName)}&background=random`;
 
-    // Đồng bộ thông tin sang Tab Cá nhân và các Modal liên quan
+    // Äá»“ng bá»™ thÃ´ng tin sang Tab CÃ¡ nhÃ¢n vÃ  cÃ¡c Modal liÃªn quan
     if (document.getElementById("my-name-personal-tab"))
         document.getElementById("my-name-personal-tab").innerText = myName;
     if (document.getElementById("my-avatar-personal-tab"))
         document.getElementById("my-avatar-personal-tab").src = document.getElementById("my-avatar").src;
 
-    // Đồng bộ thông tin sang Tab Hồ sơ
+    // Äá»“ng bá»™ thÃ´ng tin sang Tab Há»“ sÆ¡
     document.getElementById("profile-name").innerText = myName;
     if (document.getElementById("my-avatar-profile"))
         document.getElementById("my-avatar-profile").src =
         document.getElementById("my-avatar").src;
     if (document.getElementById("profile-bio"))
         document.getElementById("profile-bio").innerText =
-        userData.bio || "Chưa có tiểu sử";
+        userData.bio || "ChÆ°a cÃ³ tiá»ƒu sá»­";
     if (document.getElementById("my-cover")) {
         const coverUrl = userData.coverPhoto || userData.coverImage;
         if (coverUrl) {
@@ -856,15 +879,15 @@ function initizeChatSession(userData, userToken) {
         }
     }
 
-    // Yêu cầu quyền gửi thông báo trên Trình duyệt Web (Nếu chưa cấp) và khởi tạo FCM
+    // YÃªu cáº§u quyá»n gá»­i thÃ´ng bÃ¡o trÃªn TrÃ¬nh duyá»‡t Web (Náº¿u chÆ°a cáº¥p) vÃ  khá»Ÿi táº¡o FCM
     if ("Notification" in window) {
         if (Notification.permission === "default") {
             Notification.requestPermission().then((permission) => {
                 if (permission === "granted") {
-                    console.log("🔔 Quyền thông báo đã được cấp phép.");
+                    console.log("ðŸ”” Quyá»n thÃ´ng bÃ¡o Ä‘Ã£ Ä‘Æ°á»£c cáº¥p phÃ©p.");
                     setupFirebaseMessaging(userToken);
                 } else {
-                    console.warn("🔔 Quyền thông báo bị từ chối.");
+                    console.warn("ðŸ”” Quyá»n thÃ´ng bÃ¡o bá»‹ tá»« chá»‘i.");
                 }
             });
         } else if (Notification.permission === "granted") {
@@ -872,54 +895,54 @@ function initizeChatSession(userData, userToken) {
         }
     }
 
-    // Kết nối Socket.IO Real-time
+    // Káº¿t ná»‘i Socket.IO Real-time
     socket = io(SERVER_URL);
     socket.on("connect", () => {
-        console.log("⚡ Kết nối Socket thành công, đang xác thực user_connected: " + myId);
+        console.log("âš¡ Káº¿t ná»‘i Socket thÃ nh cÃ´ng, Ä‘ang xÃ¡c thá»±c user_connected: " + myId);
         socket.emit("user_connected", myId);
-        checkUrlParamsForCall(); // Tự động kiểm tra cuộc gọi chạy ngầm khi kết nối thành công
+        checkUrlParamsForCall(); // Tá»± Ä‘á»™ng kiá»ƒm tra cuá»™c gá»i cháº¡y ngáº§m khi káº¿t ná»‘i thÃ nh cÃ´ng
     });
 
-    // Xử lý tái kết nối Socket (rất quan trọng trên di động iOS/Android)
-    // Khi điện thoại mất mạng rồi kết nối lại, Socket.IO tự reconnect
-    // nhưng server không biết user này online nếu không gửi lại user_connected
+    // Xá»­ lÃ½ tÃ¡i káº¿t ná»‘i Socket (ráº¥t quan trá»ng trÃªn di Ä‘á»™ng iOS/Android)
+    // Khi Ä‘iá»‡n thoáº¡i máº¥t máº¡ng rá»“i káº¿t ná»‘i láº¡i, Socket.IO tá»± reconnect
+    // nhÆ°ng server khÃ´ng biáº¿t user nÃ y online náº¿u khÃ´ng gá»­i láº¡i user_connected
     socket.io.on("reconnect", (attemptNumber) => {
-        console.log(`🔄 Socket đã tái kết nối sau ${attemptNumber} lần thử, đang gửi lại user_connected: ` + myId);
+        console.log(`ðŸ”„ Socket Ä‘Ã£ tÃ¡i káº¿t ná»‘i sau ${attemptNumber} láº§n thá»­, Ä‘ang gá»­i láº¡i user_connected: ` + myId);
         socket.emit("user_connected", myId);
-        // Kéo lại tin nhắn bị lỡ trong khi mất kết nối
+        // KÃ©o láº¡i tin nháº¯n bá»‹ lá»¡ trong khi máº¥t káº¿t ná»‘i
         if (typeof loadConversations === "function") loadConversations();
         if (typeof reloadCurrentChat === "function" && currentConversationId) reloadCurrentChat();
     });
 
-    // Log khi socket bị mất kết nối (debug di động)
+    // Log khi socket bá»‹ máº¥t káº¿t ná»‘i (debug di Ä‘á»™ng)
     socket.on("disconnect", (reason) => {
-        console.warn("🔴 Socket bị ngắt kết nối. Lý do:", reason);
+        console.warn("ðŸ”´ Socket bá»‹ ngáº¯t káº¿t ná»‘i. LÃ½ do:", reason);
     });
 
-    // Nghe khi có tin tức mới Real-time
+    // Nghe khi cÃ³ tin tá»©c má»›i Real-time
     socket.on("new_news_broadcast", (newsItem) => {
         if (typeof handleIncomingRealtimeNews === "function") {
             handleIncomingRealtimeNews(newsItem);
         }
     });
 
-    // Nghe danh sách lời mời bạn bè ban đầu
+    // Nghe danh sÃ¡ch lá»i má»i báº¡n bÃ¨ ban Ä‘áº§u
     socket.on("initial_friend_requests", (requests) => {
         pendingFriendRequests = requests || [];
         renderFriendRequests();
         updateFriendRequestBadge();
     });
 
-    // Nghe khi có lời mời kết bạn mới
+    // Nghe khi cÃ³ lá»i má»i káº¿t báº¡n má»›i
     socket.on("new_friend_request", (request) => {
         pendingFriendRequests.unshift(request);
         renderFriendRequests();
         updateFriendRequestBadge(true);
     });
 
-    // Nghe khi mình chấp nhận lời mời của ai đó
+    // Nghe khi mÃ¬nh cháº¥p nháº­n lá»i má»i cá»§a ai Ä‘Ã³
     socket.on("you_accepted_friend_request", async(newFriend) => {
-        alert(`Bạn và ${newFriend.fullName} đã trở thành bạn bè!`);
+        alert(`Báº¡n vÃ  ${newFriend.fullName} Ä‘Ã£ trá»Ÿ thÃ nh báº¡n bÃ¨!`);
         try {
             await fetch(`${API_URL}/chat/conversations`, {
                 method: "POST",
@@ -934,9 +957,9 @@ function initizeChatSession(userData, userToken) {
         loadFriends();
     });
 
-    // Nghe khi lời mời của mình được chấp nhận
+    // Nghe khi lá»i má»i cá»§a mÃ¬nh Ä‘Æ°á»£c cháº¥p nháº­n
     socket.on("friend_request_accepted", async(userWhoAccepted) => {
-        alert(`${userWhoAccepted.fullName} đã chấp nhận lời mời của bạn!`);
+        alert(`${userWhoAccepted.fullName} Ä‘Ã£ cháº¥p nháº­n lá»i má»i cá»§a báº¡n!`);
         try {
             await fetch(`${API_URL}/chat/conversations`, {
                 method: "POST",
@@ -950,7 +973,7 @@ function initizeChatSession(userData, userToken) {
         loadConversations();
     });
 
-    // Nghe thông báo toàn cục
+    // Nghe thÃ´ng bÃ¡o toÃ n cá»¥c
     socket.on("new_global_notification", (notification) => {
         notificationsList.unshift(notification);
         updateNotificationBadge();
@@ -966,7 +989,7 @@ function initizeChatSession(userData, userToken) {
         ) {
             updateReadReceiptsDOM(readInfo);
         }
-        // Tối ưu hóa: Cập nhật DOM cục bộ lập tức thay vì gọi API loadConversations() dư thừa gây lag
+        // Tá»‘i Æ°u hÃ³a: Cáº­p nháº­t DOM cá»¥c bá»™ láº­p tá»©c thay vÃ¬ gá»i API loadConversations() dÆ° thá»«a gÃ¢y lag
         updateConversationUnreadBadgeLocal(conversationId);
     });
 
@@ -976,42 +999,42 @@ function initizeChatSession(userData, userToken) {
         const isFromMe = isSameId(msg.senderId, myId);
 
         if (isCurrentChat) {
-            // 1. Render tin nhắn ngay lập tức bằng tốc độ của Socket
+            // 1. Render tin nháº¯n ngay láº­p tá»©c báº±ng tá»‘c Ä‘á»™ cá»§a Socket
             displayMessage(msg);
 
-            // 2. Cập nhật trạng thái "Đã gửi" sau khi render
+            // 2. Cáº­p nháº­t tráº¡ng thÃ¡i "ÄÃ£ gá»­i" sau khi render
             updateReadReceiptsDOM();
 
-            // 3. Chỉ gửi "Đã xem" nếu mình là người NHẬN và ĐANG THỰC SỰ NHÌN VÀO KHUNG CHAT
+            // 3. Chá»‰ gá»­i "ÄÃ£ xem" náº¿u mÃ¬nh lÃ  ngÆ°á»i NHáº¬N vÃ  ÄANG THá»°C Sá»° NHÃŒN VÃ€O KHUNG CHAT
             if (!isFromMe && isChatAreaVisible()) {
                 emitMarkMessagesRead();
                 shouldMarkAsRead = true;
             }
 
-            // Xóa UI Typing và dừng âm thanh khi nhận được tin nhắn mới từ đối phương
+            // XÃ³a UI Typing vÃ  dá»«ng Ã¢m thanh khi nháº­n Ä‘Æ°á»£c tin nháº¯n má»›i tá»« Ä‘á»‘i phÆ°Æ¡ng
             if (!isFromMe) {
                 handleStopTyping();
             }
         }
 
-        // 4. Phát âm thanh và Rung điện thoại khi có tin nhắn mới từ người khác (Foreground)
+        // 4. PhÃ¡t Ã¢m thanh vÃ  Rung Ä‘iá»‡n thoáº¡i khi cÃ³ tin nháº¯n má»›i tá»« ngÆ°á»i khÃ¡c (Foreground)
         if (!isFromMe) {
-            // Chỉ phát âm thanh và rung nếu app ở Foreground (tránh phát trùng âm thanh hệ thống của iOS/Android)
+            // Chá»‰ phÃ¡t Ã¢m thanh vÃ  rung náº¿u app á»Ÿ Foreground (trÃ¡nh phÃ¡t trÃ¹ng Ã¢m thanh há»‡ thá»‘ng cá»§a iOS/Android)
             if (!isAppInBackground) {
-                // Phát âm thanh nhận tin nhắn synthetic
+                // PhÃ¡t Ã¢m thanh nháº­n tin nháº¯n synthetic
                 ChatSounds.playReceive();
 
-                // Rung phản hồi nhịp mạnh và lâu hơn (Rung 400ms, nghỉ 100ms, rung 400ms, nghỉ 100ms, rung 600ms)
+                // Rung pháº£n há»“i nhá»‹p máº¡nh vÃ  lÃ¢u hÆ¡n (Rung 400ms, nghá»‰ 100ms, rung 400ms, nghá»‰ 100ms, rung 600ms)
                 if (navigator.vibrate) {
                     try {
                         navigator.vibrate([400, 100, 400, 100, 600]);
                     } catch (err) {
-                        console.warn("Trình duyệt hoặc hệ điều hành từ chối cấp quyền rung:", err.message);
+                        console.warn("TrÃ¬nh duyá»‡t hoáº·c há»‡ Ä‘iá»u hÃ nh tá»« chá»‘i cáº¥p quyá»n rung:", err.message);
                     }
                 }
             }
 
-            // TÍNH NĂNG MỚI: TOAST IN-APP VÀ NATIVE NOTIFICATION (CAPACITOR)
+            // TÃNH NÄ‚NG Má»šI: TOAST IN-APP VÃ€ NATIVE NOTIFICATION (CAPACITOR)
             if (!isCurrentChat || isAppInBackground) {
                 if (isAppInBackground) {
                     sendNativeNotification(msg);
@@ -1021,11 +1044,11 @@ function initizeChatSession(userData, userToken) {
             }
         }
 
-        // Cập nhật DOM của danh sách trò chuyện (Chat List Item) thay vì gọi API
+        // Cáº­p nháº­t DOM cá»§a danh sÃ¡ch trÃ² chuyá»‡n (Chat List Item) thay vÃ¬ gá»i API
         updateChatListUI(msg, shouldMarkAsRead);
     });
 
-    // Gửi sự kiện Đã xem khi click vào ô nhập tin nhắn
+    // Gá»­i sá»± kiá»‡n ÄÃ£ xem khi click vÃ o Ã´ nháº­p tin nháº¯n
     const msgInput = document.getElementById("message-input");
     if (msgInput) {
         msgInput.addEventListener("focus", () => {
@@ -1033,12 +1056,12 @@ function initizeChatSession(userData, userToken) {
         });
     }
 
-    // Nghe khi lời mời của mình bị từ chối
+    // Nghe khi lá»i má»i cá»§a mÃ¬nh bá»‹ tá»« chá»‘i
     socket.on("friend_request_rejected", ({ userId }) => {
-        console.log(`Người dùng ${userId} đã từ chối lời mời của bạn.`);
+        console.log(`NgÆ°á»i dÃ¹ng ${userId} Ä‘Ã£ tá»« chá»‘i lá»i má»i cá»§a báº¡n.`);
     });
 
-    // Hàm xử lý dừng gõ phím, ẩn UI và dừng nhạc
+    // HÃ m xá»­ lÃ½ dá»«ng gÃµ phÃ­m, áº©n UI vÃ  dá»«ng nháº¡c
     function handleStopTyping() {
         const indicator = document.getElementById("typing-indicator");
         if (indicator) indicator.remove();
@@ -1047,13 +1070,13 @@ function initizeChatSession(userData, userToken) {
             typingSound.pause();
             typingSound.currentTime = 0;
         } catch (error) {
-            console.error("Lỗi khi dừng phát nhạc typing:", error);
+            console.error("Lá»—i khi dá»«ng phÃ¡t nháº¡c typing:", error);
         }
     }
 
-    // Nghe sự kiện "Đang gõ..." (typing)
+    // Nghe sá»± kiá»‡n "Äang gÃµ..." (typing)
     socket.on("typing", (info) => {
-        // Kiểm tra xem có đúng là người nhận hoặc cuộc trò chuyện hiện tại đang mở không
+        // Kiá»ƒm tra xem cÃ³ Ä‘Ãºng lÃ  ngÆ°á»i nháº­n hoáº·c cuá»™c trÃ² chuyá»‡n hiá»‡n táº¡i Ä‘ang má»Ÿ khÃ´ng
         const isCurrentChat = (info.senderId && info.senderId === currentChatPartnerId) ||
             (info.conversationId && info.conversationId === currentConversationId);
 
@@ -1064,8 +1087,8 @@ function initizeChatSession(userData, userToken) {
             indicator = document.createElement("div");
             indicator.id = "typing-indicator";
             indicator.className = "typing-indicator";
-            const displayName = info.senderName || (document.getElementById("chat-header-name") ? document.getElementById("chat-header-name").innerText : "Đối phương");
-            indicator.innerHTML = `<span><b>${displayName}</b> đang gõ</span><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+            const displayName = info.senderName || (document.getElementById("chat-header-name") ? document.getElementById("chat-header-name").innerText : "Äá»‘i phÆ°Æ¡ng");
+            indicator.innerHTML = `<span><b>${displayName}</b> Ä‘ang gÃµ</span><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
             const messagesContainer = document.getElementById("messages");
             if (messagesContainer) {
                 messagesContainer.appendChild(indicator);
@@ -1073,31 +1096,31 @@ function initizeChatSession(userData, userToken) {
             }
         }
 
-        // Phát nhạc soạn tin nhắn
+        // PhÃ¡t nháº¡c soáº¡n tin nháº¯n
         try {
             typingSound.play().catch(err => {
-                console.warn("DOMException: Trình duyệt chặn tự động phát âm thanh typing:", err.message);
+                console.warn("DOMException: TrÃ¬nh duyá»‡t cháº·n tá»± Ä‘á»™ng phÃ¡t Ã¢m thanh typing:", err.message);
             });
         } catch (error) {
             console.error("DOMException typingSound.play():", error);
         }
     });
 
-    // Nghe sự kiện "Dừng gõ" mới (stop-typing)
+    // Nghe sá»± kiá»‡n "Dá»«ng gÃµ" má»›i (stop-typing)
     socket.on("stop-typing", (info) => {
         if (info.senderId === currentChatPartnerId) {
             handleStopTyping();
         }
     });
 
-    // Nghe sự kiện "Dừng gõ" cũ (stop_typing)
+    // Nghe sá»± kiá»‡n "Dá»«ng gÃµ" cÅ© (stop_typing)
     socket.on("stop_typing", (info) => {
         if (info.conversationId === currentConversationId) {
             handleStopTyping();
         }
     });
 
-    // Nghe các sự kiện WebRTC
+    // Nghe cÃ¡c sá»± kiá»‡n WebRTC
     socket.on("incoming_call", handleIncomingCall);
     socket.on("did_upgrade_to_video", handleUpgradeToVideo);
     socket.on("call_rejected", handleCallRejected);
@@ -1107,9 +1130,9 @@ function initizeChatSession(userData, userToken) {
         endCall(false);
     });
 
-    // Nghe sự kiện thay đổi trạng thái hoạt động (online/offline)
+    // Nghe sá»± kiá»‡n thay Ä‘á»•i tráº¡ng thÃ¡i hoáº¡t Ä‘á»™ng (online/offline)
     socket.on("user_status_change", ({ userId, isOnline, lastActive }) => {
-        // 1. Cập nhật trong danh sách chat (sidebar)
+        // 1. Cáº­p nháº­t trong danh sÃ¡ch chat (sidebar)
         const sidebarItem = document.querySelector(`#user-list li[data-user-id="${userId}"]`);
         if (sidebarItem) {
             sidebarItem.dataset.isOnline = isOnline ? "true" : "false";
@@ -1121,7 +1144,7 @@ function initizeChatSession(userData, userToken) {
             }
         }
 
-        // 2. Cập nhật trong danh sách bạn bè (nếu có)
+        // 2. Cáº­p nháº­t trong danh sÃ¡ch báº¡n bÃ¨ (náº¿u cÃ³)
         const friendItem = document.querySelector(`.friend-request-item[data-user-id="${userId}"]`);
         if (friendItem) {
             friendItem.dataset.isOnline = isOnline ? "true" : "false";
@@ -1131,20 +1154,20 @@ function initizeChatSession(userData, userToken) {
             }
         }
 
-        // 3. Cập nhật ở Chat Header nếu đang chat với user này
+        // 3. Cáº­p nháº­t á»Ÿ Chat Header náº¿u Ä‘ang chat vá»›i user nÃ y
         if (typeof currentChatPartnerId !== "undefined" && isSameId(userId, currentChatPartnerId)) {
             updateHeaderStatusUI(isOnline, lastActive);
         }
     });
 
-    // Nghe sự kiện thu hồi tin nhắn
+    // Nghe sá»± kiá»‡n thu há»“i tin nháº¯n
     socket.on("message_recalled", ({ messageId, conversationId }) => {
         if (conversationId === currentConversationId) {
             const msgEl = document.getElementById(`msg-${messageId}`);
             if (msgEl) {
                 const content = msgEl.querySelector(".message-content");
                 if (content) {
-                    content.innerText = "Tin nhắn đã bị thu hồi";
+                    content.innerText = "Tin nháº¯n Ä‘Ã£ bá»‹ thu há»“i";
                     content.style.fontStyle = "italic";
                     content.style.color = "var(--text-light)";
                     content.style.background = "transparent";
@@ -1162,7 +1185,7 @@ function initizeChatSession(userData, userToken) {
         loadConversations();
     });
 
-    // Nghe sự kiện chỉnh sửa tin nhắn
+    // Nghe sá»± kiá»‡n chá»‰nh sá»­a tin nháº¯n
     socket.on("message_edited", ({ messageId, conversationId, newContent }) => {
         const msg = currentChatMessages.find((m) => m.id === messageId);
         if (msg) {
@@ -1177,7 +1200,7 @@ function initizeChatSession(userData, userToken) {
                 if (content) {
                     content.innerText = newContent;
 
-                    // Reset và tính toán lại các class emoji-only
+                    // Reset vÃ  tÃ­nh toÃ¡n láº¡i cÃ¡c class emoji-only
                     msgEl.classList.remove("emoji-only-message");
                     content.classList.remove("emoji-only-1", "emoji-only-2", "emoji-only-3");
 
@@ -1189,7 +1212,7 @@ function initizeChatSession(userData, userToken) {
 
                     const editedLabel = document.createElement("span");
                     editedLabel.className = "edited-label";
-                    editedLabel.innerText = " (đã chỉnh sửa)";
+                    editedLabel.innerText = " (Ä‘Ã£ chá»‰nh sá»­a)";
                     editedLabel.style.fontSize = "0.75rem";
                     editedLabel.style.color = "var(--text-light)";
                     editedLabel.style.fontStyle = "italic";
@@ -1200,15 +1223,15 @@ function initizeChatSession(userData, userToken) {
         loadConversations();
     });
 
-    // Nghe sự kiện cảm xúc
+    // Nghe sá»± kiá»‡n cáº£m xÃºc
     socket.on("message_reacted", ({ messageId, reactions, reaction, isRemoved }) => {
         const msgEl = document.getElementById(`msg-${messageId}`);
         if (msgEl) {
-            // Xác định ai là người thực hiện hành động thả/gỡ cảm xúc bằng cách so sánh dataset
+            // XÃ¡c Ä‘á»‹nh ai lÃ  ngÆ°á»i thá»±c hiá»‡n hÃ nh Ä‘á»™ng tháº£/gá»¡ cáº£m xÃºc báº±ng cÃ¡ch so sÃ¡nh dataset
             const oldReactions = msgEl.dataset.reactions ? JSON.parse(msgEl.dataset.reactions) : {};
             let changerId = null;
 
-            // Chuyển đổi dữ liệu mới nếu ở dạng chuỗi
+            // Chuyá»ƒn Ä‘á»•i dá»¯ liá»‡u má»›i náº¿u á»Ÿ dáº¡ng chuá»—i
             let newReactions = reactions;
             if (typeof newReactions === "string") {
                 try { newReactions = JSON.parse(newReactions); } catch (e) { newReactions = {}; }
@@ -1233,10 +1256,10 @@ function initizeChatSession(userData, userToken) {
                 }
             }
 
-            // Render giao diện mới
+            // Render giao diá»‡n má»›i
             renderReactions(msgEl, newReactions);
 
-            // Chỉ phát âm thanh và nổ hiệu ứng nếu không phải mình làm và là hành động thả cảm xúc
+            // Chá»‰ phÃ¡t Ã¢m thanh vÃ  ná»• hiá»‡u á»©ng náº¿u khÃ´ng pháº£i mÃ¬nh lÃ m vÃ  lÃ  hÃ nh Ä‘á»™ng tháº£ cáº£m xÃºc
             if (reaction && !isRemoved) {
                 if (changerId && !isSameId(changerId, myId)) {
                     createReactionBurst(messageId, reaction);
@@ -1246,7 +1269,7 @@ function initizeChatSession(userData, userToken) {
         }
     });
 
-    // Nghe sự kiện xoá cuộc trò chuyện
+    // Nghe sá»± kiá»‡n xoÃ¡ cuá»™c trÃ² chuyá»‡n
     socket.on("conversation_deleted", ({ conversationId }) => {
         if (isSameId(conversationId, currentConversationId)) {
             currentConversationId = "";
@@ -1259,7 +1282,7 @@ function initizeChatSession(userData, userToken) {
         loadConversations();
     });
 
-    // Nghe sự kiện thay đổi chủ đề chat
+    // Nghe sá»± kiá»‡n thay Ä‘á»•i chá»§ Ä‘á» chat
     socket.on("conversation_theme_changed", ({ conversationId, theme, systemMessage }) => {
         if (isSameId(conversationId, currentConversationId)) {
             applyChatTheme(theme);
@@ -1269,7 +1292,7 @@ function initizeChatSession(userData, userToken) {
         }
     });
 
-    // Nghe sự kiện thay đổi biệt danh (Nickname)
+    // Nghe sá»± kiá»‡n thay Ä‘á»•i biá»‡t danh (Nickname)
     socket.on("nickname_changed", ({ conversationId, targetUserId, nickname, nicknames, systemMessage }) => {
         if (isSameId(conversationId, currentConversationId)) {
             currentNicknames = nicknames || {};
@@ -1278,18 +1301,18 @@ function initizeChatSession(userData, userToken) {
                 displayMessage(systemMessage);
             }
         }
-        // Tải lại danh sách cuộc trò chuyện ở sidebar
+        // Táº£i láº¡i danh sÃ¡ch cuá»™c trÃ² chuyá»‡n á»Ÿ sidebar
         loadConversations();
     });
 
-    // Gắn sự kiện cho các nút trong cuộc gọi
+    // Gáº¯n sá»± kiá»‡n cho cÃ¡c nÃºt trong cuá»™c gá»i
     document.getElementById("reject-call-btn").onclick = () => endCall(true);
     document.getElementById("end-call-btn").onclick = () => endCall(true);
 
-    // Chuyển sang màn hình chat
+    // Chuyá»ƒn sang mÃ n hÃ¬nh chat
     document.getElementById("auth-screen").style.display = "none";
     document.getElementById("chat-screen").style.display = "flex";
-    // Hiển thị Tab Bar (đã chuyển ra ngoài #chat-screen)
+    // Hiá»ƒn thá»‹ Tab Bar (Ä‘Ã£ chuyá»ƒn ra ngoÃ i #chat-screen)
     const tabBar = document.getElementById("main-tab-bar");
     if (tabBar) tabBar.style.display = "";
 
@@ -1298,8 +1321,8 @@ function initizeChatSession(userData, userToken) {
     loadNotifications();
     updateNotificationPermissionUI();
 
-    // ── Khởi tạo tab mặc định (Tin nhắn) và vị trí thanh trượt slider-pill (Fix lỗi khuất tab khi mới vào app) ──
-    const defaultTab = document.querySelector('.sidebar .nav-item') || document.querySelector('.nav-item[title="Tin nhắn"]');
+    // â”€â”€ Khá»Ÿi táº¡o tab máº·c Ä‘á»‹nh (Tin nháº¯n) vÃ  vá»‹ trÃ­ thanh trÆ°á»£t slider-pill (Fix lá»—i khuáº¥t tab khi má»›i vÃ o app) â”€â”€
+    const defaultTab = document.querySelector('.sidebar .nav-item') || document.querySelector('.nav-item[title="Tin nháº¯n"]');
     if (defaultTab) {
         const originalSwitchingState = isSwitchingTab;
         isSwitchingTab = false;
@@ -1327,7 +1350,7 @@ function initizeChatSession(userData, userToken) {
     }
 }
 
-// --- ĐĂNG KÝ VÀ CẤU HÌNH FIREBASE CLOUD MESSAGING (LẤY FCM TOKEN) ---
+// --- ÄÄ‚NG KÃ VÃ€ Cáº¤U HÃŒNH FIREBASE CLOUD MESSAGING (Láº¤Y FCM TOKEN) ---
 function setupFirebaseMessaging(userToken) {
     if (typeof firebase !== "undefined") {
         try {
@@ -1343,19 +1366,19 @@ function setupFirebaseMessaging(userToken) {
             if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
             const messaging = firebase.messaging();
 
-            // Lắng nghe FCM khi app đang mở (Foreground) — tránh bỏ lỡ hoặc trùng lặp thông báo
+            // Láº¯ng nghe FCM khi app Ä‘ang má»Ÿ (Foreground) â€” trÃ¡nh bá» lá»¡ hoáº·c trÃ¹ng láº·p thÃ´ng bÃ¡o
             messaging.onMessage((payload) => {
-                console.log("📩 Nhận FCM notification khi app đang mở (foreground):", payload);
-                // Không cần hiển thị notification vì Socket.IO đã xử lý real-time
-                // Chỉ log để debug, tránh hiện notification trùng lặp
+                console.log("ðŸ“© Nháº­n FCM notification khi app Ä‘ang má»Ÿ (foreground):", payload);
+                // KhÃ´ng cáº§n hiá»ƒn thá»‹ notification vÃ¬ Socket.IO Ä‘Ã£ xá»­ lÃ½ real-time
+                // Chá»‰ log Ä‘á»ƒ debug, trÃ¡nh hiá»‡n notification trÃ¹ng láº·p
             });
 
-            // Đăng ký Service Worker tường minh
+            // ÄÄƒng kÃ½ Service Worker tÆ°á»ng minh
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('/firebase-messaging-sw.js')
                     .then((registration) => {
-                        console.log("🔥 Service Worker FCM đã được đăng ký thành công!");
-                        // Chủ động kiểm tra cập nhật mới để kích hoạt thay đổi tức thì
+                        console.log("ðŸ”¥ Service Worker FCM Ä‘Ã£ Ä‘Æ°á»£c Ä‘Äƒng kÃ½ thÃ nh cÃ´ng!");
+                        // Chá»§ Ä‘á»™ng kiá»ƒm tra cáº­p nháº­t má»›i Ä‘á»ƒ kÃ­ch hoáº¡t thay Ä‘á»•i tá»©c thÃ¬
                         registration.update();
                         return messaging.getToken({
                             serviceWorkerRegistration: registration,
@@ -1364,7 +1387,7 @@ function setupFirebaseMessaging(userToken) {
                     })
                     .then((currentToken) => {
                         if (currentToken) {
-                            console.log("🔥 Đã lấy được FCM Token:", currentToken);
+                            console.log("ðŸ”¥ ÄÃ£ láº¥y Ä‘Æ°á»£c FCM Token:", currentToken);
                             fetch(`${API_URL}/users/fcm-token`, {
                                     method: "POST",
                                     headers: {
@@ -1375,24 +1398,24 @@ function setupFirebaseMessaging(userToken) {
                                 })
                                 .then(res => res.json())
                                 .then(data => {
-                                    console.log("💾 Đã lưu thành công FCM Token lên server:", data);
+                                    console.log("ðŸ’¾ ÄÃ£ lÆ°u thÃ nh cÃ´ng FCM Token lÃªn server:", data);
                                 })
-                                .catch(err => console.error("❌ Lỗi gửi FCM Token lên Server:", err));
+                                .catch(err => console.error("âŒ Lá»—i gá»­i FCM Token lÃªn Server:", err));
                         } else {
-                            console.warn("⚠️ Không lấy được token FCM. Vui lòng kiểm tra cấu hình.");
+                            console.warn("âš ï¸ KhÃ´ng láº¥y Ä‘Æ°á»£c token FCM. Vui lÃ²ng kiá»ƒm tra cáº¥u hÃ¬nh.");
                         }
                     })
                     .catch((err) => {
-                        console.error("❌ Lỗi khi đăng ký Service Worker hoặc lấy token FCM:", err);
+                        console.error("âŒ Lá»—i khi Ä‘Äƒng kÃ½ Service Worker hoáº·c láº¥y token FCM:", err);
                     });
             } else {
-                // Fallback nếu trình duyệt không hỗ trợ Service Worker
+                // Fallback náº¿u trÃ¬nh duyá»‡t khÃ´ng há»— trá»£ Service Worker
                 messaging.getToken({
                         vapidKey: "BBtraQSvar7RExe_T8aVhoA3TebgLw0S-ucoMcuV-Oef-H7ULkJGWyBctnxfY5tLnawpWQ9Wn8Aihi-wJaLiGu0",
                     })
                     .then((currentToken) => {
                         if (currentToken) {
-                            console.log("🔥 Đã lấy được FCM Token (fallback):", currentToken);
+                            console.log("ðŸ”¥ ÄÃ£ láº¥y Ä‘Æ°á»£c FCM Token (fallback):", currentToken);
                             fetch(`${API_URL}/users/fcm-token`, {
                                 method: "POST",
                                 headers: {
@@ -1403,10 +1426,10 @@ function setupFirebaseMessaging(userToken) {
                             });
                         }
                     })
-                    .catch((err) => console.error("❌ Lỗi khi lấy FCM token fallback:", err));
+                    .catch((err) => console.error("âŒ Lá»—i khi láº¥y FCM token fallback:", err));
             }
         } catch (error) {
-            console.error("Lỗi cấu hình Firebase Frontend:", error);
+            console.error("Lá»—i cáº¥u hÃ¬nh Firebase Frontend:", error);
         }
     }
 }
@@ -1463,10 +1486,10 @@ function renderFriendSkeletons(container) {
     }
 }
 
-// 2. Tải danh sách cuộc trò chuyện gần đây
+// 2. Táº£i danh sÃ¡ch cuá»™c trÃ² chuyá»‡n gáº§n Ä‘Ã¢y
 async function loadConversations() {
     const userList = document.getElementById("user-list");
-    // Chỉ hiển thị skeleton nếu danh sách hiện tại đang trống (lần đầu load hoặc sau khi clear) để tránh nháy giao diện khi cập nhật ngầm
+    // Chá»‰ hiá»ƒn thá»‹ skeleton náº¿u danh sÃ¡ch hiá»‡n táº¡i Ä‘ang trá»‘ng (láº§n Ä‘áº§u load hoáº·c sau khi clear) Ä‘á»ƒ trÃ¡nh nhÃ¡y giao diá»‡n khi cáº­p nháº­t ngáº§m
     if (userList && (userList.children.length === 0 || userList.querySelector('.skeleton-chat-item'))) {
         renderConversationSkeletons(userList);
     }
@@ -1477,7 +1500,7 @@ async function loadConversations() {
         });
         if (!res.ok) {
             const errorText = await res.text();
-            throw new Error(`Không thể tải danh sách (HTTP ${res.status}): ${errorText.substring(0, 100) || "Máy chủ đang khởi động hoặc quá tải"}`);
+            throw new Error(`KhÃ´ng thá»ƒ táº£i danh sÃ¡ch (HTTP ${res.status}): ${errorText.substring(0, 100) || "MÃ¡y chá»§ Ä‘ang khá»Ÿi Ä‘á»™ng hoáº·c quÃ¡ táº£i"}`);
         }
         const data = await res.json();
         const userList = document.getElementById("user-list");
@@ -1485,7 +1508,7 @@ async function loadConversations() {
 
         if (!data.data || data.data.length === 0) {
             return (userList.innerHTML =
-                "<li style='color:#666; font-weight:normal; padding: 20px;'>Chưa có cuộc trò chuyện nào.<br><br>Hãy dùng ô tìm kiếm ở trên để tìm bạn bè theo Tên nhé!</li>");
+                "<li style='color:#666; font-weight:normal; padding: 20px;'>ChÆ°a cÃ³ cuá»™c trÃ² chuyá»‡n nÃ o.<br><br>HÃ£y dÃ¹ng Ã´ tÃ¬m kiáº¿m á»Ÿ trÃªn Ä‘á»ƒ tÃ¬m báº¡n bÃ¨ theo TÃªn nhÃ©!</li>");
         }
 
         data.data.forEach((item) => {
@@ -1496,29 +1519,29 @@ async function loadConversations() {
 
             if (otherMember) {
                 const user = otherMember.Users;
-                let lastMsg = "Bắt đầu trò chuyện!";
+                let lastMsg = "Báº¯t Ä‘áº§u trÃ² chuyá»‡n!";
                 let timeStr = "";
                 if (conv.Messages.length > 0) {
                     const firstMsg = conv.Messages[0];
                     const msgDate = firstMsg.createdAt ? new Date(firstMsg.createdAt) : new Date();
                     timeStr = `${msgDate.getHours().toString().padStart(2, "0")}:${msgDate.getMinutes().toString().padStart(2, "0")}`;
                     if (firstMsg.isRecalled) {
-                        lastMsg = "Tin nhắn đã bị thu hồi";
+                        lastMsg = "Tin nháº¯n Ä‘Ã£ bá»‹ thu há»“i";
                     } else if (firstMsg.type === "file") {
                         try {
                             const fileData = JSON.parse(firstMsg.content);
-                            lastMsg = `[ Tệp tin: ${fileData.fileName} ]`;
+                            lastMsg = `[ Tá»‡p tin: ${fileData.fileName} ]`;
                         } catch (e) {
-                            lastMsg = "[ Tệp tin ]";
+                            lastMsg = "[ Tá»‡p tin ]";
                         }
                     } else if (firstMsg.type === "audio") {
-                        lastMsg = "[ Tin nhắn thoại ]";
+                        lastMsg = "[ Tin nháº¯n thoáº¡i ]";
                     } else if (
                         firstMsg.content &&
                         (firstMsg.content.startsWith("data:image") ||
                             firstMsg.content.match(/\.(jpeg|jpg|gif|png)$/i))
                     ) {
-                        lastMsg = "[ Hình ảnh ]";
+                        lastMsg = "[ HÃ¬nh áº£nh ]";
                     } else {
                         lastMsg = firstMsg.content;
                     }
@@ -1544,7 +1567,7 @@ async function loadConversations() {
                 li.className = "conversation-item";
                 li.dataset.conversationId = conv.id;
 
-                // Lưu nicknames vào dataset để tra cứu sau này
+                // LÆ°u nicknames vÃ o dataset Ä‘á»ƒ tra cá»©u sau nÃ y
                 const nicksMap = {};
                 if (conv.ConversationMembers) {
                     conv.ConversationMembers.forEach(m => {
@@ -1567,7 +1590,7 @@ async function loadConversations() {
           </div>
           <div class="chat-list-content">
             <div class="chat-list-header">
-              <span class="chat-list-name">${otherMember.nickname || user.fullName || "Người dùng"}</span>
+              <span class="chat-list-name">${otherMember.nickname || user.fullName || "NgÆ°á»i dÃ¹ng"}</span>
               <div class="chat-list-right" style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
                 <span class="chat-list-time" style="font-size: 11px; color: var(--text-light);">${timeStr}</span>
                 ${unreadBadgeHtml}
@@ -1579,7 +1602,7 @@ async function loadConversations() {
             <i class="fas fa-ellipsis-v conv-options-btn" onclick="toggleConversationMenu(event, '${conv.id}')"></i>
             <div class="conv-dropdown-menu" id="conv-menu-${conv.id}">
               <div class="conv-menu-item text-danger" onclick="confirmDeleteConversation(event, '${conv.id}')">
-                <i class="fas fa-trash-alt"></i> Xóa cuộc trò chuyện
+                <i class="fas fa-trash-alt"></i> XÃ³a cuá»™c trÃ² chuyá»‡n
               </div>
             </div>
           </div>
@@ -1588,7 +1611,7 @@ async function loadConversations() {
             }
         });
     } catch (error) {
-        alert("Lỗi tải danh sách câu chuyện: " + error.message);
+        alert("Lá»—i táº£i danh sÃ¡ch cÃ¢u chuyá»‡n: " + error.message);
     }
     updateTotalMessagesBadge();
 }
@@ -1605,12 +1628,12 @@ function clearAndHideSearch() {
     if (mobileSearchInput) mobileSearchInput.value = "";
 }
 
-// 2.5 Tìm kiếm người dùng bằng Tên
+// 2.5 TÃ¬m kiáº¿m ngÆ°á»i dÃ¹ng báº±ng TÃªn
 async function searchUser() {
     const searchEl = document.getElementById("search-input");
     const mobileSearchEl = document.getElementById("mobile-search-input");
     const q = ((mobileSearchEl && mobileSearchEl.value.trim()) || (searchEl && searchEl.value.trim()) || "").trim();
-    if (!q) return alert("Xin vui lòng nhập Tên để tìm!");
+    if (!q) return alert("Xin vui lÃ²ng nháº­p TÃªn Ä‘á»ƒ tÃ¬m!");
 
     try {
         const res = await fetch(`${API_URL}/users/search?q=${q}`, {
@@ -1620,11 +1643,11 @@ async function searchUser() {
         const resultsDiv = document.getElementById("search-results");
         resultsDiv.style.display = "block";
         resultsDiv.innerHTML =
-            "<h4 style='margin:0 0 10px 0;'>Kết quả tìm kiếm:</h4>";
+            "<h4 style='margin:0 0 10px 0;'>Káº¿t quáº£ tÃ¬m kiáº¿m:</h4>";
 
         if (!data.data || data.data.length === 0) {
             resultsDiv.innerHTML +=
-                "<p style='margin:0;color:red;'>Không tìm thấy ai!</p>";
+                "<p style='margin:0;color:red;'>KhÃ´ng tÃ¬m tháº¥y ai!</p>";
             setTimeout(() => (resultsDiv.style.display = "none"), 3000);
             return;
         }
@@ -1645,22 +1668,22 @@ async function searchUser() {
           <div class="avatar" style="width:40px;height:40px;cursor:pointer;" onclick="showUserProfile('${user.id}'); clearAndHideSearch();"><img src="${avatarUrl}" style="width:100%;height:100%;border-radius:50%;"></div>
           <span style="font-weight:600;cursor:pointer;" onclick="showUserProfile('${user.id}'); clearAndHideSearch();">${user.fullName}</span>
         </div>
-        <button onclick="startChat('${user.id}', '${user.fullName}', '${avatarUrl}')" style="margin-top:12px;padding:8px;width:100%;background:var(--primary-color);color:white;border:none;border-radius:6px;cursor:pointer;">Nhắn tin</button>
+        <button onclick="startChat('${user.id}', '${user.fullName}', '${avatarUrl}')" style="margin-top:12px;padding:8px;width:100%;background:var(--primary-color);color:white;border:none;border-radius:6px;cursor:pointer;">Nháº¯n tin</button>
       `;
             resultsDiv.appendChild(div);
         });
     } catch (error) {
-        alert("Lỗi tìm kiếm: " + error.message);
+        alert("Lá»—i tÃ¬m kiáº¿m: " + error.message);
     }
 }
 
-// 3. Bắt đầu trò chuyện với ai đó
+// 3. Báº¯t Ä‘áº§u trÃ² chuyá»‡n vá»›i ai Ä‘Ã³
 async function startChat(receiverId, receiverName, receiverAvatar) {
     if (!receiverId) {
-        return alert("Lỗi: Không tìm thấy ID người nhận tin nhắn.");
+        return alert("Lá»—i: KhÃ´ng tÃ¬m tháº¥y ID ngÆ°á»i nháº­n tin nháº¯n.");
     }
     try {
-        // Đảm bảo chuyển tab về tab tin nhắn để ẩn hoàn toàn các tab danh bạ/tin tức khác ở chế độ nền
+        // Äáº£m báº£o chuyá»ƒn tab vá» tab tin nháº¯n Ä‘á»ƒ áº©n hoÃ n toÃ n cÃ¡c tab danh báº¡/tin tá»©c khÃ¡c á»Ÿ cháº¿ Ä‘á»™ ná»n
         const navMessages = document.querySelector('.nav-item[onclick*="tab-messages"]');
         if (navMessages) {
             switchTab("tab-messages", navMessages);
@@ -1676,8 +1699,8 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
         document.getElementById("chat-screen").classList.add("mobile-chat-active");
         document.body.classList.add("mobile-chat-active");
         
-        // Giữ nguyên header làm con của .chat-window để thừa hưởng vị trí và hiệu ứng chuyển động tự nhiên
-        // Không di chuyển ra body để tránh bị trôi lệch hoặc bị che khuất bởi trình duyệt khi cuộn/keyboard hiển thị
+        // Giá»¯ nguyÃªn header lÃ m con cá»§a .chat-window Ä‘á»ƒ thá»«a hÆ°á»Ÿng vá»‹ trÃ­ vÃ  hiá»‡u á»©ng chuyá»ƒn Ä‘á»™ng tá»± nhiÃªn
+        // KhÃ´ng di chuyá»ƒn ra body Ä‘á»ƒ trÃ¡nh bá»‹ trÃ´i lá»‡ch hoáº·c bá»‹ che khuáº¥t bá»Ÿi trÃ¬nh duyá»‡t khi cuá»™n/keyboard hiá»ƒn thá»‹
         const mobileHeader = document.getElementById("chat-header-container");
         document.getElementById("chat-header-placeholder").style.display = "none";
         currentChatPartnerId = receiverId;
@@ -1701,7 +1724,7 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
                 receiverName,
             )}&background=random`;
 
-        // Đồng bộ trạng thái online/offline của đối phương lên header
+        // Äá»“ng bá»™ tráº¡ng thÃ¡i online/offline cá»§a Ä‘á»‘i phÆ°Æ¡ng lÃªn header
         let partnerOnline = false;
         let partnerLastActive = null;
 
@@ -1713,7 +1736,7 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
 
         updateHeaderStatusUI(partnerOnline, partnerLastActive);
 
-        // Luôn fetch profile mới nhất để đảm bảo trạng thái hoạt động chính xác nhất
+        // LuÃ´n fetch profile má»›i nháº¥t Ä‘á»ƒ Ä‘áº£m báº£o tráº¡ng thÃ¡i hoáº¡t Ä‘á»™ng chÃ­nh xÃ¡c nháº¥t
         fetch(`/api/users/${receiverId}/profile`, {
                 headers: { Authorization: `Bearer ${token}` }
             })
@@ -1724,7 +1747,7 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
                     partnerLastActive = profileData.lastActive;
                     updateHeaderStatusUI(partnerOnline, partnerLastActive);
 
-                    // Đồng bộ lại vào sidebar dataset nếu có
+                    // Äá»“ng bá»™ láº¡i vÃ o sidebar dataset náº¿u cÃ³
                     if (sidebarItem) {
                         sidebarItem.dataset.isOnline = partnerOnline ? "true" : "false";
                         if (partnerLastActive) sidebarItem.dataset.lastActive = partnerLastActive;
@@ -1733,11 +1756,11 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
                     }
                 }
             })
-            .catch(e => console.warn("Không thể tải trạng thái hoạt động thời gian thực:", e));
+            .catch(e => console.warn("KhÃ´ng thá»ƒ táº£i tráº¡ng thÃ¡i hoáº¡t Ä‘á»™ng thá»i gian thá»±c:", e));
 
         document.getElementById("input-area").style.display = "flex";
 
-        // Reset ô nhập và trạng thái UI (thu gọn/Like) khi chuyển phòng chat
+        // Reset Ã´ nháº­p vÃ  tráº¡ng thÃ¡i UI (thu gá»n/Like) khi chuyá»ƒn phÃ²ng chat
         const messageInput = document.getElementById("message-input");
         if (messageInput) {
             messageInput.value = "";
@@ -1746,7 +1769,7 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
         const inputArea = document.getElementById("input-area");
         if (inputArea) {
             inputArea.classList.remove("is-typing");
-            // CSS media query đã xử lý mobile layout, không cần JavaScript override
+            // CSS media query Ä‘Ã£ xá»­ lÃ½ mobile layout, khÃ´ng cáº§n JavaScript override
         }
         const likeBtn = document.getElementById('like-btn');
         const sendBtn = document.getElementById('send-btn');
@@ -1764,21 +1787,21 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
 
         if (!res.ok) {
             const errorText = await res.text();
-            throw new Error(`Không thể kết nối phòng chat (HTTP ${res.status}): ${errorText.substring(0, 100)}`);
+            throw new Error(`KhÃ´ng thá»ƒ káº¿t ná»‘i phÃ²ng chat (HTTP ${res.status}): ${errorText.substring(0, 100)}`);
         }
 
         const data = await res.json();
-        if (!data.success) return alert("Đã tạo phòng chat: " + data.message);
+        if (!data.success) return alert("ÄÃ£ táº¡o phÃ²ng chat: " + data.message);
 
         currentConversationId = data.data.id;
         if (!currentConversationId || currentConversationId === "undefined" || currentConversationId === "null") {
-            throw new Error("ID phòng chat nhận về không hợp lệ.");
+            throw new Error("ID phÃ²ng chat nháº­n vá» khÃ´ng há»£p lá»‡.");
         }
 
         resetReadReceiptState(currentConversationId);
         clearAndHideSearch();
 
-        // Xóa unread-badge trên giao diện danh sách ngay lập tức (ẩn huy hiệu đi)
+        // XÃ³a unread-badge trÃªn giao diá»‡n danh sÃ¡ch ngay láº­p tá»©c (áº©n huy hiá»‡u Ä‘i)
         const userList = document.getElementById("user-list");
         if (userList) {
             const activeItems = userList.querySelectorAll("li.active");
@@ -1820,28 +1843,28 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
 
         if (!resMsg.ok) {
             const errorText = await resMsg.text();
-            throw new Error(`Không thể tải tin nhắn (HTTP ${resMsg.status}): ${errorText.substring(0, 100)}`);
+            throw new Error(`KhÃ´ng thá»ƒ táº£i tin nháº¯n (HTTP ${resMsg.status}): ${errorText.substring(0, 100)}`);
         }
 
         const dataMsg = await resMsg.json();
         messagesDiv.innerHTML = "";
 
-        // Lưu và áp dụng biệt danh
+        // LÆ°u vÃ  Ã¡p dá»¥ng biá»‡t danh
         currentNicknames = dataMsg.nicknames || {};
         updateUINames();
 
-        // Áp dụng chủ đề trò chuyện
+        // Ãp dá»¥ng chá»§ Ä‘á» trÃ² chuyá»‡n
         applyChatTheme(dataMsg.theme || "default");
 
-        // Cập nhật state phân trang
+        // Cáº­p nháº­t state phÃ¢n trang
         hasMoreMessages = dataMsg.hasMore || false;
         isLoadingMoreMessages = false;
 
         if (dataMsg.data) {
             currentChatMessages = dataMsg.data;
 
-            // ⚡ BATCH RENDER: Dùng DocumentFragment để gom tất cả DOM nodes
-            // rồi chèn 1 lần duy nhất → giảm reflow/repaint từ N lần xuống 1 lần
+            // âš¡ BATCH RENDER: DÃ¹ng DocumentFragment Ä‘á»ƒ gom táº¥t cáº£ DOM nodes
+            // rá»“i chÃ¨n 1 láº§n duy nháº¥t â†’ giáº£m reflow/repaint tá»« N láº§n xuá»‘ng 1 láº§n
             const fragment = document.createDocumentFragment();
             dataMsg.data.forEach((msg) => displayMessage(msg, fragment));
             messagesDiv.appendChild(fragment);
@@ -1849,7 +1872,7 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
             updateReadReceiptsDOM();
             emitMarkMessagesRead();
 
-            // Cuộn xuống cuối ngay lập tức và cuộn lại sau khi kết xuất để đảm bảo luôn hiển thị tin nhắn mới nhất
+            // Cuá»™n xuá»‘ng cuá»‘i ngay láº­p tá»©c vÃ  cuá»™n láº¡i sau khi káº¿t xuáº¥t Ä‘á»ƒ Ä‘áº£m báº£o luÃ´n hiá»ƒn thá»‹ tin nháº¯n má»›i nháº¥t
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
             requestAnimationFrame(() => {
                 messagesDiv.scrollTop = messagesDiv.scrollHeight;
@@ -1861,33 +1884,33 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
                 messagesDiv.scrollTop = messagesDiv.scrollHeight;
             }, 150);
 
-            // Tự động đồng bộ tin nhắn cuối cùng vào sidebar khi mở phòng chat để tránh lệch giao diện
+            // Tá»± Ä‘á»™ng Ä‘á»“ng bá»™ tin nháº¯n cuá»‘i cÃ¹ng vÃ o sidebar khi má»Ÿ phÃ²ng chat Ä‘á»ƒ trÃ¡nh lá»‡ch giao diá»‡n
             if (dataMsg.data.length > 0) {
                 const lastMsg = dataMsg.data[dataMsg.data.length - 1];
                 updateChatListUI(lastMsg, true);
             }
         }
 
-        // Gắn scroll listener cho infinite scroll ngược
+        // Gáº¯n scroll listener cho infinite scroll ngÆ°á»£c
         setupInfiniteScroll(messagesDiv);
     } catch (error) {
-        alert("Lỗi khi mở phòng trò chuyện: " + error.message);
+        alert("Lá»—i khi má»Ÿ phÃ²ng trÃ² chuyá»‡n: " + error.message);
     }
 }
 
 function startChatAndSwitchTab(receiverId, receiverName, receiverAvatar) {
     startChat(receiverId, receiverName, receiverAvatar);
-    const messagesTabNav = document.querySelector('.nav-item[title="Tin nhắn"]');
+    const messagesTabNav = document.querySelector('.nav-item[title="Tin nháº¯n"]');
     if (messagesTabNav) switchTab("tab-messages", messagesTabNav);
 }
 
-// --- HÀM CẬP NHẬT GIAO DIỆN CHAT LIST KHI CÓ TIN NHẮN MỚI ---
+// --- HÃ€M Cáº¬P NHáº¬T GIAO DIá»†N CHAT LIST KHI CÃ“ TIN NHáº®N Má»šI ---
 function updateChatListUI(msg, isRead = false) {
     try {
         const userList = document.getElementById("user-list");
         if (!userList) return;
 
-        // Tìm item bằng isSameId để tránh lệch chữ hoa/thường hoặc khoảng trắng giữa các UUID
+        // TÃ¬m item báº±ng isSameId Ä‘á»ƒ trÃ¡nh lá»‡ch chá»¯ hoa/thÆ°á»ng hoáº·c khoáº£ng tráº¯ng giá»¯a cÃ¡c UUID
         const items = userList.querySelectorAll("li");
         let chatItem = null;
         for (const item of items) {
@@ -1898,36 +1921,36 @@ function updateChatListUI(msg, isRead = false) {
         }
 
         if (!chatItem) {
-            // Nếu là cuộc trò chuyện mới tinh chưa có, tải lại toàn bộ danh sách
+            // Náº¿u lÃ  cuá»™c trÃ² chuyá»‡n má»›i tinh chÆ°a cÃ³, táº£i láº¡i toÃ n bá»™ danh sÃ¡ch
             loadConversations();
             return;
         }
 
-        // 1. Cập nhật nội dung text snippet mới nhất
+        // 1. Cáº­p nháº­t ná»™i dung text snippet má»›i nháº¥t
         const msgTextEl = chatItem.querySelector(".chat-list-msg");
         if (msgTextEl) {
             let snippet = msg.content || "";
-            if (msg.isRecalled) snippet = "Tin nhắn đã bị thu hồi";
-            else if (msg.type === "missed_call") snippet = "Cuộc gọi nhỡ";
+            if (msg.isRecalled) snippet = "Tin nháº¯n Ä‘Ã£ bá»‹ thu há»“i";
+            else if (msg.type === "missed_call") snippet = "Cuá»™c gá»i nhá»¡";
             else if (msg.type === "file") {
                 try {
                     const fileData = JSON.parse(msg.content);
-                    snippet = `[ Tệp tin: ${fileData.fileName} ]`;
+                    snippet = `[ Tá»‡p tin: ${fileData.fileName} ]`;
                 } catch (e) {
-                    snippet = "[ Tệp tin ]";
+                    snippet = "[ Tá»‡p tin ]";
                 }
-            } else if (msg.type === "audio") snippet = "[ Tin nhắn thoại ]";
+            } else if (msg.type === "audio") snippet = "[ Tin nháº¯n thoáº¡i ]";
             else if (
                 msg.content &&
                 (msg.content.startsWith("data:image") ||
                     msg.content.match(/\.(jpeg|jpg|gif|png)$/i))
             ) {
-                snippet = "[ Hình ảnh ]";
+                snippet = "[ HÃ¬nh áº£nh ]";
             }
 
             msgTextEl.innerText = snippet;
 
-            // In đậm nếu chưa đọc
+            // In Ä‘áº­m náº¿u chÆ°a Ä‘á»c
             if (!isRead && msg.senderId !== myId) {
                 msgTextEl.style.fontWeight = "600";
                 msgTextEl.style.color = "var(--text-dark)";
@@ -1937,7 +1960,7 @@ function updateChatListUI(msg, isRead = false) {
             }
         }
 
-        // 2. Tăng số đếm Badge nếu mình là người nhận và phòng chat đang đóng
+        // 2. TÄƒng sá»‘ Ä‘áº¿m Badge náº¿u mÃ¬nh lÃ  ngÆ°á»i nháº­n vÃ  phÃ²ng chat Ä‘ang Ä‘Ã³ng
         if (!isRead && msg.senderId !== myId) {
             const rightContainer = chatItem.querySelector(".chat-list-right");
             let badge = chatItem.querySelector(".unread-badge");
@@ -1955,22 +1978,22 @@ function updateChatListUI(msg, isRead = false) {
             }
         }
 
-        // 3. Cập nhật thời gian tin nhắn cuối cùng
+        // 3. Cáº­p nháº­t thá»i gian tin nháº¯n cuá»‘i cÃ¹ng
         const timeEl = chatItem.querySelector(".chat-list-time");
         if (timeEl) {
             const date = msg.createdAt ? new Date(msg.createdAt) : new Date();
             timeEl.innerText = `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
         }
 
-        // 4. Đẩy item lên vị trí đầu tiên của danh sách
+        // 4. Äáº©y item lÃªn vá»‹ trÃ­ Ä‘áº§u tiÃªn cá»§a danh sÃ¡ch
         userList.prepend(chatItem);
         updateTotalMessagesBadge();
     } catch (error) {
-        console.error("Lỗi trong updateChatListUI:", error);
+        console.error("Lá»—i trong updateChatListUI:", error);
     }
 }
 
-// --- TẢI LẠI ĐOẠN CHAT ---
+// --- Táº¢I Láº I ÄOáº N CHAT ---
 async function reloadCurrentChat() {
     if (!currentConversationId) return;
     try {
@@ -1987,49 +2010,49 @@ async function reloadCurrentChat() {
         const messagesDiv = document.getElementById("messages");
         messagesDiv.innerHTML = "";
 
-        // Lưu và áp dụng biệt danh
+        // LÆ°u vÃ  Ã¡p dá»¥ng biá»‡t danh
         currentNicknames = dataMsg.nicknames || {};
         updateUINames();
 
-        // Áp dụng chủ đề trò chuyện
+        // Ãp dá»¥ng chá»§ Ä‘á» trÃ² chuyá»‡n
         applyChatTheme(dataMsg.theme || "default");
 
-        // Cập nhật state phân trang
+        // Cáº­p nháº­t state phÃ¢n trang
         hasMoreMessages = dataMsg.hasMore || false;
         isLoadingMoreMessages = false;
 
         if (dataMsg.data) {
             currentChatMessages = dataMsg.data;
 
-            // ⚡ BATCH RENDER
+            // âš¡ BATCH RENDER
             const fragment = document.createDocumentFragment();
             dataMsg.data.forEach((msg) => displayMessage(msg, fragment));
             messagesDiv.appendChild(fragment);
 
             updateReadReceiptsDOM();
 
-            // Scroll xuống cuối 1 lần duy nhất
+            // Scroll xuá»‘ng cuá»‘i 1 láº§n duy nháº¥t
             requestAnimationFrame(() => {
                 messagesDiv.scrollTop = messagesDiv.scrollHeight;
             });
         }
 
-        // Gắn scroll listener cho infinite scroll ngược
+        // Gáº¯n scroll listener cho infinite scroll ngÆ°á»£c
         setupInfiniteScroll(messagesDiv);
     } catch (error) {
-        console.error("Lỗi reload chat:", error);
+        console.error("Lá»—i reload chat:", error);
     }
 }
 
-// --- INFINITE SCROLL: Tải thêm tin nhắn cũ khi cuộn lên đầu ---
+// --- INFINITE SCROLL: Táº£i thÃªm tin nháº¯n cÅ© khi cuá»™n lÃªn Ä‘áº§u ---
 let _scrollListenerAttached = false;
 
 function setupInfiniteScroll(messagesDiv) {
-    if (_scrollListenerAttached) return; // Chỉ gắn 1 lần
+    if (_scrollListenerAttached) return; // Chá»‰ gáº¯n 1 láº§n
     _scrollListenerAttached = true;
 
     messagesDiv.addEventListener("scroll", debounce(function() {
-        // Khi cuộn gần đến đầu khung chat (cách top < 80px)
+        // Khi cuá»™n gáº§n Ä‘áº¿n Ä‘áº§u khung chat (cÃ¡ch top < 80px)
         if (messagesDiv.scrollTop < 80 && hasMoreMessages && !isLoadingMoreMessages) {
             loadOlderMessages();
         }
@@ -2049,13 +2072,13 @@ async function loadOlderMessages() {
     isLoadingMoreMessages = true;
 
     try {
-        // Lấy ID tin nhắn cũ nhất hiện tại làm cursor
+        // Láº¥y ID tin nháº¯n cÅ© nháº¥t hiá»‡n táº¡i lÃ m cursor
         const oldestMsg = currentChatMessages[0];
         if (!oldestMsg) return;
 
         const messagesDiv = document.getElementById("messages");
 
-        // Ghi nhớ chiều cao scroll hiện tại trước khi thêm tin nhắn cũ
+        // Ghi nhá»› chiá»u cao scroll hiá»‡n táº¡i trÆ°á»›c khi thÃªm tin nháº¯n cÅ©
         const prevScrollHeight = messagesDiv.scrollHeight;
 
         const res = await fetch(
@@ -2070,17 +2093,17 @@ async function loadOlderMessages() {
         hasMoreMessages = data.hasMore || false;
 
         if (data.data && data.data.length > 0) {
-            // Chèn tin nhắn cũ vào ĐẦU mảng
+            // ChÃ¨n tin nháº¯n cÅ© vÃ o Äáº¦U máº£ng
             currentChatMessages = [...data.data, ...currentChatMessages];
 
-            // ⚡ BATCH RENDER: Gom tất cả vào DocumentFragment
+            // âš¡ BATCH RENDER: Gom táº¥t cáº£ vÃ o DocumentFragment
             const fragment = document.createDocumentFragment();
             data.data.forEach((msg) => displayMessage(msg, fragment));
 
-            // Chèn lên đầu khung chat (prepend)
+            // ChÃ¨n lÃªn Ä‘áº§u khung chat (prepend)
             messagesDiv.insertBefore(fragment, messagesDiv.firstChild);
 
-            // Giữ nguyên vị trí scroll (không nhảy lung tung)
+            // Giá»¯ nguyÃªn vá»‹ trÃ­ scroll (khÃ´ng nháº£y lung tung)
             requestAnimationFrame(() => {
                 messagesDiv.scrollTop = messagesDiv.scrollHeight - prevScrollHeight;
             });
@@ -2088,23 +2111,23 @@ async function loadOlderMessages() {
             updateReadReceiptsDOM();
         }
     } catch (error) {
-        console.error("Lỗi tải thêm tin nhắn cũ:", error);
+        console.error("Lá»—i táº£i thÃªm tin nháº¯n cÅ©:", error);
     } finally {
         isLoadingMoreMessages = false;
     }
 }
 
-// 1.5 Xử lý Đăng nhập thủ công
+// 1.5 Xá»­ lÃ½ ÄÄƒng nháº­p thá»§ cÃ´ng
 async function login() {
     try {
         const username = document.getElementById("login-username").value;
         const password = document.getElementById("login-password").value;
 
         if (!username || !password) {
-            return alert("Bạn ơi, nhập đủ tên người dùng và mật khẩu nhé!");
+            return alert("Báº¡n Æ¡i, nháº­p Ä‘á»§ tÃªn ngÆ°á»i dÃ¹ng vÃ  máº­t kháº©u nhÃ©!");
         }
 
-        showLoading("Đăng nhập...");
+        showLoading("ÄÄƒng nháº­p...");
 
         const res = await fetch(`${API_URL}/auth/login`, {
             method: "POST",
@@ -2118,16 +2141,16 @@ async function login() {
             localStorage.setItem("authToken", data.token);
             initizeChatSession(data.data, data.token);
         } else {
-            alert("Đăng nhập thất bại: " + data.message);
+            alert("ÄÄƒng nháº­p tháº¥t báº¡i: " + data.message);
         }
     } catch (error) {
-        alert("Lỗi kết nối máy chủ khi đăng nhập: " + error.message);
+        alert("Lá»—i káº¿t ná»‘i mÃ¡y chá»§ khi Ä‘Äƒng nháº­p: " + error.message);
     } finally {
         hideLoading();
     }
 }
 
-// --- HỆ THỐNG BADGE TIN NHẮN CHƯA ĐỌC ---
+// --- Há»† THá»NG BADGE TIN NHáº®N CHÆ¯A Äá»ŒC ---
 function updateTotalMessagesBadge() {
     const badgeEl = document.getElementById("messages-badge");
     if (!badgeEl) return;
@@ -2152,17 +2175,17 @@ function updateTotalMessagesBadge() {
     }
 }
 
-// --- HỆ THỐNG BADGE TIN TỨC CHƯA ĐỌC ---
+// --- Há»† THá»NG BADGE TIN Tá»¨C CHÆ¯A Äá»ŒC ---
 function updateNewsBadge() {
     const badgeEl = document.getElementById("news-badge");
     if (!badgeEl) return;
 
-    // Chỉ tính số tin tức chưa đọc trong danh sách hiện tại
+    // Chá»‰ tÃ­nh sá»‘ tin tá»©c chÆ°a Ä‘á»c trong danh sÃ¡ch hiá»‡n táº¡i
     const unreadCount = allNewsItems.filter(item => !readNewsIds.includes(item.id)).length;
 
-    // Chỉ hiển thị badge nếu có tin tức chưa đọc
+    // Chá»‰ hiá»ƒn thá»‹ badge náº¿u cÃ³ tin tá»©c chÆ°a Ä‘á»c
     if (unreadCount > 0) {
-        // Hiển thị với giới hạn 99+ để badge luôn nhỏ gọn
+        // Hiá»ƒn thá»‹ vá»›i giá»›i háº¡n 99+ Ä‘á»ƒ badge luÃ´n nhá» gá»n
         badgeEl.innerText = unreadCount > 99 ? "99+" : unreadCount;
         badgeEl.style.display = "flex";
     } else {
@@ -2170,7 +2193,7 @@ function updateNewsBadge() {
     }
 }
 
-// --- HỆ THỐNG YÊU CẦU BẠN BÈ ---
+// --- Há»† THá»NG YÃŠU Cáº¦U Báº N BÃˆ ---
 function updateFriendRequestBadge(shouldAnimate = false) {
     const badge = document.getElementById("contacts-badge");
     const navItem = badge.parentElement;
@@ -2193,7 +2216,7 @@ function renderFriendRequests() {
     if (!listEl) return;
 
     if (pendingFriendRequests.length === 0) {
-        listEl.innerHTML = `<p style="color: var(--text-light); text-align: center;">Không có lời mời kết bạn nào.</p>`;
+        listEl.innerHTML = `<p style="color: var(--text-light); text-align: center;">KhÃ´ng cÃ³ lá»i má»i káº¿t báº¡n nÃ o.</p>`;
         return;
     }
 
@@ -2215,8 +2238,8 @@ function renderFriendRequests() {
         <span style="cursor: pointer;" onclick="showUserProfile('${user.id}')">${user.fullName}</span>
       </div>
       <div class="friend-request-actions">
-        <button class="btn-decline" onclick="rejectFriendRequest('${req.id}')">Từ chối</button>
-        <button class="btn-accept" onclick="acceptFriendRequest('${req.id}')">Chấp nhận</button>
+        <button class="btn-decline" onclick="rejectFriendRequest('${req.id}')">Tá»« chá»‘i</button>
+        <button class="btn-accept" onclick="acceptFriendRequest('${req.id}')">Cháº¥p nháº­n</button>
       </div>
     `;
         listEl.appendChild(itemEl);
@@ -2237,7 +2260,7 @@ async function searchUserForFriend() {
 
         if (!data.data || data.data.length === 0) {
             resultsDiv.innerHTML =
-                "<p style='margin:0;color:red;'> Không tìm thấy ai!</p>";
+                "<p style='margin:0;color:red;'> KhÃ´ng tÃ¬m tháº¥y ai!</p>";
             return;
         }
 
@@ -2257,27 +2280,27 @@ async function searchUserForFriend() {
           <div class="avatar" style="width:40px;height:40px;cursor:pointer;" onclick="showUserProfile('${user.id}')"><img src="${avatarUrl}" style="width:100%;height:100%;border-radius:50%;"></div>
           <span style="cursor:pointer;" onclick="showUserProfile('${user.id}')">${user.fullName}</span>
         </div>
-        <button class="btn-send-request" id="send-req-btn-${user.id}" onclick="sendFriendRequest('${user.id}')">Gửi lời mời</button>
+        <button class="btn-send-request" id="send-req-btn-${user.id}" onclick="sendFriendRequest('${user.id}')">Gá»­i lá»i má»i</button>
       `;
             resultsDiv.appendChild(div);
         });
     } catch (error) {
-        alert("Lỗi tìm kiếm: " + error.message);
+        alert("Lá»—i tÃ¬m kiáº¿m: " + error.message);
     }
 }
 
 function sendFriendRequest(receiverId) {
-    if (!socket) return alert("Chưa kết nối tới server!");
+    if (!socket) return alert("ChÆ°a káº¿t ná»‘i tá»›i server!");
     socket.emit("send_friend_request", { receiverId });
     const btn = document.getElementById(`send-req-btn-${receiverId}`);
     if (btn) {
-        btn.innerText = "Đã gửi";
+        btn.innerText = "ÄÃ£ gá»­i";
         btn.disabled = true;
     }
 }
 
 function acceptFriendRequest(requestId) {
-    if (!socket) return alert("Chưa kết nối tới server!");
+    if (!socket) return alert("ChÆ°a káº¿t ná»‘i tá»›i server!");
     socket.emit("accept_friend_request", { requestId });
     pendingFriendRequests = pendingFriendRequests.filter(
         (req) => req.id !== requestId,
@@ -2287,7 +2310,7 @@ function acceptFriendRequest(requestId) {
 }
 
 function rejectFriendRequest(requestId) {
-    if (!socket) return alert("Chưa kết nối tới server!");
+    if (!socket) return alert("ChÆ°a káº¿t ná»‘i tá»›i server!");
     socket.emit("reject_friend_request", { requestId });
     pendingFriendRequests = pendingFriendRequests.filter(
         (req) => req.id !== requestId,
@@ -2296,12 +2319,12 @@ function rejectFriendRequest(requestId) {
     updateFriendRequestBadge();
 }
 
-// --- TẢI DANH SÁCH BẠN BÈ ---
+// --- Táº¢I DANH SÃCH Báº N BÃˆ ---
 async function loadFriends() {
     const listEl = document.getElementById("friends-list");
     if (!listEl) return;
 
-    // Chỉ hiển thị skeleton nếu danh sách hiện tại đang trống để tránh nháy giao diện khi cập nhật ngầm
+    // Chá»‰ hiá»ƒn thá»‹ skeleton náº¿u danh sÃ¡ch hiá»‡n táº¡i Ä‘ang trá»‘ng Ä‘á»ƒ trÃ¡nh nhÃ¡y giao diá»‡n khi cáº­p nháº­t ngáº§m
     if (listEl.children.length === 0 || listEl.querySelector('.skeleton-friend-item')) {
         renderFriendSkeletons(listEl);
     }
@@ -2312,12 +2335,12 @@ async function loadFriends() {
         });
         if (!res.ok) {
             const errorText = await res.text();
-            throw new Error(`Không thể tải bạn bè (HTTP ${res.status}): ${errorText.substring(0, 100) || "Lỗi máy chủ"}`);
+            throw new Error(`KhÃ´ng thá»ƒ táº£i báº¡n bÃ¨ (HTTP ${res.status}): ${errorText.substring(0, 100) || "Lá»—i mÃ¡y chá»§"}`);
         }
         const data = await res.json();
 
         if (!data.data || data.data.length === 0) {
-            listEl.innerHTML = `<p style="color: var(--text-light); text-align: center;">Chưa có bạn bè nào.</p>`;
+            listEl.innerHTML = `<p style="color: var(--text-light); text-align: center;">ChÆ°a cÃ³ báº¡n bÃ¨ nÃ o.</p>`;
             return;
         }
 
@@ -2343,21 +2366,21 @@ async function loadFriends() {
         </div>
         <div class="friend-request-actions">
           <button class="btn-chat-friend btn-outline" onclick="startChatAndSwitchTab('${user.id}', '${user.fullName
-                }', '${avatarUrl}')"><i class="far fa-comment-dots"></i> Nhắn tin</button>
+                }', '${avatarUrl}')"><i class="far fa-comment-dots"></i> Nháº¯n tin</button>
           <button class="btn-delete-friend" onclick="removeFriend('${user.id
-                }')" title="Xóa bạn bè"><i class="fas fa-trash-alt"></i></button>
+                }')" title="XÃ³a báº¡n bÃ¨"><i class="fas fa-trash-alt"></i></button>
         </div>
       `;
             listEl.appendChild(itemEl);
         });
     } catch (err) {
-        console.error("Lỗi tải danh sách bạn bè", err);
+        console.error("Lá»—i táº£i danh sÃ¡ch báº¡n bÃ¨", err);
     }
 }
 
-// --- XÓA BẠN BÈ ---
+// --- XÃ“A Báº N BÃˆ ---
 async function removeFriend(friendId) {
-    const consent = await customConfirm("Xóa bạn bè", "Bạn có chắc chắn muốn xóa người này khỏi danh sách bạn bè?", "Xóa bạn", "Hủy", true);
+    const consent = await customConfirm("XÃ³a báº¡n bÃ¨", "Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n xÃ³a ngÆ°á»i nÃ y khá»i danh sÃ¡ch báº¡n bÃ¨?", "XÃ³a báº¡n", "Há»§y", true);
     if (!consent) return;
 
     try {
@@ -2368,9 +2391,9 @@ async function removeFriend(friendId) {
         const data = await res.json();
         if (data.success) {
             loadFriends();
-            loadConversations(); // Tải lại cả danh sách chat
+            loadConversations(); // Táº£i láº¡i cáº£ danh sÃ¡ch chat
 
-            // Nếu đang chat với người vừa xóa, đóng cửa sổ chat lại
+            // Náº¿u Ä‘ang chat vá»›i ngÆ°á»i vá»«a xÃ³a, Ä‘Ã³ng cá»­a sá»• chat láº¡i
             if (currentChatPartnerId === friendId) {
                 closeChatMobile();
                 document.getElementById("chat-header-placeholder").style.display =
@@ -2382,20 +2405,20 @@ async function removeFriend(friendId) {
                 currentChatPartnerId = null;
             }
         } else {
-            alert("Lỗi khi xóa bạn: " + data.message);
+            alert("Lá»—i khi xÃ³a báº¡n: " + data.message);
         }
     } catch (err) {
-        alert("Lỗi kết nối khi xóa bạn bè!");
+        alert("Lá»—i káº¿t ná»‘i khi xÃ³a báº¡n bÃ¨!");
     }
 }
 
-// Đếm số lượng emoji nếu tin nhắn chỉ chứa toàn emoji (tối đa 3 emoji)
+// Äáº¿m sá»‘ lÆ°á»£ng emoji náº¿u tin nháº¯n chá»‰ chá»©a toÃ n emoji (tá»‘i Ä‘a 3 emoji)
 function getEmojiOnlyCount(text) {
     if (!text) return 0;
     const cleanText = text.trim();
     if (!cleanText) return 0;
 
-    // Regex khớp chính xác các emoji bao gồm cả skin tones và ZWJ sequences
+    // Regex khá»›p chÃ­nh xÃ¡c cÃ¡c emoji bao gá»“m cáº£ skin tones vÃ  ZWJ sequences
     const emojiRegex = /(\p{Extended_Pictographic}|\p{Emoji_Presentation})(\u200d\p{Extended_Pictographic})*/gu;
     const matches = cleanText.match(emojiRegex) || [];
 
@@ -2409,12 +2432,12 @@ function getEmojiOnlyCount(text) {
     return 0;
 }
 
-// 4. Hiển thị tin nhắn lên màn hình
+// 4. Hiá»ƒn thá»‹ tin nháº¯n lÃªn mÃ n hÃ¬nh
 function displayMessage(msg, targetContainer = null) {
-    // CHỐT CHẶN: Nếu tin nhắn đã được render (bởi Socket) thì bỏ qua để tránh trùng lặp
+    // CHá»T CHáº¶N: Náº¿u tin nháº¯n Ä‘Ã£ Ä‘Æ°á»£c render (bá»Ÿi Socket) thÃ¬ bá» qua Ä‘á»ƒ trÃ¡nh trÃ¹ng láº·p
     if (document.getElementById(`msg-${msg.id}`)) return;
 
-    // ✨ Hợp nhất tin nhắn tạm (optimistic UI) nếu có để tránh trùng lặp và kẹt spinner
+    // âœ¨ Há»£p nháº¥t tin nháº¯n táº¡m (optimistic UI) náº¿u cÃ³ Ä‘á»ƒ trÃ¡nh trÃ¹ng láº·p vÃ  káº¹t spinner
     if (msg.senderId === myId && msg.id && !msg.id.toString().startsWith("optimistic-")) {
         const optMsg = currentChatMessages.find(m =>
             m.id &&
@@ -2426,17 +2449,17 @@ function displayMessage(msg, targetContainer = null) {
         if (optMsg) {
             const optimisticEl = document.getElementById(`msg-${optMsg.id}`);
             if (optimisticEl) {
-                console.log("✨ Hợp nhất thành công tin nhắn tạm:", optMsg.id, "->", msg.id);
-                // Đổi ID và dataset
+                console.log("âœ¨ Há»£p nháº¥t thÃ nh cÃ´ng tin nháº¯n táº¡m:", optMsg.id, "->", msg.id);
+                // Äá»•i ID vÃ  dataset
                 optimisticEl.id = `msg-${msg.id}`;
                 optimisticEl.dataset.messageId = msg.id;
                 optimisticEl.style.opacity = "1";
 
-                // Cập nhật trong mảng currentChatMessages
+                // Cáº­p nháº­t trong máº£ng currentChatMessages
                 const idx = currentChatMessages.indexOf(optMsg);
                 if (idx !== -1) currentChatMessages[idx] = msg;
 
-                return; // Trả về sớm, không tạo phần tử mới!
+                return; // Tráº£ vá» sá»›m, khÃ´ng táº¡o pháº§n tá»­ má»›i!
             }
         }
     }
@@ -2454,7 +2477,7 @@ function displayMessage(msg, targetContainer = null) {
     messageElement.dataset.senderId = msg.senderId || "";
     messageElement.dataset.isRead = msg.isRead ? "true" : "false";
 
-    // Hiển thị Tin nhắn hệ thống (System message như thông báo đổi chủ đề)
+    // Hiá»ƒn thá»‹ Tin nháº¯n há»‡ thá»‘ng (System message nhÆ° thÃ´ng bÃ¡o Ä‘á»•i chá»§ Ä‘á»)
     if (msg.type === "system") {
         messageElement.className = "message system-message";
         const messageBody = document.createElement("div");
@@ -2482,7 +2505,7 @@ function displayMessage(msg, targetContainer = null) {
         return;
     }
 
-    // Hiển thị giao diện Cuộc gọi nhỡ (Tin nhắn hệ thống)
+    // Hiá»ƒn thá»‹ giao diá»‡n Cuá»™c gá»i nhá»¡ (Tin nháº¯n há»‡ thá»‘ng)
     if (msg.type === "missed_call") {
         messageElement.className = "message system-message";
         const messageBody = document.createElement("div");
@@ -2490,7 +2513,7 @@ function displayMessage(msg, targetContainer = null) {
         const messageContent = document.createElement("div");
         messageContent.className = "message-content";
 
-        const callText = msg.content || "Cuộc gọi nhỡ";
+        const callText = msg.content || "Cuá»™c gá»i nhá»¡";
         messageContent.innerHTML = `<div class="missed-call-icon"><i class="fas fa-phone-slash"></i></div><span>${callText}</span>`;
 
         messageBody.appendChild(messageContent);
@@ -2533,7 +2556,7 @@ function displayMessage(msg, targetContainer = null) {
     messageContent.className = "message-content";
 
     if (msg.isRecalled) {
-        messageContent.innerText = "Tin nhắn đã bị thu hồi";
+        messageContent.innerText = "Tin nháº¯n Ä‘Ã£ bá»‹ thu há»“i";
         messageContent.style.fontStyle = "italic";
         messageContent.style.color = "var(--text-light)";
         messageContent.style.background = "transparent";
@@ -2574,7 +2597,7 @@ function displayMessage(msg, targetContainer = null) {
                     const link = document.createElement("a");
                     link.href = fileData.url || fileData.base64;
                     link.download = fileData.fileName;
-                    // Nếu là URL ngoài, mở tab mới thay vì tự động tạo click
+                    // Náº¿u lÃ  URL ngoÃ i, má»Ÿ tab má»›i thay vÃ¬ tá»± Ä‘á»™ng táº¡o click
                     if (fileData.url) {
                         link.target = "_blank";
                     }
@@ -2586,8 +2609,8 @@ function displayMessage(msg, targetContainer = null) {
                 messageContent.style.background = "transparent";
                 messageContent.style.padding = "0";
             } catch (err) {
-                console.error("Lỗi parse file message:", err);
-                messageContent.innerText = "[ Tệp tin bị lỗi ]";
+                console.error("Lá»—i parse file message:", err);
+                messageContent.innerText = "[ Tá»‡p tin bá»‹ lá»—i ]";
             }
         } else if (msg.type === "audio") {
             messageContent.innerHTML = `
@@ -2602,13 +2625,13 @@ function displayMessage(msg, targetContainer = null) {
                     msg.content.startsWith("http") ||
                     msg.content.match(/\.(jpeg|jpg|gif|png)(\?.*)?$/i)))
         ) {
-            messageContent.innerHTML = `<img src="${msg.content}" class="message-image" loading="lazy" onload="if(typeof window.scrollToBottomInstant === 'function') window.scrollToBottomInstant()" onclick="openLightbox(this.src)" alt="Ảnh tin nhắn" />`;
+            messageContent.innerHTML = `<img src="${msg.content}" class="message-image" loading="lazy" onload="if(typeof window.scrollToBottomInstant === 'function') window.scrollToBottomInstant()" onclick="openLightbox(this.src)" alt="áº¢nh tin nháº¯n" />`;
             messageContent.style.background = "transparent";
             messageContent.style.padding = "0";
         } else {
             messageContent.innerText = msg.content;
 
-            // Xử lý Emoji cỡ lớn nếu tin nhắn chỉ chứa từ 1 đến 3 emoji
+            // Xá»­ lÃ½ Emoji cá»¡ lá»›n náº¿u tin nháº¯n chá»‰ chá»©a tá»« 1 Ä‘áº¿n 3 emoji
             const emojiCount = getEmojiOnlyCount(msg.content);
             if (emojiCount > 0) {
                 messageElement.classList.add("emoji-only-message");
@@ -2618,7 +2641,7 @@ function displayMessage(msg, targetContainer = null) {
             if (msg.isEdited) {
                 const editedLabel = document.createElement("span");
                 editedLabel.className = "edited-label";
-                editedLabel.innerText = " (đã chỉnh sửa)";
+                editedLabel.innerText = " (Ä‘Ã£ chá»‰nh sá»­a)";
                 editedLabel.style.fontSize = "0.75rem";
                 editedLabel.style.color = "var(--text-light)";
                 editedLabel.style.fontStyle = "italic";
@@ -2626,17 +2649,17 @@ function displayMessage(msg, targetContainer = null) {
             }
         }
 
-        // Nâng cấp: Hiển thị tin nhắn trích dẫn (Replied Message Preview)
+        // NÃ¢ng cáº¥p: Hiá»ƒn thá»‹ tin nháº¯n trÃ­ch dáº«n (Replied Message Preview)
         if (msg.replyMessageId) {
             let parentMsg = msg.replyMessage;
 
-            // Nếu chưa có đối tượng do backend đính kèm, tìm trong mảng cục bộ
+            // Náº¿u chÆ°a cÃ³ Ä‘á»‘i tÆ°á»£ng do backend Ä‘Ã­nh kÃ¨m, tÃ¬m trong máº£ng cá»¥c bá»™
             if (!parentMsg) {
                 const localParent = currentChatMessages.find((m) => m.id === msg.replyMessageId);
                 if (localParent) {
-                    let parentSenderName = "Người dùng";
+                    let parentSenderName = "NgÆ°á»i dÃ¹ng";
                     if (localParent.senderId === myId) {
-                        parentSenderName = "Bạn";
+                        parentSenderName = "Báº¡n";
                     } else if (localParent.Users) {
                         parentSenderName = localParent.Users.fullName;
                     } else {
@@ -2657,31 +2680,31 @@ function displayMessage(msg, targetContainer = null) {
                 const replyBox = document.createElement("div");
                 replyBox.className = "replied-message-box";
 
-                let parentSenderName = parentMsg.senderName || "Người dùng";
+                let parentSenderName = parentMsg.senderName || "NgÆ°á»i dÃ¹ng";
                 if (parentMsg.senderId === myId) {
-                    parentSenderName = "Bạn";
+                    parentSenderName = "Báº¡n";
                 }
 
                 let parentText = parentMsg.content;
                 if (parentMsg.isRecalled) {
-                    parentText = "Tin nhắn đã bị thu hồi";
+                    parentText = "Tin nháº¯n Ä‘Ã£ bá»‹ thu há»“i";
                 } else if (parentMsg.type === "file") {
                     try {
                         const fileData = JSON.parse(parentMsg.content);
-                        parentText = `[ Tệp tin: ${fileData.fileName} ]`;
+                        parentText = `[ Tá»‡p tin: ${fileData.fileName} ]`;
                     } catch (e) {
-                        parentText = "[ Tệp tin ]";
+                        parentText = "[ Tá»‡p tin ]";
                     }
                 } else if (parentMsg.type === "audio") {
-                    parentText = "[ Tin nhắn thoại ]";
+                    parentText = "[ Tin nháº¯n thoáº¡i ]";
                 } else if (
                     parentMsg.content &&
                     (parentMsg.content.startsWith("data:image/") ||
                         parentMsg.content.match(/\.(jpeg|jpg|gif|png)$/i))
                 ) {
-                    parentText = "[ Hình ảnh ]";
+                    parentText = "[ HÃ¬nh áº£nh ]";
                 } else if (parentMsg.type === "missed_call") {
-                    parentText = "[ Cuộc gọi nhỡ ]";
+                    parentText = "[ Cuá»™c gá»i nhá»¡ ]";
                 }
 
                 replyBox.innerHTML = `
@@ -2698,13 +2721,13 @@ function displayMessage(msg, targetContainer = null) {
             }
         }
 
-        // TẠO NÚT THẢ CẢM XÚC (Reaction)
+        // Táº O NÃšT THáº¢ Cáº¢M XÃšC (Reaction)
         const reactBtn = document.createElement("div");
         reactBtn.className = "action-item react-btn";
         reactBtn.innerHTML = '<i class="far fa-smile"></i>';
         const reactionPalette = document.createElement("div");
         reactionPalette.className = "reaction-palette";
-        const EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "😡"];
+        const EMOJIS = ["ðŸ‘", "â¤ï¸", "ðŸ˜‚", "ðŸ˜®", "ðŸ˜¢", "ðŸ˜¡"];
         EMOJIS.forEach((emoji) => {
             const emojiSpan = document.createElement("span");
             emojiSpan.innerText = emoji;
@@ -2732,7 +2755,7 @@ function displayMessage(msg, targetContainer = null) {
             reactionPalette.classList.toggle("show");
         };
 
-        // MENU TÙY CHỌN
+        // MENU TÃ™Y CHá»ŒN
         const moreBtn = document.createElement("div");
         moreBtn.className = "action-item more-btn";
         moreBtn.innerHTML = '<i class="fas fa-ellipsis-h"></i>';
@@ -2741,7 +2764,7 @@ function displayMessage(msg, targetContainer = null) {
 
         const replyOption = document.createElement("div");
         replyOption.className = "menu-item reply-action";
-        replyOption.innerText = "Trả lời";
+        replyOption.innerText = "Tráº£ lá»i";
         replyOption.onclick = (e) => {
             e.stopPropagation();
             const currentMsgId = messageElement.dataset.messageId;
@@ -2754,7 +2777,7 @@ function displayMessage(msg, targetContainer = null) {
         if (!msg.isRecalled) {
             const copyOption = document.createElement("div");
             copyOption.className = "menu-item copy-action";
-            copyOption.innerText = "Sao chép";
+            copyOption.innerText = "Sao chÃ©p";
             copyOption.onclick = (e) => {
                 e.stopPropagation();
                 copyMessageText(msg.content);
@@ -2765,11 +2788,11 @@ function displayMessage(msg, targetContainer = null) {
         }
 
         if (msg.senderId === myId) {
-            // Sửa tin nhắn (chỉ cho tin nhắn văn bản chưa thu hồi)
+            // Sá»­a tin nháº¯n (chá»‰ cho tin nháº¯n vÄƒn báº£n chÆ°a thu há»“i)
             if (!msg.isRecalled && (!msg.type || msg.type === "text")) {
                 const editOption = document.createElement("div");
                 editOption.className = "menu-item edit-action";
-                editOption.innerText = "Sửa tin nhắn";
+                editOption.innerText = "Sá»­a tin nháº¯n";
                 editOption.onclick = (e) => {
                     e.stopPropagation();
                     const currentMsgId = messageElement.dataset.messageId;
@@ -2784,7 +2807,7 @@ function displayMessage(msg, targetContainer = null) {
 
             const recallOption = document.createElement("div");
             recallOption.className = "menu-item text-danger";
-            recallOption.innerText = "Thu hồi tin nhắn";
+            recallOption.innerText = "Thu há»“i tin nháº¯n";
             recallOption.onclick = (e) => {
                 e.stopPropagation();
                 const currentMsgId = messageElement.dataset.messageId;
@@ -2796,7 +2819,7 @@ function displayMessage(msg, targetContainer = null) {
 
             const deleteOption = document.createElement("div");
             deleteOption.className = "menu-item";
-            deleteOption.innerText = "Xóa ở phía tôi";
+            deleteOption.innerText = "XÃ³a á»Ÿ phÃ­a tÃ´i";
             deleteOption.onclick = (e) => {
                 e.stopPropagation();
                 const currentMsgId = messageElement.dataset.messageId;
@@ -2808,7 +2831,7 @@ function displayMessage(msg, targetContainer = null) {
         } else {
             const deleteOption = document.createElement("div");
             deleteOption.className = "menu-item";
-            deleteOption.innerText = "Xóa ở phía tôi";
+            deleteOption.innerText = "XÃ³a á»Ÿ phÃ­a tÃ´i";
             deleteOption.onclick = (e) => {
                 e.stopPropagation();
                 const currentMsgId = messageElement.dataset.messageId;
@@ -2838,7 +2861,7 @@ function displayMessage(msg, targetContainer = null) {
         const replyBtn = document.createElement("div");
         replyBtn.className = "action-item reply-btn";
         replyBtn.innerHTML = '<i class="fas fa-reply"></i>';
-        replyBtn.title = "Trả lời";
+        replyBtn.title = "Tráº£ lá»i";
         replyBtn.onclick = (e) => {
             e.stopPropagation();
             const currentMsgId = messageElement.dataset.messageId;
@@ -2856,7 +2879,7 @@ function displayMessage(msg, targetContainer = null) {
 
         renderReactions(messageBody, msg.reactions);
 
-        // Vuốt kéo để trả lời (Swipe left/right to reply on mobile and desktop)
+        // Vuá»‘t kÃ©o Ä‘á»ƒ tráº£ lá»i (Swipe left/right to reply on mobile and desktop)
         let isDragging = false;
         let startX = 0;
         let startY = 0;
@@ -2869,7 +2892,7 @@ function displayMessage(msg, targetContainer = null) {
         messageElement.appendChild(swipeIndicator);
 
         messageBody.addEventListener("pointerdown", (e) => {
-            if (e.button !== 0) return; // Chỉ nhận chuột trái
+            if (e.button !== 0) return; // Chá»‰ nháº­n chuá»™t trÃ¡i
             isDragging = true;
             startX = e.clientX;
             startY = e.clientY;
@@ -2883,20 +2906,23 @@ function displayMessage(msg, targetContainer = null) {
             const diffX = e.clientX - startX;
             const diffY = e.clientY - startY;
 
-            if (!isHorizontalDrag && Math.abs(diffX) > 8 && Math.abs(diffX) > Math.abs(diffY) * 1.2) {
+            // FIX iOS #5: TÄƒng threshold kÃ©o ngang cho iOS WKWebView Ä‘á»ƒ trÃ¡nh káº¹t scroll
+            const _isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            const swipeThreshold = _isIOSDevice ? 14 : 8;
+            if (!isHorizontalDrag && Math.abs(diffX) > swipeThreshold && Math.abs(diffX) > Math.abs(diffY) * 1.2) {
                 isHorizontalDrag = true;
-                messageBody.setPointerCapture(e.pointerId); // Chỉ capture khi thực sự kéo ngang
+                messageBody.setPointerCapture(e.pointerId); // Chá»‰ capture khi thá»±c sá»± kÃ©o ngang
             }
 
             if (isHorizontalDrag) {
                 if (e.cancelable) e.preventDefault();
 
-                // Công thức cản lực kéo vô hạn (rubber-banding) giống iOS / Messenger
+                // CÃ´ng thá»©c cáº£n lá»±c kÃ©o vÃ´ háº¡n (rubber-banding) giá»‘ng iOS / Messenger
                 const maxDrag = 80;
                 dragX = Math.sign(diffX) * (maxDrag * (1 - Math.exp(-Math.abs(diffX) / 65)));
                 messageBody.style.transform = `translateX(${dragX}px)`;
 
-                // Định vị indicator nằm bên trái hay bên phải dựa vào hướng kéo
+                // Äá»‹nh vá»‹ indicator náº±m bÃªn trÃ¡i hay bÃªn pháº£i dá»±a vÃ o hÆ°á»›ng kÃ©o
                 if (dragX > 0) {
                     swipeIndicator.style.left = "-45px";
                     swipeIndicator.style.right = "auto";
@@ -2905,7 +2931,7 @@ function displayMessage(msg, targetContainer = null) {
                     swipeIndicator.style.right = "-45px";
                 }
 
-                // Tăng kích thước phóng to dần của icon theo khoảng cách vuốt
+                // TÄƒng kÃ­ch thÆ°á»›c phÃ³ng to dáº§n cá»§a icon theo khoáº£ng cÃ¡ch vuá»‘t
                 const scale = Math.min(1.1, Math.abs(dragX) / 40);
                 swipeIndicator.style.transform = `translateY(-50%) scale(${scale})`;
                 swipeIndicator.style.opacity = Math.min(1, Math.abs(dragX) / 30);
@@ -2922,7 +2948,7 @@ function displayMessage(msg, targetContainer = null) {
             if (!isDragging) return;
             isDragging = false;
 
-            // Hiệu ứng đàn hồi nẩy lò xo cực mượt (easeOutBack)
+            // Hiá»‡u á»©ng Ä‘Ã n há»“i náº©y lÃ² xo cá»±c mÆ°á»£t (easeOutBack)
             messageBody.style.transition = "transform 0.3s cubic-bezier(0.175, 0.885, 0.45, 1.4)";
             messageBody.style.transform = "translateX(0px)";
 
@@ -2943,7 +2969,7 @@ function displayMessage(msg, targetContainer = null) {
         messageBody.addEventListener("pointerup", endDrag);
         messageBody.addEventListener("pointercancel", endDrag);
 
-        // Xử lý nhấn giữ trên di động
+        // Xá»­ lÃ½ nháº¥n giá»¯ trÃªn di Ä‘á»™ng
         let pressTimer;
         let isLongPress = false;
         let longPressStartY = 0;
@@ -2954,12 +2980,14 @@ function displayMessage(msg, targetContainer = null) {
                 if (window.innerWidth > 768) return;
                 longPressStartY = e.touches[0].clientY;
                 isLongPress = false;
+                // FIX iOS #6: Long-press 250ms quÃ¡ ngáº¯n cho iOS, dá»… trigger nháº§m khi scroll cháº­m
+                const _isIOSLp = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
                 pressTimer = setTimeout(() => {
                     isLongPress = true;
                     showMobileOverlay(messageElement);
                     const palette = messageElement.querySelector(".reaction-palette");
                     if (palette) palette.classList.add("show");
-                }, 250);
+                }, _isIOSLp ? 380 : 250);
             }, { passive: true },
         );
 
@@ -2984,30 +3012,31 @@ function displayMessage(msg, targetContainer = null) {
             }
         });
 
-        // Xử lý Double click / Double tap thả tim giống Messenger
+        // Xá»­ lÃ½ Double click / Double tap tháº£ tim giá»‘ng Messenger
         let lastTap = 0;
 
         const handleDoubleTap = (e) => {
-            reactToMessage(msg.id, "❤️");
+            reactToMessage(msg.id, "â¤ï¸");
 
-            // Hiển thị hiệu ứng trái tim bay giữa tin nhắn
+            // Hiá»ƒn thá»‹ hiá»‡u á»©ng trÃ¡i tim bay giá»¯a tin nháº¯n
             const heart = document.createElement("div");
             heart.className = "heart-pop-animation";
-            heart.innerHTML = "❤️";
+            heart.innerHTML = "â¤ï¸";
             messageContent.appendChild(heart);
             setTimeout(() => heart.remove(), 800);
         };
 
-        // Cho mobile (Tránh trễ 300ms click và tránh zoom)
+        // Cho mobile (TrÃ¡nh trá»… 300ms click vÃ  trÃ¡nh zoom)
         messageContent.addEventListener("touchend", (e) => {
             const currentTime = new Date().getTime();
             const tapLength = currentTime - lastTap;
             if (tapLength < 300 && tapLength > 0) {
                 e.preventDefault();
+                e.stopPropagation(); // FIX iOS #7: NgÄƒn event bubble lÃªn gÃ¢y zoom
                 handleDoubleTap(e);
             }
             lastTap = currentTime;
-        });
+        }, { passive: false }); // FIX iOS #7: passive: false Ä‘á»ƒ preventDefault hoáº¡t Ä‘á»™ng cháº¯c cháº¯n
 
         // Cho desktop
         messageContent.addEventListener("dblclick", (e) => {
@@ -3016,7 +3045,7 @@ function displayMessage(msg, targetContainer = null) {
         });
     }
 
-    // Định dạng và hiển thị thời gian gửi tin nhắn
+    // Äá»‹nh dáº¡ng vÃ  hiá»ƒn thá»‹ thá»i gian gá»­i tin nháº¯n
     const metaElement = document.createElement("div");
     metaElement.className = "message-meta";
     const timeElement = document.createElement("span");
@@ -3026,7 +3055,7 @@ function displayMessage(msg, targetContainer = null) {
     timeElement.innerText = `${hours}:${minutes}`;
     metaElement.appendChild(timeElement);
 
-    // Trạng thái "Đã gửi" chỉ dành cho tin nhắn của bản thân
+    // Tráº¡ng thÃ¡i "ÄÃ£ gá»­i" chá»‰ dÃ nh cho tin nháº¯n cá»§a báº£n thÃ¢n
     if (msg.senderId === myId) {
         const statusElement = document.createElement("span");
         statusElement.className = "message-status";
@@ -3036,17 +3065,17 @@ function displayMessage(msg, targetContainer = null) {
     messageElement.appendChild(messageBody);
     messageElement.appendChild(metaElement);
 
-    // Nếu có targetContainer (batch render) → chèn vào fragment, không chèn trực tiếp vào DOM
+    // Náº¿u cÃ³ targetContainer (batch render) â†’ chÃ¨n vÃ o fragment, khÃ´ng chÃ¨n trá»±c tiáº¿p vÃ o DOM
     if (targetContainer) {
         targetContainer.appendChild(messageElement);
     } else {
-        // Render đơn lẻ (realtime socket) → chèn trực tiếp và scroll THÔNG MINH
+        // Render Ä‘Æ¡n láº» (realtime socket) â†’ chÃ¨n trá»±c tiáº¿p vÃ  scroll THÃ”NG MINH
         messagesDiv.appendChild(messageElement);
-        // updateReadReceiptsDOM() được gọi một lần duy nhất sau khi toàn bộ tin nhắn đã render xong
-        // (trong startChat / reloadCurrentChat / socket receive_message). Không gọi ở đây để tránh flicker.
+        // updateReadReceiptsDOM() Ä‘Æ°á»£c gá»i má»™t láº§n duy nháº¥t sau khi toÃ n bá»™ tin nháº¯n Ä‘Ã£ render xong
+        // (trong startChat / reloadCurrentChat / socket receive_message). KhÃ´ng gá»i á»Ÿ Ä‘Ã¢y Ä‘á»ƒ trÃ¡nh flicker.
         
-        // CHỈ auto-scroll nếu người dùng đang ở gần cuối danh sách tin nhắn
-        // Nếu họ đang kéo lên xem tin cũ → KHÔNG scroll để không gây khó chịu
+        // CHá»ˆ auto-scroll náº¿u ngÆ°á»i dÃ¹ng Ä‘ang á»Ÿ gáº§n cuá»‘i danh sÃ¡ch tin nháº¯n
+        // Náº¿u há» Ä‘ang kÃ©o lÃªn xem tin cÅ© â†’ KHÃ”NG scroll Ä‘á»ƒ khÃ´ng gÃ¢y khÃ³ chá»‹u
         if (typeof window.smartScrollToBottom === "function") {
             window.smartScrollToBottom();
         } else if (typeof window.scrollToBottomSmooth === "function") {
@@ -3056,24 +3085,24 @@ function displayMessage(msg, targetContainer = null) {
         }
     }
 }
-// 5. Gửi tin nhắn bất đồng bộ
+// 5. Gá»­i tin nháº¯n báº¥t Ä‘á»“ng bá»™
 function sendMessage(imageContent = null) {
     const input = document.getElementById("message-input");
     const content = imageContent || input.value.trim();
 
     if (!currentConversationId) {
-        return alert("Bạn quên chưa chọn người để trò chuyện rồi (Cột danh sách bên trái)!");
+        return alert("Báº¡n quÃªn chÆ°a chá»n ngÆ°á»i Ä‘á»ƒ trÃ² chuyá»‡n rá»“i (Cá»™t danh sÃ¡ch bÃªn trÃ¡i)!");
     }
 
     if (!content) return;
 
-    // Chặn để thực hiện sửa tin nhắn thay vì gửi mới (không áp dụng cho gửi Like)
-    if (editingMessage && !imageContent && content !== '👍') {
+    // Cháº·n Ä‘á»ƒ thá»±c hiá»‡n sá»­a tin nháº¯n thay vÃ¬ gá»­i má»›i (khÃ´ng Ã¡p dá»¥ng cho gá»­i Like)
+    if (editingMessage && !imageContent && content !== 'ðŸ‘') {
         const messageIdToEdit = editingMessage.id;
         input.value = "";
-        input.style.height = 'auto'; // Reset chiều cao
+        input.style.height = 'auto'; // Reset chiá»u cao
 
-        // Trả UI về mặc định
+        // Tráº£ UI vá» máº·c Ä‘á»‹nh
         const inputArea = document.getElementById('input-area');
         if (inputArea) inputArea.classList.remove('is-typing');
         if (document.getElementById('like-btn')) document.getElementById('like-btn').style.display = 'flex';
@@ -3085,8 +3114,8 @@ function sendMessage(imageContent = null) {
     }
 
     input.value = "";
-    if (!imageContent || imageContent === '👍') {
-        // Trả UI về mặc định
+    if (!imageContent || imageContent === 'ðŸ‘') {
+        // Tráº£ UI vá» máº·c Ä‘á»‹nh
         input.style.height = 'auto';
         const inputArea = document.getElementById('input-area');
         if (inputArea) inputArea.classList.remove('is-typing');
@@ -3094,7 +3123,7 @@ function sendMessage(imageContent = null) {
         if (document.getElementById('send-btn')) document.getElementById('send-btn').style.display = 'none';
     }
 
-    if ((!imageContent || imageContent === '👍') && socket) {
+    if ((!imageContent || imageContent === 'ðŸ‘') && socket) {
         if (currentChatPartnerId) {
             socket.emit("stop-typing", { receiverId: currentChatPartnerId });
         }
@@ -3104,7 +3133,7 @@ function sendMessage(imageContent = null) {
         });
     }
 
-    // ✨ OPTIMISTIC UI: Hiển thị tin nhắn ngay lập tức
+    // âœ¨ OPTIMISTIC UI: Hiá»ƒn thá»‹ tin nháº¯n ngay láº­p tá»©c
     const optimisticId = `optimistic-${Date.now()}`;
     const optimisticMsg = {
         id: optimisticId,
@@ -3148,7 +3177,7 @@ function sendMessage(imageContent = null) {
                 const idx = currentChatMessages.findIndex(m => m.id === optimisticId);
                 if (idx !== -1) currentChatMessages[idx] = data.data;
             } else {
-                alert("Server từ chối gửi tin nhắn: " + data.message);
+                alert("Server tá»« chá»‘i gá»­i tin nháº¯n: " + data.message);
                 const optimisticEl = document.getElementById(`msg-${optimisticId}`);
                 if (optimisticEl) optimisticEl.remove();
                 const idx = currentChatMessages.findIndex(m => m.id === optimisticId);
@@ -3156,7 +3185,7 @@ function sendMessage(imageContent = null) {
             }
         })
         .catch((err) => {
-            alert("Lỗi kết nối mạng: " + err.message);
+            alert("Lá»—i káº¿t ná»‘i máº¡ng: " + err.message);
             const optimisticEl = document.getElementById(`msg-${optimisticId}`);
             if (optimisticEl) optimisticEl.remove();
             const idx = currentChatMessages.findIndex(m => m.id === optimisticId);
@@ -3164,7 +3193,7 @@ function sendMessage(imageContent = null) {
         });
 }
 
-// 6. Bấm phím Enter để gửi & Sự kiện gõ phím
+// 6. Báº¥m phÃ­m Enter Ä‘á»ƒ gá»­i & Sá»± kiá»‡n gÃµ phÃ­m
 const messageInput = document.getElementById("message-input");
 if (messageInput) {
     messageInput.addEventListener("keydown", function(e) {
@@ -3175,19 +3204,19 @@ if (messageInput) {
     });
 
     messageInput.addEventListener("input", function() {
-        // Tự động giãn dòng nhưng giới hạn tối đa
+        // Tá»± Ä‘á»™ng giÃ£n dÃ²ng nhÆ°ng giá»›i háº¡n tá»‘i Ä‘a
         this.style.height = 'auto';
-        const newHeight = Math.min(this.scrollHeight, 80); // Giới hạn max 80px
+        const newHeight = Math.min(this.scrollHeight, 80); // Giá»›i háº¡n max 80px
         this.style.height = newHeight + 'px';
         this.style.overflowY = this.scrollHeight > 80 ? 'scroll' : 'hidden';
 
-        // Neo cuộn danh sách tin nhắn để không bị lệch khi chiều cao ô nhập thay đổi
+        // Neo cuá»™n danh sÃ¡ch tin nháº¯n Ä‘á»ƒ khÃ´ng bá»‹ lá»‡ch khi chiá»u cao Ã´ nháº­p thay Ä‘á»•i
         if (window.innerWidth <= 768) {
             scrollToBottomInstant();
         } else {
             scrollToBottomSmooth();
         }
-        // Logic của Messenger: Thay Like thành Gửi, thu gọn menu trái
+        // Logic cá»§a Messenger: Thay Like thÃ nh Gá»­i, thu gá»n menu trÃ¡i
         const inputArea = document.getElementById('input-area');
         const likeBtn = document.getElementById('like-btn');
         const sendBtn = document.getElementById('send-btn');
@@ -3206,7 +3235,7 @@ if (messageInput) {
             if (sendBtn) sendBtn.style.display = 'none';
         }
 
-        // Phát sự kiện Socket Typing
+        // PhÃ¡t sá»± kiá»‡n Socket Typing
         if (!socket) return;
         if (currentChatPartnerId) {
             socket.emit("typing", { receiverId: currentChatPartnerId, senderName: myName });
@@ -3262,21 +3291,21 @@ if (messageInput) {
     };
     window.scrollToBottomInstant = scrollToBottomInstant;
 
-    // Khi người dùng bấm click vào ô nhập (Focus) -> thu gọn menu trái để nhường chỗ
+    // Khi ngÆ°á»i dÃ¹ng báº¥m click vÃ o Ã´ nháº­p (Focus) -> thu gá»n menu trÃ¡i Ä‘á»ƒ nhÆ°á»ng chá»—
     messageInput.addEventListener("focus", function() {
         const inputArea = document.getElementById('input-area');
         if (inputArea) inputArea.classList.add('is-typing');
         if (typeof closeEmojiPicker === "function") closeEmojiPicker();
 
-        // Trên mobile: KHÔNG tự gọi scrollToBottomInstant ở đây nữa.
-        // Việc neo cuộn đã được visualViewport 'resize' (debounce 120ms) đảm nhiệm
-        // sau khi bàn phím lên xong hẳn, tránh 2 nguồn gọi chồng chéo.
+        // TrÃªn mobile: KHÃ”NG tá»± gá»i scrollToBottomInstant á»Ÿ Ä‘Ã¢y ná»¯a.
+        // Viá»‡c neo cuá»™n Ä‘Ã£ Ä‘Æ°á»£c visualViewport 'resize' (debounce 120ms) Ä‘áº£m nhiá»‡m
+        // sau khi bÃ n phÃ­m lÃªn xong háº³n, trÃ¡nh 2 nguá»“n gá»i chá»“ng chÃ©o.
         if (window.innerWidth > 768) {
             scrollToBottomSmooth();
         }
     });
 
-    // Đảm bảo click/tap vào ô nhập cũng lập tức thu gọn menu chức năng trái
+    // Äáº£m báº£o click/tap vÃ o Ã´ nháº­p cÅ©ng láº­p tá»©c thu gá»n menu chá»©c nÄƒng trÃ¡i
     messageInput.addEventListener("click", function() {
         const inputArea = document.getElementById('input-area');
         if (inputArea) inputArea.classList.add('is-typing');
@@ -3285,18 +3314,18 @@ if (messageInput) {
         }
     });
 
-    // Khi người dùng bấm ra ngoài (Blur) -> hiển thị lại menu trái nếu ô nhập trống
+    // Khi ngÆ°á»i dÃ¹ng báº¥m ra ngoÃ i (Blur) -> hiá»ƒn thá»‹ láº¡i menu trÃ¡i náº¿u Ã´ nháº­p trá»‘ng
     messageInput.addEventListener("blur", function() {
         const inputArea = document.getElementById('input-area');
         if (this.value.trim().length === 0) {
             if (inputArea) inputArea.classList.remove('is-typing');
         }
-        // Việc trả viewport về vị trí gốc đã do 'focusout' + visualViewport lo,
-        // không cần window.scrollTo thủ công ở đây nữa.
+        // Viá»‡c tráº£ viewport vá» vá»‹ trÃ­ gá»‘c Ä‘Ã£ do 'focusout' + visualViewport lo,
+        // khÃ´ng cáº§n window.scrollTo thá»§ cÃ´ng á»Ÿ Ä‘Ã¢y ná»¯a.
     });
 }
 
-// Xử lý nút mũi tên mở rộng lại cụm ảnh/file khi đang gõ
+// Xá»­ lÃ½ nÃºt mÅ©i tÃªn má»Ÿ rá»™ng láº¡i cá»¥m áº£nh/file khi Ä‘ang gÃµ
 const expandBtnUI = document.getElementById('expand-btn');
 if (expandBtnUI) {
     expandBtnUI.addEventListener('click', function(e) {
@@ -3309,7 +3338,7 @@ if (expandBtnUI) {
     });
 }
 
-// 10. Đóng khung trò chuyện trên di động
+// 10. ÄÃ³ng khung trÃ² chuyá»‡n trÃªn di Ä‘á»™ng
 function closeChatMobile() {
     document.getElementById("chat-screen").classList.remove("mobile-chat-active");
     document.body.classList.remove("mobile-chat-active");
@@ -3317,7 +3346,7 @@ function closeChatMobile() {
     document.documentElement.style.removeProperty('--vv-offset');
     document.documentElement.style.removeProperty('--keyboard-shift');
     
-    // Trả header lại vào trong .chat-window để hiển thị bình thường trên desktop
+    // Tráº£ header láº¡i vÃ o trong .chat-window Ä‘á»ƒ hiá»ƒn thá»‹ bÃ¬nh thÆ°á»ng trÃªn desktop
     const mobileHeader = document.getElementById("chat-header-container");
     const mobileChatWindow = document.querySelector(".chat-window");
     if (mobileHeader && mobileChatWindow) {
@@ -3325,7 +3354,7 @@ function closeChatMobile() {
     }
 }
 
-// 7. Sự kiện Gửi Hình ảnh
+// 7. Sá»± kiá»‡n Gá»­i HÃ¬nh áº£nh
 const imageUploadInput = document.getElementById("image-upload");
 if (imageUploadInput) {
     imageUploadInput.addEventListener("change", async function(e) {
@@ -3333,14 +3362,14 @@ if (imageUploadInput) {
         if (!file) return;
 
         try {
-            showLoading("Đang xử lý và nén ảnh...");
+            showLoading("Äang xá»­ lÃ½ vÃ  nÃ©n áº£nh...");
             const compressedBase64 = await compressImage(file, 1200, 1200, 0.85);
             hideLoading();
             sendMessage(compressedBase64);
         } catch (err) {
-            console.error("Lỗi nén ảnh:", err);
+            console.error("Lá»—i nÃ©n áº£nh:", err);
             hideLoading();
-            // Fallback gửi ảnh gốc nếu lỗi nén
+            // Fallback gá»­i áº£nh gá»‘c náº¿u lá»—i nÃ©n
             const reader = new FileReader();
             reader.onload = function(event) {
                 sendMessage(event.target.result);
@@ -3350,7 +3379,7 @@ if (imageUploadInput) {
     });
 }
 
-// Sự kiện Chụp và gửi hình ảnh qua Camera
+// Sá»± kiá»‡n Chá»¥p vÃ  gá»­i hÃ¬nh áº£nh qua Camera
 const cameraUploadInput = document.getElementById("camera-upload");
 if (cameraUploadInput) {
     cameraUploadInput.addEventListener("change", async function(e) {
@@ -3358,14 +3387,14 @@ if (cameraUploadInput) {
         if (!file) return;
 
         try {
-            showLoading("Đang xử lý và nén ảnh...");
+            showLoading("Äang xá»­ lÃ½ vÃ  nÃ©n áº£nh...");
             const compressedBase64 = await compressImage(file, 1200, 1200, 0.85);
             hideLoading();
             sendMessage(compressedBase64);
         } catch (err) {
-            console.error("Lỗi nén ảnh từ camera:", err);
+            console.error("Lá»—i nÃ©n áº£nh tá»« camera:", err);
             hideLoading();
-            // Fallback gửi ảnh gốc nếu lỗi nén
+            // Fallback gá»­i áº£nh gá»‘c náº¿u lá»—i nÃ©n
             const reader = new FileReader();
             reader.onload = function(event) {
                 sendMessage(event.target.result);
@@ -3375,16 +3404,16 @@ if (cameraUploadInput) {
     });
 }
 
-// Sự kiện Gửi Tệp tin (File/Document)
+// Sá»± kiá»‡n Gá»­i Tá»‡p tin (File/Document)
 const fileUploadInput = document.getElementById("file-upload");
 if (fileUploadInput) {
     fileUploadInput.addEventListener("change", function(e) {
         const file = e.target.files[0];
         if (!file) return;
 
-        // Giới hạn tệp tin dưới 10MB để không quá tải dữ liệu Base64 trong database
+        // Giá»›i háº¡n tá»‡p tin dÆ°á»›i 10MB Ä‘á»ƒ khÃ´ng quÃ¡ táº£i dá»¯ liá»‡u Base64 trong database
         if (file.size > 10 * 1024 * 1024) {
-            return alert("Vui lòng chọn tệp tin có dung lượng dưới 10MB.");
+            return alert("Vui lÃ²ng chá»n tá»‡p tin cÃ³ dung lÆ°á»£ng dÆ°á»›i 10MB.");
         }
 
         const reader = new FileReader();
@@ -3401,7 +3430,7 @@ if (fileUploadInput) {
         reader.readAsDataURL(file);
     });
 }
-// 9. Sự kiện Tải lên Avatar Mới
+// 9. Sá»± kiá»‡n Táº£i lÃªn Avatar Má»›i
 const avatarUploadInput = document.getElementById("avatar-upload");
 if (avatarUploadInput) {
     avatarUploadInput.addEventListener("change", async function(e) {
@@ -3409,8 +3438,8 @@ if (avatarUploadInput) {
         if (!file) return;
 
         try {
-            showLoading("Đang xử lý và nén ảnh...");
-            // Nén ảnh avatar xuống max 150x150 JPEG quality 0.8 (~15KB)
+            showLoading("Äang xá»­ lÃ½ vÃ  nÃ©n áº£nh...");
+            // NÃ©n áº£nh avatar xuá»‘ng max 150x150 JPEG quality 0.8 (~15KB)
             const compressedBase64 = await compressImage(file, 150, 150, 0.8);
 
             const res = await fetch(`${API_URL}/users/avatar`, {
@@ -3425,27 +3454,27 @@ if (avatarUploadInput) {
             const data = await res.json();
             hideLoading();
             if (data.success) {
-                // Tải lại ảnh bằng URL tĩnh mới (với cache buster)
+                // Táº£i láº¡i áº£nh báº±ng URL tÄ©nh má»›i (vá»›i cache buster)
                 const avatarUrlWithVersion = `${data.avatarUrl}`;
                 document.getElementById("my-avatar").src = avatarUrlWithVersion;
                 if (document.getElementById("my-avatar-profile"))
                     document.getElementById("my-avatar-profile").src = avatarUrlWithVersion;
                 if (document.getElementById("my-avatar-personal-tab"))
                     document.getElementById("my-avatar-personal-tab").src = avatarUrlWithVersion;
-                showTempToast("Đã cập nhật ảnh đại diện mới thành công!");
+                showTempToast("ÄÃ£ cáº­p nháº­t áº£nh Ä‘áº¡i diá»‡n má»›i thÃ nh cÃ´ng!");
             } else {
-                alert("Lỗi tải ảnh: " + data.message);
+                alert("Lá»—i táº£i áº£nh: " + data.message);
             }
         } catch (error) {
             hideLoading();
-            alert("Lỗi hệ thống khi tải ảnh lên!");
+            alert("Lá»—i há»‡ thá»‘ng khi táº£i áº£nh lÃªn!");
         }
     });
 }
 
-// 11. Thu hồi tin nhắn
+// 11. Thu há»“i tin nháº¯n
 async function recallMessage(messageId) {
-    const consent = await customConfirm("Thu hồi tin nhắn", "Bạn có chắc chắn muốn thu hồi tin nhắn này không?", "Thu hồi", "Hủy", true);
+    const consent = await customConfirm("Thu há»“i tin nháº¯n", "Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n thu há»“i tin nháº¯n nÃ y khÃ´ng?", "Thu há»“i", "Há»§y", true);
     if (!consent) return;
 
     try {
@@ -3456,17 +3485,17 @@ async function recallMessage(messageId) {
 
         const data = await res.json();
         if (!data.success) {
-            alert("Lỗi thu hồi: " + data.message);
+            alert("Lá»—i thu há»“i: " + data.message);
         }
     } catch (error) {
-        alert("Lỗi kết nối khi thu hồi: " + error.message);
+        alert("Lá»—i káº¿t ná»‘i khi thu há»“i: " + error.message);
     }
 }
 
-// Biến lưu ID tin nhắn đang thực hiện xóa
+// Biáº¿n lÆ°u ID tin nháº¯n Ä‘ang thá»±c hiá»‡n xÃ³a
 let messageIdToDelete = null;
 
-// Mở modal xác nhận xóa ở phía tôi
+// Má»Ÿ modal xÃ¡c nháº­n xÃ³a á»Ÿ phÃ­a tÃ´i
 function openDeleteMessageMeModal(messageId) {
     messageIdToDelete = messageId;
     const modal = document.getElementById("delete-message-me-modal");
@@ -3477,7 +3506,7 @@ function openDeleteMessageMeModal(messageId) {
     }, 10);
 }
 
-// Đóng modal xác nhận xóa ở phía tôi
+// ÄÃ³ng modal xÃ¡c nháº­n xÃ³a á»Ÿ phÃ­a tÃ´i
 function closeDeleteMessageMeModal() {
     const modal = document.getElementById("delete-message-me-modal");
     if (!modal) return;
@@ -3488,7 +3517,7 @@ function closeDeleteMessageMeModal() {
     }, 250);
 }
 
-// Gọi API và cập nhật DOM, bộ nhớ tạm
+// Gá»i API vÃ  cáº­p nháº­t DOM, bá»™ nhá»› táº¡m
 async function deleteMessageForMe(messageId) {
     closeDeleteMessageMeModal();
     try {
@@ -3505,17 +3534,17 @@ async function deleteMessageForMe(messageId) {
             if (msgEl) {
                 msgEl.remove();
             }
-            // Cập nhật mảng currentChatMessages ở frontend
+            // Cáº­p nháº­t máº£ng currentChatMessages á»Ÿ frontend
             currentChatMessages = currentChatMessages.filter(m => m.id !== messageId);
         } else {
-            alert("Lỗi khi xóa tin nhắn: " + data.message);
+            alert("Lá»—i khi xÃ³a tin nháº¯n: " + data.message);
         }
     } catch (error) {
-        alert("Lỗi kết nối khi xóa tin nhắn: " + error.message);
+        alert("Lá»—i káº¿t ná»‘i khi xÃ³a tin nháº¯n: " + error.message);
     }
 }
 
-// 12. Gửi cảm xúc vào tin nhắn
+// 12. Gá»­i cáº£m xÃºc vÃ o tin nháº¯n
 async function reactToMessage(messageId, reaction) {
     ChatSounds.playReact();
     try {
@@ -3530,14 +3559,14 @@ async function reactToMessage(messageId, reaction) {
 
         const data = await res.json();
         if (!data.success) {
-            alert("Lỗi gửi cảm xúc: " + data.message);
+            alert("Lá»—i gá»­i cáº£m xÃºc: " + data.message);
         }
     } catch (error) {
-        alert("Lỗi kết nối khi gửi cảm xúc: " + error.message);
+        alert("Lá»—i káº¿t ná»‘i khi gá»­i cáº£m xÃºc: " + error.message);
     }
 }
 
-// 13. Hiển thị các icon cảm xúc dưới tin nhắn
+// 13. Hiá»ƒn thá»‹ cÃ¡c icon cáº£m xÃºc dÆ°á»›i tin nháº¯n
 function renderReactions(messageElement, reactions) {
     if (typeof reactions === "string") {
         try {
@@ -3553,7 +3582,7 @@ function renderReactions(messageElement, reactions) {
 
     if (!content) return;
 
-    // Lưu trữ cảm xúc vào dataset của phần tử tin nhắn chính để so sánh sau này
+    // LÆ°u trá»¯ cáº£m xÃºc vÃ o dataset cá»§a pháº§n tá»­ tin nháº¯n chÃ­nh Ä‘á»ƒ so sÃ¡nh sau nÃ y
     const msgEl = content.closest(".message");
     if (msgEl) {
         msgEl.dataset.reactions = JSON.stringify(reactions || {});
@@ -3579,14 +3608,14 @@ function renderReactions(messageElement, reactions) {
     const count = Object.keys(reactions).length;
     reactionsContainer.innerText = `${uniqueEmojis.join("")} ${count}`;
 
-    // Đăng ký click mở chi tiết cảm xúc giống Messenger
+    // ÄÄƒng kÃ½ click má»Ÿ chi tiáº¿t cáº£m xÃºc giá»‘ng Messenger
     reactionsContainer.onclick = (e) => {
         e.stopPropagation();
         openReactionsDetailModal(reactions);
     };
 }
 
-// --- HIỆU ỨNG NỔ CẢM XÚC GIỐNG MESSENGER ---
+// --- HIá»†U á»¨NG Ná»” Cáº¢M XÃšC GIá»NG MESSENGER ---
 function createReactionBurst(messageId, emoji) {
     const msgEl = document.getElementById(`msg-${messageId}`);
     if (!msgEl) return;
@@ -3594,13 +3623,13 @@ function createReactionBurst(messageId, emoji) {
     const contentEl = msgEl.querySelector(".message-content");
     if (!contentEl) return;
 
-    // Lấy toạ độ bong bóng chat
+    // Láº¥y toáº¡ Ä‘á»™ bong bÃ³ng chat
     const rect = contentEl.getBoundingClientRect();
     const messagesContainer = document.getElementById("messages");
     if (!messagesContainer) return;
     const containerRect = messagesContainer.getBoundingClientRect();
 
-    // Tính toạ độ xuất phát (ở giữa bong bóng chat) tương đối với khung cuộn tin nhắn
+    // TÃ­nh toáº¡ Ä‘á»™ xuáº¥t phÃ¡t (á»Ÿ giá»¯a bong bÃ³ng chat) tÆ°Æ¡ng Ä‘á»‘i vá»›i khung cuá»™n tin nháº¯n
     const startX = rect.left + rect.width / 2 - containerRect.left + messagesContainer.scrollLeft;
     const startY = rect.top + rect.height / 2 - containerRect.top + messagesContainer.scrollTop;
 
@@ -3610,16 +3639,16 @@ function createReactionBurst(messageId, emoji) {
         particle.className = "reaction-particle";
         particle.innerText = emoji;
 
-        // Định vị toạ độ ban đầu
+        // Äá»‹nh vá»‹ toáº¡ Ä‘á»™ ban Ä‘áº§u
         particle.style.left = `${startX}px`;
         particle.style.top = `${startY}px`;
 
-        // Tính toán góc và quãng đường bay ngẫu nhiên (dạng nổ hình tròn)
+        // TÃ­nh toÃ¡n gÃ³c vÃ  quÃ£ng Ä‘Æ°á»ng bay ngáº«u nhiÃªn (dáº¡ng ná»• hÃ¬nh trÃ²n)
         const angle = (i * (360 / PARTICLE_COUNT) + Math.random() * 20) * (Math.PI / 180);
-        const distance = 40 + Math.random() * 60; // Quãng đường bay xa từ 40px -> 100px
+        const distance = 40 + Math.random() * 60; // QuÃ£ng Ä‘Æ°á»ng bay xa tá»« 40px -> 100px
         const dx = Math.cos(angle) * distance;
-        const dy = Math.sin(angle) * distance - 10; // Có xu hướng bay lên cao một chút
-        const rot = -30 + Math.random() * 60; // Góc tự xoay nhẹ
+        const dy = Math.sin(angle) * distance - 10; // CÃ³ xu hÆ°á»›ng bay lÃªn cao má»™t chÃºt
+        const rot = -30 + Math.random() * 60; // GÃ³c tá»± xoay nháº¹
 
         particle.style.setProperty("--dx", `${dx}px`);
         particle.style.setProperty("--dy", `${dy}px`);
@@ -3627,7 +3656,7 @@ function createReactionBurst(messageId, emoji) {
 
         messagesContainer.appendChild(particle);
 
-        // Giải phóng thẻ khỏi DOM sau khi chạy xong animation (750ms)
+        // Giáº£i phÃ³ng tháº» khá»i DOM sau khi cháº¡y xong animation (750ms)
         setTimeout(() => {
             particle.remove();
         }, 750);
@@ -3635,10 +3664,10 @@ function createReactionBurst(messageId, emoji) {
 }
 
 // ===========================================
-// LÁ CHẮN CHỐNG ZOOM TRÊN MOBILE (PWA)
+// LÃ CHáº®N CHá»NG ZOOM TRÃŠN MOBILE (PWA)
 // ===========================================
 
-// 1. Chống chụm ngón tay (Pinch Zoom)
+// 1. Chá»‘ng chá»¥m ngÃ³n tay (Pinch Zoom)
 document.addEventListener(
     "touchmove",
     function(e) {
@@ -3649,7 +3678,7 @@ document.addEventListener(
 );
 
 // =========================================
-// THÔNG BÁO TIN NHẮN MỚI (IN-APP TOAST & NATIVE)
+// THÃ”NG BÃO TIN NHáº®N Má»šI (IN-APP TOAST & NATIVE)
 // =========================================
 
 function getNicknameForUser(userId, conversationId) {
@@ -3674,7 +3703,7 @@ function getNicknameForUser(userId, conversationId) {
 }
 
 function resolveSenderName(msg) {
-    const defaultName = (msg.Users && msg.Users.fullName) || "Tin nhắn mới";
+    const defaultName = (msg.Users && msg.Users.fullName) || "Tin nháº¯n má»›i";
     const nick = getNicknameForUser(msg.senderId, msg.conversationId);
     return nick || defaultName;
 }
@@ -3696,22 +3725,22 @@ function showNewMessageToast(msg) {
         )}&background=random`;
 
     let snippet = msg.content;
-    if (msg.isRecalled) snippet = "Tin nhắn đã bị thu hồi";
-    else if (msg.type === "missed_call") snippet = "Cuộc gọi nhỡ";
+    if (msg.isRecalled) snippet = "Tin nháº¯n Ä‘Ã£ bá»‹ thu há»“i";
+    else if (msg.type === "missed_call") snippet = "Cuá»™c gá»i nhá»¡";
     else if (msg.type === "file") {
         try {
             const fileData = JSON.parse(msg.content);
-            snippet = `[ Tệp tin: ${fileData.fileName} ]`;
+            snippet = `[ Tá»‡p tin: ${fileData.fileName} ]`;
         } catch (e) {
-            snippet = "[ Tệp tin ]";
+            snippet = "[ Tá»‡p tin ]";
         }
-    } else if (msg.type === "audio") snippet = "[ Tin nhắn thoại ]";
+    } else if (msg.type === "audio") snippet = "[ Tin nháº¯n thoáº¡i ]";
     else if (
         msg.content &&
         (msg.content.startsWith("data:image") ||
             msg.content.match(/\.(jpeg|jpg|gif|png)$/i))
     ) {
-        snippet = "[ Hình ảnh ]";
+        snippet = "[ HÃ¬nh áº£nh ]";
     }
 
     const safeName = escapeHTML(senderName);
@@ -3728,23 +3757,23 @@ function showNewMessageToast(msg) {
     </div>
   `;
 
-    // Tương tác: Bấm vào Toast để mở thẳng phòng chat
+    // TÆ°Æ¡ng tÃ¡c: Báº¥m vÃ o Toast Ä‘á»ƒ má»Ÿ tháº³ng phÃ²ng chat
     toast.onclick = () => {
         toast.classList.add("hiding");
         setTimeout(() => toast.remove(), 300);
 
         startChat(msg.senderId, senderName, avatarUrl);
 
-        // Chuyển tab về menu tin nhắn nếu user đang lướt tab khác
+        // Chuyá»ƒn tab vá» menu tin nháº¯n náº¿u user Ä‘ang lÆ°á»›t tab khÃ¡c
         const messagesTabNav = document.querySelector(
-            '.nav-item[title="Tin nhắn"]',
+            '.nav-item[title="Tin nháº¯n"]',
         );
         if (messagesTabNav) switchTab("tab-messages", messagesTabNav);
     };
 
     container.appendChild(toast);
 
-    // Tự động ẩn Toast mượt mà sau 4 giây (NGOẠI TRỪ lúc app đang tắt/nằm dưới nền)
+    // Tá»± Ä‘á»™ng áº©n Toast mÆ°á»£t mÃ  sau 4 giÃ¢y (NGOáº I TRá»ª lÃºc app Ä‘ang táº¯t/náº±m dÆ°á»›i ná»n)
     setTimeout(() => {
         if (toast.parentElement && !isAppInBackground) {
             toast.classList.add("hiding");
@@ -3758,22 +3787,22 @@ async function sendNativeNotification(msg) {
     const senderName = resolveSenderName(msg);
 
     let snippet = msg.content;
-    if (msg.isRecalled) snippet = "Tin nhắn đã bị thu hồi";
-    else if (msg.type === "missed_call") snippet = "Cuộc gọi nhỡ";
+    if (msg.isRecalled) snippet = "Tin nháº¯n Ä‘Ã£ bá»‹ thu há»“i";
+    else if (msg.type === "missed_call") snippet = "Cuá»™c gá»i nhá»¡";
     else if (msg.type === "file") {
         try {
             const fileData = JSON.parse(msg.content);
-            snippet = `[ Tệp tin: ${fileData.fileName} ]`;
+            snippet = `[ Tá»‡p tin: ${fileData.fileName} ]`;
         } catch (e) {
-            snippet = "[ Tệp tin ]";
+            snippet = "[ Tá»‡p tin ]";
         }
-    } else if (msg.type === "audio") snippet = "[ Tin nhắn thoại ]";
+    } else if (msg.type === "audio") snippet = "[ Tin nháº¯n thoáº¡i ]";
     else if (
         msg.content &&
         (msg.content.startsWith("data:image") ||
             msg.content.match(/\.(jpeg|jpg|gif|png)$/i))
     ) {
-        snippet = "[ Hình ảnh ]";
+        snippet = "[ HÃ¬nh áº£nh ]";
     }
 
     let avatarUrl = sender.avatar ?
@@ -3782,10 +3811,10 @@ async function sendNativeNotification(msg) {
             senderName,
         )}&background=random`;
 
-    // HIỂN THỊ THÔNG BÁO HỆ THỐNG (SYSTEM NATIVE NOTIFICATION BANNER)
+    // HIá»‚N THá»Š THÃ”NG BÃO Há»† THá»NG (SYSTEM NATIVE NOTIFICATION BANNER)
     if ("Notification" in window && Notification.permission === "granted") {
         try {
-            // Sử dụng Service Worker (Chuẩn nhất cho di động iOS/Android và tránh bị Chrome Mobile block)
+            // Sá»­ dá»¥ng Service Worker (Chuáº©n nháº¥t cho di Ä‘á»™ng iOS/Android vÃ  trÃ¡nh bá»‹ Chrome Mobile block)
             if (navigator.serviceWorker && navigator.serviceWorker.ready) {
                 navigator.serviceWorker.ready.then((reg) => {
                     reg.showNotification(senderName, {
@@ -3797,7 +3826,7 @@ async function sendNativeNotification(msg) {
                     });
                 });
             } else {
-                // Fallback cho trình duyệt Desktop không hỗ trợ SW
+                // Fallback cho trÃ¬nh duyá»‡t Desktop khÃ´ng há»— trá»£ SW
                 const notification = new Notification(senderName, {
                     body: snippet,
                     icon: avatarUrl,
@@ -3806,23 +3835,23 @@ async function sendNativeNotification(msg) {
                     window.focus();
                     startChat(msg.senderId, senderName, avatarUrl);
                     const messagesTabNav = document.querySelector(
-                        '.nav-item[title="Tin nhắn"]',
+                        '.nav-item[title="Tin nháº¯n"]',
                     );
                     if (messagesTabNav) switchTab("tab-messages", messagesTabNav);
                 };
             }
         } catch (err) {
-            console.warn("Lỗi khi hiển thị thông báo hệ thống:", err);
+            console.warn("Lá»—i khi hiá»ƒn thá»‹ thÃ´ng bÃ¡o há»‡ thá»‘ng:", err);
             showNewMessageToast(msg);
         }
     } else {
-        // Fallback hiện Toast nổi trong app nếu không có quyền/không hỗ trợ thông báo hệ thống
+        // Fallback hiá»‡n Toast ná»•i trong app náº¿u khÃ´ng cÃ³ quyá»n/khÃ´ng há»— trá»£ thÃ´ng bÃ¡o há»‡ thá»‘ng
         showNewMessageToast(msg);
     }
 }
 
 // ==========================================
-// CẬP NHẬT "ĐÃ XEM" KHI QUAY LẠI TRÌNH DUYỆT
+// Cáº¬P NHáº¬T "ÄÃƒ XEM" KHI QUAY Láº I TRÃŒNH DUYá»†T
 // ==========================================
 window.addEventListener("focus", () => {
     if (currentConversationId && socket && isChatAreaVisible()) {
@@ -3831,7 +3860,7 @@ window.addEventListener("focus", () => {
 });
 
 // =========================================
-// TÍNH NĂNG ĐẢO CAMERA (TRƯỚC/SAU)
+// TÃNH NÄ‚NG Äáº¢O CAMERA (TRÆ¯á»šC/SAU)
 // =========================================
 
 async function flipCamera() {
@@ -3863,13 +3892,13 @@ async function flipCamera() {
         document.getElementById("local-video").srcObject = null;
         document.getElementById("local-video").srcObject = localStream;
     } catch (error) {
-        console.error("Lỗi đảo Camera:", error);
-        alert("Không thể di chuyển Camera. Thiết bị có thể không hỗ trợ.");
+        console.error("Lá»—i Ä‘áº£o Camera:", error);
+        alert("KhÃ´ng thá»ƒ di chuyá»ƒn Camera. Thiáº¿t bá»‹ cÃ³ thá»ƒ khÃ´ng há»— trá»£.");
         currentFacingMode = currentFacingMode === "user" ? "environment" : "user";
     }
 }
 
-// Đóng tất cả bảng cảm xúc & menu khi chạm ngoài
+// ÄÃ³ng táº¥t cáº£ báº£ng cáº£m xÃºc & menu khi cháº¡m ngoÃ i
 document.addEventListener("click", () => {
     document
         .querySelectorAll(".reaction-palette.show")
@@ -3880,7 +3909,7 @@ document.addEventListener("click", () => {
 });
 
 // ===========================================
-// LOGIC GIAO DIỆN & HỒ SƠ
+// LOGIC GIAO DIá»†N & Há»’ SÆ 
 // ===========================================
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -3930,7 +3959,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Thiết lập sự kiện cho modal Xóa tin nhắn ở phía tôi
+    // Thiáº¿t láº­p sá»± kiá»‡n cho modal XÃ³a tin nháº¯n á»Ÿ phÃ­a tÃ´i
     const deleteMeModal = document.getElementById("delete-message-me-modal");
     const deleteMeCancelBtn = document.getElementById("delete-message-me-cancel-btn");
     const deleteMeConfirmBtn = document.getElementById("delete-message-me-confirm-btn");
@@ -3966,7 +3995,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
 
-        // Tự động đóng và xóa nội dung tìm kiếm khi click ra ngoài
+        // Tá»± Ä‘á»™ng Ä‘Ã³ng vÃ  xÃ³a ná»™i dung tÃ¬m kiáº¿m khi click ra ngoÃ i
         const searchResults = document.getElementById("search-results");
         const searchInput = document.getElementById("search-input");
         const mobileSearchInput = document.getElementById("mobile-search-input");
@@ -3979,7 +4008,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // Tự động đồng bộ vị trí slider-pill khi sidebar hiển thị hoặc thay đổi kích thước (Fix lỗi tab ẩn/tàng hình khi load app)
+    // Tá»± Ä‘á»™ng Ä‘á»“ng bá»™ vá»‹ trÃ­ slider-pill khi sidebar hiá»ƒn thá»‹ hoáº·c thay Ä‘á»•i kÃ­ch thÆ°á»›c (Fix lá»—i tab áº©n/tÃ ng hÃ¬nh khi load app)
     const sidebarEl = document.querySelector('.sidebar');
     if (sidebarEl) {
         const resizeObserver = new ResizeObserver(() => {
@@ -4040,7 +4069,7 @@ function toggleNotificationsDropdown(event) {
         const isActive = dropdown.classList.toggle("active");
         if (isActive) {
             loadNotifications();
-            // Đóng các modal khác cho gọn
+            // ÄÃ³ng cÃ¡c modal khÃ¡c cho gá»n
             const myProfileModal = document.getElementById("my-profile-modal");
             if (myProfileModal) myProfileModal.classList.remove("active");
             const settingsModal = document.getElementById("tab-settings-modal");
@@ -4066,7 +4095,7 @@ async function markAllNotificationsAsRead() {
                 headers: { Authorization: `Bearer ${token}` },
             });
         } catch (e) {
-            console.error("Lỗi đánh dấu đã đọc tất cả:", e);
+            console.error("Lá»—i Ä‘Ã¡nh dáº¥u Ä‘Ã£ Ä‘á»c táº¥t cáº£:", e);
         }
     }
 }
@@ -4080,7 +4109,7 @@ async function tryAutoLogin() {
     if (loginForm) loginForm.style.display = "none";
     if (registerForm) registerForm.style.display = "none";
 
-    showLoading("Đăng nhập tự động...");
+    showLoading("ÄÄƒng nháº­p tá»± Ä‘á»™ng...");
 
     try {
         const res = await fetch(`${API_URL}/auth/me`, {
@@ -4095,7 +4124,7 @@ async function tryAutoLogin() {
             if (loginForm) loginForm.style.display = "block";
         }
     } catch (error) {
-        console.error("Lỗi đăng nhập tự động:", error);
+        console.error("Lá»—i Ä‘Äƒng nháº­p tá»± Ä‘á»™ng:", error);
         if (loginForm) loginForm.style.display = "block";
     } finally {
         hideLoading();
@@ -4110,14 +4139,14 @@ function toggleDarkMode(checkbox) {
         document.body.removeAttribute("data-theme");
         localStorage.setItem("theme", "light");
     }
-    // Cập nhật lại màu nền chủ đề chat tương ứng với chế độ sáng/tối mới
+    // Cáº­p nháº­t láº¡i mÃ u ná»n chá»§ Ä‘á» chat tÆ°Æ¡ng á»©ng vá»›i cháº¿ Ä‘á»™ sÃ¡ng/tá»‘i má»›i
     if (typeof applyChatTheme === "function") {
         applyChatTheme(currentChatTheme);
     }
 }
 
 // =========================================
-// TÍNH NĂNG MỚI: LIGHTBOX (XEM ẢNH PHÓNG TO)
+// TÃNH NÄ‚NG Má»šI: LIGHTBOX (XEM áº¢NH PHÃ“NG TO)
 // =========================================
 
 function openLightbox(src) {
@@ -4148,7 +4177,7 @@ function closeLightbox() {
     }
 }
 
-// --- XỬ LÝ HỒ SƠ NGƯỜI DÙNG (USER PROFILE MODAL) ---
+// --- Xá»¬ LÃ Há»’ SÆ  NGÆ¯á»œI DÃ™NG (USER PROFILE MODAL) ---
 async function showUserProfile(userId) {
     return openOtherUserProfileModal(userId);
 }
@@ -4156,20 +4185,20 @@ async function showUserProfile(userId) {
 async function openOtherUserProfileModal(userId) {
     if (!userId) return;
     try {
-        showLoading("Đang tải hồ sơ...");
+        showLoading("Äang táº£i há»“ sÆ¡...");
         const res = await fetch(`${API_URL}/users/${userId}/profile`, {
             headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) {
             const errData = await res.json();
-            throw new Error(errData.message || "Không thể tải thông tin hồ sơ.");
+            throw new Error(errData.message || "KhÃ´ng thá»ƒ táº£i thÃ´ng tin há»“ sÆ¡.");
         }
         const user = await res.json();
 
         const modal = document.getElementById("other-user-profile-modal");
         if (!modal) return;
 
-        // Cập nhật DOM
+        // Cáº­p nháº­t DOM
         const coverImg = modal.querySelector(".profile-cover-banner img");
         const avatarImg = modal.querySelector(".profile-avatar-circle img");
         const statusDot = modal.querySelector(".profile-avatar-circle .profile-status-dot");
@@ -4181,13 +4210,13 @@ async function openOtherUserProfileModal(userId) {
 
         if (statusDot) {
             statusDot.className = `profile-status-dot ${user.status}`;
-            statusDot.title = user.status === "online" ? "Đang hoạt động" : "Ngoại tuyến";
+            statusDot.title = user.status === "online" ? "Äang hoáº¡t Ä‘á»™ng" : "Ngoáº¡i tuyáº¿n";
         }
 
-        if (nameEl) nameEl.innerText = user.name || "Người dùng";
-        if (bioEl) bioEl.innerText = user.bio || "Chưa có tiểu sử";
+        if (nameEl) nameEl.innerText = user.name || "NgÆ°á»i dÃ¹ng";
+        if (bioEl) bioEl.innerText = user.bio || "ChÆ°a cÃ³ tiá»ƒu sá»­";
 
-        // Gán sự kiện click cho các nút hành động
+        // GÃ¡n sá»± kiá»‡n click cho cÃ¡c nÃºt hÃ nh Ä‘á»™ng
         const chatBtn = modal.querySelector(".profile-action-item.btn-chat");
         const callBtn = modal.querySelector(".profile-action-item.btn-call");
         const videoBtn = modal.querySelector(".profile-action-item.btn-video");
@@ -4196,7 +4225,7 @@ async function openOtherUserProfileModal(userId) {
             chatBtn.onclick = () => {
                 closeOtherUserProfileModal();
                 startChat(user.id, user.name, formatUrl(user.profileAvatarUrl));
-                const messagesTabNav = document.querySelector('.nav-item[title="Tin nhắn"]');
+                const messagesTabNav = document.querySelector('.nav-item[title="Tin nháº¯n"]');
                 if (messagesTabNav) switchTab("tab-messages", messagesTabNav);
             };
         }
@@ -4219,7 +4248,7 @@ async function openOtherUserProfileModal(userId) {
 
         modal.classList.add("active");
     } catch (error) {
-        alert("Lỗi tải hồ sơ người dùng: " + error.message);
+        alert("Lá»—i táº£i há»“ sÆ¡ ngÆ°á»i dÃ¹ng: " + error.message);
     } finally {
         hideLoading();
     }
@@ -4240,19 +4269,19 @@ function closeUserProfile() {
 }
 
 
-// Biến cờ khóa chống spam click (Đã tối ưu hóa sang kiểm tra active để phản hồi ngay lập tức)
+// Biáº¿n cá» khÃ³a chá»‘ng spam click (ÄÃ£ tá»‘i Æ°u hÃ³a sang kiá»ƒm tra active Ä‘á»ƒ pháº£n há»“i ngay láº­p tá»©c)
 let isSwitchingTab = false;
 
-// Chuyển đổi giữa các Tab
+// Chuyá»ƒn Ä‘á»•i giá»¯a cÃ¡c Tab
 function switchTab(tabId, navElement) {
-    // Nếu tab đã hiển thị sẵn rồi thì không làm gì (Tránh render lại dư thừa)
+    // Náº¿u tab Ä‘Ã£ hiá»ƒn thá»‹ sáºµn rá»“i thÃ¬ khÃ´ng lÃ m gÃ¬ (TrÃ¡nh render láº¡i dÆ° thá»«a)
     const targetTab = document.getElementById(tabId);
     if (targetTab && targetTab.classList.contains("active")) return;
 
-    // Phát âm thanh click ngắn khi chuyển tab thành công
+    // PhÃ¡t Ã¢m thanh click ngáº¯n khi chuyá»ƒn tab thÃ nh cÃ´ng
     if (typeof tabClickSound !== "undefined" && tabClickSound) {
         tabClickSound.currentTime = 0;
-        tabClickSound.play().catch(err => console.log("Âm thanh bị chặn phát tự động bởi trình duyệt:", err));
+        tabClickSound.play().catch(err => console.log("Ã‚m thanh bá»‹ cháº·n phÃ¡t tá»± Ä‘á»™ng bá»Ÿi trÃ¬nh duyá»‡t:", err));
     }
 
     if (tabId === "tab-contacts") {
@@ -4279,7 +4308,7 @@ function switchTab(tabId, navElement) {
     document.getElementById(tabId).classList.add("active");
     navElement.classList.add("active");
 
-    // ── Trượt pill indicator ──
+    // â”€â”€ TrÆ°á»£t pill indicator â”€â”€
     const pill = document.getElementById('nav-slider-pill');
     if (pill && navElement && window.innerWidth <= 768) {
         const sidebar = navElement.closest('.sidebar');
@@ -4293,7 +4322,7 @@ function switchTab(tabId, navElement) {
         }
     }
 
-    // ── Ripple effect khi chạm ──
+    // â”€â”€ Ripple effect khi cháº¡m â”€â”€
     const ripple = document.createElement('span');
     ripple.classList.add('nav-ripple');
     const size = 30;
@@ -4303,17 +4332,17 @@ function switchTab(tabId, navElement) {
     ripple.style.marginLeft = ripple.style.marginTop = -(size / 2) + 'px';
     navElement.appendChild(ripple);
     setTimeout(() => ripple.remove(), 500);
-    // Khởi tạo/cập nhật thông tin chào mừng của tab AI
+    // Khá»Ÿi táº¡o/cáº­p nháº­t thÃ´ng tin chÃ o má»«ng cá»§a tab AI
     if (tabId === "tab-ai") {
         const welcomeTitle = document.getElementById("ai-welcome-title");
         if (welcomeTitle) {
-            welcomeTitle.innerText = `Hôm nay bạn thế nào, ${myUsername || "bạn"}?`;
+            welcomeTitle.innerText = `HÃ´m nay báº¡n tháº¿ nÃ o, ${myUsername || "báº¡n"}?`;
         }
         loadAiChatHistory();
-        updateAiQuotaBar(); // Cập nhật thanh hạn ngạch AI
+        updateAiQuotaBar(); // Cáº­p nháº­t thanh háº¡n ngáº¡ch AI
     }
 
-    // Xử lý ẩn/hiển thị mobile-header (thanh tìm kiếm trên mobile) khi đổi tab
+    // Xá»­ lÃ½ áº©n/hiá»ƒn thá»‹ mobile-header (thanh tÃ¬m kiáº¿m trÃªn mobile) khi Ä‘á»•i tab
     const mobileHeader = document.getElementById("mobile-header");
     if (mobileHeader) {
         if (tabId === "tab-messages") {
@@ -4326,7 +4355,7 @@ function switchTab(tabId, navElement) {
 }
 
 let isFetchingAiHistory = false;
-// Tải lịch sử chat AI lưu trữ từ Database
+// Táº£i lá»‹ch sá»­ chat AI lÆ°u trá»¯ tá»« Database
 async function loadAiChatHistory() {
     const welcomeEl = document.getElementById("ai-welcome-screen");
     const wrapperEl = document.getElementById("ai-chat-messages-wrapper");
@@ -4370,7 +4399,7 @@ async function loadAiChatHistory() {
                 wrapperEl.insertAdjacentHTML("beforeend", msgHtml);
             });
 
-            // Cuộn xuống cuối
+            // Cuá»™n xuá»‘ng cuá»‘i
             scrollAiToBottom();
         } else {
             if (welcomeEl) welcomeEl.style.display = "flex";
@@ -4378,17 +4407,17 @@ async function loadAiChatHistory() {
             wrapperEl.innerHTML = "";
         }
     } catch (err) {
-        console.error("Lỗi khi tải lịch sử chat AI:", err);
+        console.error("Lá»—i khi táº£i lá»‹ch sá»­ chat AI:", err);
     } finally {
         isFetchingAiHistory = false;
     }
 }
 
-// Cuộn mượt và chính xác xuống cuối màn hình chat AI sau khi vẽ DOM xong
+// Cuá»™n mÆ°á»£t vÃ  chÃ­nh xÃ¡c xuá»‘ng cuá»‘i mÃ n hÃ¬nh chat AI sau khi váº½ DOM xong
 function scrollAiToBottom() {
     const historyEl = document.getElementById("ai-chat-history");
     if (!historyEl) return;
-    // Sử dụng cả requestAnimationFrame và setTimeout để bảo đảm tương thích tốt nhất trên iOS/Android
+    // Sá»­ dá»¥ng cáº£ requestAnimationFrame vÃ  setTimeout Ä‘á»ƒ báº£o Ä‘áº£m tÆ°Æ¡ng thÃ­ch tá»‘t nháº¥t trÃªn iOS/Android
     requestAnimationFrame(() => {
         historyEl.scrollTop = historyEl.scrollHeight;
         setTimeout(() => {
@@ -4397,7 +4426,7 @@ function scrollAiToBottom() {
     });
 }
 
-// Reset cuộc hội thoại AI về màn hình chào mừng ban đầu
+// Reset cuá»™c há»™i thoáº¡i AI vá» mÃ n hÃ¬nh chÃ o má»«ng ban Ä‘áº§u
 function resetAiChat() {
     const welcomeEl = document.getElementById("ai-welcome-screen");
     const wrapperEl = document.getElementById("ai-chat-messages-wrapper");
@@ -4410,16 +4439,16 @@ function resetAiChat() {
     }
     if (inputEl) inputEl.value = "";
 
-    // Gửi yêu cầu xóa lịch sử lưu trên RAM của server
+    // Gá»­i yÃªu cáº§u xÃ³a lá»‹ch sá»­ lÆ°u trÃªn RAM cá»§a server
     fetch("/api/ai/chat/history", {
         method: "DELETE",
         headers: {
             "Authorization": `Bearer ${token}`
         }
-    }).catch(err => console.error("Lỗi khi xóa lịch sử chat AI:", err));
+    }).catch(err => console.error("Lá»—i khi xÃ³a lá»‹ch sá»­ chat AI:", err));
 }
 
-// Gửi tin nhắn đến Gemini AI
+// Gá»­i tin nháº¯n Ä‘áº¿n Gemini AI
 async function sendAiMessage() {
     const inputEl = document.getElementById("ai-message-input");
     if (!inputEl) return;
@@ -4436,7 +4465,7 @@ async function sendAiMessage() {
     const historyEl = document.getElementById("ai-chat-history");
     if (!historyEl) return;
 
-    // Hiển thị tin nhắn người dùng (phong cách tối giản/không avatar giống mockup)
+    // Hiá»ƒn thá»‹ tin nháº¯n ngÆ°á»i dÃ¹ng (phong cÃ¡ch tá»‘i giáº£n/khÃ´ng avatar giá»‘ng mockup)
     const userMsgHtml = `
       <div class="ai-message ai-user">
         <div class="ai-bubble">${escapeHTML(prompt)}</div>
@@ -4445,10 +4474,10 @@ async function sendAiMessage() {
     wrapperEl.insertAdjacentHTML("beforeend", userMsgHtml);
     scrollAiToBottom();
 
-    // Tạo ID duy nhất cho bong bóng tin nhắn của AI bot này
+    // Táº¡o ID duy nháº¥t cho bong bÃ³ng tin nháº¯n cá»§a AI bot nÃ y
     const botMsgId = "ai-msg-" + Date.now();
 
-    // Hiển thị bong bóng "Đang suy nghĩ..." với ảnh logo làm avatar
+    // Hiá»ƒn thá»‹ bong bÃ³ng "Äang suy nghÄ©..." vá»›i áº£nh logo lÃ m avatar
     const typingHtml = `
       <div class="ai-message ai-bot" id="${botMsgId}">
         <div class="ai-avatar">
@@ -4477,9 +4506,9 @@ async function sendAiMessage() {
         });
 
         if (!response.ok) {
-            let errorMsg = "Không thể kết nối hoặc tải phản hồi từ Gemini. Vui lòng thử lại sau!";
+            let errorMsg = "KhÃ´ng thá»ƒ káº¿t ná»‘i hoáº·c táº£i pháº£n há»“i tá»« Gemini. Vui lÃ²ng thá»­ láº¡i sau!";
             if (response.status === 429) {
-                errorMsg = "Tài khoản AI đã hết hạn ngạch (Token) hôm nay. Vui lòng thử lại sau hoặc cấu hình API Key mới!";
+                errorMsg = "TÃ i khoáº£n AI Ä‘Ã£ háº¿t háº¡n ngáº¡ch (Token) hÃ´m nay. Vui lÃ²ng thá»­ láº¡i sau hoáº·c cáº¥u hÃ¬nh API Key má»›i!";
             } else {
                 try {
                     const errData = await response.json();
@@ -4494,21 +4523,21 @@ async function sendAiMessage() {
         let buffer = "";
         let fullText = "";
 
-        // Nhận stream dữ liệu từ server
+        // Nháº­n stream dá»¯ liá»‡u tá»« server
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
             buffer += decoder.decode(value, { stream: true });
             const lines = buffer.split("\n\n");
-            buffer = lines.pop(); // giữ phần tin nhắn chưa đầy đủ
+            buffer = lines.pop(); // giá»¯ pháº§n tin nháº¯n chÆ°a Ä‘áº§y Ä‘á»§
 
             for (const line of lines) {
                 if (!line.startsWith("data: ")) continue;
                 try {
                     const data = JSON.parse(line.slice(6));
                     if (data.text) {
-                        // Xóa typing indicator ở chunk đầu tiên nhận được
+                        // XÃ³a typing indicator á»Ÿ chunk Ä‘áº§u tiÃªn nháº­n Ä‘Æ°á»£c
                         const indicator = document.getElementById(`${botMsgId}-indicator`);
                         if (indicator) indicator.remove();
 
@@ -4523,34 +4552,34 @@ async function sendAiMessage() {
                         throw new Error(data.error);
                     }
                 } catch (e) {
-                    // Nếu lỗi do throw Error(data.error) tự định nghĩa ở trên thì chuyển tiếp ra ngoài catch chính
-                    if (e.message && (e.message.includes("⚠️") || e.message.includes("hạn ngạch") || e.message.includes("Lỗi:"))) {
+                    // Náº¿u lá»—i do throw Error(data.error) tá»± Ä‘á»‹nh nghÄ©a á»Ÿ trÃªn thÃ¬ chuyá»ƒn tiáº¿p ra ngoÃ i catch chÃ­nh
+                    if (e.message && (e.message.includes("âš ï¸") || e.message.includes("háº¡n ngáº¡ch") || e.message.includes("Lá»—i:"))) {
                         throw e;
                     }
-                    console.error("Lỗi xử lý chunk stream:", e);
+                    console.error("Lá»—i xá»­ lÃ½ chunk stream:", e);
                 }
             }
         }
 
-        // Tăng số lượt gọi AI thành công lên 1
+        // TÄƒng sá»‘ lÆ°á»£t gá»i AI thÃ nh cÃ´ng lÃªn 1
         incrementAiRequestCount();
     } catch (error) {
-        // Xóa indicator nếu có lỗi xảy ra
+        // XÃ³a indicator náº¿u cÃ³ lá»—i xáº£y ra
         const indicator = document.getElementById(`${botMsgId}-indicator`);
         if (indicator) indicator.remove();
 
         const bubbleEl = document.getElementById(`${botMsgId}-bubble`);
         if (bubbleEl) {
-            const msg = error.message || "Không thể kết nối hoặc tải phản hồi từ Gemini. Vui lòng thử lại sau!";
+            const msg = error.message || "KhÃ´ng thá»ƒ káº¿t ná»‘i hoáº·c táº£i pháº£n há»“i tá»« Gemini. Vui lÃ²ng thá»­ láº¡i sau!";
             bubbleEl.innerHTML = `
                 <span style="color: #ef4444; font-weight: 500;">
-                    ❌ ${msg.startsWith("Lỗi:") || msg.startsWith("⚠️") ? msg : `Lỗi: ${msg}`}
+                    âŒ ${msg.startsWith("Lá»—i:") || msg.startsWith("âš ï¸") ? msg : `Lá»—i: ${msg}`}
                 </span>
             `;
 
-            // Nếu lỗi do hết hạn ngạch hoặc token
-            if (msg.includes("hạn ngạch") || msg.includes("Token") || msg.includes("429") || msg.includes("limit") || msg.includes("quota")) {
-                updateAiQuotaBar(true); // Bắt buộc set thanh quota lên 100%
+            // Náº¿u lá»—i do háº¿t háº¡n ngáº¡ch hoáº·c token
+            if (msg.includes("háº¡n ngáº¡ch") || msg.includes("Token") || msg.includes("429") || msg.includes("limit") || msg.includes("quota")) {
+                updateAiQuotaBar(true); // Báº¯t buá»™c set thanh quota lÃªn 100%
             }
         }
     }
@@ -4558,13 +4587,13 @@ async function sendAiMessage() {
     scrollAiToBottom();
 }
 
-// Định dạng văn bản trả về từ AI (chuyển đổi code, bold, list, heading, newline thành HTML)
+// Äá»‹nh dáº¡ng vÄƒn báº£n tráº£ vá» tá»« AI (chuyá»ƒn Ä‘á»•i code, bold, list, heading, newline thÃ nh HTML)
 function formatAiResponse(text) {
     if (!text) return "";
     let formatted = escapeHTML(text);
     const codeBlocks = [];
 
-    // 1. Trích xuất và định dạng các khối code blocks trước
+    // 1. TrÃ­ch xuáº¥t vÃ  Ä‘á»‹nh dáº¡ng cÃ¡c khá»‘i code blocks trÆ°á»›c
     formatted = formatted.replace(/```(\w+)?\s*\n([\s\S]*?)```/g, (match, lang, code) => {
         const language = lang ? lang.trim() : "code";
         const displayCode = code.trim();
@@ -4575,7 +4604,7 @@ function formatAiResponse(text) {
           <div class="ai-code-header">
             <span class="ai-code-header-lang">${language}</span>
             <button class="ai-code-copy-btn" onclick="copyCodeText(this)">
-              <i class="fa-regular fa-copy"></i> Sao chép
+              <i class="fa-regular fa-copy"></i> Sao chÃ©p
             </button>
           </div>
           <div class="ai-code-block">
@@ -4587,7 +4616,7 @@ function formatAiResponse(text) {
         return placeholder;
     });
 
-    // 2. Tách văn bản theo từng dòng để xử lý chính xác danh sách (ul/ol) và tiêu đề (h1-h6)
+    // 2. TÃ¡ch vÄƒn báº£n theo tá»«ng dÃ²ng Ä‘á»ƒ xá»­ lÃ½ chÃ­nh xÃ¡c danh sÃ¡ch (ul/ol) vÃ  tiÃªu Ä‘á» (h1-h6)
     const lines = formatted.split("\n");
     const resultLines = [];
     let inList = false;
@@ -4595,9 +4624,9 @@ function formatAiResponse(text) {
     for (let i = 0; i < lines.length; i++) {
         let line = lines[i];
 
-        // Kiểm tra dòng có phải là tiêu đề Markdown không (bắt đầu bằng # và khoảng trắng)
+        // Kiá»ƒm tra dÃ²ng cÃ³ pháº£i lÃ  tiÃªu Ä‘á» Markdown khÃ´ng (báº¯t Ä‘áº§u báº±ng # vÃ  khoáº£ng tráº¯ng)
         const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
-        // Kiểm tra dòng có phải là phần tử danh sách không (bắt đầu bằng * hoặc - hoặc + và khoảng trắng)
+        // Kiá»ƒm tra dÃ²ng cÃ³ pháº£i lÃ  pháº§n tá»­ danh sÃ¡ch khÃ´ng (báº¯t Ä‘áº§u báº±ng * hoáº·c - hoáº·c + vÃ  khoáº£ng tráº¯ng)
         const listMatch = line.match(/^\s*[\-\*\+]\s+(.+)$/);
 
         if (headingMatch) {
@@ -4611,7 +4640,7 @@ function formatAiResponse(text) {
                 .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
                 .replace(/`([^`]+)`/g, '<code style="background: rgba(255,255,255,0.08); color: #f4f4f5; padding: 2px 6px; border-radius: 4px; font-family: monospace;">$1</code>');
 
-            // Định nghĩa kích thước font chữ và lề tương ứng cho từng cấp độ tiêu đề
+            // Äá»‹nh nghÄ©a kÃ­ch thÆ°á»›c font chá»¯ vÃ  lá» tÆ°Æ¡ng á»©ng cho tá»«ng cáº¥p Ä‘á»™ tiÃªu Ä‘á»
             let fontSize = "15px";
             let marginTop = "12px";
             let marginBottom = "6px";
@@ -4622,7 +4651,7 @@ function formatAiResponse(text) {
             resultLines.push(`<h${level} style="font-size: ${fontSize}; margin-top: ${marginTop}; margin-bottom: ${marginBottom}; font-weight: 600; line-height: 1.35; color: var(--text-dark); display: block;">${formattedContent}</h${level}>`);
         } else if (listMatch) {
             const content = listMatch[1];
-            // Định dạng inline bold và inline code cho nội dung li trước
+            // Äá»‹nh dáº¡ng inline bold vÃ  inline code cho ná»™i dung li trÆ°á»›c
             let formattedContent = content
                 .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
                 .replace(/`([^`]+)`/g, '<code style="background: rgba(255,255,255,0.08); color: #f4f4f5; padding: 2px 6px; border-radius: 4px; font-family: monospace;">$1</code>');
@@ -4638,7 +4667,7 @@ function formatAiResponse(text) {
                 inList = false;
             }
 
-            // Định dạng inline bold và inline code cho các dòng thường
+            // Äá»‹nh dáº¡ng inline bold vÃ  inline code cho cÃ¡c dÃ²ng thÆ°á»ng
             let formattedLine = line
                 .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
                 .replace(/`([^`]+)`/g, '<code style="background: rgba(255,255,255,0.08); color: #f4f4f5; padding: 2px 6px; border-radius: 4px; font-family: monospace;">$1</code>');
@@ -4647,13 +4676,13 @@ function formatAiResponse(text) {
         }
     }
 
-    // Nếu kết thúc chuỗi vẫn đang ở trong thẻ ul thì đóng lại
+    // Náº¿u káº¿t thÃºc chuá»—i váº«n Ä‘ang á»Ÿ trong tháº» ul thÃ¬ Ä‘Ã³ng láº¡i
     if (inList) {
         resultLines.push('</ul>');
     }
 
-    // Nối các dòng lại, với các dòng không phải là ul/li/heading thì dùng <br> để xuống dòng
-    // Tránh thêm <br> sau các thẻ <ul>, </ul>, <li>, </li>, <h1-6>
+    // Ná»‘i cÃ¡c dÃ²ng láº¡i, vá»›i cÃ¡c dÃ²ng khÃ´ng pháº£i lÃ  ul/li/heading thÃ¬ dÃ¹ng <br> Ä‘á»ƒ xuá»‘ng dÃ²ng
+    // TrÃ¡nh thÃªm <br> sau cÃ¡c tháº» <ul>, </ul>, <li>, </li>, <h1-6>
     let finalHtml = "";
     for (let i = 0; i < resultLines.length; i++) {
         const curr = resultLines[i];
@@ -4661,7 +4690,7 @@ function formatAiResponse(text) {
 
         finalHtml += curr;
 
-        // Thêm <br> nếu dòng hiện tại và dòng tiếp theo không phải là thẻ ul/li/heading hoặc trống
+        // ThÃªm <br> náº¿u dÃ²ng hiá»‡n táº¡i vÃ  dÃ²ng tiáº¿p theo khÃ´ng pháº£i lÃ  tháº» ul/li/heading hoáº·c trá»‘ng
         const isCurrTag = curr.startsWith("<ul") || curr.startsWith("</ul>") || curr.startsWith("<li") || curr.startsWith("</li>") || curr.startsWith("<h");
         const isNextTag = next.startsWith("<ul") || next.startsWith("</ul>") || next.startsWith("<li") || next.startsWith("</li>") || next.startsWith("<h");
 
@@ -4670,7 +4699,7 @@ function formatAiResponse(text) {
         }
     }
 
-    // 3. Khôi phục các khối code blocks
+    // 3. KhÃ´i phá»¥c cÃ¡c khá»‘i code blocks
     codeBlocks.forEach((codeBlockHtml, index) => {
         const placeholder = `__CODE_BLOCK_PLACEHOLDER_${index}__`;
         finalHtml = finalHtml.split(placeholder).join(codeBlockHtml);
@@ -4679,7 +4708,7 @@ function formatAiResponse(text) {
     return finalHtml;
 }
 
-// Hàm sao chép code vào clipboard
+// HÃ m sao chÃ©p code vÃ o clipboard
 function copyCodeText(btn) {
     const wrapper = btn.closest(".ai-code-wrapper");
     if (!wrapper) return;
@@ -4690,18 +4719,18 @@ function copyCodeText(btn) {
 
     navigator.clipboard.writeText(codeText).then(() => {
         const origHtml = btn.innerHTML;
-        btn.innerHTML = `<i class="fa-solid fa-check" style="color: #10B981;"></i> Đã chép`;
+        btn.innerHTML = `<i class="fa-solid fa-check" style="color: #10B981;"></i> ÄÃ£ chÃ©p`;
         setTimeout(() => {
             btn.innerHTML = origHtml;
         }, 2000);
     }).catch(err => {
-        console.error("Lỗi sao chép code:", err);
+        console.error("Lá»—i sao chÃ©p code:", err);
     });
 }
 
-// Đăng xuất
+// ÄÄƒng xuáº¥t
 async function logout() {
-    const consent = await customConfirm("Đăng xuất", "Bạn có chắc chắn muốn đăng xuất khỏi tài khoản không?", "Đăng xuất", "Hủy", true);
+    const consent = await customConfirm("ÄÄƒng xuáº¥t", "Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n Ä‘Äƒng xuáº¥t khá»i tÃ i khoáº£n khÃ´ng?", "ÄÄƒng xuáº¥t", "Há»§y", true);
     if (!consent) return;
 
     localStorage.removeItem("authToken");
@@ -4721,13 +4750,13 @@ async function logout() {
     document.getElementById("chat-screen").classList.remove("mobile-chat-active");
     document.body.classList.remove("mobile-chat-active");
     
-    // Trả header lại vào trong .chat-window để hiển thị bình thường trên desktop
+    // Tráº£ header láº¡i vÃ o trong .chat-window Ä‘á»ƒ hiá»ƒn thá»‹ bÃ¬nh thÆ°á»ng trÃªn desktop
     const mobileHeader = document.getElementById("chat-header-container");
     const mobileChatWindow = document.querySelector(".chat-window");
     if (mobileHeader && mobileChatWindow) {
         mobileChatWindow.insertBefore(mobileHeader, mobileChatWindow.firstChild);
     }
-    // Ẩn Tab Bar (đã chuyển ra ngoài #chat-screen)
+    // áº¨n Tab Bar (Ä‘Ã£ chuyá»ƒn ra ngoÃ i #chat-screen)
     const tabBarLogout = document.getElementById("main-tab-bar");
     if (tabBarLogout) tabBarLogout.style.display = "none";
     document.getElementById("auth-screen").style.display = "flex";
@@ -4739,10 +4768,10 @@ async function logout() {
 
     document.getElementById("login-password").value = "";
 
-    const defaultTab = document.querySelector('.sidebar .nav-item') || document.querySelector('.nav-item[title="Tin nhắn"]');
+    const defaultTab = document.querySelector('.sidebar .nav-item') || document.querySelector('.nav-item[title="Tin nháº¯n"]');
     if (defaultTab) switchTab("tab-messages", defaultTab);
 
-    // ── Khởi tạo pill đúng vị trí ngay khi load (không có animation) ──
+    // â”€â”€ Khá»Ÿi táº¡o pill Ä‘Ãºng vá»‹ trÃ­ ngay khi load (khÃ´ng cÃ³ animation) â”€â”€
     setTimeout(() => {
         const pill = document.getElementById('nav-slider-pill');
         const activeItem = document.querySelector('.sidebar .nav-item.active');
@@ -4758,7 +4787,7 @@ async function logout() {
     }, 300);
 }
 
-// Cập nhật Ảnh bìa (Cover Image)
+// Cáº­p nháº­t áº¢nh bÃ¬a (Cover Image)
 const coverUploadInput = document.getElementById("cover-upload");
 if (coverUploadInput) {
     coverUploadInput.addEventListener("change", async function (e) {
@@ -4766,8 +4795,8 @@ if (coverUploadInput) {
         if (!file) return;
 
         try {
-            showLoading("Đang xử lý và nén ảnh bìa...");
-            // Nén ảnh bìa xuống max 800x400 JPEG quality 0.8 (~60KB)
+            showLoading("Äang xá»­ lÃ½ vÃ  nÃ©n áº£nh bÃ¬a...");
+            // NÃ©n áº£nh bÃ¬a xuá»‘ng max 800x400 JPEG quality 0.8 (~60KB)
             const compressedBase64 = await compressImage(file, 800, 400, 0.8);
 
             const res = await fetch(`${API_URL}/users/cover`, {
@@ -4784,34 +4813,34 @@ if (coverUploadInput) {
             if (data.success) {
                 const coverUrlWithVersion = `${data.coverUrl}`;
                 document.getElementById("my-cover").src = coverUrlWithVersion;
-                showTempToast("Đã cập nhật ảnh bìa mới thành công!");
+                showTempToast("ÄÃ£ cáº­p nháº­t áº£nh bÃ¬a má»›i thÃ nh cÃ´ng!");
             } else {
-                alert("Lỗi tải ảnh bìa: " + data.message);
+                alert("Lá»—i táº£i áº£nh bÃ¬a: " + data.message);
             }
         } catch (error) {
             hideLoading();
-            alert("Lỗi hệ thống khi tải ảnh bìa lên!");
+            alert("Lá»—i há»‡ thá»‘ng khi táº£i áº£nh bÃ¬a lÃªn!");
         }
     });
 }
 
-// Cập nhật Thông tin Hồ sơ (Tên & Tiểu sử)
+// Cáº­p nháº­t ThÃ´ng tin Há»“ sÆ¡ (TÃªn & Tiá»ƒu sá»­)
 async function openEditProfileModal() {
     const currentName = document.getElementById("profile-name").innerText;
     const currentBio = document.getElementById("profile-bio").innerText;
 
-    const newName = await customPrompt("Đổi tên hiển thị", "Nhập tên hiển thị mới của bạn:", currentName, "Tên hiển thị");
+    const newName = await customPrompt("Äá»•i tÃªn hiá»ƒn thá»‹", "Nháº­p tÃªn hiá»ƒn thá»‹ má»›i cá»§a báº¡n:", currentName, "TÃªn hiá»ƒn thá»‹");
     if (newName === null) return;
 
     const newBio = await customPrompt(
-        "Đổi tiểu sử",
-        "Nhập dòng trạng thái/tiểu sử mới:",
-        currentBio !== "Chưa có tiểu sử" ? currentBio : "",
-        "Tiểu sử / Dòng trạng thái"
+        "Äá»•i tiá»ƒu sá»­",
+        "Nháº­p dÃ²ng tráº¡ng thÃ¡i/tiá»ƒu sá»­ má»›i:",
+        currentBio !== "ChÆ°a cÃ³ tiá»ƒu sá»­" ? currentBio : "",
+        "Tiá»ƒu sá»­ / DÃ²ng tráº¡ng thÃ¡i"
     );
     if (newBio === null) return;
 
-    if (!newName.trim()) return alert("Tên hiển thị không được để trống!");
+    if (!newName.trim()) return alert("TÃªn hiá»ƒn thá»‹ khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng!");
 
     try {
         const res = await fetch(`${API_URL}/users/profile`, {
@@ -4831,30 +4860,30 @@ async function openEditProfileModal() {
             if (document.getElementById("my-name-personal-tab"))
                 document.getElementById("my-name-personal-tab").innerText = myName;
             document.getElementById("profile-bio").innerText =
-                data.data.bio || "Chưa có tiểu sử";
-            alert("Cập nhật thông tin thành công!");
+                data.data.bio || "ChÆ°a cÃ³ tiá»ƒu sá»­";
+            alert("Cáº­p nháº­t thÃ´ng tin thÃ nh cÃ´ng!");
         } else {
-            alert("Cập nhật bị lỗi: " + data.message);
+            alert("Cáº­p nháº­t bá»‹ lá»—i: " + data.message);
         }
     } catch (error) {
-        alert("Lỗi kết nối mạng khi cập nhật thông tin!");
+        alert("Lá»—i káº¿t ná»‘i máº¡ng khi cáº­p nháº­t thÃ´ng tin!");
     }
 }
 
 // ==========================================
-// LOGIC GỌI VIDEO / THOẠI (WEBRTC)
+// LOGIC Gá»ŒI VIDEO / THOáº I (WEBRTC)
 // ==========================================
 
 async function upgradeToVideoCall() {
     if (callTypeGlobal !== "voice" || !localStream || !peerConnection) {
         console.warn(
-            "Không thể nâng cấp: cuộc gọi không phải di động hoặc chưa kết nối.",
+            "KhÃ´ng thá»ƒ nÃ¢ng cáº¥p: cuá»™c gá»i khÃ´ng pháº£i di Ä‘á»™ng hoáº·c chÆ°a káº¿t ná»‘i.",
         );
         return;
     }
 
     try {
-        console.log("Đang yêu cầu quyền truy cập camera để nâng cấp...");
+        console.log("Äang yÃªu cáº§u quyá»n truy cáº­p camera Ä‘á»ƒ nÃ¢ng cáº¥p...");
 
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         const videoConstraints = isMobile ? { facingMode: currentFacingMode } :
@@ -4869,7 +4898,7 @@ async function upgradeToVideoCall() {
 
         const sender = peerConnection.addTrack(videoTrack, localStream);
         if (!sender) {
-            throw new Error("Không thể thêm video track vào PeerConnection.");
+            throw new Error("KhÃ´ng thá»ƒ thÃªm video track vÃ o PeerConnection.");
         }
 
         callTypeGlobal = "video";
@@ -4893,7 +4922,7 @@ async function upgradeToVideoCall() {
 
         socket.emit("did_upgrade_to_video", { to: currentCallPartnerId });
 
-        console.log("Bắt đầu renegotiate để gửi video luồng...");
+        console.log("Báº¯t Ä‘áº§u renegotiate Ä‘á»ƒ gá»­i video luá»“ng...");
         const offer = await peerConnection.createOffer();
         await peerConnection.setLocalDescription(offer);
         socket.emit("webrtc_signal", {
@@ -4901,9 +4930,9 @@ async function upgradeToVideoCall() {
             signal: { offer },
         });
     } catch (error) {
-        console.error("Lỗi khi nâng cấp cuộc gọi video:", error);
+        console.error("Lá»—i khi nÃ¢ng cáº¥p cuá»™c gá»i video:", error);
         alert(
-            "Không thể bật video. Vui lòng kiểm tra lại quyền truy cập camera của bạn.",
+            "KhÃ´ng thá»ƒ báº­t video. Vui lÃ²ng kiá»ƒm tra láº¡i quyá»n truy cáº­p camera cá»§a báº¡n.",
         );
     }
 }
@@ -4931,7 +4960,7 @@ function stopCallTimer() {
 }
 
 // ==========================================
-// QUẢN LÝ HIỆU ỨNG RUNG TRÊN ĐIỆN THOẠI
+// QUáº¢N LÃ HIá»†U á»¨NG RUNG TRÃŠN ÄIá»†N THOáº I
 // ==========================================
 
 let callVibrationActive = false;
@@ -4940,14 +4969,14 @@ function triggerCallVibration() {
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     if (isMobile && navigator.vibrate) {
         try {
-            // Rung liên tục dài 30 giây (rung 1.2s, nghỉ 0.8s, lặp lại 15 lần)
+            // Rung liÃªn tá»¥c dÃ i 30 giÃ¢y (rung 1.2s, nghá»‰ 0.8s, láº·p láº¡i 15 láº§n)
             navigator.vibrate([
                 1200, 800, 1200, 800, 1200, 800, 1200, 800, 1200, 800,
                 1200, 800, 1200, 800, 1200, 800, 1200, 800, 1200, 800,
                 1200, 800, 1200, 800, 1200, 800, 1200, 800, 1200, 800
             ]);
         } catch (e) {
-            console.warn("Lỗi gọi navigator.vibrate:", e);
+            console.warn("Lá»—i gá»i navigator.vibrate:", e);
         }
     }
 }
@@ -4962,7 +4991,7 @@ function startVibration() {
     callVibrationActive = true;
     triggerCallVibration();
 
-    // Đăng ký sự kiện chạm màn hình để giải phóng Gesture Lock của trình duyệt và kích hoạt rung ngay lập tức
+    // ÄÄƒng kÃ½ sá»± kiá»‡n cháº¡m mÃ n hÃ¬nh Ä‘á»ƒ giáº£i phÃ³ng Gesture Lock cá»§a trÃ¬nh duyá»‡t vÃ  kÃ­ch hoáº¡t rung ngay láº­p tá»©c
     document.addEventListener("click", handleUserInteractionVibrate);
     document.addEventListener("touchstart", handleUserInteractionVibrate);
 
@@ -4971,7 +5000,7 @@ function startVibration() {
         if (callVibrationActive) {
             triggerCallVibration();
         }
-    }, 25000); // Lặp lại sau mỗi 25s để phủ kín thời gian đổ chuông nếu chưa bắt máy
+    }, 25000); // Láº·p láº¡i sau má»—i 25s Ä‘á»ƒ phá»§ kÃ­n thá»i gian Ä‘á»• chuÃ´ng náº¿u chÆ°a báº¯t mÃ¡y
 }
 
 function stopVibration() {
@@ -5005,11 +5034,11 @@ function stopOutgoingRingtone() {
     stopWebAudio("dialtone");
 }
 
-// 1. Bắt đầu cuộc gọi (Người gọi)
+// 1. Báº¯t Ä‘áº§u cuá»™c gá»i (NgÆ°á»i gá»i)
 async function startCall(callType) {
-    if (!currentChatPartnerId) return alert("Vui lòng chọn một người để gọi.");
+    if (!currentChatPartnerId) return alert("Vui lÃ²ng chá»n má»™t ngÆ°á»i Ä‘á»ƒ gá»i.");
 
-    // Phát nhạc chờ cuộc gọi đi đồng bộ ngay lập tức để giữ gesture context trên di động
+    // PhÃ¡t nháº¡c chá» cuá»™c gá»i Ä‘i Ä‘á»“ng bá»™ ngay láº­p tá»©c Ä‘á»ƒ giá»¯ gesture context trÃªn di Ä‘á»™ng
     playOutgoingRingtone();
 
     callTypeGlobal = callType;
@@ -5019,7 +5048,7 @@ async function startCall(callType) {
     try {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             throw new Error(
-                "Trình duyệt chặn Microphone do bạn không sử dụng HTTPS hoặc Localhost!",
+                "TrÃ¬nh duyá»‡t cháº·n Microphone do báº¡n khÃ´ng sá»­ dá»¥ng HTTPS hoáº·c Localhost!",
             );
         }
 
@@ -5040,11 +5069,11 @@ async function startCall(callType) {
         try {
             localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
         } catch (error) {
-            console.warn("Lỗi khi mở luồng Media với constraints gốc:", error);
-            // Fallback 1: Nếu yêu cầu video mà không có camera, hãy thử chỉ lấy audio
+            console.warn("Lá»—i khi má»Ÿ luá»“ng Media vá»›i constraints gá»‘c:", error);
+            // Fallback 1: Náº¿u yÃªu cáº§u video mÃ  khÃ´ng cÃ³ camera, hÃ£y thá»­ chá»‰ láº¥y audio
             if (callTypeGlobal === "video") {
                 try {
-                    console.log("Thử lại: Yêu cầu cuộc gọi chỉ lấy audio do thiếu camera...");
+                    console.log("Thá»­ láº¡i: YÃªu cáº§u cuá»™c gá»i chá»‰ láº¥y audio do thiáº¿u camera...");
                     localStream = await navigator.mediaDevices.getUserMedia({
                         audio: {
                             noiseSuppression: isNoiseCancellationEnabled,
@@ -5052,13 +5081,13 @@ async function startCall(callType) {
                         },
                         video: false
                     });
-                    showTempToast("Không tìm thấy Camera. Cuộc gọi tiếp tục ở chế độ chỉ âm thanh.");
+                    showTempToast("KhÃ´ng tÃ¬m tháº¥y Camera. Cuá»™c gá»i tiáº¿p tá»¥c á»Ÿ cháº¿ Ä‘á»™ chá»‰ Ã¢m thanh.");
                 } catch (audioOnlyErr) {
-                    console.warn("Thử chỉ lấy audio thất bại:", audioOnlyErr);
+                    console.warn("Thá»­ chá»‰ láº¥y audio tháº¥t báº¡i:", audioOnlyErr);
                 }
             }
 
-            // Fallback 2: Thử lấy cấu hình siêu cơ bản (chỉ audio)
+            // Fallback 2: Thá»­ láº¥y cáº¥u hÃ¬nh siÃªu cÆ¡ báº£n (chá»‰ audio)
             if (!localStream) {
                 try {
                     localStream = await navigator.mediaDevices.getUserMedia({
@@ -5066,13 +5095,13 @@ async function startCall(callType) {
                         video: false
                     });
                 } catch (fallbackError) {
-                    console.error("Lỗi hoàn toàn khi truy cập micro:", fallbackError);
+                    console.error("Lá»—i hoÃ n toÃ n khi truy cáº­p micro:", fallbackError);
                     if (fallbackError.name === "NotFoundError" || fallbackError.name === "DevicesNotFoundError") {
-                        showTempToast("Không tìm thấy Microphone trên máy tính này. Cuộc gọi ở chế độ chỉ nghe.");
+                        showTempToast("KhÃ´ng tÃ¬m tháº¥y Microphone trÃªn mÃ¡y tÃ­nh nÃ y. Cuá»™c gá»i á»Ÿ cháº¿ Ä‘á»™ chá»‰ nghe.");
                     } else if (fallbackError.name === "NotAllowedError" || fallbackError.name === "PermissionDeniedError") {
-                        showTempToast("Trình duyệt bị chặn quyền truy cập Microphone. Vui lòng cấp quyền ở ô địa chỉ!");
+                        showTempToast("TrÃ¬nh duyá»‡t bá»‹ cháº·n quyá»n truy cáº­p Microphone. Vui lÃ²ng cáº¥p quyá»n á»Ÿ Ã´ Ä‘á»‹a chá»‰!");
                     } else {
-                        showTempToast("Không thể kết nối Microphone. Cuộc gọi ở chế độ chỉ nghe.");
+                        showTempToast("KhÃ´ng thá»ƒ káº¿t ná»‘i Microphone. Cuá»™c gá»i á»Ÿ cháº¿ Ä‘á»™ chá»‰ nghe.");
                     }
                     localStream = null;
                 }
@@ -5083,7 +5112,7 @@ async function startCall(callType) {
             const localVideo = document.getElementById("local-video");
             if (localVideo) {
                 localVideo.srcObject = localStream;
-                localVideo.muted = true; // Tránh vọng tiếng
+                localVideo.muted = true; // TrÃ¡nh vá»ng tiáº¿ng
             }
         }
 
@@ -5104,7 +5133,7 @@ async function startCall(callType) {
         }
 
         document.getElementById("call-avatar").src = partnerAvatarUrl;
-        document.getElementById("call-status").innerText = "Đang gọi...";
+        document.getElementById("call-status").innerText = "Äang gá»i...";
 
         const flipBtn = document.getElementById("flip-cam-btn");
         if (flipBtn)
@@ -5133,25 +5162,25 @@ async function startCall(callType) {
             callType,
         });
 
-        // Thiết lập timeout tự động hủy cuộc gọi sau 30 giây nếu đối phương không bắt máy
+        // Thiáº¿t láº­p timeout tá»± Ä‘á»™ng há»§y cuá»™c gá»i sau 30 giÃ¢y náº¿u Ä‘á»‘i phÆ°Æ¡ng khÃ´ng báº¯t mÃ¡y
         if (callTimeoutTimer) clearTimeout(callTimeoutTimer);
         callTimeoutTimer = setTimeout(() => {
             const callModal = document.getElementById("call-modal");
             if (callModal && callModal.style.display === "flex" && !callModal.classList.contains("in-call")) {
-                console.log("⏱️ Cuộc gọi hết thời gian chờ phản hồi (30s). Tự động ngắt.");
-                showTempToast("Không có phản hồi từ người nhận.");
+                console.log("â±ï¸ Cuá»™c gá»i háº¿t thá»i gian chá» pháº£n há»“i (30s). Tá»± Ä‘á»™ng ngáº¯t.");
+                showTempToast("KhÃ´ng cÃ³ pháº£n há»“i tá»« ngÆ°á»i nháº­n.");
                 endCall(true);
             }
         }, 30000);
 
     } catch (err) {
         stopOutgoingRingtone();
-        console.error("Lỗi trong startCall:", err);
-        alert("Không thể thực hiện cuộc gọi: " + err.message);
+        console.error("Lá»—i trong startCall:", err);
+        alert("KhÃ´ng thá»ƒ thá»±c hiá»‡n cuá»™c gá»i: " + err.message);
     }
 }
 
-// 2. Xử lý khi có cuộc gọi đến (Callee)
+// 2. Xá»­ lÃ½ khi cÃ³ cuá»™c gá»i Ä‘áº¿n (Callee)
 function handleIncomingCall(data) {
     try {
         if (!data) return;
@@ -5166,7 +5195,7 @@ function handleIncomingCall(data) {
         modal.classList.remove("voice-call", "video-call", "in-call", "is-caller");
         modal.classList.add(`${callType}-call`);
 
-        document.getElementById("call-name").innerText = callerName || "Người dùng";
+        document.getElementById("call-name").innerText = callerName || "NgÆ°á»i dÃ¹ng";
 
         let safeAvatar;
         if (callerAvatar && callerAvatar.trim() !== "") {
@@ -5178,8 +5207,8 @@ function handleIncomingCall(data) {
         }
 
         document.getElementById("call-avatar").src = safeAvatar;
-        document.getElementById("call-status").innerText = `${callType === "video" ? "video" : "điện thoại"
-            } cho bạn...`;
+        document.getElementById("call-status").innerText = `${callType === "video" ? "video" : "Ä‘iá»‡n thoáº¡i"
+            } cho báº¡n...`;
 
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         const flipBtn = document.getElementById("flip-cam-btn");
@@ -5204,7 +5233,7 @@ function handleIncomingCall(data) {
             stopVibration();
             stopRingtone();
 
-            // Mở khóa autoplay trình duyệt bằng AudioContext (iOS Safari cần user gesture)
+            // Má»Ÿ khÃ³a autoplay trÃ¬nh duyá»‡t báº±ng AudioContext (iOS Safari cáº§n user gesture)
             try {
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
                 const buffer = ctx.createBuffer(1, 1, 22050);
@@ -5212,7 +5241,7 @@ function handleIncomingCall(data) {
                 source.buffer = buffer;
                 source.connect(ctx.destination);
                 source.start(0);
-                // Đánh dấu remoteAudio sẵn sàng phát khi ontrack gán srcObject
+                // ÄÃ¡nh dáº¥u remoteAudio sáºµn sÃ ng phÃ¡t khi ontrack gÃ¡n srcObject
                 const remoteAudio = document.getElementById("remote-audio");
                 if (remoteAudio) {
                     remoteAudio.muted = false;
@@ -5223,7 +5252,7 @@ function handleIncomingCall(data) {
                     remoteVideo.muted = false;
                 }
             } catch (e) {
-                console.warn("Không thể mở khóa AudioContext:", e);
+                console.warn("KhÃ´ng thá»ƒ má»Ÿ khÃ³a AudioContext:", e);
             }
 
             const success = await startCallSession(false);
@@ -5240,24 +5269,24 @@ function handleIncomingCall(data) {
             endCall(false);
         };
     } catch (error) {
-        console.error("Lỗi khi hiển thị cuộc gọi đến:", error);
+        console.error("Lá»—i khi hiá»ƒn thá»‹ cuá»™c gá»i Ä‘áº¿n:", error);
     }
 }
 
-// 2.5 Xử lý khi cuộc gọi bị từ chối (Người gọi)
+// 2.5 Xá»­ lÃ½ khi cuá»™c gá»i bá»‹ tá»« chá»‘i (NgÆ°á»i gá»i)
 function handleCallRejected(data) {
     stopVibration();
     stopOutgoingRingtone();
     const reason = data ? data.reason : null;
     if (reason === "offline") {
-        alert("Người dùng hiện không trực tuyến.");
+        alert("NgÆ°á»i dÃ¹ng hiá»‡n khÃ´ng trá»±c tuyáº¿n.");
     } else {
-        alert("Người dùng đã từ chối cuộc gọi.");
+        alert("NgÆ°á»i dÃ¹ng Ä‘Ã£ tá»« chá»‘i cuá»™c gá»i.");
     }
     endCall(false);
 }
 
-// 3. Cuộc gọi được chấp nhận (Người gọi)
+// 3. Cuá»™c gá»i Ä‘Æ°á»£c cháº¥p nháº­n (NgÆ°á»i gá»i)
 async function handleCallAccepted(data) {
     try {
         stopOutgoingRingtone();
@@ -5271,7 +5300,7 @@ async function handleCallAccepted(data) {
 
         if (calleeInfo) {
             document.getElementById("call-name").innerText =
-                calleeInfo.fullName || "Người dùng";
+                calleeInfo.fullName || "NgÆ°á»i dÃ¹ng";
 
             let avatarUrl;
             if (calleeInfo.avatar && calleeInfo.avatar.trim() !== "") {
@@ -5288,17 +5317,17 @@ async function handleCallAccepted(data) {
         await startCallSession(true, calleeInfo);
         startCallTimer();
     } catch (error) {
-        console.error("Lỗi khi xử lý chấp nhận cuộc gọi:", error);
-        alert("Có thể xảy ra lỗi khi kết nối cuộc gọi.");
+        console.error("Lá»—i khi xá»­ lÃ½ cháº¥p nháº­n cuá»™c gá»i:", error);
+        alert("CÃ³ thá»ƒ xáº£y ra lá»—i khi káº¿t ná»‘i cuá»™c gá»i.");
         endCall(true);
     }
 }
 
-// 3.5. Đối phương nâng cấp lên Video Call
+// 3.5. Äá»‘i phÆ°Æ¡ng nÃ¢ng cáº¥p lÃªn Video Call
 function handleUpgradeToVideo() {
     if (callTypeGlobal === "video") return;
 
-    console.log("Đối phương đã bật video. Nâng cấp cuộc gọi...");
+    console.log("Äá»‘i phÆ°Æ¡ng Ä‘Ã£ báº­t video. NÃ¢ng cáº¥p cuá»™c gá»i...");
     callTypeGlobal = "video";
 
     const modal = document.getElementById("call-modal");
@@ -5322,12 +5351,12 @@ function handleUpgradeToVideo() {
     }
 }
 
-// 4. Bắt đầu phiên bản WebRTC
+// 4. Báº¯t Ä‘áº§u phiÃªn báº£n WebRTC
 async function startCallSession(isCaller, calleeInfo = null) {
-    // Reset hàng đợi candidates khi bắt đầu cuộc gọi mới tránh lẫn candidates cũ
+    // Reset hÃ ng Ä‘á»£i candidates khi báº¯t Ä‘áº§u cuá»™c gá»i má»›i trÃ¡nh láº«n candidates cÅ©
     iceCandidateQueue = [];
     document.getElementById("call-modal").classList.add("in-call");
-    document.getElementById("call-status").innerText = "Trong cuộc gọi...";
+    document.getElementById("call-status").innerText = "Trong cuá»™c gá»i...";
 
     document
         .getElementById("incoming-call-actions")
@@ -5337,20 +5366,20 @@ async function startCallSession(isCaller, calleeInfo = null) {
         .setAttribute("style", "display: flex !important");
 
     try {
-        // Để tránh xung đột âm thanh với nhạc chuông (dialtone/ringtone) làm micro bị ngắt/tắt tiếng trên thiết bị di động,
-        // chúng tôi luôn tắt và xin cấp lại một localStream mới sạch sẽ ngay khi bắt đầu kết nối.
+        // Äá»ƒ trÃ¡nh xung Ä‘á»™t Ã¢m thanh vá»›i nháº¡c chuÃ´ng (dialtone/ringtone) lÃ m micro bá»‹ ngáº¯t/táº¯t tiáº¿ng trÃªn thiáº¿t bá»‹ di Ä‘á»™ng,
+        // chÃºng tÃ´i luÃ´n táº¯t vÃ  xin cáº¥p láº¡i má»™t localStream má»›i sáº¡ch sáº½ ngay khi báº¯t Ä‘áº§u káº¿t ná»‘i.
         if (localStream) {
             try {
                 localStream.getTracks().forEach((track) => track.stop());
             } catch (e) {
-                console.warn("Lỗi dừng stream cũ:", e);
+                console.warn("Lá»—i dá»«ng stream cÅ©:", e);
             }
             localStream = null;
         }
 
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             throw new Error(
-                "Trình duyệt chặn Microphone do bạn không dùng HTTPS hoặc Localhost!",
+                "TrÃ¬nh duyá»‡t cháº·n Microphone do báº¡n khÃ´ng dÃ¹ng HTTPS hoáº·c Localhost!",
             );
         }
 
@@ -5363,7 +5392,7 @@ async function startCallSession(isCaller, calleeInfo = null) {
                 audio: {
                     noiseSuppression: isNoiseCancellationEnabled,
                     echoCancellation: true,
-                    autoGainControl: true, // Kích hoạt tự động tăng âm lượng micro
+                    autoGainControl: true, // KÃ­ch hoáº¡t tá»± Ä‘á»™ng tÄƒng Ã¢m lÆ°á»£ng micro
                     ...(selectedMicId ? { deviceId: { exact: selectedMicId } } : {})
                 },
                 video: callTypeGlobal === "video" ?
@@ -5374,11 +5403,11 @@ async function startCallSession(isCaller, calleeInfo = null) {
             try {
                 localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
             } catch (err) {
-                console.warn("Lỗi khi mở luồng Media trong session với constraints gốc:", err);
-                // Fallback 1: Nếu yêu cầu video mà không có camera, hãy thử chỉ lấy audio
+                console.warn("Lá»—i khi má»Ÿ luá»“ng Media trong session vá»›i constraints gá»‘c:", err);
+                // Fallback 1: Náº¿u yÃªu cáº§u video mÃ  khÃ´ng cÃ³ camera, hÃ£y thá»­ chá»‰ láº¥y audio
                 if (callTypeGlobal === "video") {
                     try {
-                        console.log("Thử lại trong session: Yêu cầu chỉ lấy audio do thiếu camera...");
+                        console.log("Thá»­ láº¡i trong session: YÃªu cáº§u chá»‰ láº¥y audio do thiáº¿u camera...");
                         localStream = await navigator.mediaDevices.getUserMedia({
                             audio: {
                                 noiseSuppression: isNoiseCancellationEnabled,
@@ -5387,13 +5416,13 @@ async function startCallSession(isCaller, calleeInfo = null) {
                             },
                             video: false
                         });
-                        showTempToast("Không tìm thấy Camera. Thiết lập cuộc gọi ở chế độ chỉ âm thanh.");
+                        showTempToast("KhÃ´ng tÃ¬m tháº¥y Camera. Thiáº¿t láº­p cuá»™c gá»i á»Ÿ cháº¿ Ä‘á»™ chá»‰ Ã¢m thanh.");
                     } catch (audioOnlyErr) {
-                        console.warn("Thử chỉ lấy audio trong session thất bại:", audioOnlyErr);
+                        console.warn("Thá»­ chá»‰ láº¥y audio trong session tháº¥t báº¡i:", audioOnlyErr);
                     }
                 }
 
-                // Fallback 2: Thử lấy cấu hình siêu cơ bản (chỉ audio)
+                // Fallback 2: Thá»­ láº¥y cáº¥u hÃ¬nh siÃªu cÆ¡ báº£n (chá»‰ audio)
                 if (!localStream) {
                     try {
                         localStream = await navigator.mediaDevices.getUserMedia({
@@ -5401,13 +5430,13 @@ async function startCallSession(isCaller, calleeInfo = null) {
                             video: false
                         });
                     } catch (fallbackErr) {
-                        console.error("Lỗi hoàn toàn khi truy cập micro trong session:", fallbackErr);
+                        console.error("Lá»—i hoÃ n toÃ n khi truy cáº­p micro trong session:", fallbackErr);
                         if (fallbackErr.name === "NotFoundError" || fallbackErr.name === "DevicesNotFoundError") {
-                            showTempToast("Không tìm thấy Microphone trên máy tính này. Bạn ở chế độ chỉ nghe.");
+                            showTempToast("KhÃ´ng tÃ¬m tháº¥y Microphone trÃªn mÃ¡y tÃ­nh nÃ y. Báº¡n á»Ÿ cháº¿ Ä‘á»™ chá»‰ nghe.");
                         } else if (fallbackErr.name === "NotAllowedError" || fallbackErr.name === "PermissionDeniedError") {
-                            showTempToast("Vui lòng cho phép quyền truy cập Microphone trên trình duyệt để nói!");
+                            showTempToast("Vui lÃ²ng cho phÃ©p quyá»n truy cáº­p Microphone trÃªn trÃ¬nh duyá»‡t Ä‘á»ƒ nÃ³i!");
                         } else {
-                            showTempToast("Không thể kết nối Microphone. Bạn ở chế độ chỉ nghe.");
+                            showTempToast("KhÃ´ng thá»ƒ káº¿t ná»‘i Microphone. Báº¡n á»Ÿ cháº¿ Ä‘á»™ chá»‰ nghe.");
                         }
                         localStream = null;
                     }
@@ -5418,11 +5447,11 @@ async function startCallSession(isCaller, calleeInfo = null) {
                 const localVideo = document.getElementById("local-video");
                 if (localVideo) {
                     localVideo.srcObject = localStream;
-                    localVideo.muted = true; // Tránh vọng tiếng
+                    localVideo.muted = true; // TrÃ¡nh vá»ng tiáº¿ng
                 }
             }
         } catch (error) {
-            console.error("Lỗi không mong muốn khi chuẩn bị phương tiện:", error);
+            console.error("Lá»—i khÃ´ng mong muá»‘n khi chuáº©n bá»‹ phÆ°Æ¡ng tiá»‡n:", error);
             localStream = null;
         }
 
@@ -5447,19 +5476,19 @@ async function startCallSession(isCaller, calleeInfo = null) {
                     remoteAudio.muted = false;
                     remoteAudio.volume = 1.0;
 
-                    // Thử phát ngay lập tức
+                    // Thá»­ phÃ¡t ngay láº­p tá»©c
                     const playPromise = remoteAudio.play();
                     if (playPromise !== undefined) {
                         playPromise
                             .then(() => {
-                                console.log("🔊 Phát âm thanh cuộc gọi thành công lập tức!");
+                                console.log("ðŸ”Š PhÃ¡t Ã¢m thanh cuá»™c gá»i thÃ nh cÃ´ng láº­p tá»©c!");
                             })
                             .catch((e) => {
-                                console.warn("Autoplay chặn âm thanh cuộc gọi lần đầu, đăng ký chạm màn hình để mở khóa...", e);
+                                console.warn("Autoplay cháº·n Ã¢m thanh cuá»™c gá»i láº§n Ä‘áº§u, Ä‘Äƒng kÃ½ cháº¡m mÃ n hÃ¬nh Ä‘á»ƒ má»Ÿ khÃ³a...", e);
                                 document.addEventListener("click", playRemoteAudioSafely);
                                 document.addEventListener("touchstart", playRemoteAudioSafely);
 
-                                // Thử lại sau 500ms
+                                // Thá»­ láº¡i sau 500ms
                                 setTimeout(() => {
                                     if (remoteAudio.srcObject === stream) {
                                         remoteAudio.play().catch(() => { });
@@ -5477,7 +5506,7 @@ async function startCallSession(isCaller, calleeInfo = null) {
                     const playPromise = remoteVideo.play();
                     if (playPromise !== undefined) {
                         playPromise.catch((e) => {
-                            console.warn("Autoplay chặn video cuộc gọi lần đầu, thử lại sau 300ms...", e);
+                            console.warn("Autoplay cháº·n video cuá»™c gá»i láº§n Ä‘áº§u, thá»­ láº¡i sau 300ms...", e);
                             setTimeout(() => {
                                 if (remoteVideo.srcObject === stream) {
                                     remoteVideo.play().catch(() => { });
@@ -5498,7 +5527,7 @@ async function startCallSession(isCaller, calleeInfo = null) {
             }
         };
 
-        // Lắng nghe trạng thái kết nối ICE để tự động Restart ICE khi bị fail lần đầu
+        // Láº¯ng nghe tráº¡ng thÃ¡i káº¿t ná»‘i ICE Ä‘á»ƒ tá»± Ä‘á»™ng Restart ICE khi bá»‹ fail láº§n Ä‘áº§u
         peerConnection.oniceconnectionstatechange = () => {
             if (peerConnection) {
                 console.log("ICE Connection State:", peerConnection.iceConnectionState);
@@ -5506,7 +5535,7 @@ async function startCallSession(isCaller, calleeInfo = null) {
                     peerConnection.iceConnectionState === "failed" ||
                     peerConnection.iceConnectionState === "disconnected"
                 ) {
-                    console.warn("Kết nối cuộc gọi gặp trục trặc! Tự động kết nối lại (ICE Restart)...");
+                    console.warn("Káº¿t ná»‘i cuá»™c gá»i gáº·p trá»¥c tráº·c! Tá»± Ä‘á»™ng káº¿t ná»‘i láº¡i (ICE Restart)...");
                     triggerIceRestart(isCaller);
                 }
             }
@@ -5527,26 +5556,26 @@ async function startCallSession(isCaller, calleeInfo = null) {
                 signal: { offer },
             });
         } else {
-            // Đối với người nhận, sau khi khởi tạo peerConnection thành công,
-            // xử lý tất cả các tín hiệu (offer/ICE) đang chờ trong hàng đợi.
+            // Äá»‘i vá»›i ngÆ°á»i nháº­n, sau khi khá»Ÿi táº¡o peerConnection thÃ nh cÃ´ng,
+            // xá»­ lÃ½ táº¥t cáº£ cÃ¡c tÃ­n hiá»‡u (offer/ICE) Ä‘ang chá» trong hÃ ng Ä‘á»£i.
             await processPendingSignals();
         }
 
         return true;
     } catch (error) {
-        console.error("Lỗi khi bắt đầu phiên gọi:", error);
-        alert("Lỗi cuộc gọi: " + error.message);
+        console.error("Lá»—i khi báº¯t Ä‘áº§u phiÃªn gá»i:", error);
+        alert("Lá»—i cuá»™c gá»i: " + error.message);
         endCall(true);
         return false;
     }
 }
 
-// 5. Xử lý tín hiệu WebRTC nhận được
+// 5. Xá»­ lÃ½ tÃ­n hiá»‡u WebRTC nháº­n Ä‘Æ°á»£c
 async function processSignal(signal) {
     if (!peerConnection) return;
     try {
         if (signal.offer) {
-            console.log("Xử lý offer WebRTC nhận được...");
+            console.log("Xá»­ lÃ½ offer WebRTC nháº­n Ä‘Æ°á»£c...");
             await peerConnection.setRemoteDescription(
                 new RTCSessionDescription(signal.offer),
             );
@@ -5558,7 +5587,7 @@ async function processSignal(signal) {
             });
             processIceQueue();
         } else if (signal.answer) {
-            console.log("Xử lý answer WebRTC nhận được...");
+            console.log("Xá»­ lÃ½ answer WebRTC nháº­n Ä‘Æ°á»£c...");
             await peerConnection.setRemoteDescription(
                 new RTCSessionDescription(signal.answer),
             );
@@ -5568,14 +5597,14 @@ async function processSignal(signal) {
                 try {
                     await peerConnection.addIceCandidate(new RTCIceCandidate(signal.ice));
                 } catch (e) {
-                    console.warn("Lỗi khi thêm ICE candidate trực tiếp:", e.message);
+                    console.warn("Lá»—i khi thÃªm ICE candidate trá»±c tiáº¿p:", e.message);
                 }
             } else {
                 iceCandidateQueue.push(signal.ice);
             }
         }
     } catch (error) {
-        console.error("Lỗi khi xử lý tín hiệu WebRTC cụ thể:", error);
+        console.error("Lá»—i khi xá»­ lÃ½ tÃ­n hiá»‡u WebRTC cá»¥ thá»ƒ:", error);
     }
 }
 
@@ -5585,7 +5614,7 @@ async function handleWebRTCSignal({ signal, senderId }) {
     }
 
     if (!peerConnection) {
-        console.log("RTCPeerConnection chưa sẵn sàng, đưa tín hiệu vào hàng đợi:", signal);
+        console.log("RTCPeerConnection chÆ°a sáºµn sÃ ng, Ä‘Æ°a tÃ­n hiá»‡u vÃ o hÃ ng Ä‘á»£i:", signal);
         pendingSignalsQueue.push(signal);
         return;
     }
@@ -5595,7 +5624,7 @@ async function handleWebRTCSignal({ signal, senderId }) {
 
 async function processPendingSignals() {
     if (pendingSignalsQueue.length > 0) {
-        console.log(`Đang xử lý ${pendingSignalsQueue.length} tín hiệu WebRTC trong hàng đợi...`);
+        console.log(`Äang xá»­ lÃ½ ${pendingSignalsQueue.length} tÃ­n hiá»‡u WebRTC trong hÃ ng Ä‘á»£i...`);
         const queueToProcess = [...pendingSignalsQueue];
         pendingSignalsQueue = [];
         for (const signal of queueToProcess) {
@@ -5604,31 +5633,31 @@ async function processPendingSignals() {
     }
 }
 
-// 5.5 Hàm xử lý hàng đợi ICE
+// 5.5 HÃ m xá»­ lÃ½ hÃ ng Ä‘á»£i ICE
 async function processIceQueue() {
     for (const ice of iceCandidateQueue) {
         try {
             await peerConnection.addIceCandidate(new RTCIceCandidate(ice));
         } catch (e) {
-            console.error("Lỗi khi thêm ICE:", e);
+            console.error("Lá»—i khi thÃªm ICE:", e);
         }
     }
     iceCandidateQueue = [];
 }
 
-// Mở khóa âm thanh cuộc gọi từ tương tác chạm màn hình của người dùng (Bypass Autoplay của trình duyệt)
+// Má»Ÿ khÃ³a Ã¢m thanh cuá»™c gá»i tá»« tÆ°Æ¡ng tÃ¡c cháº¡m mÃ n hÃ¬nh cá»§a ngÆ°á»i dÃ¹ng (Bypass Autoplay cá»§a trÃ¬nh duyá»‡t)
 function playRemoteAudioSafely() {
     const remoteAudio = document.getElementById("remote-audio");
     if (remoteAudio && remoteAudio.srcObject) {
-        console.log("🔊 Kích hoạt phát âm thanh cuộc gọi từ tương tác người dùng...");
+        console.log("ðŸ”Š KÃ­ch hoáº¡t phÃ¡t Ã¢m thanh cuá»™c gá»i tá»« tÆ°Æ¡ng tÃ¡c ngÆ°á»i dÃ¹ng...");
         remoteAudio.play()
             .then(() => {
-                console.log("🔊 Phát âm thanh cuộc gọi thành công!");
+                console.log("ðŸ”Š PhÃ¡t Ã¢m thanh cuá»™c gá»i thÃ nh cÃ´ng!");
                 document.removeEventListener("click", playRemoteAudioSafely);
                 document.removeEventListener("touchstart", playRemoteAudioSafely);
             })
             .catch((err) => {
-                console.warn("🔊 Chưa thể phát âm thanh cuộc gọi qua tương tác:", err);
+                console.warn("ðŸ”Š ChÆ°a thá»ƒ phÃ¡t Ã¢m thanh cuá»™c gá»i qua tÆ°Æ¡ng tÃ¡c:", err);
             });
     }
 
@@ -5638,7 +5667,7 @@ function playRemoteAudioSafely() {
     }
 }
 
-// Tự động khởi động lại ICE khi gặp sự cố kết nối ở lần đầu
+// Tá»± Ä‘á»™ng khá»Ÿi Ä‘á»™ng láº¡i ICE khi gáº·p sá»± cá»‘ káº¿t ná»‘i á»Ÿ láº§n Ä‘áº§u
 async function triggerIceRestart(isCaller) {
     try {
         if (peerConnection && isCaller) {
@@ -5648,14 +5677,14 @@ async function triggerIceRestart(isCaller) {
                 connectedUserId: currentCallPartnerId,
                 signal: { offer },
             });
-            console.log("✈️ Đã kích hoạt và gửi yêu cầu kết nối lại (ICE Restart) sang đối phương!");
+            console.log("âœˆï¸ ÄÃ£ kÃ­ch hoáº¡t vÃ  gá»­i yÃªu cáº§u káº¿t ná»‘i láº¡i (ICE Restart) sang Ä‘á»‘i phÆ°Æ¡ng!");
         }
     } catch (err) {
-        console.error("Lỗi khi thực hiện ICE Restart:", err);
+        console.error("Lá»—i khi thá»±c hiá»‡n ICE Restart:", err);
     }
 }
 
-// Tự động kiểm tra và chuyển tiếp sang màn hình cuộc gọi đầy đủ khi click thông báo chạy ngầm
+// Tá»± Ä‘á»™ng kiá»ƒm tra vÃ  chuyá»ƒn tiáº¿p sang mÃ n hÃ¬nh cuá»™c gá»i Ä‘áº§y Ä‘á»§ khi click thÃ´ng bÃ¡o cháº¡y ngáº§m
 function checkUrlParamsForCall() {
     const urlParams = new URLSearchParams(window.location.search);
     const action = urlParams.get("action");
@@ -5667,16 +5696,16 @@ function checkUrlParamsForCall() {
         const autoAccept = urlParams.get("autoAccept") === "true";
         const autoDecline = urlParams.get("autoDecline") === "true";
 
-        // Xóa các query params để tránh việc kích hoạt lại khi refresh trang
+        // XÃ³a cÃ¡c query params Ä‘á»ƒ trÃ¡nh viá»‡c kÃ­ch hoáº¡t láº¡i khi refresh trang
         window.history.replaceState({}, document.title, window.location.pathname);
 
         if (autoDecline) {
-            // Gửi từ chối cuộc gọi lập tức
+            // Gá»­i tá»« chá»‘i cuá»™c gá»i láº­p tá»©c
             if (socket) socket.emit("reject_call", { callerId, callType });
             return;
         }
 
-        // Bật giao diện cuộc gọi full màn hình
+        // Báº­t giao diá»‡n cuá»™c gá»i full mÃ n hÃ¬nh
         callTypeGlobal = callType;
         currentCallPartnerId = callerId;
 
@@ -5700,15 +5729,15 @@ function checkUrlParamsForCall() {
             document.body.classList.add("call-active");
             modal.style.zIndex = "99999";
 
-            // Phát rung & nhạc chuông
+            // PhÃ¡t rung & nháº¡c chuÃ´ng
             startVibration();
             playRingtone();
 
-            // Gán lại các sự kiện click cho các nút Accept/Reject
+            // GÃ¡n láº¡i cÃ¡c sá»± kiá»‡n click cho cÃ¡c nÃºt Accept/Reject
             document.getElementById("accept-call-btn").onclick = async () => {
                 stopVibration();
                 stopRingtone();
-                // Mở khóa autoplay trình duyệt bằng AudioContext (iOS Safari cần user gesture)
+                // Má»Ÿ khÃ³a autoplay trÃ¬nh duyá»‡t báº±ng AudioContext (iOS Safari cáº§n user gesture)
                 try {
                     const ctx = new (window.AudioContext || window.webkitAudioContext)();
                     const buf = ctx.createBuffer(1, 1, 22050);
@@ -5720,7 +5749,7 @@ function checkUrlParamsForCall() {
                     if (ra) { ra.muted = false; ra.volume = 1.0; }
                     const rv = document.getElementById("remote-video");
                     if (rv) { rv.muted = false; }
-                } catch (e) { console.warn("Không thể mở khóa AudioContext:", e); }
+                } catch (e) { console.warn("KhÃ´ng thá»ƒ má»Ÿ khÃ³a AudioContext:", e); }
                 const success = await startCallSession(false);
                 if (success) {
                     socket.emit("accept_call", { callerId });
@@ -5735,7 +5764,7 @@ function checkUrlParamsForCall() {
                 endCall(false);
             };
 
-            // Nếu người dùng đã bấm nút Trả lời từ Notification banner
+            // Náº¿u ngÆ°á»i dÃ¹ng Ä‘Ã£ báº¥m nÃºt Tráº£ lá»i tá»« Notification banner
             if (autoAccept) {
                 document.getElementById("accept-call-btn").click();
             }
@@ -5743,7 +5772,7 @@ function checkUrlParamsForCall() {
     }
 }
 
-// 6. Kết thúc cuộc gọi
+// 6. Káº¿t thÃºc cuá»™c gá»i
 function endCall(shouldEmit) {
     const modal = document.getElementById("call-modal");
     const isCallActive = modal && modal.style.display === "flex";
@@ -5824,7 +5853,7 @@ function endCall(shouldEmit) {
 }
 
 // ===========================================
-// KÍCH HOẠT CÁC NÚT ĐIỀU KHIỂN CUỘC GỌI
+// KÃCH HOáº T CÃC NÃšT ÄIá»€U KHIá»‚N CUá»˜C Gá»ŒI
 // ===========================================
 
 const micBtn = document.getElementById("toggle-mic-btn");
@@ -5843,7 +5872,7 @@ if (micBtn) {
                 }
             }
         } else {
-            alert("Bật kết nối Micro!");
+            alert("Báº­t káº¿t ná»‘i Micro!");
         }
     });
 }
@@ -5852,7 +5881,7 @@ const camBtn = document.getElementById("toggle-cam-btn");
 if (camBtn) {
     camBtn.addEventListener("click", function () {
         if (!localStream) {
-            return alert("Cuộc gọi chưa được kết nối!");
+            return alert("Cuá»™c gá»i chÆ°a Ä‘Æ°á»£c káº¿t ná»‘i!");
         }
 
         const videoTrack = localStream.getVideoTracks()[0];
@@ -5889,7 +5918,7 @@ if (spkBtn) {
 }
 
 // =========================================
-// TÍNH NĂNG TÙY CHỌN 3 CHẤM (BOTTOM SHEET)
+// TÃNH NÄ‚NG TÃ™Y CHá»ŒN 3 CHáº¤M (BOTTOM SHEET)
 // =========================================
 
 function toggleCallOptionsMenu(e) {
@@ -5913,7 +5942,7 @@ async function toggleNoiseCancellation() {
                 isNoiseCancellationEnabled = newState;
                 if (toggle) toggle.checked = isNoiseCancellationEnabled;
             } catch (e) {
-                console.error("Lỗi không hỗ trợ đổi tiếng ồn trực tiếp:", e);
+                console.error("Lá»—i khÃ´ng há»— trá»£ Ä‘á»•i tiáº¿ng á»“n trá»±c tiáº¿p:", e);
                 if (toggle) toggle.checked = isNoiseCancellationEnabled;
             }
         }
@@ -5953,13 +5982,13 @@ async function toggleScreenShare() {
 
         isScreenSharing = true;
         const btnText = document.querySelector("#btn-share-screen .sheet-text p");
-        if (btnText) btnText.innerText = "Đang chia sẻ...";
+        if (btnText) btnText.innerText = "Äang chia sáº»...";
         const btnIcon = document.querySelector("#btn-share-screen .sheet-icon");
         if (btnIcon) btnIcon.style.color = "#05a060";
 
         toggleCallOptionsMenu();
     } catch (e) {
-        console.error("Lỗi chia sẻ màn hình:", e);
+        console.error("Lá»—i chia sáº» mÃ n hÃ¬nh:", e);
     }
 }
 
@@ -5995,13 +6024,13 @@ async function stopScreenShare() {
     if (callTypeGlobal === "voice") modal.classList.add("voice-call");
 
     const textEl = document.querySelector("#btn-share-screen .sheet-text p");
-    if (textEl) textEl.innerText = "Chia sẻ màn hình của bạn";
+    if (textEl) textEl.innerText = "Chia sáº» mÃ n hÃ¬nh cá»§a báº¡n";
     const iconEl = document.querySelector("#btn-share-screen .sheet-icon");
     if (iconEl) iconEl.style.color = "";
 }
 
 // =========================================
-// TÍNH NĂNG THÔNG BÁO & TOAST
+// TÃNH NÄ‚NG THÃ”NG BÃO & TOAST
 // =========================================
 
 async function loadNotifications() {
@@ -6011,7 +6040,7 @@ async function loadNotifications() {
         });
         if (!res.ok) {
             const errorText = await res.text();
-            throw new Error(`Không thể tải thông báo (HTTP ${res.status}): ${errorText.substring(0, 100) || "Lỗi máy chủ"}`);
+            throw new Error(`KhÃ´ng thá»ƒ táº£i thÃ´ng bÃ¡o (HTTP ${res.status}): ${errorText.substring(0, 100) || "Lá»—i mÃ¡y chá»§"}`);
         }
         const data = await res.json();
         if (data.success) {
@@ -6020,7 +6049,7 @@ async function loadNotifications() {
             renderNotifications();
         }
     } catch (e) {
-        console.error("Lỗi tải thông báo:", e);
+        console.error("Lá»—i táº£i thÃ´ng bÃ¡o:", e);
     }
 }
 
@@ -6047,7 +6076,7 @@ function renderNotifications() {
     if (!listEl) return;
 
     if (notificationsList.length === 0) {
-        listEl.innerHTML = `<p style="color: var(--text-light); text-align: center; margin-top: 20px;">Chưa có thông báo nào.</p>`;
+        listEl.innerHTML = `<p style="color: var(--text-light); text-align: center; margin-top: 20px;">ChÆ°a cÃ³ thÃ´ng bÃ¡o nÃ o.</p>`;
         return;
     }
 
@@ -6060,9 +6089,9 @@ function renderNotifications() {
     yesterday.setDate(yesterday.getDate() - 1);
 
     const groups = {
-        today: { name: "Hôm nay", items: [] },
-        yesterday: { name: "Hôm qua", items: [] },
-        older: { name: "Cũ hơn", items: [] }
+        today: { name: "HÃ´m nay", items: [] },
+        yesterday: { name: "HÃ´m qua", items: [] },
+        older: { name: "CÅ© hÆ¡n", items: [] }
     };
 
     notificationsList.forEach((notif) => {
@@ -6105,7 +6134,7 @@ function renderNotifications() {
             let iconClass = "fa-comments";
             if (notif.type && (notif.type.includes("FRIEND") || notif.type.includes("friend"))) {
                 iconClass = "fa-user-plus";
-            } else if (notif.content && (notif.content.includes("kết bạn") || notif.content.includes("lời mời") || notif.content.includes("chấp nhận"))) {
+            } else if (notif.content && (notif.content.includes("káº¿t báº¡n") || notif.content.includes("lá»i má»i") || notif.content.includes("cháº¥p nháº­n"))) {
                 iconClass = "fa-user-plus";
             }
 
@@ -6173,10 +6202,10 @@ function showToastNotification(notif) {
 }
 
 // ==========================================
-// CHỐNG ZOOM VÀ DOUBLE-TAP TRÊN MOBILE
+// CHá»NG ZOOM VÃ€ DOUBLE-TAP TRÃŠN MOBILE
 // ==========================================
 
-// Chống pinch-to-zoom (phóng to/thu nhỏ bằng nhiều ngón tay) trên Android/iOS
+// Chá»‘ng pinch-to-zoom (phÃ³ng to/thu nhá» báº±ng nhiá»u ngÃ³n tay) trÃªn Android/iOS
 document.addEventListener(
     "touchmove",
     function (e) {
@@ -6187,7 +6216,7 @@ document.addEventListener(
     { passive: false }
 );
 
-// Chống zoom cử chỉ trên iOS Safari
+// Chá»‘ng zoom cá»­ chá»‰ trÃªn iOS Safari
 document.addEventListener(
     "gesturestart",
     function (e) {
@@ -6210,7 +6239,7 @@ document.addEventListener(
     }, { passive: false },
 );
 
-// Chống zoom bằng con lăn chuột
+// Chá»‘ng zoom báº±ng con lÄƒn chuá»™t
 document.addEventListener(
     "wheel",
     function (e) {
@@ -6221,20 +6250,20 @@ document.addEventListener(
 );
 
 // =========================================
-// HỖ TRỢ TÍNH NĂNG TRẢ LỜI TIN NHẮN (REPLY)
+// Há»– TRá»¢ TÃNH NÄ‚NG TRáº¢ Lá»œI TIN NHáº®N (REPLY)
 // =========================================
 
-// Thiết lập chế độ trả lời tin nhắn
+// Thiáº¿t láº­p cháº¿ Ä‘á»™ tráº£ lá»i tin nháº¯n
 function setReplyMode(msgId) {
     const msg = currentChatMessages.find(m => m.id === msgId);
     if (!msg) return;
 
     replyingToMessage = msg;
 
-    // Tìm tên người gửi
-    let senderName = "Người dùng";
+    // TÃ¬m tÃªn ngÆ°á»i gá»­i
+    let senderName = "NgÆ°á»i dÃ¹ng";
     if (msg.senderId === myId) {
-        senderName = "chính mình";
+        senderName = "chÃ­nh mÃ¬nh";
     } else if (msg.Users) {
         senderName = msg.Users.fullName;
     } else {
@@ -6242,26 +6271,26 @@ function setReplyMode(msgId) {
         if (headerName) senderName = headerName.innerText;
     }
 
-    // Thiết lập nội dung trích dẫn
+    // Thiáº¿t láº­p ná»™i dung trÃ­ch dáº«n
     let textPreview = msg.content;
     if (msg.isRecalled) {
-        textPreview = "Tin nhắn đã bị thu hồi";
+        textPreview = "Tin nháº¯n Ä‘Ã£ bá»‹ thu há»“i";
     } else if (msg.type === "file") {
         try {
             const fileData = JSON.parse(msg.content);
-            textPreview = `[Tệp tin: ${fileData.fileName}]`;
+            textPreview = `[Tá»‡p tin: ${fileData.fileName}]`;
         } catch (e) {
-            textPreview = "[Tệp tin]";
+            textPreview = "[Tá»‡p tin]";
         }
     } else if (msg.type === "audio") {
-        textPreview = "[Tin nhắn thoại]";
+        textPreview = "[Tin nháº¯n thoáº¡i]";
     } else if (msg.content && (msg.content.startsWith("data:image/") || msg.content.match(/\.(jpeg|jpg|gif|png)$/i))) {
-        textPreview = "[Hình ảnh]";
+        textPreview = "[HÃ¬nh áº£nh]";
     } else if (msg.type === "missed_call") {
-        textPreview = "[Cuộc gọi nhỡ]";
+        textPreview = "[Cuá»™c gá»i nhá»¡]";
     }
 
-    // Hiển thị thanh preview
+    // Hiá»ƒn thá»‹ thanh preview
     const previewContainer = document.getElementById("reply-preview-container");
     const previewSender = document.getElementById("reply-preview-sender");
     const previewText = document.getElementById("reply-preview-text");
@@ -6271,17 +6300,17 @@ function setReplyMode(msgId) {
         previewText.innerText = textPreview;
         previewContainer.style.display = "flex";
 
-        // Cuộn xuống để không bị che khuất ô nhập
+        // Cuá»™n xuá»‘ng Ä‘á»ƒ khÃ´ng bá»‹ che khuáº¥t Ã´ nháº­p
         const messagesDiv = document.getElementById("messages");
         if (messagesDiv) messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
 
-    // Focus vào input để gõ luôn
+    // Focus vÃ o input Ä‘á»ƒ gÃµ luÃ´n
     const input = document.getElementById("message-input");
     if (input) input.focus();
 }
 
-// Bắt đầu chế độ chỉnh sửa tin nhắn
+// Báº¯t Ä‘áº§u cháº¿ Ä‘á»™ chá»‰nh sá»­a tin nháº¯n
 function startEditMode(msgId, currentContent) {
     replyingToMessage = null;
 
@@ -6294,7 +6323,7 @@ function startEditMode(msgId, currentContent) {
     if (input) {
         input.value = currentContent;
         input.focus();
-        // Kích hoạt sự kiện input để tự động hiện nút Gửi (thay vì nút Like) và tự động căn chỉnh chiều cao ô nhập tin nhắn
+        // KÃ­ch hoáº¡t sá»± kiá»‡n input Ä‘á»ƒ tá»± Ä‘á»™ng hiá»‡n nÃºt Gá»­i (thay vÃ¬ nÃºt Like) vÃ  tá»± Ä‘á»™ng cÄƒn chá»‰nh chiá»u cao Ã´ nháº­p tin nháº¯n
         input.dispatchEvent(new Event("input"));
     }
 
@@ -6303,7 +6332,7 @@ function startEditMode(msgId, currentContent) {
     const previewText = document.getElementById("reply-preview-text");
 
     if (previewContainer && previewSender && previewText) {
-        previewSender.innerHTML = '<i class="fas fa-edit" style="color: var(--primary-color); margin-right: 6px;"></i>Đang sửa tin nhắn';
+        previewSender.innerHTML = '<i class="fas fa-edit" style="color: var(--primary-color); margin-right: 6px;"></i>Äang sá»­a tin nháº¯n';
         previewText.innerText = currentContent;
         previewContainer.style.display = "flex";
 
@@ -6312,7 +6341,7 @@ function startEditMode(msgId, currentContent) {
     }
 }
 
-// Gọi API gửi nội dung tin nhắn đã sửa lên server
+// Gá»i API gá»­i ná»™i dung tin nháº¯n Ä‘Ã£ sá»­a lÃªn server
 async function editMessageApi(messageId, newContent) {
     try {
         const res = await fetch(`${API_URL}/chat/messages/${messageId}/edit`, {
@@ -6326,14 +6355,14 @@ async function editMessageApi(messageId, newContent) {
 
         const data = await res.json();
         if (!data.success) {
-            alert("Lỗi khi chỉnh sửa tin nhắn: " + data.message);
+            alert("Lá»—i khi chá»‰nh sá»­a tin nháº¯n: " + data.message);
         }
     } catch (error) {
-        alert("Lỗi kết nối khi chỉnh sửa tin nhắn: " + error.message);
+        alert("Lá»—i káº¿t ná»‘i khi chá»‰nh sá»­a tin nháº¯n: " + error.message);
     }
 }
 
-// Hủy chế độ trả lời / chỉnh sửa tin nhắn
+// Há»§y cháº¿ Ä‘á»™ tráº£ lá»i / chá»‰nh sá»­a tin nháº¯n
 function cancelReply() {
     const wasEditing = editingMessage !== null;
     replyingToMessage = null;
@@ -6348,59 +6377,59 @@ function cancelReply() {
     }
 }
 
-// Cuộn đến tin nhắn gốc và nháy sáng highlight
+// Cuá»™n Ä‘áº¿n tin nháº¯n gá»‘c vÃ  nhÃ¡y sÃ¡ng highlight
 function scrollToAndHighlightMessage(msgId) {
     const targetEl = document.getElementById(`msg-${msgId}`);
     if (targetEl) {
         targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
 
-        // Thêm class highlight
+        // ThÃªm class highlight
         targetEl.classList.remove("message-highlight");
         // Force reflow
         void targetEl.offsetWidth;
         targetEl.classList.add("message-highlight");
 
-        // Xóa class highlight sau khi chạy xong animation
+        // XÃ³a class highlight sau khi cháº¡y xong animation
         setTimeout(() => {
             targetEl.classList.remove("message-highlight");
         }, 1500);
     } else {
-        alert("Tin nhắn gốc đã quá cũ hoặc không tìm thấy trong giao diện hiện tại.");
+        alert("Tin nháº¯n gá»‘c Ä‘Ã£ quÃ¡ cÅ© hoáº·c khÃ´ng tÃ¬m tháº¥y trong giao diá»‡n hiá»‡n táº¡i.");
     }
 }
 
-// Sao chép văn bản tin nhắn vào Clipboard
+// Sao chÃ©p vÄƒn báº£n tin nháº¯n vÃ o Clipboard
 function copyMessageText(content) {
     if (!content) return;
 
-    // Kiểm tra nếu là hình ảnh (base64 hoặc đường dẫn hình ảnh)
+    // Kiá»ƒm tra náº¿u lÃ  hÃ¬nh áº£nh (base64 hoáº·c Ä‘Æ°á»ng dáº«n hÃ¬nh áº£nh)
     if (content.startsWith("data:image/") || content.match(/\.(jpeg|jpg|gif|png)$/i)) {
-        showTempToast("Không thể sao chép hình ảnh dưới dạng văn bản.");
+        showTempToast("KhÃ´ng thá»ƒ sao chÃ©p hÃ¬nh áº£nh dÆ°á»›i dáº¡ng vÄƒn báº£n.");
         return;
     }
 
     navigator.clipboard.writeText(content)
         .then(() => {
-            showTempToast("Đã sao chép tin nhắn.");
+            showTempToast("ÄÃ£ sao chÃ©p tin nháº¯n.");
         })
         .catch((err) => {
-            console.error("Lỗi sao chép:", err);
-            // Fallback cho môi trường không có HTTPS hoặc thiết bị cũ
+            console.error("Lá»—i sao chÃ©p:", err);
+            // Fallback cho mÃ´i trÆ°á»ng khÃ´ng cÃ³ HTTPS hoáº·c thiáº¿t bá»‹ cÅ©
             const textarea = document.createElement("textarea");
             textarea.value = content;
             document.body.appendChild(textarea);
             textarea.select();
             try {
                 document.execCommand("copy");
-                showTempToast("Đã sao chép tin nhắn.");
+                showTempToast("ÄÃ£ sao chÃ©p tin nháº¯n.");
             } catch (e) {
-                showTempToast("Không thể sao chép tin nhắn.");
+                showTempToast("KhÃ´ng thá»ƒ sao chÃ©p tin nháº¯n.");
             }
             document.body.removeChild(textarea);
         });
 }
 
-// Hiển thị Toast thông báo nhanh (dành riêng cho sao chép)
+// Hiá»ƒn thá»‹ Toast thÃ´ng bÃ¡o nhanh (dÃ nh riÃªng cho sao chÃ©p)
 function showTempToast(message) {
     const container = document.getElementById("toast-container");
     if (!container) return;
@@ -6426,10 +6455,10 @@ function showTempToast(message) {
     }, 2000);
 }
 
-// Gửi tin nhắn chứa tệp tin hoặc tin nhắn thoại
+// Gá»­i tin nháº¯n chá»©a tá»‡p tin hoáº·c tin nháº¯n thoáº¡i
 function sendFileOrAudioMessage(content, type) {
     if (!currentConversationId) {
-        return alert("Bạn chưa chọn cuộc hội thoại!");
+        return alert("Báº¡n chÆ°a chá»n cuá»™c há»™i thoáº¡i!");
     }
 
     try {
@@ -6457,18 +6486,18 @@ function sendFileOrAudioMessage(content, type) {
             .then((data) => {
                 if (data.success) {
                     displayMessage(data.data);
-                    // Cập nhật sidebar nhẹ hơn, không reload toàn bộ danh sách
+                    // Cáº­p nháº­t sidebar nháº¹ hÆ¡n, khÃ´ng reload toÃ n bá»™ danh sÃ¡ch
                     updateChatListUI(data.data, true);
                 } else {
-                    alert("Gửi thất bại: " + data.message);
+                    alert("Gá»­i tháº¥t báº¡i: " + data.message);
                 }
             });
     } catch (err) {
-        alert("Lỗi mạng: " + err.message);
+        alert("Lá»—i máº¡ng: " + err.message);
     }
 }
 
-// Bật/tắt trạng thái ghi âm tin nhắn thoại
+// Báº­t/táº¯t tráº¡ng thÃ¡i ghi Ã¢m tin nháº¯n thoáº¡i
 function toggleVoiceRecording() {
     const recordBtn = document.getElementById("voice-record-btn");
     const input = document.getElementById("message-input");
@@ -6476,9 +6505,9 @@ function toggleVoiceRecording() {
     if (!recordBtn || !input) return;
 
     if (!isRecording) {
-        // Bắt đầu ghi âm
+        // Báº¯t Ä‘áº§u ghi Ã¢m
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            return alert("Trình duyệt của bạn không hỗ trợ ghi âm.");
+            return alert("TrÃ¬nh duyá»‡t cá»§a báº¡n khÃ´ng há»— trá»£ ghi Ã¢m.");
         }
 
         navigator.mediaDevices.getUserMedia({ audio: true })
@@ -6489,10 +6518,10 @@ function toggleVoiceRecording() {
                 recordBtn.classList.remove("fa-microphone");
                 recordBtn.classList.add("fa-stop", "recording");
 
-                input.placeholder = "Đang ghi âm... Nhấp nút Stop để gửi.";
+                input.placeholder = "Äang ghi Ã¢m... Nháº¥p nÃºt Stop Ä‘á»ƒ gá»­i.";
                 input.disabled = true;
 
-                // Khởi tạo MediaRecorder
+                // Khá»Ÿi táº¡o MediaRecorder
                 mediaRecorder = new MediaRecorder(stream);
                 mediaRecorder.ondataavailable = (event) => {
                     audioChunks.push(event.data);
@@ -6507,24 +6536,24 @@ function toggleVoiceRecording() {
                     };
                     reader.readAsDataURL(audioBlob);
 
-                    // Tắt tất cả các track trong stream để giải phóng mic
+                    // Táº¯t táº¥t cáº£ cÃ¡c track trong stream Ä‘á»ƒ giáº£i phÃ³ng mic
                     stream.getTracks().forEach((track) => track.stop());
                 };
 
                 mediaRecorder.start();
             })
             .catch((err) => {
-                console.error("Lỗi truy cập Micro:", err);
-                alert("Không thể truy cập Micro. Vui lòng cấp quyền ghi âm.");
+                console.error("Lá»—i truy cáº­p Micro:", err);
+                alert("KhÃ´ng thá»ƒ truy cáº­p Micro. Vui lÃ²ng cáº¥p quyá»n ghi Ã¢m.");
             });
     } else {
-        // Dừng ghi âm và gửi
+        // Dá»«ng ghi Ã¢m vÃ  gá»­i
         isRecording = false;
 
         recordBtn.classList.remove("fa-stop", "recording");
         recordBtn.classList.add("fa-microphone");
 
-        input.placeholder = "Nhập tin nhắn...";
+        input.placeholder = "Nháº­p tin nháº¯n...";
         input.disabled = false;
 
         if (mediaRecorder && mediaRecorder.state !== "inactive") {
@@ -6539,7 +6568,7 @@ function toggleVoiceRecording() {
 
 // Override window.alert globally to use custom in-app alert modal
 window.alert = function (message) {
-    customAlert("Thông báo", message);
+    customAlert("ThÃ´ng bÃ¡o", message);
 };
 
 function customAlert(title, message) {
@@ -6573,7 +6602,7 @@ function customAlert(title, message) {
     });
 }
 
-function customConfirm(title, message, okText = "Xác nhận", cancelText = "Hủy", isDanger = true) {
+function customConfirm(title, message, okText = "XÃ¡c nháº­n", cancelText = "Há»§y", isDanger = true) {
     return new Promise((resolve) => {
         const modal = document.getElementById("custom-confirm-modal");
         const titleEl = document.getElementById("custom-confirm-title");
@@ -6614,7 +6643,7 @@ function customConfirm(title, message, okText = "Xác nhận", cancelText = "H�
     });
 }
 
-function customPrompt(title, message, defaultValue = "", placeholder = "Nhập vào đây...") {
+function customPrompt(title, message, defaultValue = "", placeholder = "Nháº­p vÃ o Ä‘Ã¢y...") {
     return new Promise((resolve) => {
         const modal = document.getElementById("custom-prompt-modal");
         const titleEl = document.getElementById("custom-prompt-title");
@@ -6663,38 +6692,38 @@ function customPrompt(title, message, defaultValue = "", placeholder = "Nhập v
 }
 
 // ==========================================================================
-// MOBILE HAPTIC FEEDBACK FOR PWA (RUNG PHẢN HỒI KHI CHẠM NÚT)
+// MOBILE HAPTIC FEEDBACK FOR PWA (RUNG PHáº¢N Há»’I KHI CHáº M NÃšT)
 // ==========================================================================
 
 /**
- * Tạo độ rung nhẹ phản hồi (haptic feedback) trên các thiết bị di động hỗ trợ
- * @param {number|number[]} pattern - Thời gian rung tính bằng mili-giây (ví dụ: 15ms) hoặc mảng nhịp rung
+ * Táº¡o Ä‘á»™ rung nháº¹ pháº£n há»“i (haptic feedback) trÃªn cÃ¡c thiáº¿t bá»‹ di Ä‘á»™ng há»— trá»£
+ * @param {number|number[]} pattern - Thá»i gian rung tÃ­nh báº±ng mili-giÃ¢y (vÃ­ dá»¥: 15ms) hoáº·c máº£ng nhá»‹p rung
  */
 function triggerHapticFeedback(pattern = 30) {
-    if (callVibrationActive) return; // KHÔNG ĐƯỢC RUNG PHẢN HỒI KHI ĐANG CÓ CUỘC GỌI ĐẾN (tránh ghi đè rung cuộc gọi)
+    if (callVibrationActive) return; // KHÃ”NG ÄÆ¯á»¢C RUNG PHáº¢N Há»’I KHI ÄANG CÃ“ CUá»˜C Gá»ŒI Äáº¾N (trÃ¡nh ghi Ä‘Ã¨ rung cuá»™c gá»i)
     if (typeof navigator !== "undefined" && navigator.vibrate) {
         try {
             navigator.vibrate(pattern);
         } catch (e) {
-            console.warn("Trình duyệt không hỗ trợ hoặc chặn cuộc gọi rung:", e);
+            console.warn("TrÃ¬nh duyá»‡t khÃ´ng há»— trá»£ hoáº·c cháº·n cuá»™c gá»i rung:", e);
         }
     }
 }
 
-// Tự động gán phản hồi xúc giác nhẹ khi click/tap các phần tử tương tác (button, link, tab...)
+// Tá»± Ä‘á»™ng gÃ¡n pháº£n há»“i xÃºc giÃ¡c nháº¹ khi click/tap cÃ¡c pháº§n tá»­ tÆ°Æ¡ng tÃ¡c (button, link, tab...)
 document.addEventListener("click", (e) => {
     const interactiveElement = e.target.closest(
         "button, .btn, .icon-btn, .nav-item, [role='button'], .sidebar-actions i, #send-btn, .chat-list-container li, .friend-action-btn"
     );
     if (interactiveElement) {
-        triggerHapticFeedback(15); // Rung cực nhẹ 15ms tạo cảm giác như nhấn nút thật
+        triggerHapticFeedback(15); // Rung cá»±c nháº¹ 15ms táº¡o cáº£m giÃ¡c nhÆ° nháº¥n nÃºt tháº­t
     }
 });
 
-// Hàm xin quyền thông báo và lấy FCM Token
+// HÃ m xin quyá»n thÃ´ng bÃ¡o vÃ  láº¥y FCM Token
 async function requestNotificationPermission() {
     if (!("Notification" in window)) {
-        console.warn("Trình duyệt này không hỗ trợ hiển thị thông báo.");
+        console.warn("TrÃ¬nh duyá»‡t nÃ y khÃ´ng há»— trá»£ hiá»ƒn thá»‹ thÃ´ng bÃ¡o.");
         updateNotificationPermissionUI();
         return;
     }
@@ -6702,27 +6731,27 @@ async function requestNotificationPermission() {
     try {
         const permission = await Notification.requestPermission();
         if (permission === "granted") {
-            console.log("Quyền thông báo đã được chấp thuận.");
+            console.log("Quyá»n thÃ´ng bÃ¡o Ä‘Ã£ Ä‘Æ°á»£c cháº¥p thuáº­n.");
             if (token) {
                 setupFirebaseMessaging(token);
             }
         } else {
-            console.warn("Người dùng từ chối cấp quyền thông báo.");
+            console.warn("NgÆ°á»i dÃ¹ng tá»« chá»‘i cáº¥p quyá»n thÃ´ng bÃ¡o.");
         }
         updateNotificationPermissionUI();
     } catch (error) {
-        console.error("Lỗi trong quá trình xin quyền hoặc lấy FCM Token:", error);
+        console.error("Lá»—i trong quÃ¡ trÃ¬nh xin quyá»n hoáº·c láº¥y FCM Token:", error);
         updateNotificationPermissionUI();
     }
 }
 
-// Cập nhật trạng thái giao diện nút xin quyền thông báo
+// Cáº­p nháº­t tráº¡ng thÃ¡i giao diá»‡n nÃºt xin quyá»n thÃ´ng bÃ¡o
 function updateNotificationPermissionUI() {
     const btn = document.getElementById("notification-permission-btn");
     if (!btn) return;
 
     if (!("Notification" in window)) {
-        btn.innerText = "Không hỗ trợ";
+        btn.innerText = "KhÃ´ng há»— trá»£";
         btn.disabled = true;
         btn.style.background = "var(--border-color)";
         btn.style.color = "var(--text-light)";
@@ -6731,7 +6760,7 @@ function updateNotificationPermissionUI() {
     }
 
     if (Notification.permission === "granted") {
-        btn.innerHTML = `<i class="fas fa-check"></i> Đã bật`;
+        btn.innerHTML = `<i class="fas fa-check"></i> ÄÃ£ báº­t`;
         btn.disabled = true;
         btn.style.background = "rgba(16, 185, 129, 0.1)";
         btn.style.color = "#10b981";
@@ -6739,7 +6768,7 @@ function updateNotificationPermissionUI() {
         btn.style.cursor = "default";
         btn.style.transform = "none";
     } else if (Notification.permission === "denied") {
-        btn.innerText = "Bị từ chối";
+        btn.innerText = "Bá»‹ tá»« chá»‘i";
         btn.disabled = true;
         btn.style.background = "rgba(239, 68, 68, 0.1)";
         btn.style.color = "#ef4444";
@@ -6747,7 +6776,7 @@ function updateNotificationPermissionUI() {
         btn.style.cursor = "default";
         btn.style.transform = "none";
     } else {
-        btn.innerText = "Bật";
+        btn.innerText = "Báº­t";
         btn.disabled = false;
         btn.style.background = "var(--primary-color)";
         btn.style.color = "white";
@@ -6756,9 +6785,9 @@ function updateNotificationPermissionUI() {
     }
 }
 
-// Helper hiển thị popup tìm kiếm kết bạn trên giao diện Mobile
+// Helper hiá»ƒn thá»‹ popup tÃ¬m kiáº¿m káº¿t báº¡n trÃªn giao diá»‡n Mobile
 function searchUserMobilePrompt() {
-    customPrompt("Tìm kiếm người dùng", "Nhập tên người dùng (Username/FullName) bạn muốn tìm kiếm để kết bạn:")
+    customPrompt("TÃ¬m kiáº¿m ngÆ°á»i dÃ¹ng", "Nháº­p tÃªn ngÆ°á»i dÃ¹ng (Username/FullName) báº¡n muá»‘n tÃ¬m kiáº¿m Ä‘á»ƒ káº¿t báº¡n:")
         .then((q) => {
             if (q && q.trim()) {
                 const mobileSearchEl = document.getElementById("mobile-search-input");
@@ -6770,17 +6799,17 @@ function searchUserMobilePrompt() {
         });
 }
 
-// Cập nhật danh sách thiết bị âm thanh/hình ảnh khả dụng
+// Cáº­p nháº­t danh sÃ¡ch thiáº¿t bá»‹ Ã¢m thanh/hÃ¬nh áº£nh kháº£ dá»¥ng
 async function updateMediaDevicesList() {
     try {
         if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
 
-        // Xin quyền trước để lấy được đầy đủ tên thiết bị thay vì nhãn rỗng
+        // Xin quyá»n trÆ°á»›c Ä‘á»ƒ láº¥y Ä‘Æ°á»£c Ä‘áº§y Ä‘á»§ tÃªn thiáº¿t bá»‹ thay vÃ¬ nhÃ£n rá»—ng
         try {
             const tempStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: callTypeGlobal === "video" });
             tempStream.getTracks().forEach(track => track.stop());
         } catch (e) {
-            console.warn("Xin quyền thiết bị tạm thời để liệt kê nhãn thất bại:", e);
+            console.warn("Xin quyá»n thiáº¿t bá»‹ táº¡m thá»i Ä‘á»ƒ liá»‡t kÃª nhÃ£n tháº¥t báº¡i:", e);
         }
 
         const devices = await navigator.mediaDevices.enumerateDevices();
@@ -6788,9 +6817,9 @@ async function updateMediaDevicesList() {
         const camSelect = document.getElementById("setting-cam-select");
 
         if (micSelect) {
-            // Lưu lại thiết bị đã chọn trước đó (nếu có)
+            // LÆ°u láº¡i thiáº¿t bá»‹ Ä‘Ã£ chá»n trÆ°á»›c Ä‘Ã³ (náº¿u cÃ³)
             const prevSelected = micSelect.value;
-            micSelect.innerHTML = '<option value="">Thiết bị mặc định (Default)</option>';
+            micSelect.innerHTML = '<option value="">Thiáº¿t bá»‹ máº·c Ä‘á»‹nh (Default)</option>';
 
             const micDevices = devices.filter((device) => device.kind === "audioinput");
             micDevices.forEach((device) => {
@@ -6807,7 +6836,7 @@ async function updateMediaDevicesList() {
 
         if (camSelect) {
             const prevSelected = camSelect.value;
-            camSelect.innerHTML = '<option value="">Thiết bị mặc định (Default)</option>';
+            camSelect.innerHTML = '<option value="">Thiáº¿t bá»‹ máº·c Ä‘á»‹nh (Default)</option>';
 
             const camDevices = devices.filter((device) => device.kind === "videoinput");
             camDevices.forEach((device) => {
@@ -6822,14 +6851,14 @@ async function updateMediaDevicesList() {
             }
         }
     } catch (err) {
-        console.error("Lỗi khi tải danh sách thiết bị phần cứng:", err);
+        console.error("Lá»—i khi táº£i danh sÃ¡ch thiáº¿t bá»‹ pháº§n cá»©ng:", err);
     }
 }
 
 /**
  * AI SCROLL FIX v3
- * Thêm vào app.js hoặc paste vào cuối <script> trong HTML
- * Dùng JS để đảm bảo scroll dọc luôn hoạt động trong tab AI
+ * ThÃªm vÃ o app.js hoáº·c paste vÃ o cuá»‘i <script> trong HTML
+ * DÃ¹ng JS Ä‘á»ƒ Ä‘áº£m báº£o scroll dá»c luÃ´n hoáº¡t Ä‘á»™ng trong tab AI
  */
 (function () {
     function initAiScrollFix() {
@@ -6842,7 +6871,7 @@ async function updateMediaDevicesList() {
         let isScrollingY = false;
         let isScrollingChecked = false;
 
-        // Khi bắt đầu chạm
+        // Khi báº¯t Ä‘áº§u cháº¡m
         history.addEventListener('touchstart', function (e) {
             startX = e.touches[0].clientX;
             startY = e.touches[0].clientY;
@@ -6851,19 +6880,19 @@ async function updateMediaDevicesList() {
             isScrollingChecked = false;
         }, { passive: true });
 
-        // Khi di chuyển ngón tay - forward scroll lên container nếu cần
+        // Khi di chuyá»ƒn ngÃ³n tay - forward scroll lÃªn container náº¿u cáº§n
         history.addEventListener('touchmove', function (e) {
             const currentX = e.touches[0].clientX;
             const currentY = e.touches[0].clientY;
             const deltaX = startX - currentX;
-            const deltaY = startY - currentY; // dương = kéo lên (scroll xuống)
+            const deltaY = startY - currentY; // dÆ°Æ¡ng = kÃ©o lÃªn (scroll xuá»‘ng)
 
             const target = e.target;
             const isInCodeBlock = target.closest('.ai-code-block') || target.closest('pre');
 
             if (isInCodeBlock) {
                 if (!isScrollingChecked) {
-                    // Nếu vuốt dọc nhiều hơn vuốt ngang, kích hoạt cuộn dọc
+                    // Náº¿u vuá»‘t dá»c nhiá»u hÆ¡n vuá»‘t ngang, kÃ­ch hoáº¡t cuá»™n dá»c
                     if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 5) {
                         isScrollingY = true;
                     }
@@ -6871,17 +6900,17 @@ async function updateMediaDevicesList() {
                 }
 
                 if (isScrollingY) {
-                    // Chỉ cuộn dọc container AI nếu di chuyển ngón tay theo chiều dọc
+                    // Chá»‰ cuá»™n dá»c container AI náº¿u di chuyá»ƒn ngÃ³n tay theo chiá»u dá»c
                     history.scrollTop = startScrollTop + deltaY;
                 }
             }
         }, { passive: true });
 
-        // Theo dõi khi tab AI được mở, khởi động lại fix
+        // Theo dÃµi khi tab AI Ä‘Æ°á»£c má»Ÿ, khá»Ÿi Ä‘á»™ng láº¡i fix
         const observer = new MutationObserver(function () {
             const aiTab = document.getElementById('tab-ai');
             if (aiTab && aiTab.classList.contains('active')) {
-                // Re-attach nếu cần
+                // Re-attach náº¿u cáº§n
             }
         });
 
@@ -6891,7 +6920,7 @@ async function updateMediaDevicesList() {
         }
     }
 
-    // Chạy khi DOM sẵn sàng
+    // Cháº¡y khi DOM sáºµn sÃ ng
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initAiScrollFix);
     } else {
@@ -6900,7 +6929,7 @@ async function updateMediaDevicesList() {
 })();
 
 //thooooooooooooo
-/* Paste vào cuối app.js */
+/* Paste vÃ o cuá»‘i app.js */
 (function () {
     const MIN_LINES = 8;
 
@@ -6913,14 +6942,14 @@ async function updateMediaDevicesList() {
 
         const lines = (pre.textContent.match(/\n/g) || []).length + 1;
         if (lines < MIN_LINES) {
-            // Code ngắn: không thu gọn, chỉ để mở rộng hoàn toàn
+            // Code ngáº¯n: khÃ´ng thu gá»n, chá»‰ Ä‘á»ƒ má»Ÿ rá»™ng hoÃ n toÃ n
             wrapper.classList.add('expanded');
             return;
         }
 
         wrapper.classList.add('collapsed');
 
-        // Thêm nút toggle vào header
+        // ThÃªm nÃºt toggle vÃ o header
         const header = wrapper.querySelector('.ai-code-header');
         if (header) {
             const left = document.createElement('div');
@@ -6931,7 +6960,7 @@ async function updateMediaDevicesList() {
 
             const btn = document.createElement('button');
             btn.className = 'ai-code-toggle-btn';
-            btn.innerHTML = '<span class="toggle-icon">▼</span>&nbsp;<span class="toggle-label">Xem thêm</span>';
+            btn.innerHTML = '<span class="toggle-icon">â–¼</span>&nbsp;<span class="toggle-label">Xem thÃªm</span>';
             btn.onclick = function (e) { e.stopPropagation(); toggle(wrapper); };
             left.appendChild(btn);
 
@@ -6943,10 +6972,10 @@ async function updateMediaDevicesList() {
             };
         }
 
-        // Nút ở dưới
+        // NÃºt á»Ÿ dÆ°á»›i
         const expandBtn = document.createElement('button');
         expandBtn.className = 'ai-code-expand-btn';
-        expandBtn.textContent = '▼  Xem thêm  (' + lines + ' dòng)';
+        expandBtn.textContent = 'â–¼  Xem thÃªm  (' + lines + ' dÃ²ng)';
         expandBtn.onclick = function () { toggle(wrapper); };
         wrapper.appendChild(expandBtn);
     }
@@ -6960,12 +6989,12 @@ async function updateMediaDevicesList() {
 
         if (collapsed) {
             wrapper.classList.replace('collapsed', 'expanded');
-            if (label) label.textContent = 'Thu gọn';
-            if (expandBtn) expandBtn.textContent = '▲  Thu gọn';
+            if (label) label.textContent = 'Thu gá»n';
+            if (expandBtn) expandBtn.textContent = 'â–²  Thu gá»n';
         } else {
             wrapper.classList.replace('expanded', 'collapsed');
-            if (label) label.textContent = 'Xem thêm';
-            if (expandBtn) expandBtn.textContent = '▼  Xem thêm  (' + lines + ' dòng)';
+            if (label) label.textContent = 'Xem thÃªm';
+            if (expandBtn) expandBtn.textContent = 'â–¼  Xem thÃªm  (' + lines + ' dÃ²ng)';
             setTimeout(function () {
                 wrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }, 320);
@@ -6996,14 +7025,14 @@ async function updateMediaDevicesList() {
         : start();
 })();
 
-// Cập nhật thanh hạn ngạch sử dụng AI (Token progress bar)
+// Cáº­p nháº­t thanh háº¡n ngáº¡ch sá»­ dá»¥ng AI (Token progress bar)
 function updateAiQuotaBar(forceMax = false) {
     const fillEl = document.getElementById("ai-quota-bar-fill");
     const percentageEl = document.getElementById("ai-quota-bar-percentage");
     if (!fillEl || !percentageEl) return;
 
-    const limit = 20; // Giới hạn số lượt gọi miễn phí trong ngày (Google AI Studio free tier)
-    const todayStr = new Date().toISOString().split('T')[0]; // Định dạng YYYY-MM-DD
+    const limit = 20; // Giá»›i háº¡n sá»‘ lÆ°á»£t gá»i miá»…n phÃ­ trong ngÃ y (Google AI Studio free tier)
+    const todayStr = new Date().toISOString().split('T')[0]; // Äá»‹nh dáº¡ng YYYY-MM-DD
     const countKey = `ai_request_count_${todayStr}`;
 
     let count = parseInt(localStorage.getItem(countKey) || "0", 10);
@@ -7015,24 +7044,24 @@ function updateAiQuotaBar(forceMax = false) {
 
     const percentage = Math.min(Math.round((count / limit) * 100), 100);
 
-    // Cập nhật UI
+    // Cáº­p nháº­t UI
     fillEl.style.width = `${percentage}%`;
     percentageEl.innerText = `${percentage}%`;
 
-    // Cập nhật màu sắc cảnh báo
+    // Cáº­p nháº­t mÃ u sáº¯c cáº£nh bÃ¡o
     fillEl.classList.remove("warning", "danger");
     if (percentage >= 100) {
         fillEl.classList.add("danger");
-        percentageEl.innerHTML = `<span style="color: #ef4444; font-weight: bold;">Hết Token (100%)</span>`;
+        percentageEl.innerHTML = `<span style="color: #ef4444; font-weight: bold;">Háº¿t Token (100%)</span>`;
     } else if (percentage >= 70) {
         fillEl.classList.add("warning");
     }
 
-    // Khởi động đồng hồ đếm ngược đến giờ reset
+    // Khá»Ÿi Ä‘á»™ng Ä‘á»“ng há»“ Ä‘áº¿m ngÆ°á»£c Ä‘áº¿n giá» reset
     startAiQuotaCountdown();
 }
 
-// Tăng số lượt gọi AI thành công khi hoàn thành stream
+// TÄƒng sá»‘ lÆ°á»£t gá»i AI thÃ nh cÃ´ng khi hoÃ n thÃ nh stream
 function incrementAiRequestCount() {
     const todayStr = new Date().toISOString().split('T')[0];
     const countKey = `ai_request_count_${todayStr}`;
@@ -7041,17 +7070,17 @@ function incrementAiRequestCount() {
     updateAiQuotaBar();
 }
 
-// Lấy mốc thời gian 7:00 AM tiếp theo (Giờ reset của Google AI Studio)
+// Láº¥y má»‘c thá»i gian 7:00 AM tiáº¿p theo (Giá» reset cá»§a Google AI Studio)
 function getNextResetTime() {
     const now = new Date();
-    const resetTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 7, 0, 0); // 7:00 AM hôm nay
+    const resetTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 7, 0, 0); // 7:00 AM hÃ´m nay
     if (now >= resetTime) {
-        resetTime.setDate(resetTime.getDate() + 1); // 7:00 AM ngày mai
+        resetTime.setDate(resetTime.getDate() + 1); // 7:00 AM ngÃ y mai
     }
     return resetTime;
 }
 
-// Quản lý interval và cập nhật đồng hồ đếm ngược
+// Quáº£n lÃ½ interval vÃ  cáº­p nháº­t Ä‘á»“ng há»“ Ä‘áº¿m ngÆ°á»£c
 let aiQuotaTimerInterval = null;
 function startAiQuotaCountdown() {
     if (aiQuotaTimerInterval) clearInterval(aiQuotaTimerInterval);
@@ -7074,21 +7103,21 @@ function startAiQuotaCountdown() {
         const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
 
         const pad = (num) => String(num).padStart(2, "0");
-        countdownEl.innerText = `Tự động reset sau: ${pad(hours)}h ${pad(minutes)}m ${pad(seconds)}s`;
+        countdownEl.innerText = `Tá»± Ä‘á»™ng reset sau: ${pad(hours)}h ${pad(minutes)}m ${pad(seconds)}s`;
     }
 
     updateCountdown();
     aiQuotaTimerInterval = setInterval(updateCountdown, 1000);
 }
 
-// --- XOÁ CUỘC TRÒ CHUYỆN (GIAO DIỆN & API) ---
+// --- XOÃ CUá»˜C TRÃ’ CHUYá»†N (GIAO DIá»†N & API) ---
 function toggleConversationMenu(event, conversationId) {
     event.stopPropagation();
     const menuId = `conv-menu-${conversationId}`;
     const menu = document.getElementById(menuId);
     if (!menu) return;
 
-    // Đóng toàn bộ dropdown khác
+    // ÄÃ³ng toÃ n bá»™ dropdown khÃ¡c
     document.querySelectorAll(".conv-dropdown-menu").forEach((m) => {
         if (m.id !== menuId) m.style.display = "none";
     });
@@ -7101,7 +7130,7 @@ async function confirmDeleteConversation(event, conversationId) {
     const menu = document.getElementById(`conv-menu-${conversationId}`);
     if (menu) menu.style.display = "none";
 
-    const isConfirmed = confirm("Bạn có chắc chắn muốn xóa vĩnh viễn toàn bộ cuộc trò chuyện này không? Tất cả tin nhắn sẽ bị xóa sạch.");
+    const isConfirmed = confirm("Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n xÃ³a vÄ©nh viá»…n toÃ n bá»™ cuá»™c trÃ² chuyá»‡n nÃ y khÃ´ng? Táº¥t cáº£ tin nháº¯n sáº½ bá»‹ xÃ³a sáº¡ch.");
     if (!isConfirmed) return;
 
     try {
@@ -7114,7 +7143,7 @@ async function confirmDeleteConversation(event, conversationId) {
 
         const data = await res.json();
         if (data.success) {
-            alert("Đã xóa cuộc trò chuyện thành công.");
+            alert("ÄÃ£ xÃ³a cuá»™c trÃ² chuyá»‡n thÃ nh cÃ´ng.");
             if (isSameId(conversationId, currentConversationId)) {
                 currentConversationId = "";
                 currentChatPartnerId = null;
@@ -7125,21 +7154,21 @@ async function confirmDeleteConversation(event, conversationId) {
             }
             loadConversations();
         } else {
-            alert("Lỗi: " + data.message);
+            alert("Lá»—i: " + data.message);
         }
     } catch (error) {
-        alert("Lỗi kết nối server: " + error.message);
+        alert("Lá»—i káº¿t ná»‘i server: " + error.message);
     }
 }
 
-// Đóng dropdown khi click ra ngoài màn hình
+// ÄÃ³ng dropdown khi click ra ngoÃ i mÃ n hÃ¬nh
 document.addEventListener("click", () => {
     document.querySelectorAll(".conv-dropdown-menu").forEach((m) => {
         m.style.display = "none";
     });
 });
 
-// --- CHỨC NĂNG THAY ĐỔI CHỦ ĐỀ CHAT (CHAT THEMES) ---
+// --- CHá»¨C NÄ‚NG THAY Äá»”I CHá»¦ Äá»€ CHAT (CHAT THEMES) ---
 let currentChatTheme = "default";
 
 function applyChatTheme(themeName) {
@@ -7189,14 +7218,14 @@ function applyChatTheme(themeName) {
     root.style.setProperty("--theme-accent", colors.accent);
     root.style.setProperty("--theme-bg-color", colors.bg);
 
-    console.log("🎨 Đã áp dụng chủ đề chat thành công:", currentChatTheme, "Nền:", colors.bg);
+    console.log("ðŸŽ¨ ÄÃ£ Ã¡p dá»¥ng chá»§ Ä‘á» chat thÃ nh cÃ´ng:", currentChatTheme, "Ná»n:", colors.bg);
 }
 
-// --- PANEL THÔNG TIN CUỘC TRÒ CHUYỆN (CHAT INFO) ---
+// --- PANEL THÃ”NG TIN CUá»˜C TRÃ’ CHUYá»†N (CHAT INFO) ---
 function openChatInfoPanel() {
     if (!currentConversationId) return;
 
-    // Lấy thông tin từ header chat hiện tại
+    // Láº¥y thÃ´ng tin tá»« header chat hiá»‡n táº¡i
     const avatarEl = document.getElementById("current-chat-avatar");
     const nameEl = document.getElementById("chat-header-name");
 
@@ -7207,7 +7236,7 @@ function openChatInfoPanel() {
         infoAvatar.src = avatarEl.src || "";
     }
     if (nameEl && infoName) {
-        infoName.textContent = nameEl.textContent || "Người dùng";
+        infoName.textContent = nameEl.textContent || "NgÆ°á»i dÃ¹ng";
     }
 
     const modal = document.getElementById("chat-info-panel");
@@ -7226,7 +7255,7 @@ function closeChatInfoPanel() {
 }
 
 function openThemeModal() {
-    if (!currentConversationId) return alert("Vui lòng mở một cuộc trò chuyện để đổi chủ đề!");
+    if (!currentConversationId) return alert("Vui lÃ²ng má»Ÿ má»™t cuá»™c trÃ² chuyá»‡n Ä‘á»ƒ Ä‘á»•i chá»§ Ä‘á»!");
 
     const activeTheme = currentChatTheme || "default";
     document.querySelectorAll(".theme-option-item").forEach((item) => {
@@ -7249,13 +7278,13 @@ function closeThemeModal() {
     modal.classList.remove("show");
     setTimeout(() => {
         modal.style.display = "none";
-    }, 250); // Đồng bộ với thời gian transition CSS
+    }, 250); // Äá»“ng bá»™ vá»›i thá»i gian transition CSS
 }
 
 async function selectChatTheme(themeName) {
     if (!currentConversationId) return;
 
-    // ✨ Cập nhật giao diện và đóng Modal ngay lập tức (Optimistic UI) để tạo hiệu ứng mượt mà không độ trễ
+    // âœ¨ Cáº­p nháº­t giao diá»‡n vÃ  Ä‘Ã³ng Modal ngay láº­p tá»©c (Optimistic UI) Ä‘á»ƒ táº¡o hiá»‡u á»©ng mÆ°á»£t mÃ  khÃ´ng Ä‘á»™ trá»…
     applyChatTheme(themeName);
     closeThemeModal();
 
@@ -7271,27 +7300,27 @@ async function selectChatTheme(themeName) {
 
         const data = await res.json();
         if (!data.success) {
-            console.error("Lỗi đồng bộ chủ đề với server:", data.message);
+            console.error("Lá»—i Ä‘á»“ng bá»™ chá»§ Ä‘á» vá»›i server:", data.message);
         }
     } catch (error) {
-        console.error("Lỗi kết nối mạng khi đổi chủ đề:", error);
+        console.error("Lá»—i káº¿t ná»‘i máº¡ng khi Ä‘á»•i chá»§ Ä‘á»:", error);
     }
 }
 
-// --- QUẢN LÝ BIỆT DANH (NICKNAMES) ---
+// --- QUáº¢N LÃ BIá»†T DANH (NICKNAMES) ---
 function updateUINames() {
     if (!currentConversationId) return;
 
     const partnerNickname = currentNicknames[currentChatPartnerId];
-    const partnerRealName = document.getElementById("chat-header-name")?.dataset.realName || "Người dùng";
+    const partnerRealName = document.getElementById("chat-header-name")?.dataset.realName || "NgÆ°á»i dÃ¹ng";
 
-    // 1. Cập nhật tên trong header chat
+    // 1. Cáº­p nháº­t tÃªn trong header chat
     const headerNameEl = document.getElementById("chat-header-name");
     if (headerNameEl) {
         headerNameEl.innerText = partnerNickname || partnerRealName;
     }
 
-    // 2. Cập nhật tên hiển thị trong các dòng tin nhắn
+    // 2. Cáº­p nháº­t tÃªn hiá»ƒn thá»‹ trong cÃ¡c dÃ²ng tin nháº¯n
     const messages = document.getElementById("messages");
     if (messages) {
         const messageElements = messages.querySelectorAll(".message.other-message");
@@ -7308,20 +7337,20 @@ function updateUINames() {
         });
     }
 
-    // 3. Cập nhật thông tin trong Chat Info Panel
+    // 3. Cáº­p nháº­t thÃ´ng tin trong Chat Info Panel
     const chatInfoNameEl = document.getElementById("chat-info-name");
     if (chatInfoNameEl) {
-        chatInfoNameEl.innerText = partnerNickname || chatInfoNameEl.dataset.realName || "Người dùng";
+        chatInfoNameEl.innerText = partnerNickname || chatInfoNameEl.dataset.realName || "NgÆ°á»i dÃ¹ng";
     }
 }
 
 function openNicknameModal() {
     if (!currentConversationId) return;
 
-    const partnerRealName = document.getElementById("chat-header-name")?.dataset.realName || "Đối phương";
+    const partnerRealName = document.getElementById("chat-header-name")?.dataset.realName || "Äá»‘i phÆ°Æ¡ng";
     const partnerLabel = document.getElementById("nickname-partner-label");
     if (partnerLabel) {
-        partnerLabel.innerText = `Biệt danh của ${partnerRealName}:`;
+        partnerLabel.innerText = `Biá»‡t danh cá»§a ${partnerRealName}:`;
     }
 
     const selfInput = document.getElementById("nickname-self-input");
@@ -7368,11 +7397,11 @@ async function saveNickname(type) {
             updateUINames();
             closeNicknameModal();
         } else {
-            alert("Lỗi lưu biệt danh: " + data.message);
+            alert("Lá»—i lÆ°u biá»‡t danh: " + data.message);
         }
     } catch (error) {
-        console.error("Lỗi mạng khi lưu biệt danh:", error);
-        alert("Lỗi mạng khi lưu biệt danh.");
+        console.error("Lá»—i máº¡ng khi lÆ°u biá»‡t danh:", error);
+        alert("Lá»—i máº¡ng khi lÆ°u biá»‡t danh.");
     }
 }
 
@@ -7401,46 +7430,46 @@ async function removeNickname(type) {
             updateUINames();
             closeNicknameModal();
         } else {
-            alert("Lỗi xóa biệt danh: " + data.message);
+            alert("Lá»—i xÃ³a biá»‡t danh: " + data.message);
         }
     } catch (error) {
-        console.error("Lỗi mạng khi xóa biệt danh:", error);
-        alert("Lỗi mạng khi xóa biệt danh.");
+        console.error("Lá»—i máº¡ng khi xÃ³a biá»‡t danh:", error);
+        alert("Lá»—i máº¡ng khi xÃ³a biá»‡t danh.");
     }
 }
 
-// Định dạng thời gian hoạt động cuối cùng (Online/Offline status format)
+// Äá»‹nh dáº¡ng thá»i gian hoáº¡t Ä‘á»™ng cuá»‘i cÃ¹ng (Online/Offline status format)
 function formatLastActive(timestamp) {
-    if (!timestamp) return "Không hoạt động";
+    if (!timestamp) return "KhÃ´ng hoáº¡t Ä‘á»™ng";
     const date = new Date(timestamp);
     const now = new Date();
     const diffMs = now - date;
 
-    if (diffMs < 0) return "Vừa hoạt động";
+    if (diffMs < 0) return "Vá»«a hoáº¡t Ä‘á»™ng";
 
     const diffSec = Math.floor(diffMs / 1000);
     if (diffSec < 60) {
-        return "Vừa hoạt động";
+        return "Vá»«a hoáº¡t Ä‘á»™ng";
     }
 
     const diffMin = Math.floor(diffSec / 60);
     if (diffMin < 60) {
-        return `Hoạt động ${diffMin} phút trước`;
+        return `Hoáº¡t Ä‘á»™ng ${diffMin} phÃºt trÆ°á»›c`;
     }
 
     const diffHour = Math.floor(diffMin / 60);
     if (diffHour < 24) {
-        return `Hoạt động ${diffHour} giờ trước`;
+        return `Hoáº¡t Ä‘á»™ng ${diffHour} giá» trÆ°á»›c`;
     }
 
     const diffDay = Math.floor(diffHour / 24);
     if (diffDay === 1) {
-        return "Hoạt động 1 ngày trước";
+        return "Hoáº¡t Ä‘á»™ng 1 ngÃ y trÆ°á»›c";
     }
-    return `Hoạt động ${diffDay} ngày trước`;
+    return `Hoáº¡t Ä‘á»™ng ${diffDay} ngÃ y trÆ°á»›c`;
 }
 
-// Cập nhật giao diện thanh Chat Header Status
+// Cáº­p nháº­t giao diá»‡n thanh Chat Header Status
 function updateHeaderStatusUI(isOnline, lastActive) {
     const dot = document.getElementById("chat-header-status-dot");
     const statusText = document.getElementById("chat-header-status");
@@ -7448,7 +7477,7 @@ function updateHeaderStatusUI(isOnline, lastActive) {
 
     if (isOnline) {
         dot.style.display = "block";
-        statusText.innerText = "Đang hoạt động";
+        statusText.innerText = "Äang hoáº¡t Ä‘á»™ng";
         statusText.classList.add("online");
     } else {
         dot.style.display = "none";
@@ -7457,9 +7486,9 @@ function updateHeaderStatusUI(isOnline, lastActive) {
     }
 }
 
-// Tự động quét và cập nhật hiển thị thời gian offline định kỳ mỗi 60 giây
+// Tá»± Ä‘á»™ng quÃ©t vÃ  cáº­p nháº­t hiá»ƒn thá»‹ thá»i gian offline Ä‘á»‹nh ká»³ má»—i 60 giÃ¢y
 setInterval(() => {
-    // 1. Cập nhật dòng status trên chat header (nếu đang offline)
+    // 1. Cáº­p nháº­t dÃ²ng status trÃªn chat header (náº¿u Ä‘ang offline)
     if (currentChatPartnerId) {
         const sidebarItem = document.querySelector(`#user-list li[data-user-id="${currentChatPartnerId}"]`);
         if (sidebarItem && sidebarItem.dataset.isOnline === "false") {
@@ -7474,49 +7503,49 @@ setInterval(() => {
 // ============================================================
 const EMOJI_DATA = [
     {
-        name: "Mặt cười",
-        icon: "😀",
-        emojis: ["😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😂", "🙂", "🙃", "😉", "😊", "😇", "🥰", "😍", "🤩", "😘", "😗", "😚", "😙", "🥲", "😋", "😛", "😜", "🤪", "😝", "🤑", "🤗", "🤭", "🤫", "🤔", "🫡", "🤐", "🤨", "😐", "😑", "😶", "🫥", "😏", "😒", "🙄", "😬", "🤥", "😌", "😔", "😪", "🤤", "😴", "😷", "🤒", "🤕", "🤢", "🤮", "🥵", "🥶", "🥴", "😵", "🤯", "🤠", "🥳", "🥸", "😎", "🤓", "🧐", "😕", "🫤", "😟", "🙁", "😮", "😯", "😲", "😳", "🥺", "🥹", "😦", "😧", "😨", "😰", "😥", "😢", "😭", "😱", "😖", "😣", "😞", "😓", "😩", "😫", "🥱", "😤", "😡", "😠", "🤬", "😈", "👿", "💀", "☠️", "💩", "🤡", "👹", "👺", "👻", "👽", "👾", "🤖"]
+        name: "Máº·t cÆ°á»i",
+        icon: "ðŸ˜€",
+        emojis: ["ðŸ˜€", "ðŸ˜ƒ", "ðŸ˜„", "ðŸ˜", "ðŸ˜†", "ðŸ˜…", "ðŸ¤£", "ðŸ˜‚", "ðŸ™‚", "ðŸ™ƒ", "ðŸ˜‰", "ðŸ˜Š", "ðŸ˜‡", "ðŸ¥°", "ðŸ˜", "ðŸ¤©", "ðŸ˜˜", "ðŸ˜—", "ðŸ˜š", "ðŸ˜™", "ðŸ¥²", "ðŸ˜‹", "ðŸ˜›", "ðŸ˜œ", "ðŸ¤ª", "ðŸ˜", "ðŸ¤‘", "ðŸ¤—", "ðŸ¤­", "ðŸ¤«", "ðŸ¤”", "ðŸ«¡", "ðŸ¤", "ðŸ¤¨", "ðŸ˜", "ðŸ˜‘", "ðŸ˜¶", "ðŸ«¥", "ðŸ˜", "ðŸ˜’", "ðŸ™„", "ðŸ˜¬", "ðŸ¤¥", "ðŸ˜Œ", "ðŸ˜”", "ðŸ˜ª", "ðŸ¤¤", "ðŸ˜´", "ðŸ˜·", "ðŸ¤’", "ðŸ¤•", "ðŸ¤¢", "ðŸ¤®", "ðŸ¥µ", "ðŸ¥¶", "ðŸ¥´", "ðŸ˜µ", "ðŸ¤¯", "ðŸ¤ ", "ðŸ¥³", "ðŸ¥¸", "ðŸ˜Ž", "ðŸ¤“", "ðŸ§", "ðŸ˜•", "ðŸ«¤", "ðŸ˜Ÿ", "ðŸ™", "ðŸ˜®", "ðŸ˜¯", "ðŸ˜²", "ðŸ˜³", "ðŸ¥º", "ðŸ¥¹", "ðŸ˜¦", "ðŸ˜§", "ðŸ˜¨", "ðŸ˜°", "ðŸ˜¥", "ðŸ˜¢", "ðŸ˜­", "ðŸ˜±", "ðŸ˜–", "ðŸ˜£", "ðŸ˜ž", "ðŸ˜“", "ðŸ˜©", "ðŸ˜«", "ðŸ¥±", "ðŸ˜¤", "ðŸ˜¡", "ðŸ˜ ", "ðŸ¤¬", "ðŸ˜ˆ", "ðŸ‘¿", "ðŸ’€", "â˜ ï¸", "ðŸ’©", "ðŸ¤¡", "ðŸ‘¹", "ðŸ‘º", "ðŸ‘»", "ðŸ‘½", "ðŸ‘¾", "ðŸ¤–"]
     },
     {
-        name: "Trái tim",
-        icon: "❤️",
-        emojis: ["❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎", "💔", "❣️", "💕", "💞", "💓", "💗", "💖", "💘", "💝", "💟", "♥️", "🫶", "💑", "💏", "❤️‍🔥", "❤️‍🩹", "🩷", "🩵", "🩶"]
+        name: "TrÃ¡i tim",
+        icon: "â¤ï¸",
+        emojis: ["â¤ï¸", "ðŸ§¡", "ðŸ’›", "ðŸ’š", "ðŸ’™", "ðŸ’œ", "ðŸ–¤", "ðŸ¤", "ðŸ¤Ž", "ðŸ’”", "â£ï¸", "ðŸ’•", "ðŸ’ž", "ðŸ’“", "ðŸ’—", "ðŸ’–", "ðŸ’˜", "ðŸ’", "ðŸ’Ÿ", "â™¥ï¸", "ðŸ«¶", "ðŸ’‘", "ðŸ’", "â¤ï¸â€ðŸ”¥", "â¤ï¸â€ðŸ©¹", "ðŸ©·", "ðŸ©µ", "ðŸ©¶"]
     },
     {
-        name: "Tay & Cử chỉ",
-        icon: "👋",
-        emojis: ["👋", "🤚", "🖐️", "✋", "🖖", "🫱", "🫲", "🫳", "🫴", "👌", "🤌", "🤏", "✌️", "🤞", "🫰", "🤟", "🤘", "🤙", "👈", "👉", "👆", "🖕", "👇", "☝️", "🫵", "👍", "👎", "✊", "👊", "🤛", "🤜", "👏", "🙌", "🫶", "👐", "🤲", "🤝", "🙏", "✍️", "💅", "🤳", "💪", "🦾", "🦿", "🦵", "🦶"]
+        name: "Tay & Cá»­ chá»‰",
+        icon: "ðŸ‘‹",
+        emojis: ["ðŸ‘‹", "ðŸ¤š", "ðŸ–ï¸", "âœ‹", "ðŸ––", "ðŸ«±", "ðŸ«²", "ðŸ«³", "ðŸ«´", "ðŸ‘Œ", "ðŸ¤Œ", "ðŸ¤", "âœŒï¸", "ðŸ¤ž", "ðŸ«°", "ðŸ¤Ÿ", "ðŸ¤˜", "ðŸ¤™", "ðŸ‘ˆ", "ðŸ‘‰", "ðŸ‘†", "ðŸ–•", "ðŸ‘‡", "â˜ï¸", "ðŸ«µ", "ðŸ‘", "ðŸ‘Ž", "âœŠ", "ðŸ‘Š", "ðŸ¤›", "ðŸ¤œ", "ðŸ‘", "ðŸ™Œ", "ðŸ«¶", "ðŸ‘", "ðŸ¤²", "ðŸ¤", "ðŸ™", "âœï¸", "ðŸ’…", "ðŸ¤³", "ðŸ’ª", "ðŸ¦¾", "ðŸ¦¿", "ðŸ¦µ", "ðŸ¦¶"]
     },
     {
-        name: "Con người",
-        icon: "👤",
-        emojis: ["👶", "👧", "🧒", "👦", "👩", "🧑", "👨", "👩‍🦱", "🧑‍🦱", "👨‍🦱", "👩‍🦰", "🧑‍🦰", "👨‍🦰", "👱‍♀️", "👱", "👱‍♂️", "👩‍🦳", "🧑‍🦳", "👨‍🦳", "👩‍🦲", "🧑‍🦲", "👨‍🦲", "🧔‍♀️", "🧔", "🧔‍♂️", "👵", "🧓", "👴", "👲", "👳‍♀️", "👳", "👳‍♂️", "🧕", "👮‍♀️", "👮", "👮‍♂️", "💂‍♀️", "💂", "💂‍♂️", "🥷", "👷‍♀️", "👷", "👷‍♂️", "🫅", "🤴", "👸", "👰‍♀️", "👰", "👰‍♂️", "🤵‍♀️", "🤵", "🤵‍♂️"]
+        name: "Con ngÆ°á»i",
+        icon: "ðŸ‘¤",
+        emojis: ["ðŸ‘¶", "ðŸ‘§", "ðŸ§’", "ðŸ‘¦", "ðŸ‘©", "ðŸ§‘", "ðŸ‘¨", "ðŸ‘©â€ðŸ¦±", "ðŸ§‘â€ðŸ¦±", "ðŸ‘¨â€ðŸ¦±", "ðŸ‘©â€ðŸ¦°", "ðŸ§‘â€ðŸ¦°", "ðŸ‘¨â€ðŸ¦°", "ðŸ‘±â€â™€ï¸", "ðŸ‘±", "ðŸ‘±â€â™‚ï¸", "ðŸ‘©â€ðŸ¦³", "ðŸ§‘â€ðŸ¦³", "ðŸ‘¨â€ðŸ¦³", "ðŸ‘©â€ðŸ¦²", "ðŸ§‘â€ðŸ¦²", "ðŸ‘¨â€ðŸ¦²", "ðŸ§”â€â™€ï¸", "ðŸ§”", "ðŸ§”â€â™‚ï¸", "ðŸ‘µ", "ðŸ§“", "ðŸ‘´", "ðŸ‘²", "ðŸ‘³â€â™€ï¸", "ðŸ‘³", "ðŸ‘³â€â™‚ï¸", "ðŸ§•", "ðŸ‘®â€â™€ï¸", "ðŸ‘®", "ðŸ‘®â€â™‚ï¸", "ðŸ’‚â€â™€ï¸", "ðŸ’‚", "ðŸ’‚â€â™‚ï¸", "ðŸ¥·", "ðŸ‘·â€â™€ï¸", "ðŸ‘·", "ðŸ‘·â€â™‚ï¸", "ðŸ«…", "ðŸ¤´", "ðŸ‘¸", "ðŸ‘°â€â™€ï¸", "ðŸ‘°", "ðŸ‘°â€â™‚ï¸", "ðŸ¤µâ€â™€ï¸", "ðŸ¤µ", "ðŸ¤µâ€â™‚ï¸"]
     },
     {
-        name: "Động vật",
-        icon: "🐶",
-        emojis: ["🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐻‍❄️", "🐨", "🐯", "🦁", "🐮", "🐷", "🐸", "🐵", "🙈", "🙉", "🙊", "🐒", "🐔", "🐧", "🐦", "🐤", "🐣", "🐥", "🦆", "🦅", "🦉", "🦇", "🐺", "🐗", "🐴", "🦄", "🐝", "🪱", "🐛", "🦋", "🐌", "🐞", "🐜", "🪰", "🪲", "🪳", "🦟", "🦗", "🕷️", "🕸️", "🦂", "🐢", "🐍", "🦎", "🦖", "🦕", "🐙", "🦑", "🦐", "🦞", "🦀", "🐡", "🐠", "🐟", "🐬", "🐳", "🐋", "🦈", "🪸", "🐊", "🐅", "🐆", "🦓", "🦍", "🦧", "🐘", "🦛", "🦏", "🐪", "🐫", "🦒", "🦘", "🦬", "🐃", "🐂", "🐄", "🐎", "🐖", "🐏", "🐑", "🦙", "🐐", "🦌", "🐕", "🐩", "🦮"]
+        name: "Äá»™ng váº­t",
+        icon: "ðŸ¶",
+        emojis: ["ðŸ¶", "ðŸ±", "ðŸ­", "ðŸ¹", "ðŸ°", "ðŸ¦Š", "ðŸ»", "ðŸ¼", "ðŸ»â€â„ï¸", "ðŸ¨", "ðŸ¯", "ðŸ¦", "ðŸ®", "ðŸ·", "ðŸ¸", "ðŸµ", "ðŸ™ˆ", "ðŸ™‰", "ðŸ™Š", "ðŸ’", "ðŸ”", "ðŸ§", "ðŸ¦", "ðŸ¤", "ðŸ£", "ðŸ¥", "ðŸ¦†", "ðŸ¦…", "ðŸ¦‰", "ðŸ¦‡", "ðŸº", "ðŸ—", "ðŸ´", "ðŸ¦„", "ðŸ", "ðŸª±", "ðŸ›", "ðŸ¦‹", "ðŸŒ", "ðŸž", "ðŸœ", "ðŸª°", "ðŸª²", "ðŸª³", "ðŸ¦Ÿ", "ðŸ¦—", "ðŸ•·ï¸", "ðŸ•¸ï¸", "ðŸ¦‚", "ðŸ¢", "ðŸ", "ðŸ¦Ž", "ðŸ¦–", "ðŸ¦•", "ðŸ™", "ðŸ¦‘", "ðŸ¦", "ðŸ¦ž", "ðŸ¦€", "ðŸ¡", "ðŸ ", "ðŸŸ", "ðŸ¬", "ðŸ³", "ðŸ‹", "ðŸ¦ˆ", "ðŸª¸", "ðŸŠ", "ðŸ…", "ðŸ†", "ðŸ¦“", "ðŸ¦", "ðŸ¦§", "ðŸ˜", "ðŸ¦›", "ðŸ¦", "ðŸª", "ðŸ«", "ðŸ¦’", "ðŸ¦˜", "ðŸ¦¬", "ðŸƒ", "ðŸ‚", "ðŸ„", "ðŸŽ", "ðŸ–", "ðŸ", "ðŸ‘", "ðŸ¦™", "ðŸ", "ðŸ¦Œ", "ðŸ•", "ðŸ©", "ðŸ¦®"]
     },
     {
-        name: "Đồ ăn",
-        icon: "🍔",
-        emojis: ["🍏", "🍎", "🍐", "🍊", "🍋", "🍌", "🍉", "🍇", "🍓", "🫐", "🍈", "🍒", "🍑", "🥭", "🍍", "🥥", "🥝", "🍅", "🍆", "🥑", "🫛", "🥦", "🥬", "🥒", "🌶️", "🫑", "🌽", "🥕", "🫒", "🧄", "🧅", "🫚", "🥔", "🍠", "🫘", "🥐", "🥯", "🍞", "🥖", "🥨", "🧀", "🥚", "🍳", "🧈", "🥞", "🧇", "🥓", "🥩", "🍗", "🍖", "🌭", "🍔", "🍟", "🍕", "🫓", "🥪", "🥙", "🧆", "🌮", "🌯", "🫔", "🥗", "🥘", "🫕", "🥫", "🍝", "🍜", "🍲", "🍛", "🍣", "🍱", "🥟", "🦪", "🍤", "🍙", "🍚", "🍘", "🍥", "🥠", "🥮", "🍢", "🍡", "🍧", "🍨", "🍦", "🥧", "🧁", "🍰", "🎂", "🍮", "🍭", "🍬", "🍫", "🍿", "🍩", "🍪", "🌰", "🥜", "🍯", "🥛", "🍼", "🫖", "☕", "🍵", "🧃", "🥤", "🧋", "🫧", "🍶", "🍺", "🍻", "🥂", "🍷", "🫗", "🥃", "🍸", "🍹", "🧉", "🍾", "🧊"]
+        name: "Äá»“ Äƒn",
+        icon: "ðŸ”",
+        emojis: ["ðŸ", "ðŸŽ", "ðŸ", "ðŸŠ", "ðŸ‹", "ðŸŒ", "ðŸ‰", "ðŸ‡", "ðŸ“", "ðŸ«", "ðŸˆ", "ðŸ’", "ðŸ‘", "ðŸ¥­", "ðŸ", "ðŸ¥¥", "ðŸ¥", "ðŸ…", "ðŸ†", "ðŸ¥‘", "ðŸ«›", "ðŸ¥¦", "ðŸ¥¬", "ðŸ¥’", "ðŸŒ¶ï¸", "ðŸ«‘", "ðŸŒ½", "ðŸ¥•", "ðŸ«’", "ðŸ§„", "ðŸ§…", "ðŸ«š", "ðŸ¥”", "ðŸ ", "ðŸ«˜", "ðŸ¥", "ðŸ¥¯", "ðŸž", "ðŸ¥–", "ðŸ¥¨", "ðŸ§€", "ðŸ¥š", "ðŸ³", "ðŸ§ˆ", "ðŸ¥ž", "ðŸ§‡", "ðŸ¥“", "ðŸ¥©", "ðŸ—", "ðŸ–", "ðŸŒ­", "ðŸ”", "ðŸŸ", "ðŸ•", "ðŸ«“", "ðŸ¥ª", "ðŸ¥™", "ðŸ§†", "ðŸŒ®", "ðŸŒ¯", "ðŸ«”", "ðŸ¥—", "ðŸ¥˜", "ðŸ«•", "ðŸ¥«", "ðŸ", "ðŸœ", "ðŸ²", "ðŸ›", "ðŸ£", "ðŸ±", "ðŸ¥Ÿ", "ðŸ¦ª", "ðŸ¤", "ðŸ™", "ðŸš", "ðŸ˜", "ðŸ¥", "ðŸ¥ ", "ðŸ¥®", "ðŸ¢", "ðŸ¡", "ðŸ§", "ðŸ¨", "ðŸ¦", "ðŸ¥§", "ðŸ§", "ðŸ°", "ðŸŽ‚", "ðŸ®", "ðŸ­", "ðŸ¬", "ðŸ«", "ðŸ¿", "ðŸ©", "ðŸª", "ðŸŒ°", "ðŸ¥œ", "ðŸ¯", "ðŸ¥›", "ðŸ¼", "ðŸ«–", "â˜•", "ðŸµ", "ðŸ§ƒ", "ðŸ¥¤", "ðŸ§‹", "ðŸ«§", "ðŸ¶", "ðŸº", "ðŸ»", "ðŸ¥‚", "ðŸ·", "ðŸ«—", "ðŸ¥ƒ", "ðŸ¸", "ðŸ¹", "ðŸ§‰", "ðŸ¾", "ðŸ§Š"]
     },
     {
-        name: "Hoạt động",
-        icon: "⚽",
-        emojis: ["⚽", "🏀", "🏈", "⚾", "🥎", "🎾", "🏐", "🏉", "🥏", "🎱", "🪀", "🏓", "🏸", "🏒", "🏑", "🥍", "🏏", "🪃", "🥅", "⛳", "🪁", "🏹", "🎣", "🤿", "🥊", "🥋", "🎽", "🛹", "🛼", "🛷", "⛸️", "🥌", "🎿", "⛷️", "🏂", "🪂", "🏋️‍♀️", "🏋️", "🏋️‍♂️", "🤸‍♀️", "🤸", "🤸‍♂️", "⛹️‍♀️", "⛹️", "⛹️‍♂️", "🤺", "🤾‍♀️", "🤾", "🤾‍♂️", "🏌️‍♀️", "🏌️", "🏌️‍♂️", "🏇", "🧘‍♀️", "🧘", "🧘‍♂️", "🏄‍♀️", "🏄", "🏄‍♂️", "🏊‍♀️", "🏊", "🏊‍♂️", "🎪", "🎭", "🎨", "🎬", "🎤", "🎧", "🎼", "🎹", "🥁", "🪘", "🎷", "🎺", "🪗", "🎸", "🪕", "🎻", "🎲", "♟️", "🎯", "🎳", "🎮", "🕹️", "🎰"]
+        name: "Hoáº¡t Ä‘á»™ng",
+        icon: "âš½",
+        emojis: ["âš½", "ðŸ€", "ðŸˆ", "âš¾", "ðŸ¥Ž", "ðŸŽ¾", "ðŸ", "ðŸ‰", "ðŸ¥", "ðŸŽ±", "ðŸª€", "ðŸ“", "ðŸ¸", "ðŸ’", "ðŸ‘", "ðŸ¥", "ðŸ", "ðŸªƒ", "ðŸ¥…", "â›³", "ðŸª", "ðŸ¹", "ðŸŽ£", "ðŸ¤¿", "ðŸ¥Š", "ðŸ¥‹", "ðŸŽ½", "ðŸ›¹", "ðŸ›¼", "ðŸ›·", "â›¸ï¸", "ðŸ¥Œ", "ðŸŽ¿", "â›·ï¸", "ðŸ‚", "ðŸª‚", "ðŸ‹ï¸â€â™€ï¸", "ðŸ‹ï¸", "ðŸ‹ï¸â€â™‚ï¸", "ðŸ¤¸â€â™€ï¸", "ðŸ¤¸", "ðŸ¤¸â€â™‚ï¸", "â›¹ï¸â€â™€ï¸", "â›¹ï¸", "â›¹ï¸â€â™‚ï¸", "ðŸ¤º", "ðŸ¤¾â€â™€ï¸", "ðŸ¤¾", "ðŸ¤¾â€â™‚ï¸", "ðŸŒï¸â€â™€ï¸", "ðŸŒï¸", "ðŸŒï¸â€â™‚ï¸", "ðŸ‡", "ðŸ§˜â€â™€ï¸", "ðŸ§˜", "ðŸ§˜â€â™‚ï¸", "ðŸ„â€â™€ï¸", "ðŸ„", "ðŸ„â€â™‚ï¸", "ðŸŠâ€â™€ï¸", "ðŸŠ", "ðŸŠâ€â™‚ï¸", "ðŸŽª", "ðŸŽ­", "ðŸŽ¨", "ðŸŽ¬", "ðŸŽ¤", "ðŸŽ§", "ðŸŽ¼", "ðŸŽ¹", "ðŸ¥", "ðŸª˜", "ðŸŽ·", "ðŸŽº", "ðŸª—", "ðŸŽ¸", "ðŸª•", "ðŸŽ»", "ðŸŽ²", "â™Ÿï¸", "ðŸŽ¯", "ðŸŽ³", "ðŸŽ®", "ðŸ•¹ï¸", "ðŸŽ°"]
     },
     {
-        name: "Du lịch",
-        icon: "✈️",
-        emojis: ["🚗", "🚕", "🚙", "🚌", "🚎", "🏎️", "🚓", "🚑", "🚒", "🚐", "🛻", "🚚", "🚛", "🚜", "🦯", "🦽", "🦼", "🛴", "🚲", "🛵", "🏍️", "🛺", "🚨", "🚔", "🚍", "🚘", "🚖", "🛞", "🚡", "🚠", "🚟", "🚃", "🚋", "🚞", "🚝", "🚄", "🚅", "🚈", "🚂", "🚆", "🚇", "🚊", "🚉", "✈️", "🛫", "🛬", "🛩️", "💺", "🛰️", "🚀", "🛸", "🚁", "🛶", "⛵", "🚤", "🛥️", "🛳️", "⛴️", "🚢", "🗽", "🗼", "🏰", "🏯", "🏟️", "🎡", "🎢", "🎠", "⛲", "⛱️", "🏖️", "🏝️", "🏜️", "🌋", "⛰️", "🏔️", "🗻", "🏕️", "🛖", "🏠", "🏡", "🏗️", "🏢", "🏬", "🏣", "🏤", "🏥", "🏦", "🏨", "🏪", "🏫", "🏩", "💒", "🏛️", "⛪", "🕌", "🕍", "🛕", "🕋", "⛩️"]
+        name: "Du lá»‹ch",
+        icon: "âœˆï¸",
+        emojis: ["ðŸš—", "ðŸš•", "ðŸš™", "ðŸšŒ", "ðŸšŽ", "ðŸŽï¸", "ðŸš“", "ðŸš‘", "ðŸš’", "ðŸš", "ðŸ›»", "ðŸšš", "ðŸš›", "ðŸšœ", "ðŸ¦¯", "ðŸ¦½", "ðŸ¦¼", "ðŸ›´", "ðŸš²", "ðŸ›µ", "ðŸï¸", "ðŸ›º", "ðŸš¨", "ðŸš”", "ðŸš", "ðŸš˜", "ðŸš–", "ðŸ›ž", "ðŸš¡", "ðŸš ", "ðŸšŸ", "ðŸšƒ", "ðŸš‹", "ðŸšž", "ðŸš", "ðŸš„", "ðŸš…", "ðŸšˆ", "ðŸš‚", "ðŸš†", "ðŸš‡", "ðŸšŠ", "ðŸš‰", "âœˆï¸", "ðŸ›«", "ðŸ›¬", "ðŸ›©ï¸", "ðŸ’º", "ðŸ›°ï¸", "ðŸš€", "ðŸ›¸", "ðŸš", "ðŸ›¶", "â›µ", "ðŸš¤", "ðŸ›¥ï¸", "ðŸ›³ï¸", "â›´ï¸", "ðŸš¢", "ðŸ—½", "ðŸ—¼", "ðŸ°", "ðŸ¯", "ðŸŸï¸", "ðŸŽ¡", "ðŸŽ¢", "ðŸŽ ", "â›²", "â›±ï¸", "ðŸ–ï¸", "ðŸï¸", "ðŸœï¸", "ðŸŒ‹", "â›°ï¸", "ðŸ”ï¸", "ðŸ—»", "ðŸ•ï¸", "ðŸ›–", "ðŸ ", "ðŸ¡", "ðŸ—ï¸", "ðŸ¢", "ðŸ¬", "ðŸ£", "ðŸ¤", "ðŸ¥", "ðŸ¦", "ðŸ¨", "ðŸª", "ðŸ«", "ðŸ©", "ðŸ’’", "ðŸ›ï¸", "â›ª", "ðŸ•Œ", "ðŸ•", "ðŸ›•", "ðŸ•‹", "â›©ï¸"]
     },
     {
-        name: "Đồ vật",
-        icon: "💡",
-        emojis: ["⌚", "📱", "📲", "💻", "⌨️", "🖥️", "🖨️", "🖱️", "🖲️", "🕹️", "🗜️", "💽", "💾", "💿", "📀", "📼", "📷", "📸", "📹", "🎥", "📽️", "🎞️", "📞", "☎️", "📟", "📠", "📺", "📻", "🎙️", "🎚️", "🎛️", "🧭", "⏱️", "⏲️", "⏰", "🕰️", "⌛", "⏳", "📡", "🔋", "🪫", "🔌", "💡", "🔦", "🕯️", "🪔", "🧯", "🛢️", "🪙", "💰", "💴", "💵", "💶", "💷", "🪪", "💳", "💎", "⚖️", "🪜", "🧰", "🪛", "🔧", "🔨", "⚒️", "🛠️", "⛏️", "🪚", "🔩", "⚙️", "🪤", "🧱", "⛓️", "🧲", "🔫", "💣", "🧨", "🪓", "🔪", "🗡️", "⚔️", "🛡️", "🚬", "⚰️", "🪦", "⚱️", "🏺", "🔮", "📿", "🧿", "🪬", "💈", "⚗️", "🔭", "🔬", "🕳️", "🩹", "🩺", "🩻", "🩼", "💊", "💉", "🩸", "🧬", "🦠", "🧫", "🧪", "🌡️", "🧹", "🪠", "🧺", "🧻", "🧼", "🫧", "🪥", "🧽", "🧯", "🛒", "🚬"]
+        name: "Äá»“ váº­t",
+        icon: "ðŸ’¡",
+        emojis: ["âŒš", "ðŸ“±", "ðŸ“²", "ðŸ’»", "âŒ¨ï¸", "ðŸ–¥ï¸", "ðŸ–¨ï¸", "ðŸ–±ï¸", "ðŸ–²ï¸", "ðŸ•¹ï¸", "ðŸ—œï¸", "ðŸ’½", "ðŸ’¾", "ðŸ’¿", "ðŸ“€", "ðŸ“¼", "ðŸ“·", "ðŸ“¸", "ðŸ“¹", "ðŸŽ¥", "ðŸ“½ï¸", "ðŸŽžï¸", "ðŸ“ž", "â˜Žï¸", "ðŸ“Ÿ", "ðŸ“ ", "ðŸ“º", "ðŸ“»", "ðŸŽ™ï¸", "ðŸŽšï¸", "ðŸŽ›ï¸", "ðŸ§­", "â±ï¸", "â²ï¸", "â°", "ðŸ•°ï¸", "âŒ›", "â³", "ðŸ“¡", "ðŸ”‹", "ðŸª«", "ðŸ”Œ", "ðŸ’¡", "ðŸ”¦", "ðŸ•¯ï¸", "ðŸª”", "ðŸ§¯", "ðŸ›¢ï¸", "ðŸª™", "ðŸ’°", "ðŸ’´", "ðŸ’µ", "ðŸ’¶", "ðŸ’·", "ðŸªª", "ðŸ’³", "ðŸ’Ž", "âš–ï¸", "ðŸªœ", "ðŸ§°", "ðŸª›", "ðŸ”§", "ðŸ”¨", "âš’ï¸", "ðŸ› ï¸", "â›ï¸", "ðŸªš", "ðŸ”©", "âš™ï¸", "ðŸª¤", "ðŸ§±", "â›“ï¸", "ðŸ§²", "ðŸ”«", "ðŸ’£", "ðŸ§¨", "ðŸª“", "ðŸ”ª", "ðŸ—¡ï¸", "âš”ï¸", "ðŸ›¡ï¸", "ðŸš¬", "âš°ï¸", "ðŸª¦", "âš±ï¸", "ðŸº", "ðŸ”®", "ðŸ“¿", "ðŸ§¿", "ðŸª¬", "ðŸ’ˆ", "âš—ï¸", "ðŸ”­", "ðŸ”¬", "ðŸ•³ï¸", "ðŸ©¹", "ðŸ©º", "ðŸ©»", "ðŸ©¼", "ðŸ’Š", "ðŸ’‰", "ðŸ©¸", "ðŸ§¬", "ðŸ¦ ", "ðŸ§«", "ðŸ§ª", "ðŸŒ¡ï¸", "ðŸ§¹", "ðŸª ", "ðŸ§º", "ðŸ§»", "ðŸ§¼", "ðŸ«§", "ðŸª¥", "ðŸ§½", "ðŸ§¯", "ðŸ›’", "ðŸš¬"]
     }
 ];
 
@@ -7537,14 +7566,14 @@ function deleteLastCharFromInput() {
     const text = input.value;
     if (text.length === 0) return;
 
-    // Sử dụng Array.from để tách ký tự/emoji surrogate pairs chuẩn xác
+    // Sá»­ dá»¥ng Array.from Ä‘á»ƒ tÃ¡ch kÃ½ tá»±/emoji surrogate pairs chuáº©n xÃ¡c
     const chars = Array.from(text);
     chars.pop();
     input.value = chars.join("");
 
     input.dispatchEvent(new Event("input", { bubbles: true }));
 
-    // Tránh tự động focus trên mobile để không làm nhảy bàn phím ảo
+    // TrÃ¡nh tá»± Ä‘á»™ng focus trÃªn mobile Ä‘á»ƒ khÃ´ng lÃ m nháº£y bÃ n phÃ­m áº£o
     if (window.innerWidth > 768) {
         input.focus();
     }
@@ -7559,7 +7588,7 @@ function initEmojiPicker() {
 
     if (!tabsContainer || !gridContainer) return;
 
-    // 1. Thêm nút "ABC" vào đầu để tắt emoji quay về bàn phím chữ
+    // 1. ThÃªm nÃºt "ABC" vÃ o Ä‘áº§u Ä‘á»ƒ táº¯t emoji quay vá» bÃ n phÃ­m chá»¯
     const abcTab = document.createElement("div");
     abcTab.className = "emoji-category-tab abc-tab";
     abcTab.innerText = "ABC";
@@ -7569,7 +7598,7 @@ function initEmojiPicker() {
     };
     tabsContainer.appendChild(abcTab);
 
-    // 2. Tạo category tabs từ EMOJI_DATA
+    // 2. Táº¡o category tabs tá»« EMOJI_DATA
     EMOJI_DATA.forEach((cat, index) => {
         const tab = document.createElement("div");
         tab.className = "emoji-category-tab" + (index === 0 ? " active" : "");
@@ -7584,13 +7613,13 @@ function initEmojiPicker() {
         tabsContainer.appendChild(tab);
     });
 
-    // 3. Thêm nút backspace (xóa chữ) vào cuối
+    // 3. ThÃªm nÃºt backspace (xÃ³a chá»¯) vÃ o cuá»‘i
     const deleteTab = document.createElement("div");
     deleteTab.className = "emoji-category-tab delete-tab";
     deleteTab.innerHTML = '<i class="fas fa-backspace"></i>';
-    deleteTab.title = "Xóa";
+    deleteTab.title = "XÃ³a";
 
-    // Xử lý giữ nút để xóa nhanh (giống bàn phím thật)
+    // Xá»­ lÃ½ giá»¯ nÃºt Ä‘á»ƒ xÃ³a nhanh (giá»‘ng bÃ n phÃ­m tháº­t)
     let deleteInterval = null;
     const startDelete = () => {
         deleteLastCharFromInput();
@@ -7610,7 +7639,7 @@ function initEmojiPicker() {
 
     tabsContainer.appendChild(deleteTab);
 
-    // Tạo emoji grid
+    // Táº¡o emoji grid
     renderAllEmojis(gridContainer);
 
     // Scroll detection to update active tab
@@ -7667,7 +7696,7 @@ function setActiveCategoryTab(index) {
     currentEmojiCategory = index;
     const tabs = document.querySelectorAll(".emoji-category-tab");
     tabs.forEach((tab, i) => {
-        // Cộng 1 để bỏ qua tab "ABC" ở vị trí đầu tiên
+        // Cá»™ng 1 Ä‘á»ƒ bá» qua tab "ABC" á»Ÿ vá»‹ trÃ­ Ä‘áº§u tiÃªn
         tab.classList.toggle("active", i === (index + 1));
     });
 }
@@ -7689,7 +7718,7 @@ function insertEmojiToInput(emoji) {
     // Trigger input event for any listeners (like show/hide send button)
     input.dispatchEvent(new Event("input", { bubbles: true }));
 
-    // Chỉ focus lại trên Desktop (để tiếp tục gõ), trên mobile tránh gọi focus gây bật bàn phím ảo che mất emoji
+    // Chá»‰ focus láº¡i trÃªn Desktop (Ä‘á»ƒ tiáº¿p tá»¥c gÃµ), trÃªn mobile trÃ¡nh gá»i focus gÃ¢y báº­t bÃ n phÃ­m áº£o che máº¥t emoji
     if (window.innerWidth > 768) {
         input.focus();
     }
@@ -7705,7 +7734,7 @@ function toggleEmojiPicker(e) {
     if (isOpen) {
         closeEmojiPicker();
     } else {
-        // Tắt bàn phím ảo trên mobile khi bật chọn emoji
+        // Táº¯t bÃ n phÃ­m áº£o trÃªn mobile khi báº­t chá»n emoji
         const input = document.getElementById("message-input");
         if (input) input.blur();
 
@@ -7713,7 +7742,7 @@ function toggleEmojiPicker(e) {
         panel.classList.add("show");
         if (btn) btn.classList.add("active");
 
-        // Thêm class emoji-open ở input-area
+        // ThÃªm class emoji-open á»Ÿ input-area
         const inputArea = document.getElementById("input-area");
         if (inputArea) inputArea.classList.add("emoji-open");
 
@@ -7726,7 +7755,7 @@ function toggleEmojiPicker(e) {
         if (grid) renderAllEmojis(grid);
         setActiveCategoryTab(0);
 
-        // Tự động cuộn tin nhắn xuống cuối sau khi mở emoji picker
+        // Tá»± Ä‘á»™ng cuá»™n tin nháº¯n xuá»‘ng cuá»‘i sau khi má»Ÿ emoji picker
         const messagesDiv = document.getElementById("messages");
         if (messagesDiv) {
             setTimeout(() => {
@@ -7742,7 +7771,7 @@ function closeEmojiPicker() {
     if (panel) panel.classList.remove("show");
     if (btn) btn.classList.remove("active");
 
-    // Xóa class emoji-open ở input-area
+    // XÃ³a class emoji-open á»Ÿ input-area
     const inputArea = document.getElementById("input-area");
     if (inputArea) inputArea.classList.remove("emoji-open");
 }
@@ -7793,9 +7822,9 @@ function filterEmojis(query) {
         const allEmojis = EMOJI_DATA.flatMap(c => c.emojis);
         const filtered = allEmojis; // Show all since emoji search by character isn't practical
         if (filtered.length === 0) {
-            grid.innerHTML = '<div class="emoji-no-results">Không tìm thấy emoji 😢</div>';
+            grid.innerHTML = '<div class="emoji-no-results">KhÃ´ng tÃ¬m tháº¥y emoji ðŸ˜¢</div>';
         } else {
-            grid.innerHTML = '<div class="emoji-no-results">Không tìm thấy danh mục phù hợp 😢</div>';
+            grid.innerHTML = '<div class="emoji-no-results">KhÃ´ng tÃ¬m tháº¥y danh má»¥c phÃ¹ há»£p ðŸ˜¢</div>';
         }
     }
 }
@@ -7805,7 +7834,7 @@ document.addEventListener("click", (e) => {
     const panel = document.getElementById("emoji-picker-panel");
     const wrapper = document.querySelector(".emoji-picker-wrapper");
     if (panel && panel.classList.contains("show")) {
-        // Tránh đóng panel khi click vào trong chính panel hoặc vào nút bấm toggle
+        // TrÃ¡nh Ä‘Ã³ng panel khi click vÃ o trong chÃ­nh panel hoáº·c vÃ o nÃºt báº¥m toggle
         if (wrapper && !wrapper.contains(e.target) && !panel.contains(e.target)) {
             closeEmojiPicker();
         }
@@ -7819,17 +7848,17 @@ document.addEventListener("keydown", (e) => {
     }
 });
 
-// --- HỖ TRỢ CÀI ĐẶT ỨNG DỤNG (PWA INSTALLATION) ---
+// --- Há»– TRá»¢ CÃ€I Äáº¶T á»¨NG Dá»¤NG (PWA INSTALLATION) ---
 let deferredPrompt = null;
 
-// Lắng nghe sự kiện trước khi cài đặt (chỉ kích hoạt trên Android / Chrome Desktop)
+// Láº¯ng nghe sá»± kiá»‡n trÆ°á»›c khi cÃ i Ä‘áº·t (chá»‰ kÃ­ch hoáº¡t trÃªn Android / Chrome Desktop)
 window.addEventListener("beforeinstallprompt", (e) => {
-    // Ngăn chặn trình duyệt hiển thị banner mặc định
+    // NgÄƒn cháº·n trÃ¬nh duyá»‡t hiá»ƒn thá»‹ banner máº·c Ä‘á»‹nh
     e.preventDefault();
-    // Lưu trữ sự kiện để kích hoạt sau
+    // LÆ°u trá»¯ sá»± kiá»‡n Ä‘á»ƒ kÃ­ch hoáº¡t sau
     deferredPrompt = e;
 
-    // Hiển thị các nút cài đặt trên giao diện
+    // Hiá»ƒn thá»‹ cÃ¡c nÃºt cÃ i Ä‘áº·t trÃªn giao diá»‡n
     const installProfileItem = document.getElementById("install-app-profile-item");
     const installAuthBtn = document.getElementById("install-app-auth-btn");
 
@@ -7837,21 +7866,21 @@ window.addEventListener("beforeinstallprompt", (e) => {
     if (installAuthBtn) installAuthBtn.style.display = "flex";
 });
 
-// Hàm kích hoạt hộp thoại cài đặt của trình duyệt
+// HÃ m kÃ­ch hoáº¡t há»™p thoáº¡i cÃ i Ä‘áº·t cá»§a trÃ¬nh duyá»‡t
 async function triggerPwaInstall() {
     if (deferredPrompt) {
-        // Hiện hộp thoại cài đặt
+        // Hiá»‡n há»™p thoáº¡i cÃ i Ä‘áº·t
         deferredPrompt.prompt();
-        // Nhận phản hồi từ người dùng
+        // Nháº­n pháº£n há»“i tá»« ngÆ°á»i dÃ¹ng
         const { outcome } = await deferredPrompt.userChoice;
-        console.log(`Lựa chọn cài đặt của người dùng: ${outcome}`);
-        // Xóa prompt đã lưu
+        console.log(`Lá»±a chá»n cÃ i Ä‘áº·t cá»§a ngÆ°á»i dÃ¹ng: ${outcome}`);
+        // XÃ³a prompt Ä‘Ã£ lÆ°u
         deferredPrompt = null;
 
-        // Ẩn các nút cài đặt
+        // áº¨n cÃ¡c nÃºt cÃ i Ä‘áº·t
         hideInstallButtons();
     } else {
-        alert("Ứng dụng đã được cài đặt hoặc trình duyệt của bạn không hỗ trợ cài đặt tự động. Hãy sử dụng Google Chrome trên Android để cài đặt.");
+        alert("á»¨ng dá»¥ng Ä‘Ã£ Ä‘Æ°á»£c cÃ i Ä‘áº·t hoáº·c trÃ¬nh duyá»‡t cá»§a báº¡n khÃ´ng há»— trá»£ cÃ i Ä‘áº·t tá»± Ä‘á»™ng. HÃ£y sá»­ dá»¥ng Google Chrome trÃªn Android Ä‘á»ƒ cÃ i Ä‘áº·t.");
     }
 }
 
@@ -7862,24 +7891,24 @@ function hideInstallButtons() {
     if (installAuthBtn) installAuthBtn.style.display = "none";
 }
 
-// Ẩn nút khi ứng dụng đã cài đặt thành công
+// áº¨n nÃºt khi á»©ng dá»¥ng Ä‘Ã£ cÃ i Ä‘áº·t thÃ nh cÃ´ng
 window.addEventListener("appinstalled", () => {
-    console.log("Ứng dụng đã được cài đặt thành công làm PWA!");
+    console.log("á»¨ng dá»¥ng Ä‘Ã£ Ä‘Æ°á»£c cÃ i Ä‘áº·t thÃ nh cÃ´ng lÃ m PWA!");
     hideInstallButtons();
 });
 
-// Gắn sự kiện click vào các nút bấm tương ứng sau khi DOM load xong
+// Gáº¯n sá»± kiá»‡n click vÃ o cÃ¡c nÃºt báº¥m tÆ°Æ¡ng á»©ng sau khi DOM load xong
 document.addEventListener("DOMContentLoaded", () => {
-    // Đăng ký Service Worker toàn cục ngay khi tải trang để đảm bảo tính năng PWA (cài đặt app) hoạt động độc lập với Thông báo
+    // ÄÄƒng kÃ½ Service Worker toÃ n cá»¥c ngay khi táº£i trang Ä‘á»ƒ Ä‘áº£m báº£o tÃ­nh nÄƒng PWA (cÃ i Ä‘áº·t app) hoáº¡t Ä‘á»™ng Ä‘á»™c láº­p vá»›i ThÃ´ng bÃ¡o
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/firebase-messaging-sw.js')
             .then((registration) => {
-                console.log("PWA Service Worker đã được đăng ký toàn cục thành công!");
-                // Chủ động cập nhật service worker nếu có phiên bản mới
+                console.log("PWA Service Worker Ä‘Ã£ Ä‘Æ°á»£c Ä‘Äƒng kÃ½ toÃ n cá»¥c thÃ nh cÃ´ng!");
+                // Chá»§ Ä‘á»™ng cáº­p nháº­t service worker náº¿u cÃ³ phiÃªn báº£n má»›i
                 registration.update();
             })
             .catch((err) => {
-                console.error("Lỗi đăng ký Service Worker toàn cục:", err);
+                console.error("Lá»—i Ä‘Äƒng kÃ½ Service Worker toÃ n cá»¥c:", err);
             });
     }
 
@@ -7893,14 +7922,14 @@ document.addEventListener("DOMContentLoaded", () => {
         installAuthBtn.addEventListener("click", triggerPwaInstall);
     }
 
-    // --- NÚT CUỘN XUỐNG DƯỚI (SCROLL TO BOTTOM BUTTON) ---
+    // --- NÃšT CUá»˜N XUá»NG DÆ¯á»šI (SCROLL TO BOTTOM BUTTON) ---
     const messagesDiv = document.getElementById("messages");
     const scrollBtn = document.getElementById("scroll-to-bottom-btn");
 
     if (messagesDiv && scrollBtn) {
         messagesDiv.addEventListener("scroll", () => {
             const distanceFromBottom = messagesDiv.scrollHeight - messagesDiv.scrollTop - messagesDiv.clientHeight;
-            // Nếu người dùng cuộn lên quá 300px thì hiện nút
+            // Náº¿u ngÆ°á»i dÃ¹ng cuá»™n lÃªn quÃ¡ 300px thÃ¬ hiá»‡n nÃºt
             if (distanceFromBottom > 300) {
                 scrollBtn.classList.add("visible");
             } else {
@@ -7916,11 +7945,11 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Không tự động kích hoạt trên iOS (chỉ hỗ trợ Android/Chrome thông qua event beforeinstallprompt)
+    // KhÃ´ng tá»± Ä‘á»™ng kÃ­ch hoáº¡t trÃªn iOS (chá»‰ há»— trá»£ Android/Chrome thÃ´ng qua event beforeinstallprompt)
 });
 
 // ==========================================================================
-// TÍNH NĂNG TIN TỨC REAL-TIME (TECH & AI NEWS)
+// TÃNH NÄ‚NG TIN Tá»¨C REAL-TIME (TECH & AI NEWS)
 // ==========================================================================
 let newsListLoaded = false;
 let allNewsItems = [];
@@ -7943,7 +7972,7 @@ async function loadInitialNews() {
         emptyState.style.display = "block";
         emptyState.innerHTML = `
             <i class="fas fa-spinner fa-spin" style="font-size: 36px; color: var(--text-light); margin-bottom: 12px; display: block;"></i>
-            <p style="color: var(--text-light); font-size: 13.5px;">Đang tải tin tức mới nhất...</p>
+            <p style="color: var(--text-light); font-size: 13.5px;">Äang táº£i tin tá»©c má»›i nháº¥t...</p>
         `;
     }
 
@@ -7955,7 +7984,7 @@ async function loadInitialNews() {
             allNewsItems = json.data;
             newsListLoaded = true;
 
-            // Làm sạch readNewsIds: chỉ giữ lại IDs thuộc về tin tức hiện tại
+            // LÃ m sáº¡ch readNewsIds: chá»‰ giá»¯ láº¡i IDs thuá»™c vá» tin tá»©c hiá»‡n táº¡i
             const validIds = new Set(allNewsItems.map(item => item.id));
             readNewsIds = readNewsIds.filter(id => validIds.has(id));
             try {
@@ -7966,15 +7995,15 @@ async function loadInitialNews() {
 
             renderNews();
         } else {
-            throw new Error(json.message || "Không thể tải dữ liệu.");
+            throw new Error(json.message || "KhÃ´ng thá»ƒ táº£i dá»¯ liá»‡u.");
         }
     } catch (error) {
-        console.error("Lỗi khi tải danh sách tin tức ban đầu:", error);
+        console.error("Lá»—i khi táº£i danh sÃ¡ch tin tá»©c ban Ä‘áº§u:", error);
         if (emptyState) {
             emptyState.style.display = "block";
             emptyState.innerHTML = `
                 <i class="fas fa-exclamation-triangle" style="font-size: 36px; color: #ef4444; margin-bottom: 12px; display: block;"></i>
-                <p style="color: #ef4444; font-size: 13.5px;">Không thể kết nối máy chủ tin tức. Vui lòng thử lại.</p>
+                <p style="color: #ef4444; font-size: 13.5px;">KhÃ´ng thá»ƒ káº¿t ná»‘i mÃ¡y chá»§ tin tá»©c. Vui lÃ²ng thá»­ láº¡i.</p>
             `;
         }
     }
@@ -7987,17 +8016,17 @@ function renderNews() {
 
     if (!newsList) return;
 
-    // Xóa các news-card cũ
+    // XÃ³a cÃ¡c news-card cÅ©
     const cards = newsList.querySelectorAll(".news-card");
     cards.forEach(card => card.remove());
 
-    // Lọc tin tức theo danh mục
+    // Lá»c tin tá»©c theo danh má»¥c
     const filteredNews = allNewsItems.filter(item => {
         if (currentNewsFilter === "all") return true;
         return item.category === currentNewsFilter;
     });
 
-    // Sắp xếp tin tức: Chưa đọc lên trên, Đã đọc xuống dưới. Cùng trạng thái thì tin mới hơn lên đầu.
+    // Sáº¯p xáº¿p tin tá»©c: ChÆ°a Ä‘á»c lÃªn trÃªn, ÄÃ£ Ä‘á»c xuá»‘ng dÆ°á»›i. CÃ¹ng tráº¡ng thÃ¡i thÃ¬ tin má»›i hÆ¡n lÃªn Ä‘áº§u.
     filteredNews.sort((a, b) => {
         const aRead = readNewsIds.includes(a.id);
         const bRead = readNewsIds.includes(b.id);
@@ -8011,7 +8040,7 @@ function renderNews() {
             emptyState.style.display = "block";
             emptyState.innerHTML = `
                 <i class="fas fa-newspaper" style="font-size: 36px; color: var(--text-light); margin-bottom: 12px; display: block;"></i>
-                <p style="color: var(--text-light); font-size: 13.5px;">Chưa có tin tức nào thuộc danh mục này.</p>
+                <p style="color: var(--text-light); font-size: 13.5px;">ChÆ°a cÃ³ tin tá»©c nÃ o thuá»™c danh má»¥c nÃ y.</p>
             `;
         }
     } else {
@@ -8027,12 +8056,12 @@ function renderNews() {
 function getCategoryDetails(category) {
     switch (category) {
         case "World":
-            return { label: "Thế giới", badgeClass: "world-badge" };
+            return { label: "Tháº¿ giá»›i", badgeClass: "world-badge" };
         case "Vietnam":
-            return { label: "Việt Nam", badgeClass: "vietnam-badge" };
+            return { label: "Viá»‡t Nam", badgeClass: "vietnam-badge" };
         case "Tech_AI":
         default:
-            return { label: "Công nghệ & AI", badgeClass: "tech-badge" };
+            return { label: "CÃ´ng nghá»‡ & AI", badgeClass: "tech-badge" };
     }
 }
 
@@ -8040,20 +8069,20 @@ function getNewsCardHtml(newsItem, isNewRealtime = false) {
     const animationClass = isNewRealtime ? "realtime-news-animation" : "";
     const { label, badgeClass } = getCategoryDetails(newsItem.category);
 
-    // Kiểm tra trạng thái đã đọc hay chưa
+    // Kiá»ƒm tra tráº¡ng thÃ¡i Ä‘Ã£ Ä‘á»c hay chÆ°a
     const isRead = readNewsIds.includes(newsItem.id);
     const readClass = isRead ? "read" : "";
 
-    // Tạo nhãn "Đã đọc" / "Chưa đọc"
+    // Táº¡o nhÃ£n "ÄÃ£ Ä‘á»c" / "ChÆ°a Ä‘á»c"
     const statusBadge = isRead
-        ? `<span class="read-status-badge read" id="status-badge-${newsItem.id}">Đã đọc</span>`
-        : `<span class="read-status-badge unread" id="status-badge-${newsItem.id}">Chưa đọc</span>`;
+        ? `<span class="read-status-badge read" id="status-badge-${newsItem.id}">ÄÃ£ Ä‘á»c</span>`
+        : `<span class="read-status-badge unread" id="status-badge-${newsItem.id}">ChÆ°a Ä‘á»c</span>`;
 
-    // Nhãn "Mới" cho tin cào trong vòng 6 tiếng gần đây
+    // NhÃ£n "Má»›i" cho tin cÃ o trong vÃ²ng 6 tiáº¿ng gáº§n Ä‘Ã¢y
     const isNew = (Date.now() - new Date(newsItem.createdAt).getTime()) < 6 * 60 * 60 * 1000;
-    const hotBadge = isNew ? `<span class="read-status-badge hot-new">MỚI</span>` : "";
+    const hotBadge = isNew ? `<span class="read-status-badge hot-new">Má»šI</span>` : "";
 
-    // Định dạng ngày giờ thân thiện
+    // Äá»‹nh dáº¡ng ngÃ y giá» thÃ¢n thiá»‡n
     const date = new Date(newsItem.createdAt);
     const formattedTime = date.toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' }) +
         " " + date.toLocaleDateString("vi-VN", { day: '2-digit', month: '2-digit' });
@@ -8074,10 +8103,10 @@ function getNewsCardHtml(newsItem, isNewRealtime = false) {
 }
 
 function handleIncomingRealtimeNews(newsItem) {
-    // Lưu vào bộ nhớ cục bộ
+    // LÆ°u vÃ o bá»™ nhá»› cá»¥c bá»™
     allNewsItems.unshift(newsItem);
 
-    // Nếu tin tức mới khớp với bộ lọc hiện tại, chèn lên đầu danh sách kèm hiệu ứng
+    // Náº¿u tin tá»©c má»›i khá»›p vá»›i bá»™ lá»c hiá»‡n táº¡i, chÃ¨n lÃªn Ä‘áº§u danh sÃ¡ch kÃ¨m hiá»‡u á»©ng
     if (currentNewsFilter === "all" || currentNewsFilter === newsItem.category) {
         const newsList = document.getElementById("news-list");
         const emptyState = document.getElementById("news-empty-state");
@@ -8095,7 +8124,7 @@ function handleIncomingRealtimeNews(newsItem) {
 function filterNews(category, btnElement) {
     currentNewsFilter = category;
 
-    // Cập nhật trạng thái active cho nút bấm lọc
+    // Cáº­p nháº­t tráº¡ng thÃ¡i active cho nÃºt báº¥m lá»c
     const filterButtons = document.querySelectorAll(".news-filter-btn");
     filterButtons.forEach(btn => btn.classList.remove("active"));
 
@@ -8121,11 +8150,11 @@ async function showNewsDetail(newsId) {
 
     if (!detailView) return;
 
-    // Tìm bài viết trong bộ nhớ cục bộ để hiện các thông tin cơ bản ngay lập tức
+    // TÃ¬m bÃ i viáº¿t trong bá»™ nhá»› cá»¥c bá»™ Ä‘á»ƒ hiá»‡n cÃ¡c thÃ´ng tin cÆ¡ báº£n ngay láº­p tá»©c
     const newsItem = allNewsItems.find(item => item.id === newsId);
     if (!newsItem) return;
 
-    // Gán dữ liệu cơ bản
+    // GÃ¡n dá»¯ liá»‡u cÆ¡ báº£n
     const { label, badgeClass } = getCategoryDetails(newsItem.category);
     detailTitle.textContent = newsItem.title;
     detailBadge.textContent = label;
@@ -8135,10 +8164,10 @@ async function showNewsDetail(newsId) {
     detailTime.textContent = date.toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' }) +
         " " + date.toLocaleDateString("vi-VN", { day: '2-digit', month: '2-digit' });
 
-    // Hiển thị màn hình chi tiết
+    // Hiá»ƒn thá»‹ mÃ n hÃ¬nh chi tiáº¿t
     detailView.style.display = "flex";
 
-    // Đánh dấu đã đọc bài viết
+    // ÄÃ¡nh dáº¥u Ä‘Ã£ Ä‘á»c bÃ i viáº¿t
     if (!readNewsIds.includes(newsId)) {
         readNewsIds.push(newsId);
         try {
@@ -8147,16 +8176,16 @@ async function showNewsDetail(newsId) {
             console.error(e);
         }
 
-        // Rerender lại toàn bộ danh sách để tự động đưa tin đã đọc xuống dưới và đẩy tin chưa đọc lên trên
+        // Rerender láº¡i toÃ n bá»™ danh sÃ¡ch Ä‘á»ƒ tá»± Ä‘á»™ng Ä‘Æ°a tin Ä‘Ã£ Ä‘á»c xuá»‘ng dÆ°á»›i vÃ  Ä‘áº©y tin chÆ°a Ä‘á»c lÃªn trÃªn
         renderNews();
         updateNewsBadge();
     }
 
-    // Hiển thị biểu tượng tải dữ liệu
+    // Hiá»ƒn thá»‹ biá»ƒu tÆ°á»£ng táº£i dá»¯ liá»‡u
     detailBody.innerHTML = `
         <div style="text-align: center; padding: 60px 0;">
             <i class="fas fa-spinner fa-spin" style="font-size: 32px; color: var(--primary-color); margin-bottom: 12px; display: block; margin-left: auto; margin-right: auto;"></i>
-            <p style="color: var(--text-light); font-size: 13.5px;">Đang tải nội dung chi tiết...</p>
+            <p style="color: var(--text-light); font-size: 13.5px;">Äang táº£i ná»™i dung chi tiáº¿t...</p>
         </div>
     `;
 
@@ -8170,15 +8199,15 @@ async function showNewsDetail(newsId) {
             throw new Error(json.message);
         }
     } catch (error) {
-        console.error("Lỗi khi tải chi tiết bài báo:", error);
+        console.error("Lá»—i khi táº£i chi tiáº¿t bÃ i bÃ¡o:", error);
         detailBody.innerHTML = `
             <div style="text-align: center; padding: 40px 0;">
                 <i class="fas fa-exclamation-triangle" style="font-size: 36px; color: #ef4444; margin-bottom: 12px; display: block; margin-left: auto; margin-right: auto;"></i>
-                <p style="color: #ef4444; font-size: 13.5px;">Không thể tải nội dung chi tiết. Bạn có thể đọc trực tiếp tại nguồn báo:</p>
+                <p style="color: #ef4444; font-size: 13.5px;">KhÃ´ng thá»ƒ táº£i ná»™i dung chi tiáº¿t. Báº¡n cÃ³ thá»ƒ Ä‘á»c trá»±c tiáº¿p táº¡i nguá»“n bÃ¡o:</p>
                 ${newsItem.link ? (() => {
-                let hostName = "trang gốc";
+                let hostName = "trang gá»‘c";
                 try { hostName = new URL(newsItem.link).hostname.replace("www.", ""); } catch (e) { }
-                return `<a href="${newsItem.link}" target="_blank" style="color: var(--primary-color); font-weight: 600; text-decoration: underline; font-size: 14px; margin-top: 12px; display: inline-block;">Đọc bài viết gốc trên ${hostName} <i class="fas fa-external-link-alt"></i></a>`;
+                return `<a href="${newsItem.link}" target="_blank" style="color: var(--primary-color); font-weight: 600; text-decoration: underline; font-size: 14px; margin-top: 12px; display: inline-block;">Äá»c bÃ i viáº¿t gá»‘c trÃªn ${hostName} <i class="fas fa-external-link-alt"></i></a>`;
             })() : ""}
             </div>
         `;
@@ -8192,23 +8221,23 @@ function closeNewsDetail() {
     }
 }
 
-// Đăng ký toàn cục để các hàm inline onclick hoạt động được
+// ÄÄƒng kÃ½ toÃ n cá»¥c Ä‘á»ƒ cÃ¡c hÃ m inline onclick hoáº¡t Ä‘á»™ng Ä‘Æ°á»£c
 window.filterNews = filterNews;
 window.openNewsLink = openNewsLink;
 window.showNewsDetail = showNewsDetail;
 window.closeNewsDetail = closeNewsDetail;
 
-// --- QUẢN LÝ CHI TIẾT CẢM XÚC (REACTIONS DETAIL MODAL) ---
+// --- QUáº¢N LÃ CHI TIáº¾T Cáº¢M XÃšC (REACTIONS DETAIL MODAL) ---
 function getUserNameFromCache(userId) {
     if (isSameId(userId, myId)) {
-        return "Bạn";
+        return "Báº¡n";
     }
     if (currentChatPartnerId && isSameId(userId, currentChatPartnerId)) {
         const nickname = (currentNicknames && currentNicknames[currentChatPartnerId]);
         if (nickname) return nickname;
         const headerName = document.getElementById("chat-header-name");
         if (headerName) return headerName.innerText;
-        return "Đối tác";
+        return "Äá»‘i tÃ¡c";
     }
     if (currentNicknames && currentNicknames[userId]) {
         return currentNicknames[userId];
@@ -8228,7 +8257,7 @@ function getUserNameFromCache(userId) {
             } catch (err) { }
         }
     }
-    return "Người dùng khác";
+    return "NgÆ°á»i dÃ¹ng khÃ¡c";
 }
 
 function getUserAvatarFromCache(userId) {
@@ -8299,7 +8328,7 @@ function openReactionsDetailModal(reactions) {
 
     const allTab = document.createElement("button");
     allTab.className = "reactions-modal-tab active";
-    allTab.innerText = `Tất cả (${entries.length})`;
+    allTab.innerText = `Táº¥t cáº£ (${entries.length})`;
     allTab.onclick = () => {
         document.querySelectorAll(".reactions-modal-tab").forEach(t => t.classList.remove("active"));
         allTab.classList.add("active");
@@ -8339,8 +8368,8 @@ function closeReactionsDetailModal(e) {
 window.closeReactionsDetailModal = closeReactionsDetailModal;
 
 // --- OPTIMIZATION FOR MOBILE KEYBOARD (VISUAL VIEWPORT) ---
-// Hàm kiểm tra người dùng có đang ở gần cuối danh sách tin nhắn không
-// Ngưỡng 150px: nếu cách đáy <= 150px thì coi như "đang ở cuối"
+// HÃ m kiá»ƒm tra ngÆ°á»i dÃ¹ng cÃ³ Ä‘ang á»Ÿ gáº§n cuá»‘i danh sÃ¡ch tin nháº¯n khÃ´ng
+// NgÆ°á»¡ng 150px: náº¿u cÃ¡ch Ä‘Ã¡y <= 150px thÃ¬ coi nhÆ° "Ä‘ang á»Ÿ cuá»‘i"
 window.isNearBottom = function(threshold) {
     const messagesDiv = document.getElementById("messages");
     if (!messagesDiv) return true;
@@ -8348,8 +8377,8 @@ window.isNearBottom = function(threshold) {
     return (messagesDiv.scrollHeight - messagesDiv.scrollTop - messagesDiv.clientHeight) <= t;
 };
 
-// Smart scroll: Chỉ scroll xuống cuối nếu người dùng đang ở gần cuối
-// Nếu họ đang kéo lên xem tin cũ → KHÔNG scroll
+// Smart scroll: Chá»‰ scroll xuá»‘ng cuá»‘i náº¿u ngÆ°á»i dÃ¹ng Ä‘ang á»Ÿ gáº§n cuá»‘i
+// Náº¿u há» Ä‘ang kÃ©o lÃªn xem tin cÅ© â†’ KHÃ”NG scroll
 window.smartScrollToBottom = function() {
     if (window.isNearBottom(150)) {
         if (typeof window.scrollToBottomSmooth === "function") {
@@ -8366,7 +8395,7 @@ if (window.visualViewport) {
     const root = document.documentElement;
     let rafId = null;
 
-    // Phát hiện thiết bị iOS (iPhone, iPad, iPod)
+    // PhÃ¡t hiá»‡n thiáº¿t bá»‹ iOS (iPhone, iPad, iPod)
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
                   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
@@ -8379,7 +8408,7 @@ if (window.visualViewport) {
 
     const applyViewportVars = () => {
         rafId = null;
-        // Chỉ set --vv-height trên iOS để tránh xung đột co giãn tự nhiên của Android
+        // Chá»‰ set --vv-height trÃªn iOS Ä‘á»ƒ trÃ¡nh xung Ä‘á»™t co giÃ£n tá»± nhiÃªn cá»§a Android
         if (isIOS) {
             root.style.setProperty('--vv-height', `${vv.height}px`);
         }
@@ -8393,7 +8422,7 @@ if (window.visualViewport) {
 
     const handleViewportChange = () => {
         if (!isMobileChatActive()) return;
-        // Bỏ debounce 16ms: bám sát rAF để mượt theo từng frame bàn phím di chuyển
+        // Bá» debounce 16ms: bÃ¡m sÃ¡t rAF Ä‘á»ƒ mÆ°á»£t theo tá»«ng frame bÃ n phÃ­m di chuyá»ƒn
         if (rafId === null) {
             rafId = requestAnimationFrame(applyViewportVars);
         }
@@ -8402,8 +8431,8 @@ if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', handleViewportChange);
     window.visualViewport.addEventListener('scroll', handleViewportChange);
 
-    // Các lớp bảo vệ chống tự cuộn trên tất cả thiết bị di động
-    // Fallback cho trình duyệt cố cuộn layout viewport (window.scrollY lệch khỏi 0), ép về lại ngay lập tức
+    // CÃ¡c lá»›p báº£o vá»‡ chá»‘ng tá»± cuá»™n trÃªn táº¥t cáº£ thiáº¿t bá»‹ di Ä‘á»™ng
+    // Fallback cho trÃ¬nh duyá»‡t cá»‘ cuá»™n layout viewport (window.scrollY lá»‡ch khá»i 0), Ã©p vá» láº¡i ngay láº­p tá»©c
     const lockLayoutScroll = () => {
         if (!isMobileChatActive()) return;
         if (window.scrollX !== 0 || window.scrollY !== 0) {
@@ -8412,7 +8441,7 @@ if (window.visualViewport) {
     };
     window.addEventListener('scroll', lockLayoutScroll, { passive: true });
 
-    // Khoá ngay tại thời điểm focus, trước khi trình duyệt kịp thực hiện auto-scroll
+    // KhoÃ¡ ngay táº¡i thá»i Ä‘iá»ƒm focus, trÆ°á»›c khi trÃ¬nh duyá»‡t ká»‹p thá»±c hiá»‡n auto-scroll
     const messageInput = document.getElementById('message-input');
     if (messageInput) {
         messageInput.addEventListener('focus', () => {
@@ -8422,22 +8451,25 @@ if (window.visualViewport) {
         });
     }
 
-    // Reset khi đóng bàn phím
+    // Reset khi Ä‘Ã³ng bÃ n phÃ­m
     document.addEventListener('focusout', (e) => {
         if (e.target && e.target.id === 'message-input') {
+            // FIX iOS #4: TÄƒng delay lÃªn 300ms cho iOS Ä‘á»ƒ keyboard ká»‹p Ä‘Ã³ng hoÃ n toÃ n
+            // TrÆ°á»›c Ä‘Ã³ lÃ  100ms, quÃ¡ ngáº¯n cho animation keyboard trÃªn iOS
+            const _focusoutDelay = document.body.classList.contains('is-ios') ? 300 : 100;
             setTimeout(() => {
                 window.scrollTo(0, 0);
                 if (typeof window.smartScrollToBottom === "function") {
                     window.smartScrollToBottom();
                 }
-            }, 100);
+            }, _focusoutDelay);
         }
     });
 
     handleViewportChange();
 }
 
-// --- ĐÓNG MÀN HÌNH CHÀO SPLASH SCREEN ---
+// --- ÄÃ“NG MÃ€N HÃŒNH CHÃ€O SPLASH SCREEN ---
 function hideSplashScreen() {
     setTimeout(() => {
         const splash = document.getElementById("splash-screen");
@@ -8447,7 +8479,7 @@ function hideSplashScreen() {
                 splash.remove();
             }, 500);
         }
-    }, 1800); // Hiển thị màn hình chào trong 1.8 giây giống Zalo
+    }, 1800); // Hiá»ƒn thá»‹ mÃ n hÃ¬nh chÃ o trong 1.8 giÃ¢y giá»‘ng Zalo
 }
 
 if (document.readyState === "loading") {

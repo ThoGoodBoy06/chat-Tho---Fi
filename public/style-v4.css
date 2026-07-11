@@ -3772,7 +3772,9 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         overflow: hidden !important;
     }
     body.is-ios .chat-window {
-        height: var(--vv-height, 100dvh) !important; /* Chỉ co chiều cao theo JS trên iOS */
+        /* FIX iOS #10: Dùng 100% thay vì 100dvh vì trong Flutter WKWebView + SafeArea,
+           100dvh có thể lớn hơn viewport thực tế, gây tràn layout */
+        height: var(--vv-height, 100%) !important;
     }
     #chat-screen.mobile-chat-active {
         display: block !important;
