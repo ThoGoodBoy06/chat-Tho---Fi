@@ -39,7 +39,7 @@ void _showLocalNotification(RemoteMessage message) {
       body,
       const NotificationDetails(
         android: AndroidNotificationDetails(
-          'incoming_calls', // channel id
+          'incoming_calls_v2', // channel id
           'Incoming Calls', // channel name
           channelDescription: 'Kênh nhận thông báo cuộc gọi đến Chat Tho-Fi.',
           icon: '@mipmap/ic_launcher',
@@ -58,7 +58,7 @@ void _showLocalNotification(RemoteMessage message) {
       body,
       const NotificationDetails(
         android: AndroidNotificationDetails(
-          'chat_messages', // channel id
+          'chat_messages_v2', // channel id
           'Chat Messages', // channel name
           channelDescription: 'Kênh nhận thông báo tin nhắn Chat Tho-Fi.',
           icon: '@mipmap/ic_launcher',
@@ -123,7 +123,7 @@ void main() async {
 
       // 1. Cấu hình Kênh thông báo cho TIN NHẮN THƯỜNG (amthanhtinnhan.mp3)
       const AndroidNotificationChannel chatChannel = AndroidNotificationChannel(
-        'chat_messages', 
+        'chat_messages_v2', 
         'Chat Messages', 
         description: 'Kênh nhận thông báo tin nhắn Chat Tho-Fi.', 
         importance: Importance.max,
@@ -133,7 +133,7 @@ void main() async {
 
       // 2. Cấu hình Kênh thông báo cho CUỘC GỌI ĐẾN (ringtone.mp3)
       const AndroidNotificationChannel callChannel = AndroidNotificationChannel(
-        'incoming_calls', 
+        'incoming_calls_v2', 
         'Incoming Calls', 
         description: 'Kênh nhận thông báo cuộc gọi đến Chat Tho-Fi.', 
         importance: Importance.max,
