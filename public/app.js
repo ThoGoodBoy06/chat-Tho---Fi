@@ -1644,11 +1644,9 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
         document.getElementById("chat-screen").classList.add("mobile-chat-active");
         document.body.classList.add("mobile-chat-active");
         
-        // Di chuyển header ra ngoài làm con trực tiếp của body để tránh bị giật và bị che khuất
+        // Giữ nguyên header làm con của .chat-window để thừa hưởng vị trí và hiệu ứng chuyển động tự nhiên
+        // Không di chuyển ra body để tránh bị trôi lệch hoặc bị che khuất bởi trình duyệt khi cuộn/keyboard hiển thị
         const mobileHeader = document.getElementById("chat-header-container");
-        if (mobileHeader) {
-            document.body.appendChild(mobileHeader);
-        }
         document.getElementById("chat-header-placeholder").style.display = "none";
         currentChatPartnerId = receiverId;
 
@@ -2441,7 +2439,9 @@ function displayMessage(msg, targetContainer = null) {
             targetContainer.appendChild(messageElement);
         } else {
             messagesDiv.appendChild(messageElement);
-            if (typeof window.scrollToBottomSmooth === "function") {
+            if (typeof window.smartScrollToBottom === "function") {
+                window.smartScrollToBottom();
+            } else if (typeof window.scrollToBottomSmooth === "function") {
                 window.scrollToBottomSmooth();
             } else {
                 messagesDiv.scrollTop = messagesDiv.scrollHeight;
@@ -2477,7 +2477,9 @@ function displayMessage(msg, targetContainer = null) {
         messageElement.appendChild(metaElement);
 
         messagesDiv.appendChild(messageElement);
-        if (typeof window.scrollToBottomSmooth === "function") {
+        if (typeof window.smartScrollToBottom === "function") {
+            window.smartScrollToBottom();
+        } else if (typeof window.scrollToBottomSmooth === "function") {
             window.scrollToBottomSmooth();
         } else {
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
@@ -3006,11 +3008,16 @@ function displayMessage(msg, targetContainer = null) {
     if (targetContainer) {
         targetContainer.appendChild(messageElement);
     } else {
-        // Render đơn lẻ (realtime socket) → chèn trực tiếp và scroll
+        // Render đơn lẻ (realtime socket) → chèn trực tiếp và scroll THÔNG MINH
         messagesDiv.appendChild(messageElement);
         // updateReadReceiptsDOM() được gọi một lần duy nhất sau khi toàn bộ tin nhắn đã render xong
         // (trong startChat / reloadCurrentChat / socket receive_message). Không gọi ở đây để tránh flicker.
-        if (typeof window.scrollToBottomSmooth === "function") {
+        
+        // CHỈ auto-scroll nếu người dùng đang ở gần cuối danh sách tin nhắn
+        // Nếu họ đang kéo lên xem tin cũ → KHÔNG scroll để không gây khó chịu
+        if (typeof window.smartScrollToBottom === "function") {
+            window.smartScrollToBottom();
+        } else if (typeof window.scrollToBottomSmooth === "function") {
             window.scrollToBottomSmooth();
         } else {
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
@@ -8300,31 +8307,51 @@ function closeReactionsDetailModal(e) {
 window.closeReactionsDetailModal = closeReactionsDetailModal;
 
 // --- OPTIMIZATION FOR MOBILE KEYBOARD (VISUAL VIEWPORT) ---
+// Hàm kiểm tra người dùng có đang ở gần cuối danh sách tin nhắn không
+// Ngưỡng 150px: nếu cách đáy <= 150px thì coi như "đang ở cuối"
+window.isNearBottom = function(threshold) {
+    const messagesDiv = document.getElementById("messages");
+    if (!messagesDiv) return true;
+    const t = threshold || 150;
+    return (messagesDiv.scrollHeight - messagesDiv.scrollTop - messagesDiv.clientHeight) <= t;
+};
+
+// Smart scroll: Chỉ scroll xuống cuối nếu người dùng đang ở gần cuối
+// Nếu họ đang kéo lên xem tin cũ → KHÔNG scroll
+window.smartScrollToBottom = function() {
+    if (window.isNearBottom(150)) {
+        if (typeof window.scrollToBottomSmooth === "function") {
+            window.scrollToBottomSmooth();
+        } else {
+            const messagesDiv = document.getElementById("messages");
+            if (messagesDiv) messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+    }
+};
+
 if (window.visualViewport) {
     const vv = window.visualViewport;
     const root = document.documentElement;
-
     let rafId = null;
 
-    // Dù resize/scroll bắn ra bao nhiêu lần trong 1 khung hình,
-    // CHỈ ghi DOM và cuộn tin nhắn đúng 1 LẦN DUY NHẤT mỗi requestAnimationFrame
+    const isMobileChatActive = () =>
+        window.innerWidth <= 768 && document.body.classList.contains("mobile-chat-active");
+
     const applyViewportVars = () => {
         rafId = null;
+        // Chỉ còn --vv-height. Bỏ hẳn --vv-offset vì .chat-window đã fixed top:0
         root.style.setProperty('--vv-height', `${vv.height}px`);
-        root.style.setProperty('--vv-offset', `${vv.offsetTop}px`);
-        
-        const shift = vv.height + vv.offsetTop - window.innerHeight;
-        root.style.setProperty('--keyboard-shift', `${shift}px`);
-        
-        // Cập nhật cuộn tin nhắn ngay trong frame vẽ để neo bám mượt mà
-        if (typeof window.scrollToBottomInstant === "function") {
-            window.scrollToBottomInstant();
+
+        if (window.isNearBottom(200)) {
+            if (typeof window.scrollToBottomInstant === "function") {
+                window.scrollToBottomInstant();
+            }
         }
     };
 
     const handleViewportChange = () => {
-        if (window.innerWidth > 768 || !document.body.classList.contains("mobile-chat-active")) return;
-
+        if (!isMobileChatActive()) return;
+        // Bỏ debounce 16ms: bám sát rAF để mượt theo từng frame bàn phím di chuyển
         if (rafId === null) {
             rafId = requestAnimationFrame(applyViewportVars);
         }
@@ -8333,18 +8360,35 @@ if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', handleViewportChange);
     window.visualViewport.addEventListener('scroll', handleViewportChange);
 
-    // Khi mất tiêu điểm (đóng bàn phím), đưa trang về vị trí gốc và cuộn mượt
+    // Fallback cho iOS < 17 (không có interactive-widget): nếu Safari vẫn cố
+    // cuộn layout viewport (window.scrollY lệch khỏi 0), ép về lại ngay lập tức
+    const lockLayoutScroll = () => {
+        if (!isMobileChatActive()) return;
+        if (window.scrollX !== 0 || window.scrollY !== 0) {
+            window.scrollTo(0, 0);
+        }
+    };
+    window.addEventListener('scroll', lockLayoutScroll, { passive: true });
+
+    // Khoá ngay tại thời điểm focus, trước khi Safari kịp thực hiện auto-scroll
+    const messageInput = document.getElementById('message-input');
+    if (messageInput) {
+        messageInput.addEventListener('focus', () => {
+            if (!isMobileChatActive()) return;
+            window.scrollTo(0, 0);
+            requestAnimationFrame(() => window.scrollTo(0, 0));
+        });
+    }
+
+    // Reset khi đóng bàn phím
     document.addEventListener('focusout', (e) => {
         if (e.target && e.target.id === 'message-input') {
-            window.scrollTo(0, 0);
-            root.style.setProperty('--keyboard-shift', '0px');
             setTimeout(() => {
                 window.scrollTo(0, 0);
-                root.style.setProperty('--keyboard-shift', '0px');
-                if (typeof window.scrollToBottomSmooth === "function") {
-                    window.scrollToBottomSmooth();
+                if (typeof window.smartScrollToBottom === "function") {
+                    window.smartScrollToBottom();
                 }
-            }, 80);
+            }, 100);
         }
     });
 

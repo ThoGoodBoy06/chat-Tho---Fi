@@ -2590,7 +2590,7 @@ body.call-active {
     width: 100%;
     height: 100% !important;
     background-color: #000000;
-    z-index: 99999;
+    z-index: 9999999 !important; /* Đẩy z-index cao hơn .chat-header (100000) để không bị đè lên khi gọi điện */
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -3756,25 +3756,20 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         font-size: 10px !important;
         color: var(--text-light) !important;
     }
-    .chat-list-msg,
-    .last-message {
-        font-size: 14px !important;
-        color: #707070 !important;
-    }
     .chat-window {
-        position: fixed !important;
-        top: var(--vv-offset, 0px) !important;
+        position: fixed !important; /* Đổi sang fixed */
+        top: 0 !important; /* Luôn cố định sát mép trên, không dùng offset */
+        bottom: 0 !important;
         left: 100vw !important;
-        right: auto !important;
-        height: var(--vv-height, 100%) !important;
+        right: 0 !important;
+        height: var(--vv-height, 100dvh) !important; /* Chỉ co chiều cao theo visual viewport */
         width: 100vw !important;
         z-index: 9999 !important;
         display: flex !important;
         flex-direction: column;
         transition: left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
         background: var(--chat-bg) !important;
-        bottom: auto !important;
-        padding-bottom: 0 !important;
+        overflow: hidden !important;
     }
     #chat-screen.mobile-chat-active {
         display: block !important;
@@ -3795,7 +3790,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         padding-bottom: 0 !important;
     }
     #chat-screen.mobile-chat-active .chat-window {
-        left: 0 !important;
+        left: 0 !important; /* Khi active thì left: 0 */
     }
     #chat-screen.mobile-chat-active .zalo-mobile-header {
         display: none !important;
@@ -3813,19 +3808,14 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         display: none !important;
         z-index: -1 !important;
     }
-    /* Header Kính mờ */
+    /* ── HEADER CỐ ĐỊNH TRÊN CÙNG (sticky, không đụng offset) ── */
     .chat-header {
-        position: fixed !important;
-        top: var(--vv-offset, 0px) !important;
+        position: sticky !important; /* ← Giữ sticky, bỏ fixed */
+        top: 0 !important; /* ← Cố định top 0, không ăn offset */
         left: 0 !important;
         right: 0 !important;
-        height: calc(64px + env(safe-area-inset-top, 0px)) !important;
+        height: calc(56px + env(safe-area-inset-top, 0px)) !important;
         flex-shrink: 0 !important;
-        transform: translateZ(0);
-        backface-visibility: hidden;
-        width: 100% !important;
-        padding: 12px 16px !important;
-        padding-top: calc(12px + env(safe-area-inset-top, 0px)) !important;
         z-index: 100000 !important;
         background: rgba(255, 255, 255, 0.85) !important;
         backdrop-filter: blur(12px);
@@ -3858,18 +3848,16 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         font-size: 20px;
         color: white !important;
     }
+    /* ── THANH NHẬP LIỆU (luôn nằm cuối, không bị co chiều cao) ── */
     .input-area {
         position: relative !important;
         flex-shrink: 0 !important;
         width: 100%;
-        transform: none !important;
-        /* Cập nhật đệm đáy an toàn: loại bỏ env(safe-area-inset-bottom) */
         padding: 8px 12px 12px 12px !important;
         background: var(--msg-receiver-bg) !important;
         align-items: center;
         gap: 8px;
         border-top: 1px solid var(--border-color) !important;
-        /* Đảm bảo thanh nhập liệu không bao giờ bị bóp chiều cao */
         margin-bottom: 0 !important;
     }
     .input-actions-left {
@@ -3898,7 +3886,6 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         padding: 0 !important;
         pointer-events: none !important;
     }
-    /* expand-actions-btn handled globally */
     .input-wrapper {
         flex: 1 !important;
         min-width: 0 !important;
@@ -3911,9 +3898,10 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         border-color: var(--primary-color) !important;
         box-shadow: 0 0 0 2px rgba(0, 132, 255, 0.15) !important;
     }
+    /* ── VÙNG TIN NHẮN (flex:1 co giãn tự nhiên trong container .chat-window) ── */
     #messages {
         position: relative !important;
-        margin-top: calc(64px + env(safe-area-inset-top, 0px)) !important;
+        margin-top: 0 !important; /* Không cần margin-top vì header là sticky (chiếm chỗ) */
         padding: 16px 12px;
         background: transparent !important;
         flex: 1 !important;
