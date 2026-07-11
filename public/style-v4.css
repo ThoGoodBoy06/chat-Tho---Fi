@@ -3820,6 +3820,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         left: 0 !important;
         right: 0 !important;
         height: calc(56px + env(safe-area-inset-top, 0px)) !important;
+        padding-top: env(safe-area-inset-top, 0px) !important; /* FIX iOS: Đẩy nội dung lùi xuống dưới status bar */
         flex-shrink: 0 !important;
         z-index: 100000 !important;
         background: rgba(255, 255, 255, 0.85) !important;
@@ -3827,6 +3828,8 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         -webkit-backdrop-filter: blur(12px);
         border-bottom: 1px solid var(--border-color) !important;
         box-shadow: none !important;
+        display: flex !important;
+        align-items: center !important;
     }
     body[data-theme="dark"] .chat-header {
         background: rgba(30, 30, 30, 0.85) !important;
