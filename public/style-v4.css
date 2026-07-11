@@ -3740,6 +3740,12 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
     #chat-screen.mobile-chat-active .chat-list {
         display: none !important;
     }
+    body.has-native-header .chat-header {
+        display: none !important;
+    }
+    body.has-native-header #messages {
+        padding-top: 16px !important;
+    }
     html:has(body.mobile-chat-active),
     body.mobile-chat-active {
         position: fixed !important;

@@ -1,6 +1,14 @@
 const SERVER_URL = window.location.origin;
 const API_URL = `${SERVER_URL}/api`;
 
+// --- PHÁT HIỆN NATIVE FLUTTER HEADER ---
+document.addEventListener("DOMContentLoaded", () => {
+    if (window.FlutterHeaderChannel || window.webkit?.messageHandlers?.FlutterHeaderChannel) {
+        document.body.classList.add("has-native-header");
+        console.log("📱 Đã phát hiện Native Flutter Header Channel. Kích hoạt header native.");
+    }
+});
+
 // --- NHẬN FCM TOKEN TỪ FLUTTER HYBRID BRIDGE ---
 window.onFlutterFcmTokenReceived = function(fcmTokenVal) {
     console.log("🔥 Đã nhận native FCM Token từ Flutter:", fcmTokenVal);
@@ -1711,6 +1719,16 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
         document.getElementById("chat-header-placeholder").style.display = "none";
         currentChatPartnerId = receiverId;
 
+        // Gửi sự kiện mở phòng chat lên Flutter native
+        if (window.FlutterHeaderChannel) {
+            window.FlutterHeaderChannel.postMessage(JSON.stringify({
+                event: 'open_chat',
+                partnerId: receiverId,
+                partnerName: receiverName,
+                partnerAvatar: receiverAvatar
+            }));
+        }
+
         const headerContainer = document.getElementById("chat-header-container");
         headerContainer.style.display = "flex";
 
@@ -3380,6 +3398,11 @@ function closeChatMobile() {
     document.documentElement.style.removeProperty('--vv-offset');
     document.documentElement.style.removeProperty('--keyboard-shift');
     
+    // Gửi sự kiện đóng phòng chat lên Flutter native
+    if (window.FlutterHeaderChannel) {
+        window.FlutterHeaderChannel.postMessage(JSON.stringify({ event: 'close_chat' }));
+    }
+
     // Trả header lại vào trong .chat-window để hiển thị bình thường trên desktop
     const mobileHeader = document.getElementById("chat-header-container");
     const mobileChatWindow = document.querySelector(".chat-window");
@@ -7509,14 +7532,26 @@ function updateHeaderStatusUI(isOnline, lastActive) {
     const statusText = document.getElementById("chat-header-status");
     if (!dot || !statusText) return;
 
+    let textVal = "";
     if (isOnline) {
         dot.style.display = "block";
-        statusText.innerText = "Đang hoạt động";
+        textVal = "Đang hoạt động";
+        statusText.innerText = textVal;
         statusText.classList.add("online");
     } else {
         dot.style.display = "none";
-        statusText.innerText = formatLastActive(lastActive);
+        textVal = formatLastActive(lastActive);
+        statusText.innerText = textVal;
         statusText.classList.remove("online");
+    }
+
+    // Gửi trạng thái hoạt động lên Flutter native
+    if (window.FlutterHeaderChannel) {
+        window.FlutterHeaderChannel.postMessage(JSON.stringify({
+            event: 'update_status',
+            partnerStatus: textVal,
+            partnerOnline: isOnline
+        }));
     }
 }
 
