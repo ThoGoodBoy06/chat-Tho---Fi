@@ -25,21 +25,26 @@ subprojects {
     val configureNamespace = {
         if (plugins.hasPlugin("com.android.library") || plugins.hasPlugin("com.android.application")) {
             val android = extensions.findByName("android") as? BaseExtension
-            if (android != null && android.namespace == null) {
-                var packageName: String? = null
-                val manifestFile = project.file("src/main/AndroidManifest.xml")
-                if (manifestFile.exists()) {
-                    try {
-                        val parser = javax.xml.parsers.DocumentBuilderFactory.newInstance().newDocumentBuilder()
-                        val doc = parser.parse(manifestFile)
-                        val manifestNode = doc.getElementsByTagName("manifest").item(0)
-                        packageName = manifestNode?.attributes?.getNamedItem("package")?.nodeValue
-                    } catch (e: Exception) {
-                        println("⚠️ Failed to parse package from Manifest for project ${project.name}: ${e.message}")
+            if (android != null) {
+                // Ghi đè compileSdkVersion lên ít nhất là API 34 để tránh lỗi AAR Metadata
+                android.compileSdkVersion("android-34")
+                
+                if (android.namespace == null) {
+                    var packageName: String? = null
+                    val manifestFile = project.file("src/main/AndroidManifest.xml")
+                    if (manifestFile.exists()) {
+                        try {
+                            val parser = javax.xml.parsers.DocumentBuilderFactory.newInstance().newDocumentBuilder()
+                            val doc = parser.parse(manifestFile)
+                            val manifestNode = doc.getElementsByTagName("manifest").item(0)
+                            packageName = manifestNode?.attributes?.getNamedItem("package")?.nodeValue
+                        } catch (e: Exception) {
+                            println("⚠️ Failed to parse package from Manifest for project ${project.name}: ${e.message}")
+                        }
                     }
+                    android.namespace = packageName ?: "com.thofi.injected.${project.name.replace(":", "").replace("-", "_")}"
+                    println("🔧 Injected namespace for project ${project.name}: ${android.namespace}")
                 }
-                android.namespace = packageName ?: "com.thofi.injected.${project.name.replace(":", "").replace("-", "_")}"
-                println("🔧 Injected namespace for project ${project.name}: ${android.namespace}")
             }
         }
     }
