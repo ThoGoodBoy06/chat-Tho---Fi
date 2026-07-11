@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "513501588929",
+    "project_id": "chat-tho-fi",
+    "storage_bucket": "chat-tho-fi.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:513501588929:android:660c5d49a7b70f1fbfd340",
+        "android_client_info": {
+          "package_name": "com.thofi.chat"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD9SxZVH7_X7Dm2IM8oqOWxNPp254srezo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

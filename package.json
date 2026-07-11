@@ -1,5 +1,10 @@
 {
-  "dependencies": {
-    "@google/genai": "^2.9.0"
-  }
+    "name": "du-an-nhantin-goidien",
+    "private": true,
+    "scripts": {
+        "start": "npm --prefix backend start"
+    },
+    "dependencies": {
+        "@google/genai": "^2.9.0"
+    }
 }
