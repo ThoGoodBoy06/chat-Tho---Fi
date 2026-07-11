@@ -1,6 +1,33 @@
 const SERVER_URL = window.location.origin;
 const API_URL = `${SERVER_URL}/api`;
 
+// --- NHẬN FCM TOKEN TỪ FLUTTER HYBRID BRIDGE ---
+window.onFlutterFcmTokenReceived = function(fcmTokenVal) {
+    console.log("🔥 Đã nhận native FCM Token từ Flutter:", fcmTokenVal);
+    const userToken = localStorage.getItem("authToken");
+    if (!userToken) {
+        console.log("💾 Chưa đăng nhập, lưu tạm native FCM Token...");
+        window.cachedFlutterFcmToken = fcmTokenVal;
+        return;
+    }
+    console.log("💾 Đang gửi native FCM Token lên Server...");
+    fetch(`${API_URL}/users/fcm-token`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + userToken
+        },
+        body: JSON.stringify({ fcmToken: fcmTokenVal }),
+    })
+    .then(res => res.json())
+    .then(data => console.log("✅ Đã lưu native FCM Token thành công:", data))
+    .catch(err => console.error("❌ Lỗi gửi native FCM Token:", err));
+};
+if (window.flutterFcmToken) {
+    window.onFlutterFcmTokenReceived(window.flutterFcmToken);
+}
+
+
 function formatUrl(url) {
     if (!url) return "";
     if (url.startsWith("http") || url.startsWith("data:image")) return url;
@@ -788,6 +815,11 @@ function initizeChatSession(userData, userToken) {
     myId = userData.id;
     myName = userData.fullName || userData.username;
     myUsername = userData.username || "";
+
+    if (window.cachedFlutterFcmToken) {
+        window.onFlutterFcmTokenReceived(window.cachedFlutterFcmToken);
+        window.cachedFlutterFcmToken = null;
+    }
 
     // Cập nhật lời chào Trợ lý AI khi khởi tạo session
     const welcomeTitle = document.getElementById("ai-welcome-title");
