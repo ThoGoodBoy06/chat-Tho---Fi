@@ -1,0 +1,33 @@
+# Cấu hình Podfile chuẩn của Flutter tích hợp bản vá sửa lỗi Firebase iOS build
+
+platform :ios, '12.0'
+
+# Vô hiệu hóa phân tích dữ liệu mạng của CocoaPods để build nhanh hơn
+disable_cocoapods_analytics!
+
+# Đường dẫn nạp các hàm cài đặt pod của Flutter
+flutter_root = File.expand_path(File.join('..', '..', '..'))
+if File.exist?(File.join(flutter_root, 'packages', 'flutter_tools', 'bin', 'podhelper.rb'))
+  require File.join(flutter_root, 'packages', 'flutter_tools', 'bin', 'podhelper.rb')
+else
+  # Fallback nếu đường dẫn tương đối sai lệch trên máy chủ build
+  require File.expand_path(File.join(File.dirname(__FILE__), 'Flutter', 'podhelper.rb'))
+end
+
+target 'Runner' do
+  use_frameworks!
+  use_modular_headers!
+
+  flutter_install_all_ios_pods File.dirname(File.expand_path(__FILE__))
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+    
+    # FIX iOS: Sửa lỗi "Include of non-modular header inside framework module" của Firebase
+    target.build_configurations.each do |config|
+      config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+    end
+  end
+end
