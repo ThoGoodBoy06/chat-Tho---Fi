@@ -3815,10 +3815,11 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
     }
     /* ── HEADER CỐ ĐỊNH TRÊN CÙNG (sticky, không đụng offset) ── */
     .chat-header {
-        position: sticky !important; /* ← Giữ sticky, bỏ fixed */
-        top: 0 !important; /* ← Cố định top 0, không ăn offset */
+        position: absolute !important; /* ← Cố định tuyệt đối, không di dịch dưới mọi tình huống */
+        top: 0 !important; /* ← Cố định sát mép trên */
         left: 0 !important;
         right: 0 !important;
+        width: 100% !important;
         height: calc(56px + env(safe-area-inset-top, 0px)) !important;
         padding-top: env(safe-area-inset-top, 0px) !important; /* FIX iOS: Đẩy nội dung lùi xuống dưới status bar */
         flex-shrink: 0 !important;
@@ -3909,8 +3910,9 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
     /* ── VÙNG TIN NHẮN (flex:1 co giãn tự nhiên trong container .chat-window) ── */
     #messages {
         position: relative !important;
-        margin-top: 0 !important; /* Không cần margin-top vì header là sticky (chiếm chỗ) */
+        margin-top: 0 !important; 
         padding: 16px 12px;
+        padding-top: calc(56px + env(safe-area-inset-top, 0px) + 16px) !important; /* Đẩy tin nhắn lùi xuống dưới header absolute */
         background: transparent !important;
         flex: 1 !important;
         overflow-y: auto !important;
