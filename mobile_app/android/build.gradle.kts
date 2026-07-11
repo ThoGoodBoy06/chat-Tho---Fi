@@ -17,16 +17,14 @@ subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
-subprojects {
-    project.evaluationDependsOn(":app")
-}
 
 subprojects {
-    val configureNamespace = {
+    // Configure the subprojects before evaluationDependsOn(":app") evaluates them!
+    afterEvaluate {
         if (plugins.hasPlugin("com.android.library") || plugins.hasPlugin("com.android.application")) {
             val android = extensions.findByName("android") as? BaseExtension
             if (android != null) {
-                // Ghi đè compileSdkVersion lên ít nhất là API 34 để tránh lỗi AAR Metadata
+                // Set compileSdkVersion to 34 to avoid dependency mismatch errors (e.g. androidx.core)
                 android.compileSdkVersion("android-34")
                 
                 if (android.namespace == null) {
@@ -48,13 +46,10 @@ subprojects {
             }
         }
     }
-    if (project.state.executed) {
-        configureNamespace()
-    } else {
-        project.afterEvaluate {
-            configureNamespace()
-        }
-    }
+}
+
+subprojects {
+    project.evaluationDependsOn(":app")
 }
 
 tasks.register<Delete>("clean") {
