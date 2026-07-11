@@ -1,3 +1,4 @@
+import 'dart:io' show Platform; // Để check Platform.isAndroid / Platform.isIOS
 import 'package:flutter/foundation.dart'; // Import kIsWeb
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -21,7 +22,10 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     _showLocalNotification(message);
   }
   
-  _showChatBubble(message);
+  // DashBubble chỉ hỗ trợ Android (iOS không có cơ chế overlay bubble)
+  if (!kIsWeb && Platform.isAndroid) {
+    _showChatBubble(message);
+  }
 }
 
 // Hàm hiển thị thông báo nội bộ (Foreground hoặc khi nhận cuộc gọi chạy ngầm)
@@ -48,6 +52,12 @@ void _showLocalNotification(RemoteMessage message) {
           sound: RawResourceAndroidNotificationSound('ringtone'),
           playSound: true,
         ),
+        // iOS: Dùng âm thanh mặc định (custom sound cần thêm file .caf/.aiff vào iOS bundle)
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
       ),
     );
   } else {
@@ -67,13 +77,22 @@ void _showLocalNotification(RemoteMessage message) {
           sound: RawResourceAndroidNotificationSound('amthanhtinnhan'),
           playSound: true,
         ),
+        // iOS: Dùng âm thanh mặc định (custom sound cần thêm file .caf/.aiff vào iOS bundle)
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
       ),
     );
   }
 }
 
-// Hàm hiển thị bong bóng chat (Overlay)
+// Hàm hiển thị bong bóng chat (Overlay) - CHỈ DÀNH CHO ANDROID
+// iOS không hỗ trợ overlay bubble, plugin DashBubble chỉ hoạt động trên Android.
 void _showChatBubble(RemoteMessage message) async {
+  // Bảo vệ kép: thoát ngay nếu không phải Android
+  if (kIsWeb || !Platform.isAndroid) return;
   try {
     final hasPermission = await DashBubble.instance.hasOverlayPermission();
     if (!hasPermission) {
@@ -149,11 +168,19 @@ void main() async {
           .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
           ?.createNotificationChannel(callChannel);
 
-      // Cài đặt cài đặt ban đầu cho local notification
+      // Cài đặt ban đầu cho local notification (Android + iOS)
       const AndroidInitializationSettings initializationSettingsAndroid =
           AndroidInitializationSettings('@mipmap/ic_launcher');
+      // iOS: Cấu hình quyền hiển thị notification
+      const DarwinInitializationSettings initializationSettingsIOS =
+          DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
       const InitializationSettings initializationSettings = InitializationSettings(
         android: initializationSettingsAndroid,
+        iOS: initializationSettingsIOS,
       );
       await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
@@ -234,9 +261,12 @@ class _WebViewScreenState extends State<WebViewScreen> {
   void _setupMessagingListeners() async {
     try {
       // Xin cấp quyền overlay (hiển thị trên ứng dụng khác) cho bong bóng chat
-      final hasOverlay = await DashBubble.instance.hasOverlayPermission();
-      if (!hasOverlay) {
-        await DashBubble.instance.requestOverlayPermission();
+      // CHỈ TRÊN ANDROID - iOS không hỗ trợ overlay bubble
+      if (Platform.isAndroid) {
+        final hasOverlay = await DashBubble.instance.hasOverlayPermission();
+        if (!hasOverlay) {
+          await DashBubble.instance.requestOverlayPermission();
+        }
       }
 
       // Lấy FCM Token thiết bị
@@ -254,8 +284,10 @@ class _WebViewScreenState extends State<WebViewScreen> {
       // Hiển thị thông báo nội bộ
       _showLocalNotification(message);
 
-      // Hiển thị bong bóng chat khi có tin nhắn mới
-      _showChatBubble(message);
+      // Hiển thị bong bóng chat khi có tin nhắn mới (chỉ Android)
+      if (Platform.isAndroid) {
+        _showChatBubble(message);
+      }
     });
   }
 
@@ -291,7 +323,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
     final bool isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     return Scaffold(
-      resizeToAvoidBottomInset: !isIOS,
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: WebViewWidget(controller: _controller),
       ),
