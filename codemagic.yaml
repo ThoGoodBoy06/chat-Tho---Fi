@@ -2,7 +2,7 @@ workflows:
   flutter-ios:
     name: Flutter iOS Build
     working_directory: mobile_app
-    instance_type: mac_mini_co # Gói cấu hình máy Mac M2/M1 cơ bản miễn phí
+    instance_type: mac_mini_m1 # Gói cấu hình máy Mac mini M1 tiêu chuẩn
     max_build_duration: 60
     environment:
       flutter: stable
