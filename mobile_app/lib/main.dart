@@ -15,7 +15,61 @@ final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   print("📩 Nhận tin nhắn chạy ngầm (Background): ${message.messageId}");
+  
+  // Hiển thị thông báo nội bộ nếu đây là tin nhắn data-only (không có payload notification, ví dụ: cuộc gọi đến)
+  if (message.notification == null) {
+    _showLocalNotification(message);
+  }
+  
   _showChatBubble(message);
+}
+
+// Hàm hiển thị thông báo nội bộ (Foreground hoặc khi nhận cuộc gọi chạy ngầm)
+void _showLocalNotification(RemoteMessage message) {
+  final data = message.data;
+  final type = data['type'];
+  final title = message.notification?.title ?? data['title'] ?? "Tin nhắn mới";
+  final body = message.notification?.body ?? data['body'] ?? "Nhấn để mở";
+
+  if (type == 'incoming_call') {
+    // Thông báo cuộc gọi đến
+    flutterLocalNotificationsPlugin.show(
+      message.hashCode,
+      title,
+      body,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'incoming_calls', // channel id
+          'Incoming Calls', // channel name
+          channelDescription: 'Kênh nhận thông báo cuộc gọi đến Chat Tho-Fi.',
+          icon: '@mipmap/ic_launcher',
+          importance: Importance.max,
+          priority: Priority.high,
+          sound: RawResourceAndroidNotificationSound('ringtone'),
+          playSound: true,
+        ),
+      ),
+    );
+  } else {
+    // Thông báo tin nhắn thường
+    flutterLocalNotificationsPlugin.show(
+      message.hashCode,
+      title,
+      body,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'chat_messages', // channel id
+          'Chat Messages', // channel name
+          channelDescription: 'Kênh nhận thông báo tin nhắn Chat Tho-Fi.',
+          icon: '@mipmap/ic_launcher',
+          importance: Importance.max,
+          priority: Priority.high,
+          sound: RawResourceAndroidNotificationSound('amthanhtinnhan'),
+          playSound: true,
+        ),
+      ),
+    );
+  }
 }
 
 // Hàm hiển thị bong bóng chat (Overlay)
@@ -27,8 +81,8 @@ void _showChatBubble(RemoteMessage message) async {
       return;
     }
 
-    final title = message.notification?.title ?? "Tin nhắn mới";
-    final body = message.notification?.body ?? "Nhấn để mở cuộc trò chuyện";
+    final title = message.notification?.title ?? message.data['title'] ?? "Tin nhắn mới";
+    final body = message.notification?.body ?? message.data['body'] ?? "Nhấn để mở cuộc trò chuyện";
 
     // Dừng bong bóng cũ nếu đang chạy để cập nhật tin nhắn mới
     final isRunning = await DashBubble.instance.isRunning();
@@ -67,17 +121,33 @@ void main() async {
       // Thiết lập bộ lắng nghe chạy ngầm (background)
       FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-      // Cấu hình Kênh thông báo cục bộ (Android Notification Channel)
-      const AndroidNotificationChannel channel = AndroidNotificationChannel(
-        'chat_messages', // id
-        'Chat Messages', // name
-        description: 'Kênh nhận thông báo tin nhắn Chat Tho-Fi.', // description
+      // 1. Cấu hình Kênh thông báo cho TIN NHẮN THƯỜNG (amthanhtinnhan.mp3)
+      const AndroidNotificationChannel chatChannel = AndroidNotificationChannel(
+        'chat_messages', 
+        'Chat Messages', 
+        description: 'Kênh nhận thông báo tin nhắn Chat Tho-Fi.', 
         importance: Importance.max,
+        sound: RawResourceAndroidNotificationSound('amthanhtinnhan'),
+        playSound: true,
+      );
+
+      // 2. Cấu hình Kênh thông báo cho CUỘC GỌI ĐẾN (ringtone.mp3)
+      const AndroidNotificationChannel callChannel = AndroidNotificationChannel(
+        'incoming_calls', 
+        'Incoming Calls', 
+        description: 'Kênh nhận thông báo cuộc gọi đến Chat Tho-Fi.', 
+        importance: Importance.max,
+        sound: RawResourceAndroidNotificationSound('ringtone'),
+        playSound: true,
       );
 
       await flutterLocalNotificationsPlugin
           .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-          ?.createNotificationChannel(channel);
+          ?.createNotificationChannel(chatChannel);
+
+      await flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(callChannel);
 
       // Cài đặt cài đặt ban đầu cho local notification
       const AndroidInitializationSettings initializationSettingsAndroid =
@@ -181,26 +251,8 @@ class _WebViewScreenState extends State<WebViewScreen> {
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       print("📩 Nhận tin nhắn trong Foreground: ${message.messageId}");
       
-      RemoteNotification? notification = message.notification;
-      AndroidNotification? android = message.notification?.android;
-
-      if (notification != null && android != null) {
-        flutterLocalNotificationsPlugin.show(
-          notification.hashCode,
-          notification.title,
-          notification.body,
-          const NotificationDetails(
-            android: AndroidNotificationDetails(
-              'chat_messages',
-              'Chat Messages',
-              channelDescription: 'Kênh nhận thông báo tin nhắn Chat Tho-Fi.',
-              icon: '@mipmap/ic_launcher',
-              importance: Importance.max,
-              priority: Priority.high,
-            ),
-          ),
-        );
-      }
+      // Hiển thị thông báo nội bộ
+      _showLocalNotification(message);
 
       // Hiển thị bong bóng chat khi có tin nhắn mới
       _showChatBubble(message);
