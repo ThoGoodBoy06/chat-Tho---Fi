@@ -8334,13 +8334,23 @@ if (window.visualViewport) {
     const root = document.documentElement;
     let rafId = null;
 
+    // Phát hiện thiết bị iOS (iPhone, iPad, iPod)
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    if (isIOS) {
+        document.body.classList.add('is-ios');
+    }
+
     const isMobileChatActive = () =>
         window.innerWidth <= 768 && document.body.classList.contains("mobile-chat-active");
 
     const applyViewportVars = () => {
         rafId = null;
-        // Chỉ còn --vv-height. Bỏ hẳn --vv-offset vì .chat-window đã fixed top:0
-        root.style.setProperty('--vv-height', `${vv.height}px`);
+        // Chỉ set --vv-height trên iOS để tránh xung đột co giãn tự nhiên của Android
+        if (isIOS) {
+            root.style.setProperty('--vv-height', `${vv.height}px`);
+        }
 
         if (window.isNearBottom(200)) {
             if (typeof window.scrollToBottomInstant === "function") {
@@ -8360,8 +8370,8 @@ if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', handleViewportChange);
     window.visualViewport.addEventListener('scroll', handleViewportChange);
 
-    // Fallback cho iOS < 17 (không có interactive-widget): nếu Safari vẫn cố
-    // cuộn layout viewport (window.scrollY lệch khỏi 0), ép về lại ngay lập tức
+    // Các lớp bảo vệ chống tự cuộn trên tất cả thiết bị di động
+    // Fallback cho trình duyệt cố cuộn layout viewport (window.scrollY lệch khỏi 0), ép về lại ngay lập tức
     const lockLayoutScroll = () => {
         if (!isMobileChatActive()) return;
         if (window.scrollX !== 0 || window.scrollY !== 0) {
@@ -8370,7 +8380,7 @@ if (window.visualViewport) {
     };
     window.addEventListener('scroll', lockLayoutScroll, { passive: true });
 
-    // Khoá ngay tại thời điểm focus, trước khi Safari kịp thực hiện auto-scroll
+    // Khoá ngay tại thời điểm focus, trước khi trình duyệt kịp thực hiện auto-scroll
     const messageInput = document.getElementById('message-input');
     if (messageInput) {
         messageInput.addEventListener('focus', () => {

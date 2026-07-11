@@ -3762,7 +3762,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         bottom: 0 !important;
         left: 100vw !important;
         right: 0 !important;
-        height: var(--vv-height, 100dvh) !important; /* Chỉ co chiều cao theo visual viewport */
+        height: 100% !important; /* Mặc định 100% để Android tự co giãn cực mượt */
         width: 100vw !important;
         z-index: 9999 !important;
         display: flex !important;
@@ -3770,6 +3770,9 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         transition: left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
         background: var(--chat-bg) !important;
         overflow: hidden !important;
+    }
+    body.is-ios .chat-window {
+        height: var(--vv-height, 100dvh) !important; /* Chỉ co chiều cao theo JS trên iOS */
     }
     #chat-screen.mobile-chat-active {
         display: block !important;
