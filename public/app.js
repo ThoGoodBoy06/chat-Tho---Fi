@@ -1683,6 +1683,11 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
     if (!receiverId) {
         return alert("Lỗi: Không tìm thấy ID người nhận tin nhắn.");
     }
+    // FOCUS TỰ ĐỘNG để hiển thị bàn phím ảo ngay lập tức trên cả Android và iOS
+    const messageInputInit = document.getElementById("message-input");
+    if (messageInputInit) {
+        messageInputInit.focus();
+    }
     try {
         // Đảm bảo chuyển tab về tab tin nhắn để ẩn hoàn toàn các tab danh bạ/tin tức khác ở chế độ nền
         const navMessages = document.querySelector('.nav-item[onclick*="tab-messages"]');
@@ -3322,6 +3327,36 @@ if (messageInput) {
         // Việc trả viewport về vị trí gốc đã do 'focusout' + visualViewport lo,
         // không cần window.scrollTo thủ công ở đây nữa.
     });
+
+    // Tự động tắt bàn phím khi bấm vào vùng trống bất kỳ (danh sách tin nhắn hoặc header chat)
+    const messagesContainer = document.getElementById("messages");
+    const chatHeaderEl = document.getElementById("chat-header-container");
+
+    const dismissKeyboard = (e) => {
+        // Tránh ẩn bàn phím nếu bấm vào các thẻ a, button, icon của header hoặc input
+        if (e.target.closest('a, button, input, textarea, .reaction-palette, .more-menu')) return;
+        
+        const inputArea = document.getElementById("input-area");
+        const emojiPanel = document.getElementById("emoji-picker-panel");
+        const isInsideInput = inputArea && inputArea.contains(e.target);
+        const isInsideEmoji = emojiPanel && emojiPanel.contains(e.target);
+
+        // Nếu click ra ngoài vùng nhập và emoji, đồng thời bàn phím đang hoạt động (active)
+        if (!isInsideInput && !isInsideEmoji) {
+            if (document.activeElement === messageInput) {
+                messageInput.blur();
+            }
+        }
+    };
+
+    if (messagesContainer) {
+        messagesContainer.addEventListener("click", dismissKeyboard);
+        messagesContainer.addEventListener("touchstart", dismissKeyboard, { passive: true });
+    }
+    if (chatHeaderEl) {
+        chatHeaderEl.addEventListener("click", dismissKeyboard);
+        chatHeaderEl.addEventListener("touchstart", dismissKeyboard, { passive: true });
+    }
 }
 
 // Xử lý nút mũi tên mở rộng lại cụm ảnh/file khi đang gõ
