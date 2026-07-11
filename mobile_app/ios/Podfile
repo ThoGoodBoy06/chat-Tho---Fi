@@ -3,12 +3,13 @@
 platform :ios, '12.0'
 
 # Đường dẫn nạp các hàm cài đặt pod của Flutter
-flutter_root = File.expand_path(File.join('..', '..', '..'))
+flutter_root = File.expand_path(File.join('..', '..', '..'), File.dirname(__FILE__))
 if File.exist?(File.join(flutter_root, 'packages', 'flutter_tools', 'bin', 'podhelper.rb'))
   require File.join(flutter_root, 'packages', 'flutter_tools', 'bin', 'podhelper.rb')
+elsif ENV['FLUTTER_ROOT']
+  require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), ENV['FLUTTER_ROOT'])
 else
-  # Fallback nếu đường dẫn tương đối sai lệch trên máy chủ build
-  require File.expand_path(File.join(File.dirname(__FILE__), 'Flutter', 'podhelper.rb'))
+  raise "Không tìm thấy thư mục cài đặt SDK Flutter. Vui lòng kiểm tra biến môi trường FLUTTER_ROOT."
 end
 
 target 'Runner' do
