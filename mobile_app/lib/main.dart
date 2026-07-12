@@ -1,6 +1,7 @@
 import 'dart:convert'; // Để parse JSON gửi từ Web
 import 'dart:io' show Platform; // Để check Platform.isAndroid / Platform.isIOS
 import 'package:flutter/foundation.dart'; // Import kIsWeb
+import 'package:http/http.dart' as http; // Để gọi API trực tiếp bằng Token
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -243,6 +244,55 @@ class _WebViewScreenState extends State<WebViewScreen> {
   String _myId = "";
   String _token = "";
 
+  // Hàm đồng bộ tài khoản bằng Token trực tiếp qua HTTP
+  Future<void> _syncAuthWithToken(String tokenVal) async {
+    if (tokenVal.isEmpty || tokenVal == "null") return;
+    try {
+      final response = await http.get(
+        Uri.parse('https://chat-tho-fi.onrender.com/api/auth/me'),
+        headers: {
+          'Authorization': 'Bearer $tokenVal',
+        },
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          final userData = data['data'];
+          setState(() {
+            _token = tokenVal;
+            _myId = userData['id'] ?? '';
+          });
+          SocketService().connect('https://chat-tho-fi.onrender.com', _myId);
+          print("✅ Đồng bộ trực tiếp qua Token thành công! User ID: $_myId");
+        }
+      }
+    } catch (e) {
+      print("❌ Lỗi đồng bộ trực tiếp qua Token: $e");
+    }
+  }
+
+  // Hàm chủ động đọc Token trực tiếp từ LocalStorage của WebView
+  Future<void> _tryFetchTokenFromWeb() async {
+    try {
+      final result = await _controller.runJavaScriptReturningResult(
+        "localStorage.getItem('authToken')"
+      );
+      String tokenVal = result.toString().trim();
+      // Bỏ dấu nháy kép bọc quanh kết quả JS trên một số thiết bị
+      if (tokenVal.startsWith('"') && tokenVal.endsWith('"')) {
+        tokenVal = tokenVal.substring(1, tokenVal.length - 1);
+      }
+      if (tokenVal.startsWith('\'') && tokenVal.endsWith('\'')) {
+        tokenVal = tokenVal.substring(1, tokenVal.length - 1);
+      }
+      if (tokenVal.isNotEmpty && tokenVal != "null") {
+        await _syncAuthWithToken(tokenVal);
+      }
+    } catch (e) {
+      print("❌ Lỗi đọc token trực tiếp từ WebView: $e");
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -262,9 +312,9 @@ class _WebViewScreenState extends State<WebViewScreen> {
               });
               // Khi trang web tải xong, truyền Token vào nếu đã sẵn sàng
               _injectFcmTokenToWeb();
-              // Đồng thời yêu cầu web đồng bộ thông tin đăng nhập tự động
+              // Đồng thời chủ động đọc token trực tiếp từ LocalStorage
               Future.delayed(const Duration(milliseconds: 600), () {
-                _controller.runJavaScript("if (window.getAuthDataForMobile) { window.getAuthDataForMobile(); }");
+                _tryFetchTokenFromWeb();
               });
             },
             onWebResourceError: (WebResourceError error) {
@@ -287,9 +337,9 @@ class _WebViewScreenState extends State<WebViewScreen> {
                 // Kết nối Socket.IO native trực tiếp tới server
                 SocketService().connect('https://chat-tho-fi.onrender.com', _myId);
               } else if (event == 'open_chat') {
-                // Nếu chưa có token native (do chưa kịp auth_sync), chủ động lấy từ web
+                // Nếu chưa có token native, lập tức đọc trực tiếp từ WebView
                 if (_token.isEmpty || _myId.isEmpty) {
-                  _controller.runJavaScript("if (window.getAuthDataForMobile) { window.getAuthDataForMobile(); }");
+                  _tryFetchTokenFromWeb();
                 }
                 
                 setState(() {
