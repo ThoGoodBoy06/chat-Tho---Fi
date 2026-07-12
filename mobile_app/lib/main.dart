@@ -500,7 +500,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
     }
 
     return Scaffold(
-      resizeToAvoidBottomInset: false,
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: WebViewWidget(controller: _controller),
       ),
