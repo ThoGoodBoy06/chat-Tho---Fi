@@ -1,3 +1,4 @@
+import 'dart:convert'; // Để parse JSON gửi từ Web
 import 'dart:io' show Platform; // Để check Platform.isAndroid / Platform.isIOS
 import 'package:flutter/foundation.dart'; // Import kIsWeb
 import 'package:flutter/material.dart';
@@ -6,6 +7,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:dash_bubble/dash_bubble.dart';
+
+// Import các thành phần Chat Native mới
+import 'services/socket_service.dart';
+import 'screens/native_chat_screen.dart';
 
 // Biến toàn cục để quản lý Notifications
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
@@ -226,6 +231,18 @@ class _WebViewScreenState extends State<WebViewScreen> {
   String? _fcmToken;
   bool _isPageFinished = false;
 
+  // Trạng thái đồng bộ của thanh Header Native
+  bool _isChatActive = false;
+  String _partnerId = "";
+  String _partnerName = "";
+  String _partnerAvatar = "";
+  String _partnerStatus = "";
+  bool _partnerOnline = false;
+
+  // Thông tin xác thực người dùng đồng bộ để gọi API native
+  String _myId = "";
+  String _token = "";
+
   @override
   void initState() {
     super.initState();
@@ -250,6 +267,49 @@ class _WebViewScreenState extends State<WebViewScreen> {
               print("Lỗi tải trang: ${error.description}");
             },
           ),
+        )
+        ..addJavaScriptChannel(
+          'FlutterHeaderChannel',
+          onMessageReceived: (JavaScriptMessage message) {
+            try {
+              final Map<String, dynamic> data = jsonDecode(message.message);
+              final String event = data['event'] ?? '';
+              
+              if (event == 'auth_sync') {
+                setState(() {
+                  _token = data['token'] ?? '';
+                  _myId = data['myId'] ?? '';
+                });
+                // Kết nối Socket.IO native trực tiếp tới server
+                SocketService().connect('https://chat-tho-fi.onrender.com', _myId);
+              } else if (event == 'open_chat') {
+                setState(() {
+                  _isChatActive = true;
+                  _partnerId = data['partnerId'] ?? '';
+                  _partnerName = data['partnerName'] ?? '';
+                  _partnerAvatar = data['partnerAvatar'] ?? '';
+                  _partnerStatus = 'Đang hoạt động'; // Trạng thái mặc định ban đầu
+                  _partnerOnline = true;
+                });
+              } else if (event == 'close_chat') {
+                setState(() {
+                  _isChatActive = false;
+                  _partnerId = '';
+                  _partnerName = '';
+                  _partnerAvatar = '';
+                  _partnerStatus = '';
+                  _partnerOnline = false;
+                });
+              } else if (event == 'update_status') {
+                setState(() {
+                  _partnerStatus = data['partnerStatus'] ?? '';
+                  _partnerOnline = data['partnerOnline'] ?? false;
+                });
+              }
+            } catch (e) {
+              print("Lỗi nhận dữ liệu qua Channel: $e");
+            }
+          },
         )
         ..loadRequest(Uri.parse('https://chat-tho-fi.onrender.com'));
 
@@ -321,6 +381,22 @@ class _WebViewScreenState extends State<WebViewScreen> {
     }
 
     final bool isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+
+    // Nếu cuộc chat đang active và có đầy đủ token native -> chuyển hướng sang Màn hình Chat Native
+    if (_isChatActive && _token.isNotEmpty && _myId.isNotEmpty && !kIsWeb) {
+      return NativeChatScreen(
+        conversationId: _partnerId, // Trường này ở web gửi receiverId làm cuộc chat đơn
+        partnerId: _partnerId,
+        partnerName: _partnerName,
+        partnerAvatar: _partnerAvatar,
+        myId: _myId,
+        token: _token,
+        onBackPressed: () {
+          // Gửi lệnh đóng chat về phía Web (sẽ tự động gửi sự kiện close_chat ngược lên)
+          _controller.runJavaScript("closeChatMobile()");
+        },
+      );
+    }
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
