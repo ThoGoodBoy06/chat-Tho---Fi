@@ -12,9 +12,9 @@ workflows:
       - name: Get Flutter dependencies
         script: |
           flutter pub get
-      - name: Build iOS App (Chế độ Debug không cần chứng chỉ Apple để kiểm thử nhanh)
+      - name: Build iOS App (Chế độ Release để mở trực tiếp trên màn hình iPhone)
         script: |
-          flutter build ios --debug --no-codesign
+          flutter build ios --release --no-codesign
     artifacts:
       - build/ios/iphoneos/*.app
       - build/ios/ipa/*.ipa
