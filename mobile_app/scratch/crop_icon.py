@@ -4,71 +4,83 @@ import subprocess
 
 # Tự động cài đặt Pillow nếu chưa có
 try:
-    from PIL import Image, ImageChops
+    from PIL import Image
 except ImportError:
     print("📦 Đang cài đặt thư viện xử lý ảnh Pillow...")
     subprocess.check_call([sys.executable, "-m", "pip", "install", "Pillow"])
-    from PIL import Image, ImageChops
+    from PIL import Image
 
-def crop_image_logo(image_path, padding_percent=0.15):
+def crop_image_logo_manual(image_path, padding_percent=0.03):
     if not os.path.exists(image_path):
         print(f"❌ Không tìm thấy file: {image_path}")
         return
 
-    print(f"🖼️ Đang xử lý ảnh: {image_path}")
+    print(f"🖼️ Đang xử lý ảnh bằng quét pixel thủ công: {image_path}")
     img = Image.open(image_path).convert("RGBA")
+    width, height = img.size
     
-    # Tìm bounding box của vùng chứa logo (bỏ qua vùng nền màu trắng hoặc alpha = 0)
-    # Ở đây nền là màu trắng tinh (255, 255, 255, 255) hoặc trong suốt
-    bg = Image.new("RGBA", img.size, (255, 255, 255, 255))
-    diff = ImageChops.difference(img, bg)
+    # Quét pixel để tìm vùng chứa logo
+    min_x, min_y = width, height
+    max_x, max_y = 0, 0
     
-    # Bounding box [left, upper, right, lower]
-    bbox = diff.getbbox()
-    if not bbox:
-        print("⚠️ Không phát hiện vùng logo khác biệt với nền trắng.")
+    # Lấy dữ liệu pixel
+    pixels = img.load()
+    
+    # Chúng ta quét toàn bộ tọa độ
+    for y in range(height):
+        for x in range(width):
+            r, g, b, a = pixels[x, y]
+            # Nếu pixel không phải là màu trắng tinh khiết/gần trắng và không trong suốt
+            if (r < 253 or g < 253 or b < 253) and a > 10:
+                if x < min_x: min_x = x
+                if y < min_y: min_y = y
+                if x > max_x: max_x = x
+                if y > max_y: max_y = y
+                
+    if max_x < min_x or max_y < min_y:
+        print("⚠️ Không tìm thấy logo qua quét pixel thủ công.")
         return
 
-    left, top, right, bottom = bbox
-    width = right - left
-    height = bottom - top
+    logo_w = max_x - min_x
+    logo_h = max_y - min_y
+    print(f"📏 Tọa độ logo phát hiện: X[{min_x} -> {max_x}] Y[{min_y} -> {max_y}] (Kích thước: {logo_w}x{logo_h})")
+
+    # Thêm padding cực nhỏ
+    pad_w = int(logo_w * padding_percent)
+    pad_h = int(logo_h * padding_percent)
     
-    # Thêm padding để logo không bị sát mép quá
-    pad_w = int(width * padding_percent)
-    pad_h = int(height * padding_percent)
+    new_left = max(0, min_x - pad_w)
+    new_top = max(0, min_y - pad_h)
+    new_right = min(width, max_x + pad_w)
+    new_bottom = min(height, max_y + pad_h)
     
-    # Đảm bảo padding không vượt quá kích thước ảnh gốc
-    new_left = max(0, left - pad_w)
-    new_top = max(0, top - pad_h)
-    new_right = min(img.width, right + pad_w)
-    new_bottom = min(img.height, bottom + pad_h)
-    
-    # Cắt ảnh
+    # Cắt ảnh logo
     cropped_img = img.crop((new_left, new_top, new_right, new_bottom))
     
-    # Resize về kích thước vuông tiêu chuẩn 1024x1024 để làm icon sắc nét
+    # Tạo ảnh vuông 1024x1024 nền trắng tinh
     target_size = (1024, 1024)
-    
-    # Tạo nền trắng
     final_img = Image.new("RGBA", target_size, (255, 255, 255, 255))
     
-    # Tính toán resize giữ nguyên tỷ lệ
+    # Tính toán tỷ lệ resize
     cropped_w, cropped_h = cropped_img.size
     ratio = min(target_size[0] / cropped_w, target_size[1] / cropped_h)
-    new_w = int(cropped_w * ratio)
-    new_h = int(cropped_h * ratio)
+    
+    # Phóng to chiếm 96% khung hình (để logo siêu to giống ảnh mẫu của bạn)
+    scale_factor = 0.96
+    new_w = int(cropped_w * ratio * scale_factor)
+    new_h = int(cropped_h * ratio * scale_factor)
     
     resized_logo = cropped_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
     
-    # Dán logo vào giữa nền trắng
+    # Dán vào giữa
     offset_x = (target_size[0] - new_w) // 2
     offset_y = (target_size[1] - new_h) // 2
     final_img.paste(resized_logo, (offset_x, offset_y), resized_logo)
     
-    # Lưu đè lại file ảnh gốc
+    # Lưu đè lại file ảnh gốc dưới dạng RGB
     final_img.convert("RGB").save(image_path, "PNG")
-    print("✅ Đã crop và tối ưu hóa logo thành công!")
+    print("✅ Đã phóng to tối đa logo thành công bằng quét pixel!")
 
 if __name__ == "__main__":
     icon_path = os.path.join("mobile_app", "assets", "icon.png")
-    crop_image_logo(icon_path)
+    crop_image_logo_manual(icon_path)

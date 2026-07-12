@@ -234,6 +234,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
   // Trạng thái đồng bộ của thanh Header Native
   bool _isChatActive = false;
+  String _conversationId = "";
   String _partnerId = "";
   String _partnerName = "";
   String _partnerAvatar = "";
@@ -344,6 +345,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
                 
                 setState(() {
                   _isChatActive = true;
+                  _conversationId = data['conversationId'] ?? '';
                   _partnerId = data['partnerId'] ?? '';
                   _partnerName = data['partnerName'] ?? '';
                   _partnerAvatar = data['partnerAvatar'] ?? '';
@@ -353,6 +355,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
               } else if (event == 'close_chat') {
                 setState(() {
                   _isChatActive = false;
+                  _conversationId = '';
                   _partnerId = '';
                   _partnerName = '';
                   _partnerAvatar = '';
@@ -444,7 +447,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
     // Nếu cuộc chat đang active và có đầy đủ token native -> chuyển hướng sang Màn hình Chat Native
     if (_isChatActive && _token.isNotEmpty && _myId.isNotEmpty && !kIsWeb) {
       return NativeChatScreen(
-        conversationId: _partnerId, // Trường này ở web gửi receiverId làm cuộc chat đơn
+        conversationId: _conversationId,
         partnerId: _partnerId,
         partnerName: _partnerName,
         partnerAvatar: _partnerAvatar,
