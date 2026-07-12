@@ -342,6 +342,17 @@ class _WebViewScreenState extends State<WebViewScreen> {
               setState(() {
                 _isPageFinished = true;
               });
+              // Đảm bảo loại bỏ class has-native-header của Web để luôn hiển thị header gốc
+              _controller.runJavaScript("""
+                (function() {
+                  document.body.classList.remove('has-native-header');
+                  setInterval(function() {
+                    if (document.body.classList.contains('has-native-header')) {
+                      document.body.classList.remove('has-native-header');
+                    }
+                  }, 300);
+                })();
+              """);
               // Khi trang web tải xong, truyền Token vào nếu đã sẵn sàng
               _injectFcmTokenToWeb();
               // Đồng thời chủ động đọc token trực tiếp từ LocalStorage
