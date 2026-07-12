@@ -3766,7 +3766,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
     }
     .chat-window {
         position: fixed !important; /* Đổi sang fixed */
-        top: 0 !important; /* Luôn cố định sát mép trên, không dùng offset */
+        top: var(--vv-offset, 0px) !important; /* Đồng bộ với Visual Viewport Offset */
         bottom: auto !important; /* Tránh xung đột chiều cao khi thay đổi */
         left: 100vw !important;
         right: 0 !important;
