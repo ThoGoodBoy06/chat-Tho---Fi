@@ -4,8 +4,9 @@ const API_URL = `${SERVER_URL}/api`;
 // --- PHÁT HIỆN NATIVE FLUTTER HEADER ---
 document.addEventListener("DOMContentLoaded", () => {
     if (window.FlutterHeaderChannel || window.webkit?.messageHandlers?.FlutterHeaderChannel) {
-        document.body.classList.add("has-native-header");
-        console.log("📱 Đã phát hiện Native Flutter Header Channel. Kích hoạt header native.");
+        // Bỏ thêm class has-native-header để giữ nguyên giao diện gốc của web (bao gồm cả header)
+        // document.body.classList.add("has-native-header");
+        console.log("📱 Đã phát hiện Native Flutter Header Channel. Giữ nguyên giao diện web.");
     }
 });
 
@@ -848,6 +849,17 @@ function initizeChatSession(userData, userToken) {
     myName = userData.fullName || userData.username;
     myUsername = userData.username || "";
 
+    // Gửi thông tin auth_sync lên Flutter native để phục vụ Chat Native
+    if (window.FlutterHeaderChannel) {
+        window.FlutterHeaderChannel.postMessage(JSON.stringify({
+            event: 'auth_sync',
+            token: userToken,
+            myId: userData.id,
+            myName: myName,
+            myAvatar: userData.avatar || ""
+        }));
+    }
+
     if (window.cachedFlutterFcmToken) {
         window.onFlutterFcmTokenReceived(window.cachedFlutterFcmToken);
         window.cachedFlutterFcmToken = null;
@@ -1356,6 +1368,19 @@ function initizeChatSession(userData, userToken) {
                 }
             }
         }, 400);
+    }
+}
+
+// Hàm hỗ trợ Flutter chủ động lấy thông tin xác thực để đồng bộ Chat Native
+window.getAuthDataForMobile = function() {
+    if (window.FlutterHeaderChannel && token && myId) {
+        window.FlutterHeaderChannel.postMessage(JSON.stringify({
+            event: 'auth_sync',
+            token: token,
+            myId: myId,
+            myName: myName,
+            myAvatar: (typeof myAvatarPath !== 'undefined') ? myAvatarPath : ""
+        }));
     }
 }
 
