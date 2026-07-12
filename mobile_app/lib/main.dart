@@ -235,6 +235,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
   // Trạng thái đồng bộ của thanh Header Native
   bool _isChatActive = false;
   String _conversationId = "";
+  String _chatTheme = "classic";
   String _partnerId = "";
   String _partnerName = "";
   String _partnerAvatar = "";
@@ -314,8 +315,9 @@ class _WebViewScreenState extends State<WebViewScreen> {
         if (data['success'] == true && data['data'] != null) {
           setState(() {
             _conversationId = data['data']['id'] ?? '';
+            _chatTheme = data['data']['theme'] ?? 'classic';
           });
-          print("✅ Đã lấy thành công conversationId thực tế: $_conversationId");
+          print("✅ Đã lấy thành công conversationId thực tế: $_conversationId, theme: $_chatTheme");
         }
       }
     } catch (e) {
@@ -389,6 +391,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
                 setState(() {
                   _isChatActive = false;
                   _conversationId = '';
+                  _chatTheme = 'classic';
                   _partnerId = '';
                   _partnerName = '';
                   _partnerAvatar = '';
@@ -481,6 +484,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
     if (_isChatActive && _token.isNotEmpty && _myId.isNotEmpty && _conversationId.isNotEmpty && !kIsWeb) {
       return NativeChatScreen(
         conversationId: _conversationId,
+        chatTheme: _chatTheme,
         partnerId: _partnerId,
         partnerName: _partnerName,
         partnerAvatar: _partnerAvatar,

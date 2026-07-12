@@ -18,6 +18,8 @@ class SocketService {
   Function(Map<String, dynamic>)? onUserStatusChanged;
   // Callback lắng nghe khi tin nhắn được đánh dấu đã đọc
   Function(Map<String, dynamic>)? onMessagesRead;
+  // Callback lắng nghe khi chủ đề chat thay đổi
+  Function(Map<String, dynamic>)? onThemeChanged;
 
   void connect(String serverUrl, String userId) {
     if (socket != null && isConnected && currentUserId == userId) {
@@ -115,6 +117,13 @@ class SocketService {
     socket!.on("messages_read", (data) {
       if (onMessagesRead != null && data is Map) {
         onMessagesRead!(Map<String, dynamic>.from(data));
+      }
+    });
+
+    // Lắng nghe sự kiện thay đổi chủ đề chat
+    socket!.on("conversation_theme_changed", (data) {
+      if (onThemeChanged != null && data is Map) {
+        onThemeChanged!(Map<String, dynamic>.from(data));
       }
     });
   }

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 class MessageBubble extends StatelessWidget {
   final Map<String, dynamic> message;
   final bool isMe;
+  final String chatTheme;
   final String? partnerAvatar;
   final bool showTime;
   final bool isLastReadMessage; // Để hiển thị avatar thu nhỏ báo hiệu "Đã xem"
@@ -12,6 +13,7 @@ class MessageBubble extends StatelessWidget {
     super.key,
     required this.message,
     required this.isMe,
+    required this.chatTheme,
     this.partnerAvatar,
     this.showTime = false,
     this.isLastReadMessage = false,
@@ -25,6 +27,69 @@ class MessageBubble extends StatelessWidget {
     } catch (_) {
       return "";
     }
+  }
+
+  // Vẽ khối tin nhắn trích dẫn (Replied Message Preview)
+  Widget _buildReplyMessageWidget() {
+    final replyMsg = message['replyMessage'];
+    if (replyMsg == null) return const SizedBox.shrink();
+
+    // Xác định tên người gửi tin nhắn gốc
+    final String senderName = replyMsg['senderId'] == message['senderId']
+        ? (isMe ? "Bạn" : "Đối phương")
+        : (isMe ? "Đối phương" : "Bạn");
+
+    final content = replyMsg['content'] ?? '';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6.0),
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+      decoration: BoxDecoration(
+        color: isMe ? Colors.white.withOpacity(0.18) : Colors.black.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 3,
+              decoration: BoxDecoration(
+                color: isMe ? Colors.white70 : const Color(0xFF0068FF),
+                borderRadius: BorderRadius.circular(1.5),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                     senderName,
+                     style: TextStyle(
+                       fontSize: 10.5,
+                       fontWeight: FontWeight.bold,
+                       color: isMe ? Colors.white.withOpacity(0.9) : Colors.black87,
+                     ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                     content.toString(),
+                     maxLines: 1,
+                     overflow: TextOverflow.ellipsis,
+                     style: TextStyle(
+                       fontSize: 12,
+                       color: isMe ? Colors.white70 : Colors.black54,
+                     ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildMessageContent() {
@@ -122,8 +187,15 @@ class MessageBubble extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: isMe 
-                        ? const Color(0xFF0068FF) 
+                        ? (chatTheme == 'love' ? null : const Color(0xFF0068FF))
                         : const Color(0xF2F0F2F5),
+                    gradient: isMe && chatTheme == 'love'
+                        ? const LinearGradient(
+                            colors: [Color(0xFFFF758C), Color(0xFFFF7EB3)],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          )
+                        : null,
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(18),
                       topRight: const Radius.circular(18),
@@ -132,7 +204,14 @@ class MessageBubble extends StatelessWidget {
                     ),
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
-                  child: _buildMessageContent(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildReplyMessageWidget(),
+                      _buildMessageContent(),
+                    ],
+                  ),
                 ),
               ),
             ],

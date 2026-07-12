@@ -9,6 +9,7 @@ import '../services/socket_service.dart';
 
 class NativeChatScreen extends StatefulWidget {
   final String conversationId;
+  final String chatTheme;
   final String partnerId;
   final String partnerName;
   final String partnerAvatar;
@@ -19,6 +20,7 @@ class NativeChatScreen extends StatefulWidget {
   const NativeChatScreen({
     super.key,
     required this.conversationId,
+    required this.chatTheme,
     required this.partnerId,
     required this.partnerName,
     required this.partnerAvatar,
@@ -43,6 +45,9 @@ class _NativeChatScreenState extends State<NativeChatScreen> {
   bool _hasMore = true;
   int _pageLimit = 50;
 
+  // Trạng thái chủ đề phòng chat
+  String _chatTheme = "classic";
+
   // Trạng thái của đối phương
   bool _partnerOnline = false;
   String _partnerStatus = "Đang hoạt động";
@@ -52,6 +57,7 @@ class _NativeChatScreenState extends State<NativeChatScreen> {
   @override
   void initState() {
     super.initState();
+    _chatTheme = widget.chatTheme;
     _fetchMessages();
     _setupSocketListeners();
     _scrollController.addListener(_onScroll);
@@ -124,6 +130,15 @@ class _NativeChatScreenState extends State<NativeChatScreen> {
           readData['readBy'] == widget.partnerId) {
         setState(() {
           _lastReadMessageId = readData['lastReadMessageId'] ?? "";
+        });
+      }
+    };
+
+    // 5. Lắng nghe sự thay đổi chủ đề chat thời gian thực
+    _socketService.onThemeChanged = (themeData) {
+      if (themeData['conversationId'] == widget.conversationId) {
+        setState(() {
+          _chatTheme = themeData['theme'] ?? 'classic';
         });
       }
     };
@@ -403,6 +418,7 @@ class _NativeChatScreenState extends State<NativeChatScreen> {
                             key: ValueKey(message['id']),
                             message: message,
                             isMe: isMe,
+                            chatTheme: _chatTheme,
                             partnerAvatar: widget.partnerAvatar,
                             showTime: showTime,
                             isLastReadMessage: isLastRead,
