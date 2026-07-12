@@ -262,6 +262,10 @@ class _WebViewScreenState extends State<WebViewScreen> {
               });
               // Khi trang web tải xong, truyền Token vào nếu đã sẵn sàng
               _injectFcmTokenToWeb();
+              // Đồng thời yêu cầu web đồng bộ thông tin đăng nhập tự động
+              Future.delayed(const Duration(milliseconds: 600), () {
+                _controller.runJavaScript("if (window.getAuthDataForMobile) { window.getAuthDataForMobile(); }");
+              });
             },
             onWebResourceError: (WebResourceError error) {
               print("Lỗi tải trang: ${error.description}");
@@ -283,6 +287,11 @@ class _WebViewScreenState extends State<WebViewScreen> {
                 // Kết nối Socket.IO native trực tiếp tới server
                 SocketService().connect('https://chat-tho-fi.onrender.com', _myId);
               } else if (event == 'open_chat') {
+                // Nếu chưa có token native (do chưa kịp auth_sync), chủ động lấy từ web
+                if (_token.isEmpty || _myId.isEmpty) {
+                  _controller.runJavaScript("if (window.getAuthDataForMobile) { window.getAuthDataForMobile(); }");
+                }
+                
                 setState(() {
                   _isChatActive = true;
                   _partnerId = data['partnerId'] ?? '';

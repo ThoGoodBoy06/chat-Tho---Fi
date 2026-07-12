@@ -1,6 +1,6 @@
 # Cấu hình Podfile chuẩn của Flutter tích hợp bản vá sửa lỗi Firebase iOS build
 
-platform :ios, '12.0'
+platform :ios, '13.0'
 
 # Đường dẫn nạp các hàm cài đặt pod của Flutter
 flutter_root = File.expand_path(File.join('..', '..', '..'), File.dirname(__FILE__))

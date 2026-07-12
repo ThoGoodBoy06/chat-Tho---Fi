@@ -71,5 +71,11 @@
 		<string>remote-notification</string>
 		<string>fetch</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Ứng dụng cần truy cập Camera để thực hiện cuộc gọi video và chụp ảnh gửi tin nhắn.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Ứng dụng cần truy cập Microphone để thực hiện cuộc gọi thoại và ghi âm.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Ứng dụng cần truy cập Thư viện ảnh để chọn ảnh gửi tin nhắn.</string>
 </dict>
 </plist>
