@@ -478,25 +478,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
       );
     }
 
-    final bool isIOS = defaultTargetPlatform == TargetPlatform.iOS;
-
-    // Nếu cuộc chat đang active, có đầy đủ token native và đã có conversationId -> chuyển hướng sang Màn hình Chat Native
-    if (_isChatActive && _token.isNotEmpty && _myId.isNotEmpty && _conversationId.isNotEmpty && !kIsWeb) {
-      return NativeChatScreen(
-        conversationId: _conversationId,
-        chatTheme: _chatTheme,
-        partnerId: _partnerId,
-        partnerName: _partnerName,
-        partnerAvatar: _partnerAvatar,
-        myId: _myId,
-        token: _token,
-        onBackPressed: () {
-          // Gửi lệnh đóng chat về phía Web (sẽ tự động gửi sự kiện close_chat ngược lên)
-          _controller.runJavaScript("closeChatMobile()");
-        },
-      );
-    }
-
     return Scaffold(
       resizeToAvoidBottomInset: true,
       body: SafeArea(
