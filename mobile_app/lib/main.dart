@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart'; // Import kIsWeb
 import 'package:http/http.dart' as http; // Để gọi API trực tiếp bằng Token
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -331,7 +332,16 @@ class _WebViewScreenState extends State<WebViewScreen> {
     
     // Chỉ khởi tạo WebViewController nếu không phải nền tảng Web
     if (!kIsWeb) {
-      _controller = WebViewController()
+      late final PlatformWebViewControllerCreationParams creationParams;
+      if (WebViewPlatform.instance is WebKitWebViewPlatform) {
+        creationParams = WebKitWebViewControllerCreationParams(
+          allowsInlineMediaPlayback: true,
+        );
+      } else {
+        creationParams = const PlatformWebViewControllerCreationParams();
+      }
+
+      _controller = WebViewController.fromPlatformCreationParams(creationParams)
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
         ..setBackgroundColor(const Color(0x00000000))
         ..setNavigationDelegate(
