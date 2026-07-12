@@ -8488,6 +8488,7 @@ if (window.visualViewport) {
     const vv = window.visualViewport;
     const root = document.documentElement;
     let rafId = null;
+    let lastVvHeight = vv.height;
 
     // Phát hiện thiết bị iOS (iPhone, iPad, iPod)
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
@@ -8502,16 +8503,22 @@ if (window.visualViewport) {
 
     const applyViewportVars = () => {
         rafId = null;
-        // Chỉ set --vv-height trên iOS để tránh xung đột co giãn tự nhiên của Android
+        // Chỉ set --vv-height và --vv-offset trên iOS để tránh xung đột co giãn tự nhiên của Android
         if (isIOS) {
             root.style.setProperty('--vv-height', `${vv.height}px`);
+            root.style.setProperty('--vv-offset', `${vv.offsetTop}px`);
         }
 
-        if (window.isNearBottom(200)) {
+        const messageInput = document.getElementById('message-input');
+        const isKeyboardOpening = document.activeElement === messageInput;
+
+        // Nếu bàn phím đang mở ra (chiều cao giảm đi) hoặc đang ở gần cuối, tự động cuộn xuống cuối
+        if ((vv.height < lastVvHeight && isKeyboardOpening) || window.isNearBottom(200)) {
             if (typeof window.scrollToBottomInstant === "function") {
                 window.scrollToBottomInstant();
             }
         }
+        lastVvHeight = vv.height;
     };
 
     const handleViewportChange = () => {
