@@ -837,6 +837,9 @@ RIGHT WINDOW & CHAT MESSAGES
     flex-direction: column;
     gap: 16px;
     position: relative;
+    will-change: scroll-position;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
 }
 
 
@@ -848,7 +851,6 @@ RIGHT WINDOW & CHAT MESSAGES
     flex-direction: column;
     position: relative;
     animation: messageSlideIn 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-    will-change: transform, opacity;
 }
 
 @keyframes messageSlideIn {
@@ -3926,6 +3928,9 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         -webkit-overflow-scrolling: touch !important;
         overscroll-behavior-y: contain !important;
         touch-action: pan-y !important;
+        will-change: scroll-position !important;
+        backface-visibility: hidden !important;
+        -webkit-backface-visibility: hidden !important;
         /* bảo vệ cuộn tin nhắn trên thiết bị cảm ứng */
     }
     .zalo-profile-layout {

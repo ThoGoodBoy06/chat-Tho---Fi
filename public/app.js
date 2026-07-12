@@ -3309,23 +3309,13 @@ if (messageInput) {
         }, 1500);
     });
 
-    let scrollAnimationId = null;
     const scrollToBottomSmooth = () => {
         const messagesDiv = document.getElementById("messages");
         if (messagesDiv) {
-            if (scrollAnimationId) {
-                cancelAnimationFrame(scrollAnimationId);
-            }
-            let start = Date.now();
-            const scrollLoop = () => {
-                messagesDiv.scrollTop = messagesDiv.scrollHeight;
-                if (Date.now() - start < 350) {
-                    scrollAnimationId = requestAnimationFrame(scrollLoop);
-                } else {
-                    scrollAnimationId = null;
-                }
-            };
-            scrollAnimationId = requestAnimationFrame(scrollLoop);
+            messagesDiv.scrollTo({
+                top: messagesDiv.scrollHeight,
+                behavior: "smooth"
+            });
         }
     };
     window.scrollToBottomSmooth = scrollToBottomSmooth;
