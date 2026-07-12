@@ -294,6 +294,35 @@ class _WebViewScreenState extends State<WebViewScreen> {
     }
   }
 
+  // Hàm tự động gọi API lấy hoặc tạo phòng chat dựa trên partnerId để lấy conversationId
+  Future<void> _fetchOrCreateConversationId(String partnerId) async {
+    if (partnerId.isEmpty || _token.isEmpty) return;
+    try {
+      final response = await http.post(
+        Uri.parse('https://chat-tho-fi.onrender.com/api/chat/conversations'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+        body: jsonEncode({
+          'receiverId': partnerId,
+        }),
+      );
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          setState(() {
+            _conversationId = data['data']['id'] ?? '';
+          });
+          print("✅ Đã lấy thành công conversationId thực tế: $_conversationId");
+        }
+      }
+    } catch (e) {
+      print("❌ Lỗi gọi API lấy hoặc tạo conversationId: $e");
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -338,15 +367,19 @@ class _WebViewScreenState extends State<WebViewScreen> {
                 // Kết nối Socket.IO native trực tiếp tới server
                 SocketService().connect('https://chat-tho-fi.onrender.com', _myId);
               } else if (event == 'open_chat') {
-                // Nếu chưa có token native, lập tức đọc trực tiếp từ WebView
+                final String partnerId = data['partnerId'] ?? '';
+                // Nếu chưa có token native, lập tiếp đọc từ WebView rồi lấy conversationId
                 if (_token.isEmpty || _myId.isEmpty) {
-                  _tryFetchTokenFromWeb();
+                  _tryFetchTokenFromWeb().then((_) {
+                    _fetchOrCreateConversationId(partnerId);
+                  });
+                } else {
+                  _fetchOrCreateConversationId(partnerId);
                 }
                 
                 setState(() {
                   _isChatActive = true;
-                  _conversationId = data['conversationId'] ?? '';
-                  _partnerId = data['partnerId'] ?? '';
+                  _partnerId = partnerId;
                   _partnerName = data['partnerName'] ?? '';
                   _partnerAvatar = data['partnerAvatar'] ?? '';
                   _partnerStatus = 'Đang hoạt động'; // Trạng thái mặc định ban đầu
@@ -444,8 +477,8 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
     final bool isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
-    // Nếu cuộc chat đang active và có đầy đủ token native -> chuyển hướng sang Màn hình Chat Native
-    if (_isChatActive && _token.isNotEmpty && _myId.isNotEmpty && !kIsWeb) {
+    // Nếu cuộc chat đang active, có đầy đủ token native và đã có conversationId -> chuyển hướng sang Màn hình Chat Native
+    if (_isChatActive && _token.isNotEmpty && _myId.isNotEmpty && _conversationId.isNotEmpty && !kIsWeb) {
       return NativeChatScreen(
         conversationId: _conversationId,
         partnerId: _partnerId,
