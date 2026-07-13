@@ -3164,12 +3164,14 @@ function displayMessage(msg, targetContainer = null) {
         let pressTimer;
         let isLongPress = false;
         let longPressStartY = 0;
+        let longPressStartX = 0;
 
         messageContent.addEventListener(
             "touchstart",
             (e) => {
                 if (window.innerWidth > 768) return;
                 longPressStartY = e.touches[0].clientY;
+                longPressStartX = e.touches[0].clientX;
                 isLongPress = false;
                 const _isIOSLp = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
                 pressTimer = setTimeout(() => {
@@ -3183,7 +3185,9 @@ function displayMessage(msg, targetContainer = null) {
 
         const cancelPress = (e) => {
             if (e && e.type === "touchmove") {
-                if (Math.abs(e.touches[0].clientY - longPressStartY) > 10) {
+                const diffY = Math.abs(e.touches[0].clientY - longPressStartY);
+                const diffX = Math.abs(e.touches[0].clientX - longPressStartX);
+                if (diffY > 10 || diffX > 10) {
                     clearTimeout(pressTimer);
                 }
             } else {
