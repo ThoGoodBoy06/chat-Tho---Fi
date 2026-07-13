@@ -1364,8 +1364,8 @@ INPUT AREA FOR CHAT (MESSENGER STYLE)
 .input-area {
     padding: 6px 12px 6px 12px;
     padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
-    background: var(--msg-receiver-bg);
-    border-top: 1px solid var(--border-color);
+    background: var(--chat-bg); /* Đồng bộ màu nền chat */
+    border-top: none; /* Loại bỏ đường viền phân tách khối */
     display: flex;
     align-items: center;
     gap: 8px;
@@ -1427,7 +1427,7 @@ INPUT AREA FOR CHAT (MESSENGER STYLE)
 
 .input-wrapper {
     flex: 1;
-    background: var(--bg-color);
+    background: var(--msg-receiver-bg); /* Làm bong bóng nhập liệu màu trắng nổi bật */
     border-radius: 20px;
     padding: 4px 12px;
     min-height: 36px;
@@ -1435,8 +1435,7 @@ INPUT AREA FOR CHAT (MESSENGER STYLE)
     display: flex;
     align-items: center;
     transition: all var(--transition-normal);
-    border: none;
-    /* Bỏ viền để thanh thoát như Messenger */
+    border: 1px solid var(--border-color); /* Thêm viền nhẹ mỏng tinh tế */
 }
 
 .input-wrapper:focus-within {
