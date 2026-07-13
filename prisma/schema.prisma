@@ -58,6 +58,7 @@ model Messages {
   isRead         Boolean?       @default(false)
   isEdited       Boolean?       @default(false)
   isPinned       Boolean?       @default(false)
+  isForwarded    Boolean?       @default(false)
   pinnedAt       DateTime?
   selfDestructDuration Int?
   expiresAt      DateTime?

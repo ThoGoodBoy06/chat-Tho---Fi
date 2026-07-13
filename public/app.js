@@ -2840,6 +2840,14 @@ function displayMessage(msg, targetContainer = null) {
             }
         }
 
+        // 🌟 Hiển thị nhãn chuyển tiếp nếu tin nhắn được chuyển tiếp
+        if (msg.isForwarded) {
+            const forwardedIndicator = document.createElement("div");
+            forwardedIndicator.className = "forwarded-indicator";
+            forwardedIndicator.innerHTML = '<i class="fas fa-share"></i> Chuyển tiếp';
+            messageContent.prepend(forwardedIndicator);
+        }
+
         // TẠO NÚT THẢ CẢM XÚC (Reaction)
         const reactBtn = document.createElement("div");
         reactBtn.className = "action-item react-btn";
@@ -2986,7 +2994,7 @@ function displayMessage(msg, targetContainer = null) {
             moreMenu.appendChild(recallOption);
 
             const deleteOption = document.createElement("div");
-            deleteOption.className = "menu-item";
+            deleteOption.className = "menu-item delete-action";
             deleteOption.innerText = "Xóa ở phía tôi";
             deleteOption.onclick = (e) => {
                 e.stopPropagation();
@@ -2998,7 +3006,7 @@ function displayMessage(msg, targetContainer = null) {
             moreMenu.appendChild(deleteOption);
         } else {
             const deleteOption = document.createElement("div");
-            deleteOption.className = "menu-item";
+            deleteOption.className = "menu-item delete-action";
             deleteOption.innerText = "Xóa ở phía tôi";
             deleteOption.onclick = (e) => {
                 e.stopPropagation();
@@ -3284,14 +3292,22 @@ function displayMessage(msg, targetContainer = null) {
         // updateReadReceiptsDOM() được gọi một lần duy nhất sau khi toàn bộ tin nhắn đã render xong
         // (trong startChat / reloadCurrentChat / socket receive_message). Không gọi ở đây để tránh flicker.
         
-        // CHỈ auto-scroll nếu người dùng đang ở gần cuối danh sách tin nhắn
-        // Nếu họ đang kéo lên xem tin cũ → KHÔNG scroll để không gây khó chịu
-        if (typeof window.smartScrollToBottom === "function") {
-            window.smartScrollToBottom();
-        } else if (typeof window.scrollToBottomSmooth === "function") {
-            window.scrollToBottomSmooth();
+        if (msg.senderId === myId) {
+            // Tin nhắn của chính mình gửi đi: cuộn xuống đáy ngay lập tức để có cảm giác phản hồi nhanh
+            if (typeof window.scrollToBottomInstant === "function") {
+                window.scrollToBottomInstant();
+            } else {
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }
         } else {
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            // Tin nhắn đối phương gửi tới: cuộn thông minh (chỉ cuộn nếu đang ở gần đáy)
+            if (typeof window.smartScrollToBottom === "function") {
+                window.smartScrollToBottom();
+            } else if (typeof window.scrollToBottomSmooth === "function") {
+                window.scrollToBottomSmooth();
+            } else {
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }
         }
     }
 }

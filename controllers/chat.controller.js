@@ -1384,6 +1384,7 @@ exports.forwardMessage = async (req, res) => {
                     senderId: userId,
                     content: originalMessage.content,
                     type: originalMessage.type,
+                    isForwarded: true, // 🌟 Đánh dấu là tin nhắn chuyển tiếp
                 },
                 include: { Users: { select: { id: true, fullName: true } } },
             });
