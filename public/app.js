@@ -201,6 +201,7 @@ let myId = "";
 let myName = "";
 let myUsername = "";
 let currentConversationId = "";
+let allConversations = []; // 🌟 Biến toàn cục chứa danh sách cuộc trò chuyện để chuyển tiếp
 let currentChatPartnerId = null;
 let socket = null;
 let typingTimeout = null;
@@ -919,6 +920,7 @@ function initizeChatSession(userData, userToken) {
 
     // Kết nối Socket.IO Real-time
     socket = io(SERVER_URL);
+    initSocketPinListeners(socket); // 🌟 Kích hoạt các socket listener cho ghim & tự hủy
     socket.on("connect", () => {
         console.log("⚡ Kết nối Socket thành công, đang xác thực user_connected: " + myId);
         socket.emit("user_connected", myId);
@@ -1542,6 +1544,24 @@ async function loadConversations() {
         const userList = document.getElementById("user-list");
         userList.innerHTML = "";
 
+        // 🌟 Lưu danh sách cuộc trò chuyện vào biến toàn cục phục vụ tính năng Chuyển tiếp (Forward)
+        allConversations = [];
+        if (data.data) {
+            data.data.forEach((item) => {
+                const conv = item.Conversations;
+                const otherMember = conv.ConversationMembers.find(m => m.userId !== myId);
+                if (otherMember) {
+                    const user = otherMember.Users;
+                    allConversations.push({
+                        id: conv.id,
+                        partnerId: user.id,
+                        partnerName: otherMember.nickname || user.fullName || "Người dùng",
+                        partnerAvatar: user.avatar ? formatUrl(user.avatar) : ""
+                    });
+                }
+            });
+        }
+
         if (!data.data || data.data.length === 0) {
             return (userList.innerHTML =
                 "<li style='color:#666; font-weight:normal; padding: 20px;'>Chưa có cuộc trò chuyện nào.<br><br>Hãy dùng ô tìm kiếm ở trên để tìm bạn bè theo Tên nhé!</li>");
@@ -1944,6 +1964,9 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
 
         // Gắn scroll listener cho infinite scroll ngược
         setupInfiniteScroll(messagesDiv);
+
+        // 🌟 Tải danh sách tin nhắn ghim của cuộc trò chuyện
+        loadPinnedMessages(currentConversationId);
     } catch (error) {
         alert("Lỗi khi mở phòng trò chuyện: " + error.message);
     }
@@ -8770,7 +8793,7 @@ function hidePinnedBar() {
 }
 
 // Event listeners cho pinned bar
-document.addEventListener("DOMContentLoaded", () => {
+const initPinnedBarEvents = () => {
     const prevBtn = document.getElementById("pinned-prev-btn");
     const nextBtn = document.getElementById("pinned-next-btn");
     const closeBtn = document.getElementById("pinned-close-btn");
@@ -8792,7 +8815,13 @@ document.addEventListener("DOMContentLoaded", () => {
         const pin = pinnedMessages[currentPinnedIndex];
         scrollToMessage(pin.id);
     };
-});
+};
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initPinnedBarEvents);
+} else {
+    initPinnedBarEvents();
+}
 
 function scrollToMessage(messageId) {
     const el = document.querySelector(`.message[data-message-id="${messageId}"]`);
@@ -8819,15 +8848,16 @@ async function pinMessage(messageId) {
     }
 }
 
-// Socket listeners cho pin
-if (typeof socket !== "undefined") {
-    socket.on("message_pinned", (data) => {
+// Socket listeners cho pin & tin nhắn tự hủy
+const initSocketPinListeners = (socketInstance) => {
+    if (!socketInstance) return;
+    socketInstance.on("message_pinned", (data) => {
         pinnedMessages.unshift(data);
         if (pinnedMessages.length > 3) pinnedMessages = pinnedMessages.slice(0, 3);
         currentPinnedIndex = 0;
         renderPinnedBar();
     });
-    socket.on("message_unpinned", (data) => {
+    socketInstance.on("message_unpinned", (data) => {
         pinnedMessages = pinnedMessages.filter((p) => p.messageId !== data.messageId);
         if (pinnedMessages.length === 0) {
             hidePinnedBar();
@@ -8836,12 +8866,12 @@ if (typeof socket !== "undefined") {
             renderPinnedBar();
         }
     });
-    socket.on("pin_error", (data) => {
+    socketInstance.on("pin_error", (data) => {
         alert(data.message);
     });
 
     // Socket listener cho tin nhắn tự hủy
-    socket.on("message_self_destructed", (data) => {
+    socketInstance.on("message_self_destructed", (data) => {
         const el = document.querySelector(`.message[data-message-id="${data.messageId}"]`);
         if (el) {
             el.classList.add("message-self-destructing");
@@ -8856,7 +8886,7 @@ if (typeof socket !== "undefined") {
             }
         }
     });
-}
+};
 
 
 // ═══════════════════════════════════════════════════════════════════
