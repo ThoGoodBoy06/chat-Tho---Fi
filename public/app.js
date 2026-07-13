@@ -8818,11 +8818,13 @@ function renderPinnedBar() {
 
     text.innerHTML = `<strong>${pin.senderName}:</strong> ${preview}`;
     bar.style.display = "flex";
+    document.body.classList.add("has-pinned-bar"); // 🌟 Báo để dịch khung chat xuống trên mobile
 }
 
 function hidePinnedBar() {
     const bar = document.getElementById("pinned-bar");
     if (bar) bar.style.display = "none";
+    document.body.classList.remove("has-pinned-bar"); // 🌟 Báo để dịch khung chat về bình thường trên mobile
 }
 
 // Event listeners cho pinned bar
@@ -8843,6 +8845,16 @@ const initPinnedBarEvents = () => {
         renderPinnedBar();
     };
     if (closeBtn) closeBtn.onclick = () => hidePinnedBar();
+    
+    // Nút bỏ ghim tin nhắn này (trash icon)
+    const unpinBtn = document.getElementById("pinned-unpin-btn");
+    if (unpinBtn) {
+        unpinBtn.onclick = () => {
+            if (pinnedMessages.length === 0) return;
+            const pin = pinnedMessages[currentPinnedIndex];
+            pinMessage(pin.id);
+        };
+    }
     if (barContent) barContent.onclick = () => {
         if (pinnedMessages.length === 0) return;
         const pin = pinnedMessages[currentPinnedIndex];

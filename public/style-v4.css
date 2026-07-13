@@ -8921,6 +8921,34 @@ body[data-theme="dark"] .scroll-to-bottom-btn:hover {
         color: #ef4444 !important;
         background: rgba(239, 68, 68, 0.15) !important;
     }
+
+    /* Định vị lại thanh ghim và giãn lùi khung chat xuống trên mobile */
+    .pinned-bar {
+        position: absolute !important;
+        top: calc(56px + env(safe-area-inset-top, 0px)) !important;
+        left: 0 !important;
+        width: 100% !important;
+        z-index: 999 !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+    }
+    
+    body.has-pinned-bar #messages {
+        padding-top: calc(56px + env(safe-area-inset-top, 0px) + 40px + 16px) !important;
+    }
+}
+
+/* Nút bỏ ghim trên thanh ghim tin nhắn */
+.pinned-unpin-btn {
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 4px;
+    color: var(--text-light);
+    font-size: 12px;
+    transition: background 0.15s, color 0.15s;
+}
+.pinned-unpin-btn:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
 }
 
 /* Chỉ thị tin nhắn chuyển tiếp */
