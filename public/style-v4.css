@@ -964,6 +964,32 @@ RIGHT WINDOW & CHAT MESSAGES
     margin-left: 12px;
 }
 
+/* Avatar hiển thị cạnh bong bóng chat của đối phương */
+.message-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    margin-right: 8px;
+    margin-bottom: 2px;
+    box-shadow: var(--shadow-sm);
+    transition: visibility 0.2s ease;
+}
+
+/* Gộp tin nhắn liên tiếp: giảm khoảng cách */
+.message.consecutive-message {
+    margin-top: -10px; /* Bù trừ khoảng cách gap 16px của flex container */
+}
+
+/* Điều chỉnh vị trí text/icon cho trạng thái đã gửi để trông gọn hơn */
+.sent-icon {
+    font-size: 11px;
+    color: var(--text-light);
+    opacity: 0.8;
+}
+
+
 .message-meta {
     font-size: 11px;
     color: var(--text-light);
@@ -2872,6 +2898,360 @@ body.call-active {
 
 
 /* ==========================================================================
+PINNED MESSAGES BAR
+========================================================================== */
+.pinned-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: var(--sidebar-bg);
+    border-bottom: 1px solid var(--border-color);
+    z-index: 99;
+    gap: 8px;
+    min-height: 40px;
+}
+.pinned-bar-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+}
+.pinned-bar-icon {
+    color: var(--primary-color);
+    font-size: 14px;
+    transform: rotate(45deg);
+}
+.pinned-bar-text {
+    font-size: 13px;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.pinned-bar-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.pinned-nav-btn, .pinned-close-btn {
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 4px;
+    color: var(--text-light);
+    font-size: 12px;
+    transition: background 0.15s, color 0.15s;
+}
+.pinned-nav-btn:hover, .pinned-close-btn:hover {
+    background: var(--hover-bg);
+    color: var(--primary-color);
+}
+
+/* ==========================================================================
+SEARCH BAR
+========================================================================== */
+.search-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: var(--sidebar-bg);
+    border-bottom: 1px solid var(--border-color);
+    z-index: 99;
+    gap: 8px;
+}
+.search-bar-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+}
+.search-bar-icon {
+    color: var(--text-light);
+    font-size: 14px;
+}
+.search-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 14px;
+    color: var(--text-main);
+    outline: none;
+    padding: 4px 0;
+}
+.search-input::placeholder {
+    color: var(--text-light);
+}
+.search-bar-nav {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.search-result-count {
+    font-size: 12px;
+    color: var(--text-light);
+    white-space: nowrap;
+}
+.search-nav-btn, .search-close-btn {
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 4px;
+    color: var(--text-light);
+    font-size: 12px;
+    transition: background 0.15s, color 0.15s;
+}
+.search-nav-btn:hover, .search-close-btn:hover {
+    background: var(--hover-bg);
+    color: var(--primary-color);
+}
+.message-search-highlight {
+    background: rgba(255, 235, 59, 0.5) !important;
+    border-radius: 4px;
+    padding: 1px 2px;
+}
+.message-search-active {
+    background: rgba(255, 152, 0, 0.6) !important;
+    box-shadow: 0 0 0 2px rgba(255, 152, 0, 0.3);
+}
+
+/* ==========================================================================
+FORWARD MODAL
+========================================================================== */
+.forward-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease;
+}
+.forward-modal {
+    background: var(--sidebar-bg);
+    border-radius: 16px;
+    width: 90%;
+    max-width: 420px;
+    max-height: 70vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: scaleIn 0.2s ease;
+}
+@keyframes scaleIn {
+    from { transform: scale(0.9); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+.forward-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+.forward-modal-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-main);
+    margin: 0;
+}
+.forward-modal-close {
+    cursor: pointer;
+    color: var(--text-light);
+    font-size: 16px;
+    padding: 4px;
+}
+.forward-modal-close:hover {
+    color: var(--text-main);
+}
+.forward-modal-search {
+    padding: 12px 20px;
+}
+.forward-modal-search input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--chat-bg);
+    color: var(--text-main);
+    font-size: 14px;
+    outline: none;
+    box-sizing: border-box;
+}
+.forward-modal-search input:focus {
+    border-color: var(--primary-color);
+}
+.forward-modal-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 8px;
+    max-height: 40vh;
+}
+.forward-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.forward-item:hover {
+    background: var(--hover-bg);
+}
+.forward-item.selected {
+    background: rgba(var(--primary-color-rgb, 0, 132, 255), 0.1);
+}
+.forward-item-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+.forward-item-name {
+    flex: 1;
+    font-size: 14px;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.forward-item-check {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s;
+}
+.forward-item.selected .forward-item-check {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+}
+.forward-item.selected .forward-item-check::after {
+    content: '\f00c';
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    font-size: 10px;
+    color: white;
+}
+.forward-modal-footer {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+}
+.forward-send-btn {
+    padding: 10px 24px;
+    border-radius: 10px;
+    border: none;
+    background: var(--primary-color);
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+.forward-send-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.forward-send-btn:not(:disabled):hover {
+    opacity: 0.85;
+}
+
+/* ==========================================================================
+LINK PREVIEW CARD
+========================================================================== */
+.link-preview-card {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 6px;
+    max-width: 280px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    background: var(--sidebar-bg);
+}
+.link-preview-card:hover {
+    opacity: 0.85;
+}
+.link-preview-image {
+    width: 100%;
+    height: 140px;
+    object-fit: cover;
+}
+.link-preview-info {
+    padding: 10px 12px;
+}
+.link-preview-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-main);
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-bottom: 4px;
+}
+.link-preview-desc {
+    font-size: 12px;
+    color: var(--text-light);
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.link-preview-site {
+    font-size: 11px;
+    color: var(--text-light);
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+/* ==========================================================================
+SELF-DESTRUCT COUNTDOWN
+========================================================================== */
+.self-destruct-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: #ff6b6b;
+    margin-top: 4px;
+    animation: pulse 1s ease-in-out infinite;
+}
+.self-destruct-badge i {
+    font-size: 10px;
+}
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+.message-self-destructing {
+    animation: fadeOutMessage 0.5s ease forwards;
+}
+@keyframes fadeOutMessage {
+    from { opacity: 1; transform: scale(1); }
+    to { opacity: 0; transform: scale(0.8); height: 0; margin: 0; padding: 0; overflow: hidden; }
+}
+
+
+/* ==========================================================================
 REPLY, FILE MESSAGING, & OPTIMISTIC SPINNER
 ========================================================================== */
 
@@ -3137,18 +3517,65 @@ REPLY, FILE MESSAGING, & OPTIMISTIC SPINNER
 }
 
 [id^="msg-optimistic-"] .message-content::after {
-    content: "";
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    margin-left: 6px;
-    border: 1.5px solid rgba(255, 255, 255, 0.6);
-    border-top-color: transparent;
-    border-radius: 50%;
-    animation: spin-sending 0.6s linear infinite;
-    vertical-align: middle;
-    position: relative;
-    top: -1px;
+    display: none !important;
+}
+
+/* CUSTOM REACTION PICKER (MESSENGER-LIKE PLUS MENU) */
+.custom-reaction-picker {
+    background: var(--msg-receiver-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 12px;
+    box-shadow: var(--shadow-lg);
+    z-index: 1000000;
+    max-width: 260px;
+    animation: popInBounce 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.custom-reaction-picker-content {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+}
+
+.custom-reaction-item {
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s ease;
+    padding: 4px;
+    border-radius: 8px;
+}
+
+.custom-reaction-item:hover {
+    transform: scale(1.25);
+    background: var(--hover-bg);
+}
+
+.reaction-palette span.reaction-plus-btn:hover {
+    transform: scale(1.3);
+}
+
+/* TRẠNG THÁI GỬI TIN NHẮN GIỐNG MESSENGER */
+.message-status.sending {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.sending-icon {
+    font-size: 11px;
+    color: var(--text-light);
+    opacity: 0.7;
+    animation: spin-sending 1s linear infinite;
+}
+
+.sent-icon {
+    font-size: 11px;
+    color: var(--theme-primary-start); /* Đồng bộ màu accent động theo chủ đề chat */
+    opacity: 0.95;
 }
 
 @keyframes spin-sending {

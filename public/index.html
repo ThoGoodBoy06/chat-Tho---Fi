@@ -271,10 +271,57 @@
                             </div>
                         </div>
                         <div class="chat-header-actions">
+                            <i class="fas fa-search icon-btn" onclick="toggleSearchBar()" title="Tìm kiếm tin nhắn"></i>
                             <i class="fas fa-phone-alt icon-btn" onclick="startCall('voice')"></i>
                             <i class="fas fa-video icon-btn" onclick="startCall('video')"></i>
                             <i class="fas fa-info-circle icon-btn" onclick="openChatInfoPanel()"
                                 title="Thông tin cuộc trò chuyện"></i>
+                        </div>
+                    </div>
+
+                    <!-- Thanh Ghim Tin Nhắn (Pinned Messages Bar) -->
+                    <div id="pinned-bar" class="pinned-bar" style="display: none;">
+                        <div class="pinned-bar-content">
+                            <i class="fas fa-thumbtack pinned-bar-icon"></i>
+                            <div class="pinned-bar-text" id="pinned-bar-text">Tin nhắn đã ghim</div>
+                        </div>
+                        <div class="pinned-bar-nav">
+                            <i class="fas fa-chevron-up pinned-nav-btn" id="pinned-prev-btn" title="Tin ghim trước"></i>
+                            <i class="fas fa-chevron-down pinned-nav-btn" id="pinned-next-btn" title="Tin ghim sau"></i>
+                            <i class="fas fa-times pinned-close-btn" id="pinned-close-btn" title="Đóng"></i>
+                        </div>
+                    </div>
+
+                    <!-- Thanh Tìm Kiếm Tin Nhắn (Search Bar) -->
+                    <div id="search-bar" class="search-bar" style="display: none;">
+                        <div class="search-bar-content">
+                            <i class="fas fa-search search-bar-icon"></i>
+                            <input type="text" id="search-input" class="search-input" placeholder="Tìm kiếm tin nhắn..." autocomplete="off" />
+                        </div>
+                        <div class="search-bar-nav">
+                            <span id="search-result-count" class="search-result-count"></span>
+                            <i class="fas fa-chevron-up search-nav-btn" id="search-prev-btn" title="Kết quả trước"></i>
+                            <i class="fas fa-chevron-down search-nav-btn" id="search-next-btn" title="Kết quả sau"></i>
+                            <i class="fas fa-times search-close-btn" id="search-close-btn" title="Đóng"></i>
+                        </div>
+                    </div>
+
+                    <!-- Modal Chuyển Tiếp Tin Nhắn (Forward Modal) -->
+                    <div id="forward-modal-overlay" class="forward-modal-overlay" style="display: none;" onclick="closeForwardModal()">
+                        <div class="forward-modal" onclick="event.stopPropagation()">
+                            <div class="forward-modal-header">
+                                <h3>Chuyển tiếp tin nhắn</h3>
+                                <i class="fas fa-times forward-modal-close" onclick="closeForwardModal()"></i>
+                            </div>
+                            <div class="forward-modal-search">
+                                <input type="text" id="forward-search-input" placeholder="Tìm cuộc trò chuyện..." oninput="filterForwardList()" />
+                            </div>
+                            <div class="forward-modal-list" id="forward-conversation-list">
+                                <!-- Danh sách cuộc hội thoại sẽ được render bằng JS -->
+                            </div>
+                            <div class="forward-modal-footer">
+                                <button class="forward-send-btn" id="forward-send-btn" onclick="executeForward()" disabled>Gửi</button>
+                            </div>
                         </div>
                     </div>
 

@@ -57,6 +57,10 @@ model Messages {
   isRecalled     Boolean?       @default(false)
   isRead         Boolean?       @default(false)
   isEdited       Boolean?       @default(false)
+  isPinned       Boolean?       @default(false)
+  pinnedAt       DateTime?
+  selfDestructDuration Int?
+  expiresAt      DateTime?
   reactions      String?
   deletedBy      String[]       @default([])
   createdAt      DateTime?      @default(now())

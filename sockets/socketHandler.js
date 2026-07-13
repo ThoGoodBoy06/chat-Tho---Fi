@@ -230,13 +230,54 @@ module.exports = (io) => {
           where: {
             conversationId,
             senderId: { not: readerId },
-            id: { in: unreadMessages.map((m) => m.id) }, // Cập nhật đích danh các ID vừa tìm được
+            id: { in: unreadMessages.map((m) => m.id) },
           },
           data: { isRead: true },
         });
         console.log(
           `✅ Đã lưu trạng thái isRead: true cho ${unreadMessages.length} tin nhắn vào DB!`,
         );
+
+        // ── TỰ HỦY TIN NHẮN ──
+        // Tìm các tin nhắn vừa đọc có selfDestructDuration → gán expiresAt
+        try {
+          const selfDestructMsgs = await prisma.messages.findMany({
+            where: {
+              id: { in: unreadMessages.map((m) => m.id) },
+              selfDestructDuration: { not: null },
+              expiresAt: null,
+            },
+            select: { id: true, selfDestructDuration: true, conversationId: true },
+          });
+
+          for (const sdMsg of selfDestructMsgs) {
+            const expiresAt = new Date(Date.now() + sdMsg.selfDestructDuration * 1000);
+            await prisma.messages.update({
+              where: { id: sdMsg.id },
+              data: { expiresAt },
+            });
+
+            // Đặt timer tự hủy sau khi hết giờ
+            setTimeout(async () => {
+              try {
+                await prisma.messages.update({
+                  where: { id: sdMsg.id },
+                  data: { isRecalled: true, content: "Tin nhắn tự hủy" },
+                });
+                // Phát socket event cho cả 2 phía
+                io.to(sdMsg.conversationId).emit("message_self_destructed", {
+                  messageId: sdMsg.id,
+                  conversationId: sdMsg.conversationId,
+                });
+                console.log(`💥 Tin nhắn tự hủy: ${sdMsg.id}`);
+              } catch (err) {
+                console.error("Lỗi tự hủy tin nhắn:", err);
+              }
+            }, sdMsg.selfDestructDuration * 1000);
+          }
+        } catch (sdError) {
+          console.error("Lỗi xử lý tin nhắn tự hủy:", sdError);
+        }
       } catch (error) {
         console.error("Lỗi cập nhật trạng thái đã xem:", error);
       }
@@ -549,6 +590,56 @@ module.exports = (io) => {
         });
       } catch (error) {
         console.error("Lỗi khi từ chối lời mời:", error);
+      }
+    });
+
+    // ══════════════════════════════════════════════════════
+    // 14. GHIM TIN NHẮN QUA SOCKET (Pin/Unpin Message)
+    // ══════════════════════════════════════════════════════
+    socket.on("pin_message", async ({ messageId, conversationId }) => {
+      try {
+        const userId = socket.userId;
+        if (!messageId || !conversationId || !userId) return;
+
+        const message = await prisma.messages.findUnique({ where: { id: messageId } });
+        if (!message) return;
+
+        if (message.isPinned) {
+          // Bỏ ghim
+          await prisma.messages.update({
+            where: { id: messageId },
+            data: { isPinned: false, pinnedAt: null },
+          });
+          io.to(conversationId).emit("message_unpinned", { messageId, conversationId });
+          console.log(`📌 Bỏ ghim tin nhắn: ${messageId}`);
+        } else {
+          // Kiểm tra tối đa 3 tin ghim
+          const pinnedCount = await prisma.messages.count({
+            where: { conversationId, isPinned: true },
+          });
+          if (pinnedCount >= 3) {
+            socket.emit("pin_error", { message: "Chỉ được ghim tối đa 3 tin nhắn." });
+            return;
+          }
+
+          const updated = await prisma.messages.update({
+            where: { id: messageId },
+            data: { isPinned: true, pinnedAt: new Date() },
+            include: { Users: { select: { id: true, fullName: true } } },
+          });
+
+          io.to(conversationId).emit("message_pinned", {
+            messageId,
+            conversationId,
+            content: updated.content,
+            type: updated.type,
+            senderName: updated.Users ? updated.Users.fullName : "Người dùng",
+            pinnedAt: updated.pinnedAt,
+          });
+          console.log(`📌 Ghim tin nhắn: ${messageId}`);
+        }
+      } catch (error) {
+        console.error("Lỗi khi ghim/bỏ ghim tin nhắn:", error);
       }
     });
   });

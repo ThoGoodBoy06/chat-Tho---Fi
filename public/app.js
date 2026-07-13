@@ -518,8 +518,9 @@ function renderSentStatus(statusEl) {
     statusEl.classList.add("unread");
 
     const icon = document.createElement("i");
-    icon.className = "fas fa-check-circle sent-icon";
-    statusEl.append(icon, document.createTextNode(" Đã gửi"));
+    icon.className = "far fa-check-circle sent-icon";
+    statusEl.append(icon);
+    statusEl.title = "Đã gửi";
 }
 
 function getMessageStatus(messageEl) {
@@ -1022,6 +1023,7 @@ function initizeChatSession(userData, userToken) {
         if (isCurrentChat) {
             // 1. Render tin nhắn ngay lập tức bằng tốc độ của Socket
             displayMessage(msg);
+            triggerWordEffects(msg.content);
 
             // 2. Cập nhật trạng thái "Đã gửi" sau khi render
             updateReadReceiptsDOM();
@@ -2526,6 +2528,37 @@ function displayMessage(msg, targetContainer = null) {
     messageElement.dataset.senderId = msg.senderId || "";
     messageElement.dataset.isRead = msg.isRead ? "true" : "false";
 
+    // 🌟 Quản lý tin nhắn liên tiếp: Gộp thời gian và nhóm bong bóng chat
+    messageElement.dataset.timestamp = msg.createdAt ? new Date(msg.createdAt).getTime() : Date.now();
+
+    const parentContainer = targetContainer || messagesDiv;
+    // Tìm tin nhắn thực sự gần nhất (bỏ qua typing indicator và tin nhắn hệ thống)
+    const messageElements = parentContainer ? parentContainer.querySelectorAll(".message:not(.system-message)") : [];
+    const lastMessageEl = messageElements.length > 0 ? messageElements[messageElements.length - 1] : null;
+
+    let isConsecutive = false;
+    if (lastMessageEl && lastMessageEl.dataset.senderId === msg.senderId) {
+        const lastMsgTime = parseInt(lastMessageEl.dataset.timestamp || "0");
+        const currentMsgTime = msg.createdAt ? new Date(msg.createdAt).getTime() : Date.now();
+        if (lastMsgTime && Math.abs(currentMsgTime - lastMsgTime) < 300000) { // 5 phút
+            isConsecutive = true;
+        }
+    }
+
+    if (isConsecutive) {
+        messageElement.classList.add("consecutive-message");
+        if (lastMessageEl) {
+            const prevAvatar = lastMessageEl.querySelector(".message-avatar");
+            if (prevAvatar) {
+                prevAvatar.style.visibility = "hidden"; // Ẩn avatar trước đó để chỉ hiện ở tin nhắn dưới cùng của nhóm
+            }
+            const prevMeta = lastMessageEl.querySelector(".message-meta");
+            if (prevMeta) {
+                prevMeta.style.display = "none"; // Ẩn timestamp cũ, chỉ hiển thị dưới cùng của nhóm liên tiếp
+            }
+        }
+    }
+
     // Hiển thị Tin nhắn hệ thống (System message như thông báo đổi chủ đề)
     if (msg.type === "system") {
         messageElement.className = "message system-message";
@@ -2591,6 +2624,8 @@ function displayMessage(msg, targetContainer = null) {
         return;
     }
 
+    // 🌟 Ẩn tên người gửi trong chat 1-1 để tránh lặp lại giống Zalo/Messenger
+    /*
     if (msg.senderId !== myId && msg.Users) {
         const senderName = document.createElement("div");
         senderName.className = "sender-name";
@@ -2598,9 +2633,23 @@ function displayMessage(msg, targetContainer = null) {
         senderName.innerText = (currentNicknames && currentNicknames[msg.senderId]) || msg.Users.fullName;
         messageElement.appendChild(senderName);
     }
+    */
 
     const messageBody = document.createElement("div");
     messageBody.className = "message-body";
+
+    // 🌟 Thêm ảnh đại diện của đối phương cạnh bong bóng chat nhận được (giống Messenger)
+    if (msg.senderId !== myId) {
+        const avatarImg = document.createElement("img");
+        avatarImg.className = "message-avatar";
+        const partnerAvatarUrl = getPartnerAvatar() || "https://ui-avatars.com/api/?name=User&background=random";
+        avatarImg.src = partnerAvatarUrl;
+        avatarImg.alt = "Avatar";
+        avatarImg.onerror = function() {
+            this.src = "https://ui-avatars.com/api/?name=User&background=random";
+        };
+        messageBody.appendChild(avatarImg);
+    }
     const messageContent = document.createElement("div");
     messageContent.className = "message-content";
 
@@ -2696,6 +2745,16 @@ function displayMessage(msg, targetContainer = null) {
                 editedLabel.style.fontStyle = "italic";
                 messageContent.appendChild(editedLabel);
             }
+
+            // Click vào nội dung tin nhắn chữ để ẩn/hiện thời gian (giống Messenger)
+            messageContent.onclick = (e) => {
+                e.stopPropagation();
+                const meta = messageElement.querySelector(".message-meta");
+                if (meta) {
+                    const isHidden = window.getComputedStyle(meta).display === "none";
+                    meta.style.display = isHidden ? "flex" : "none";
+                }
+            };
         }
 
         // Nâng cấp: Hiển thị tin nhắn trích dẫn (Replied Message Preview)
@@ -2792,6 +2851,29 @@ function displayMessage(msg, targetContainer = null) {
             emojiSpan.addEventListener("touchend", handleReact, { passive: false });
             reactionPalette.appendChild(emojiSpan);
         });
+
+        // ➕ Nút cộng để chọn các emoji khác giống Messenger
+        const plusSpan = document.createElement("span");
+        plusSpan.innerText = "➕";
+        plusSpan.style.cursor = "pointer";
+        plusSpan.style.fontSize = "13px";
+        plusSpan.style.display = "inline-flex";
+        plusSpan.style.alignItems = "center";
+        plusSpan.style.justifyContent = "center";
+        plusSpan.style.transition = "transform 0.15s";
+        plusSpan.className = "reaction-plus-btn";
+        
+        const handlePlusReact = (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            const currentMsgId = messageElement.dataset.messageId;
+            openCustomReactionPicker(currentMsgId, e.clientX, e.clientY);
+            reactionPalette.classList.remove("show");
+        };
+        plusSpan.onclick = handlePlusReact;
+        plusSpan.addEventListener("touchend", handlePlusReact, { passive: false });
+        reactionPalette.appendChild(plusSpan);
+
         reactBtn.appendChild(reactionPalette);
         reactBtn.onclick = (e) => {
             e.stopPropagation();
@@ -2834,6 +2916,32 @@ function displayMessage(msg, targetContainer = null) {
                 hideMobileOverlay();
             };
             moreMenu.appendChild(copyOption);
+
+            // Ghim tin nhắn
+            const pinOption = document.createElement("div");
+            pinOption.className = "menu-item pin-action";
+            pinOption.innerText = msg.isPinned ? "Bỏ ghim" : "Ghim tin nhắn";
+            pinOption.onclick = (e) => {
+                e.stopPropagation();
+                const currentMsgId = messageElement.dataset.messageId;
+                pinMessage(currentMsgId);
+                moreMenu.classList.remove("show");
+                hideMobileOverlay();
+            };
+            moreMenu.appendChild(pinOption);
+
+            // Chuyển tiếp tin nhắn
+            const forwardOption = document.createElement("div");
+            forwardOption.className = "menu-item forward-action";
+            forwardOption.innerText = "Chuyển tiếp";
+            forwardOption.onclick = (e) => {
+                e.stopPropagation();
+                const currentMsgId = messageElement.dataset.messageId;
+                openForwardModal(currentMsgId);
+                moreMenu.classList.remove("show");
+                hideMobileOverlay();
+            };
+            moreMenu.appendChild(forwardOption);
         }
 
         if (msg.senderId === myId) {
@@ -3102,10 +3210,15 @@ function displayMessage(msg, targetContainer = null) {
     timeElement.innerText = `${hours}:${minutes}`;
     metaElement.appendChild(timeElement);
 
-    // Trạng thái "Đã gửi" chỉ dành cho tin nhắn của bản thân
+    // Trạng thái "Đang gửi" hoặc "Đã gửi" chỉ dành cho tin nhắn của bản thân
     if (msg.senderId === myId) {
         const statusElement = document.createElement("span");
         statusElement.className = "message-status";
+        if (msg.id.toString().startsWith("optimistic-")) {
+            statusElement.classList.add("sending");
+            statusElement.innerHTML = '<i class="far fa-circle sending-icon"></i>';
+            statusElement.title = "Đang gửi...";
+        }
         metaElement.appendChild(statusElement);
     }
 
@@ -3195,6 +3308,7 @@ function sendMessage(imageContent = null) {
     };
     currentChatMessages.push(optimisticMsg);
     displayMessage(optimisticMsg);
+    triggerWordEffects(content);
     ChatSounds.playSend();
     updateChatListUI(optimisticMsg, true);
 
@@ -3223,6 +3337,8 @@ function sendMessage(imageContent = null) {
                 }
                 const idx = currentChatMessages.findIndex(m => m.id === optimisticId);
                 if (idx !== -1) currentChatMessages[idx] = data.data;
+                // Cập nhật ngay trạng thái Đã gửi sau khi merge thành công
+                updateReadReceiptsDOM();
             } else {
                 alert("Server từ chối gửi tin nhắn: " + data.message);
                 const optimisticEl = document.getElementById(`msg-${optimisticId}`);
@@ -8578,3 +8694,578 @@ if (document.readyState === "loading") {
 } else {
     hideSplashScreen();
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// TÍNH NĂNG MỚI: GHIM TIN NHẮN (Pin Messages)
+// ═══════════════════════════════════════════════════════════════════
+
+let pinnedMessages = [];
+let currentPinnedIndex = 0;
+
+async function loadPinnedMessages(conversationId) {
+    try {
+        const res = await fetch(`/api/chat/${conversationId}/pins`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (data.success && data.data.length > 0) {
+            pinnedMessages = data.data;
+            currentPinnedIndex = 0;
+            renderPinnedBar();
+        } else {
+            pinnedMessages = [];
+            hidePinnedBar();
+        }
+    } catch (err) {
+        console.error("Lỗi load pinned messages:", err);
+    }
+}
+
+function renderPinnedBar() {
+    const bar = document.getElementById("pinned-bar");
+    const text = document.getElementById("pinned-bar-text");
+    if (!bar || !text || pinnedMessages.length === 0) return;
+
+    const pin = pinnedMessages[currentPinnedIndex];
+    let preview = pin.content || "";
+    if (pin.type === "image") preview = "[Hình ảnh]";
+    else if (pin.type === "audio") preview = "[Tin nhắn thoại]";
+    else if (pin.type === "file") preview = "[Tệp tin]";
+    if (preview.length > 50) preview = preview.substring(0, 50) + "...";
+
+    text.innerHTML = `<strong>${pin.senderName}:</strong> ${preview}`;
+    bar.style.display = "flex";
+}
+
+function hidePinnedBar() {
+    const bar = document.getElementById("pinned-bar");
+    if (bar) bar.style.display = "none";
+}
+
+// Event listeners cho pinned bar
+document.addEventListener("DOMContentLoaded", () => {
+    const prevBtn = document.getElementById("pinned-prev-btn");
+    const nextBtn = document.getElementById("pinned-next-btn");
+    const closeBtn = document.getElementById("pinned-close-btn");
+    const barContent = document.querySelector(".pinned-bar-content");
+
+    if (prevBtn) prevBtn.onclick = () => {
+        if (pinnedMessages.length === 0) return;
+        currentPinnedIndex = (currentPinnedIndex - 1 + pinnedMessages.length) % pinnedMessages.length;
+        renderPinnedBar();
+    };
+    if (nextBtn) nextBtn.onclick = () => {
+        if (pinnedMessages.length === 0) return;
+        currentPinnedIndex = (currentPinnedIndex + 1) % pinnedMessages.length;
+        renderPinnedBar();
+    };
+    if (closeBtn) closeBtn.onclick = () => hidePinnedBar();
+    if (barContent) barContent.onclick = () => {
+        if (pinnedMessages.length === 0) return;
+        const pin = pinnedMessages[currentPinnedIndex];
+        scrollToMessage(pin.id);
+    };
+});
+
+function scrollToMessage(messageId) {
+    const el = document.querySelector(`.message[data-message-id="${messageId}"]`);
+    if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.style.transition = "background 0.3s";
+        el.style.background = "rgba(255, 235, 59, 0.3)";
+        setTimeout(() => { el.style.background = ""; }, 2000);
+    }
+}
+
+async function pinMessage(messageId) {
+    try {
+        const res = await fetch(`/api/chat/messages/${messageId}/pin`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        });
+        const data = await res.json();
+        if (!data.success) {
+            alert(data.message || "Lỗi khi ghim tin nhắn");
+        }
+    } catch (err) {
+        console.error("Lỗi ghim tin nhắn:", err);
+    }
+}
+
+// Socket listeners cho pin
+if (typeof socket !== "undefined") {
+    socket.on("message_pinned", (data) => {
+        pinnedMessages.unshift(data);
+        if (pinnedMessages.length > 3) pinnedMessages = pinnedMessages.slice(0, 3);
+        currentPinnedIndex = 0;
+        renderPinnedBar();
+    });
+    socket.on("message_unpinned", (data) => {
+        pinnedMessages = pinnedMessages.filter((p) => p.messageId !== data.messageId);
+        if (pinnedMessages.length === 0) {
+            hidePinnedBar();
+        } else {
+            currentPinnedIndex = 0;
+            renderPinnedBar();
+        }
+    });
+    socket.on("pin_error", (data) => {
+        alert(data.message);
+    });
+
+    // Socket listener cho tin nhắn tự hủy
+    socket.on("message_self_destructed", (data) => {
+        const el = document.querySelector(`.message[data-message-id="${data.messageId}"]`);
+        if (el) {
+            el.classList.add("message-self-destructing");
+            setTimeout(() => el.remove(), 600);
+        }
+        // Cập nhật lại mảng tin nhắn
+        if (typeof currentChatMessages !== "undefined") {
+            const idx = currentChatMessages.findIndex((m) => m.id === data.messageId);
+            if (idx !== -1) {
+                currentChatMessages[idx].isRecalled = true;
+                currentChatMessages[idx].content = "Tin nhắn tự hủy";
+            }
+        }
+    });
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// TÍNH NĂNG MỚI: TÌM KIẾM TIN NHẮN (Search Messages)
+// ═══════════════════════════════════════════════════════════════════
+
+let searchResults = [];
+let currentSearchIndex = -1;
+let searchDebounceTimer = null;
+
+function toggleSearchBar() {
+    const bar = document.getElementById("search-bar");
+    if (!bar) return;
+    if (bar.style.display === "none" || !bar.style.display) {
+        bar.style.display = "flex";
+        document.getElementById("search-input").focus();
+    } else {
+        closeSearchBar();
+    }
+}
+
+function closeSearchBar() {
+    const bar = document.getElementById("search-bar");
+    if (bar) bar.style.display = "none";
+    document.getElementById("search-input").value = "";
+    document.getElementById("search-result-count").textContent = "";
+    clearSearchHighlights();
+    searchResults = [];
+    currentSearchIndex = -1;
+}
+
+function clearSearchHighlights() {
+    document.querySelectorAll(".message-search-highlight, .message-search-active").forEach((el) => {
+        el.classList.remove("message-search-highlight", "message-search-active");
+    });
+}
+
+async function performSearch(query) {
+    if (!query.trim() || !currentConversationId) return;
+
+    try {
+        const res = await fetch(`/api/chat/${currentConversationId}/search?q=${encodeURIComponent(query)}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (data.success) {
+            searchResults = data.data;
+            currentSearchIndex = searchResults.length > 0 ? 0 : -1;
+            document.getElementById("search-result-count").textContent =
+                searchResults.length > 0 ? `1/${searchResults.length}` : "0 kết quả";
+
+            clearSearchHighlights();
+            // Highlight tất cả kết quả
+            searchResults.forEach((r) => {
+                const el = document.querySelector(`.message[data-message-id="${r.id}"]`);
+                if (el) el.classList.add("message-search-highlight");
+            });
+            // Cuộn đến kết quả đầu tiên
+            if (currentSearchIndex >= 0) {
+                navigateSearchResult(currentSearchIndex);
+            }
+        }
+    } catch (err) {
+        console.error("Lỗi tìm kiếm tin nhắn:", err);
+    }
+}
+
+function navigateSearchResult(index) {
+    if (searchResults.length === 0 || index < 0 || index >= searchResults.length) return;
+
+    // Bỏ active cũ
+    document.querySelectorAll(".message-search-active").forEach((el) => {
+        el.classList.remove("message-search-active");
+    });
+
+    const result = searchResults[index];
+    const el = document.querySelector(`.message[data-message-id="${result.id}"]`);
+    if (el) {
+        el.classList.add("message-search-active");
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    document.getElementById("search-result-count").textContent = `${index + 1}/${searchResults.length}`;
+}
+
+// Event listeners cho search bar
+document.addEventListener("DOMContentLoaded", () => {
+    const searchInput = document.getElementById("search-input");
+    const prevBtn = document.getElementById("search-prev-btn");
+    const nextBtn = document.getElementById("search-next-btn");
+    const closeBtn = document.getElementById("search-close-btn");
+
+    if (searchInput) {
+        searchInput.addEventListener("input", () => {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(() => {
+                performSearch(searchInput.value);
+            }, 400);
+        });
+        searchInput.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") closeSearchBar();
+            if (e.key === "Enter") {
+                e.preventDefault();
+                if (searchResults.length > 0) {
+                    currentSearchIndex = (currentSearchIndex + 1) % searchResults.length;
+                    navigateSearchResult(currentSearchIndex);
+                }
+            }
+        });
+    }
+    if (prevBtn) prevBtn.onclick = () => {
+        if (searchResults.length === 0) return;
+        currentSearchIndex = (currentSearchIndex - 1 + searchResults.length) % searchResults.length;
+        navigateSearchResult(currentSearchIndex);
+    };
+    if (nextBtn) nextBtn.onclick = () => {
+        if (searchResults.length === 0) return;
+        currentSearchIndex = (currentSearchIndex + 1) % searchResults.length;
+        navigateSearchResult(currentSearchIndex);
+    };
+    if (closeBtn) closeBtn.onclick = closeSearchBar;
+});
+
+
+// ═══════════════════════════════════════════════════════════════════
+// TÍNH NĂNG MỚI: CHUYỂN TIẾP TIN NHẮN (Forward Messages)
+// ═══════════════════════════════════════════════════════════════════
+
+let forwardMessageId = null;
+let selectedForwardConversations = [];
+
+function openForwardModal(messageId) {
+    forwardMessageId = messageId;
+    selectedForwardConversations = [];
+    const overlay = document.getElementById("forward-modal-overlay");
+    if (overlay) overlay.style.display = "flex";
+    renderForwardList();
+    updateForwardSendBtn();
+}
+
+function closeForwardModal() {
+    const overlay = document.getElementById("forward-modal-overlay");
+    if (overlay) overlay.style.display = "none";
+    forwardMessageId = null;
+    selectedForwardConversations = [];
+}
+
+function renderForwardList() {
+    const list = document.getElementById("forward-conversation-list");
+    if (!list) return;
+    list.innerHTML = "";
+
+    // Dùng danh sách conversation đã có trong bộ nhớ
+    if (typeof allConversations === "undefined" || allConversations.length === 0) {
+        list.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-light);">Không có cuộc trò chuyện nào</div>';
+        return;
+    }
+
+    allConversations.forEach((conv) => {
+        const item = document.createElement("div");
+        item.className = "forward-item";
+        item.dataset.convId = conv.id;
+
+        const avatar = document.createElement("img");
+        avatar.className = "forward-item-avatar";
+        avatar.src = conv.partnerAvatar || "/api/users/" + conv.partnerId + "/avatar";
+        avatar.alt = conv.partnerName || "Avatar";
+
+        const name = document.createElement("div");
+        name.className = "forward-item-name";
+        name.textContent = conv.partnerName || conv.name || "Cuộc trò chuyện";
+
+        const check = document.createElement("div");
+        check.className = "forward-item-check";
+
+        item.appendChild(avatar);
+        item.appendChild(name);
+        item.appendChild(check);
+
+        item.onclick = () => {
+            item.classList.toggle("selected");
+            const convId = item.dataset.convId;
+            if (item.classList.contains("selected")) {
+                selectedForwardConversations.push(convId);
+            } else {
+                selectedForwardConversations = selectedForwardConversations.filter((id) => id !== convId);
+            }
+            updateForwardSendBtn();
+        };
+
+        list.appendChild(item);
+    });
+}
+
+function filterForwardList() {
+    const query = document.getElementById("forward-search-input").value.toLowerCase();
+    const items = document.querySelectorAll(".forward-item");
+    items.forEach((item) => {
+        const name = item.querySelector(".forward-item-name").textContent.toLowerCase();
+        item.style.display = name.includes(query) ? "flex" : "none";
+    });
+}
+
+function updateForwardSendBtn() {
+    const btn = document.getElementById("forward-send-btn");
+    if (btn) {
+        btn.disabled = selectedForwardConversations.length === 0;
+        btn.textContent = selectedForwardConversations.length > 0
+            ? `Gửi (${selectedForwardConversations.length})`
+            : "Gửi";
+    }
+}
+
+async function executeForward() {
+    if (!forwardMessageId || selectedForwardConversations.length === 0) return;
+
+    try {
+        const res = await fetch("/api/chat/messages/forward", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ messageId: forwardMessageId, conversationIds: selectedForwardConversations }),
+        });
+        const data = await res.json();
+        if (data.success) {
+            closeForwardModal();
+        } else {
+            alert(data.message || "Lỗi chuyển tiếp tin nhắn");
+        }
+    } catch (err) {
+        console.error("Lỗi chuyển tiếp:", err);
+        alert("Lỗi kết nối khi chuyển tiếp tin nhắn");
+    }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// TÍNH NĂNG MỚI: LINK PREVIEW (Xem Trước Liên Kết)
+// ═══════════════════════════════════════════════════════════════════
+
+const linkPreviewCache = {};
+
+function extractFirstURL(text) {
+    const urlRegex = /(https?:\/\/[^\s<>"{}|\\^`\[\]]+)/gi;
+    const match = text.match(urlRegex);
+    return match ? match[0] : null;
+}
+
+async function fetchLinkPreview(url) {
+    if (linkPreviewCache[url]) return linkPreviewCache[url];
+
+    try {
+        const res = await fetch(`/api/chat/link-preview?url=${encodeURIComponent(url)}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (data.success && data.data) {
+            linkPreviewCache[url] = data.data;
+            return data.data;
+        }
+    } catch (err) {
+        console.error("Lỗi fetch link preview:", err);
+    }
+    return null;
+}
+
+function createLinkPreviewCard(preview) {
+    const card = document.createElement("a");
+    card.className = "link-preview-card";
+    card.href = preview.url;
+    card.target = "_blank";
+    card.rel = "noopener noreferrer";
+
+    let html = "";
+    if (preview.image) {
+        html += `<img class="link-preview-image" src="${preview.image}" alt="${preview.title || ''}" onerror="this.style.display='none'" />`;
+    }
+    html += `<div class="link-preview-info">`;
+    if (preview.title) html += `<div class="link-preview-title">${preview.title}</div>`;
+    if (preview.description) html += `<div class="link-preview-desc">${preview.description}</div>`;
+    if (preview.siteName) html += `<div class="link-preview-site">${preview.siteName}</div>`;
+    html += `</div>`;
+
+    card.innerHTML = html;
+    return card;
+}
+
+// Tự động thêm link preview khi render tin nhắn text có URL
+async function attachLinkPreview(messageElement, textContent) {
+    const url = extractFirstURL(textContent);
+    if (!url) return;
+
+    const preview = await fetchLinkPreview(url);
+    if (!preview || (!preview.title && !preview.description)) return;
+
+    const bubble = messageElement.querySelector(".message-content");
+    if (bubble && !bubble.querySelector(".link-preview-card")) {
+        const card = createLinkPreviewCard(preview);
+        bubble.appendChild(card);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TÍNH NĂNG MESSENGER: CUSTOM REACTION PICKER & WORD EFFECTS
+// ═══════════════════════════════════════════════════════════════════
+
+function openCustomReactionPicker(messageId, clientX, clientY) {
+    const oldPicker = document.getElementById("custom-reaction-picker");
+    if (oldPicker) oldPicker.remove();
+
+    const picker = document.createElement("div");
+    picker.id = "custom-reaction-picker";
+    picker.className = "custom-reaction-picker";
+
+    const popularEmojis = [
+        "👍", "❤️", "😂", "😮", "😢", "😡", 
+        "🔥", "🎉", "👏", "🙌", "🤔", "💯", 
+        "👀", "🚀", "💡", "🤫", "💩", "🤡", 
+        "🙏", "✨", "🤝", "🥳", "💔", "✔️"
+    ];
+
+    const pickerContent = document.createElement("div");
+    pickerContent.className = "custom-reaction-picker-content";
+
+    popularEmojis.forEach((emoji) => {
+        const span = document.createElement("span");
+        span.className = "custom-reaction-item";
+        span.innerText = emoji;
+        span.onclick = (e) => {
+            e.stopPropagation();
+            reactToMessage(messageId, emoji);
+            picker.remove();
+            hideMobileOverlay();
+        };
+        pickerContent.appendChild(span);
+    });
+
+    picker.appendChild(pickerContent);
+    document.body.appendChild(picker);
+
+    if (window.innerWidth <= 768) {
+        picker.style.left = "50%";
+        picker.style.top = "50%";
+        picker.style.transform = "translate(-50%, -50%)";
+        picker.style.position = "fixed";
+    } else {
+        const pickerWidth = 240;
+        const pickerHeight = 160;
+        let left = clientX - pickerWidth / 2;
+        let top = clientY - pickerHeight - 10;
+        if (left < 10) left = 10;
+        if (left + pickerWidth > window.innerWidth) left = window.innerWidth - pickerWidth - 10;
+        if (top < 10) top = clientY + 10;
+        picker.style.left = `${left}px`;
+        picker.style.top = `${top}px`;
+        picker.style.position = "absolute";
+    }
+
+    const closeHandler = () => {
+        picker.remove();
+        document.removeEventListener("click", closeHandler);
+    };
+    setTimeout(() => {
+        document.addEventListener("click", closeHandler);
+    }, 50);
+}
+
+function triggerWordEffects(text) {
+    if (!text) return;
+    const lower = text.toLowerCase();
+    
+    let emoji = "";
+    if (lower.includes("yêu") || lower.includes("love") || lower.includes("thương") || lower.includes("tim")) {
+        emoji = "❤️";
+    } else if (lower.includes("chúc mừng") || lower.includes("sinh nhật") || lower.includes("birthday") || lower.includes("congrat")) {
+        emoji = "🎉";
+    } else if (lower.includes("haha") || lower.includes("cười") || lower.includes("lmao") || lower.includes("lol")) {
+        emoji = "😂";
+    }
+
+    if (emoji) {
+        createFullScreenEmojiShower(emoji);
+    }
+}
+
+function createFullScreenEmojiShower(emoji) {
+    const container = document.createElement("div");
+    container.style.position = "fixed";
+    container.style.top = "0";
+    container.style.left = "0";
+    container.style.width = "100vw";
+    container.style.height = "100vh";
+    container.style.pointerEvents = "none";
+    container.style.zIndex = "9999999";
+    document.body.appendChild(container);
+
+    const count = 30;
+    const isLove = emoji === "❤️";
+
+    for (let i = 0; i < count; i++) {
+        const el = document.createElement("div");
+        el.innerText = emoji;
+        el.style.position = "absolute";
+        el.style.fontSize = `${Math.random() * 24 + 16}px`;
+        el.style.userSelect = "none";
+        
+        const startLeft = Math.random() * 100;
+        el.style.left = `${startLeft}vw`;
+
+        if (isLove) {
+            el.style.bottom = "-50px";
+            const duration = Math.random() * 2 + 2;
+            const delay = Math.random() * 1.5;
+            el.style.transition = `transform ${duration}s ease-out, opacity ${duration}s ease-out`;
+            el.style.opacity = "1";
+            container.appendChild(el);
+
+            setTimeout(() => {
+                el.style.transform = `translateY(-110vh) translateX(${(Math.random() - 0.5) * 200}px) rotate(${Math.random() * 360}deg)`;
+                el.style.opacity = "0";
+            }, delay * 1000 + 50);
+        } else {
+            el.style.top = "-50px";
+            const duration = Math.random() * 2 + 2.5;
+            const delay = Math.random() * 1.5;
+            el.style.transition = `transform ${duration}s linear, opacity ${duration}s linear`;
+            el.style.opacity = "1";
+            container.appendChild(el);
+
+            setTimeout(() => {
+                el.style.transform = `translateY(110vh) translateX(${(Math.random() - 0.5) * 200}px) rotate(${Math.random() * 360}deg)`;
+                el.style.opacity = "0";
+            }, delay * 1000 + 50);
+        }
+    }
+
+    setTimeout(() => {
+        container.remove();
+    }, 6000);
+}

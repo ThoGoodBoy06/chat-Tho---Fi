@@ -20,4 +20,11 @@ router.post("/messages/:messageId/react", chatController.reactToMessage);
 router.patch("/messages/:messageId/edit", chatController.editMessage);
 router.delete("/messages/:messageId/me", chatController.deleteMessageForMe);
 
+// API cho tính năng Ghim, Tìm kiếm, Chuyển tiếp, Link Preview
+router.post("/messages/:messageId/pin", chatController.pinMessage);
+router.get("/:conversationId/pins", chatController.getPinnedMessages);
+router.get("/:conversationId/search", chatController.searchMessages);
+router.post("/messages/forward", chatController.forwardMessage);
+router.get("/link-preview", chatController.getLinkPreview);
+
 module.exports = router;

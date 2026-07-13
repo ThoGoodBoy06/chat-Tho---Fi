@@ -1209,3 +1209,269 @@ exports.deleteMessageForMe = async (req, res) => {
         });
     }
 };
+
+// ═══════════════════════════════════════════════════════
+// 9. GHIM TIN NHẮN (Pin / Unpin Message)
+// Tối đa 3 tin nhắn ghim trong mỗi phòng chat
+// ═══════════════════════════════════════════════════════
+
+exports.pinMessage = async (req, res) => {
+    try {
+        const { messageId } = req.params;
+        const userId = req.user ? req.user.id : req.userId;
+
+        const message = await prisma.messages.findUnique({ where: { id: messageId } });
+        if (!message) {
+            return res.status(404).json({ success: false, message: "Không tìm thấy tin nhắn." });
+        }
+
+        // Nếu tin nhắn đang ghim → bỏ ghim
+        if (message.isPinned) {
+            await prisma.messages.update({
+                where: { id: messageId },
+                data: { isPinned: false, pinnedAt: null },
+            });
+
+            // Phát socket event bỏ ghim
+            const io = req.app.get("io");
+            if (io) {
+                io.to(message.conversationId).emit("message_unpinned", { messageId, conversationId: message.conversationId });
+            }
+
+            return res.status(200).json({ success: true, message: "Đã bỏ ghim tin nhắn.", pinned: false });
+        }
+
+        // Kiểm tra số lượng tin nhắn đang ghim (tối đa 3)
+        const pinnedCount = await prisma.messages.count({
+            where: { conversationId: message.conversationId, isPinned: true },
+        });
+
+        if (pinnedCount >= 3) {
+            return res.status(400).json({ success: false, message: "Chỉ được ghim tối đa 3 tin nhắn trong mỗi đoạn chat." });
+        }
+
+        // Ghim tin nhắn
+        const updatedMessage = await prisma.messages.update({
+            where: { id: messageId },
+            data: { isPinned: true, pinnedAt: new Date() },
+            include: { Users: { select: { id: true, fullName: true } } },
+        });
+
+        // Phát socket event ghim
+        const io = req.app.get("io");
+        if (io) {
+            io.to(message.conversationId).emit("message_pinned", {
+                messageId,
+                conversationId: message.conversationId,
+                content: updatedMessage.content,
+                type: updatedMessage.type,
+                senderName: updatedMessage.Users ? updatedMessage.Users.fullName : "Người dùng",
+                pinnedAt: updatedMessage.pinnedAt,
+            });
+        }
+
+        return res.status(200).json({ success: true, message: "Đã ghim tin nhắn.", pinned: true });
+    } catch (error) {
+        console.error("❌ Lỗi khi ghim tin nhắn:", error);
+        res.status(500).json({ success: false, message: "Lỗi hệ thống khi ghim tin nhắn.", error: error.message });
+    }
+};
+
+// ═══════════════════════════════════════════════════════
+// 10. LẤY DANH SÁCH TIN NHẮN GHIM (Get Pinned Messages)
+// ═══════════════════════════════════════════════════════
+
+exports.getPinnedMessages = async (req, res) => {
+    try {
+        const { conversationId } = req.params;
+
+        const pinnedMessages = await prisma.messages.findMany({
+            where: { conversationId, isPinned: true, isRecalled: false },
+            orderBy: { pinnedAt: "desc" },
+            include: { Users: { select: { id: true, fullName: true } } },
+        });
+
+        const mapped = pinnedMessages.map((m) => ({
+            id: m.id,
+            content: m.content,
+            type: m.type,
+            senderName: m.Users ? m.Users.fullName : "Người dùng",
+            pinnedAt: m.pinnedAt,
+            createdAt: m.createdAt,
+        }));
+
+        res.status(200).json({ success: true, data: mapped });
+    } catch (error) {
+        console.error("❌ Lỗi khi lấy danh sách tin nhắn ghim:", error);
+        res.status(500).json({ success: false, message: "Lỗi hệ thống.", error: error.message });
+    }
+};
+
+// ═══════════════════════════════════════════════════════
+// 11. TÌM KIẾM TIN NHẮN (Search Messages in Conversation)
+// ═══════════════════════════════════════════════════════
+
+exports.searchMessages = async (req, res) => {
+    try {
+        const { conversationId } = req.params;
+        const q = req.query.q || "";
+        const userId = req.user ? req.user.id : req.userId;
+
+        if (!q.trim()) {
+            return res.status(400).json({ success: false, message: "Vui lòng nhập từ khóa tìm kiếm." });
+        }
+
+        const results = await prisma.messages.findMany({
+            where: {
+                conversationId,
+                isRecalled: false,
+                type: "text",
+                content: { contains: q, mode: "insensitive" },
+                NOT: { deletedBy: { has: userId } },
+            },
+            orderBy: { createdAt: "desc" },
+            take: 50,
+            include: { Users: { select: { id: true, fullName: true } } },
+        });
+
+        const mapped = results.map((m) => ({
+            id: m.id,
+            content: m.content,
+            senderId: m.senderId,
+            senderName: m.Users ? m.Users.fullName : "Người dùng",
+            createdAt: m.createdAt,
+        }));
+
+        res.status(200).json({ success: true, data: mapped, total: mapped.length });
+    } catch (error) {
+        console.error("❌ Lỗi khi tìm kiếm tin nhắn:", error);
+        res.status(500).json({ success: false, message: "Lỗi hệ thống.", error: error.message });
+    }
+};
+
+// ═══════════════════════════════════════════════════════
+// 12. CHUYỂN TIẾP TIN NHẮN (Forward Message)
+// Cho phép forward 1 tin nhắn tới nhiều cuộc hội thoại
+// ═══════════════════════════════════════════════════════
+
+exports.forwardMessage = async (req, res) => {
+    try {
+        const userId = req.user ? req.user.id : req.userId;
+        const { messageId, conversationIds } = req.body;
+
+        if (!messageId || !conversationIds || !Array.isArray(conversationIds) || conversationIds.length === 0) {
+            return res.status(400).json({ success: false, message: "Thiếu thông tin tin nhắn hoặc danh sách hội thoại." });
+        }
+
+        // Lấy tin nhắn gốc
+        const originalMessage = await prisma.messages.findUnique({ where: { id: messageId } });
+        if (!originalMessage) {
+            return res.status(404).json({ success: false, message: "Không tìm thấy tin nhắn gốc." });
+        }
+        if (originalMessage.isRecalled) {
+            return res.status(400).json({ success: false, message: "Không thể chuyển tiếp tin nhắn đã thu hồi." });
+        }
+
+        const { v4: uuidv4 } = require("uuid");
+        const io = req.app.get("io");
+        const forwardedMessages = [];
+
+        for (const convId of conversationIds) {
+            const newMsg = await prisma.messages.create({
+                data: {
+                    id: uuidv4(),
+                    conversationId: convId,
+                    senderId: userId,
+                    content: originalMessage.content,
+                    type: originalMessage.type,
+                },
+                include: { Users: { select: { id: true, fullName: true } } },
+            });
+
+            const mapped = {
+                ...newMsg,
+                Users: newMsg.Users ? { ...newMsg.Users, avatar: `/api/users/${newMsg.Users.id}/avatar` } : null,
+            };
+
+            forwardedMessages.push(mapped);
+
+            // Phát socket event đến tất cả thành viên trong phòng nhận
+            if (io) {
+                const members = await prisma.conversationMembers.findMany({
+                    where: { conversationId: convId },
+                    select: { userId: true },
+                });
+                members.forEach((member) => {
+                    io.to(member.userId).emit("receive_message", mapped);
+                });
+            }
+        }
+
+        res.status(201).json({ success: true, data: forwardedMessages, message: `Đã chuyển tiếp tin nhắn tới ${conversationIds.length} cuộc hội thoại.` });
+    } catch (error) {
+        console.error("❌ Lỗi khi chuyển tiếp tin nhắn:", error);
+        res.status(500).json({ success: false, message: "Lỗi hệ thống.", error: error.message });
+    }
+};
+
+// ═══════════════════════════════════════════════════════
+// 13. XEM TRƯỚC LIÊN KẾT (Link Preview)
+// Cào metadata (og:title, og:image, og:description) từ URL
+// ═══════════════════════════════════════════════════════
+
+exports.getLinkPreview = async (req, res) => {
+    try {
+        const url = req.query.url;
+        if (!url) {
+            return res.status(400).json({ success: false, message: "Thiếu URL." });
+        }
+
+        // Fetch HTML content từ URL
+        const response = await fetch(url, {
+            headers: { "User-Agent": "Mozilla/5.0 (compatible; ThoFiBot/1.0)" },
+            signal: AbortSignal.timeout(5000),
+        });
+
+        if (!response.ok) {
+            return res.status(400).json({ success: false, message: "Không thể truy cập URL." });
+        }
+
+        const html = await response.text();
+
+        // Parse Open Graph và meta tags
+        const getMetaContent = (html, property) => {
+            // Thử og:property trước
+            const ogRegex = new RegExp(`<meta[^>]*property=["']og:${property}["'][^>]*content=["']([^"']*)["']`, "i");
+            let match = html.match(ogRegex);
+            if (match) return match[1];
+
+            // Thử content trước property (thứ tự thuộc tính đảo ngược)
+            const ogRegex2 = new RegExp(`<meta[^>]*content=["']([^"']*)["'][^>]*property=["']og:${property}["']`, "i");
+            match = html.match(ogRegex2);
+            if (match) return match[1];
+
+            // Fallback: meta name
+            const nameRegex = new RegExp(`<meta[^>]*name=["']${property}["'][^>]*content=["']([^"']*)["']`, "i");
+            match = html.match(nameRegex);
+            if (match) return match[1];
+
+            return null;
+        };
+
+        // Lấy title từ <title> tag nếu og:title không có
+        const titleTagMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
+
+        const preview = {
+            title: getMetaContent(html, "title") || (titleTagMatch ? titleTagMatch[1].trim() : ""),
+            description: getMetaContent(html, "description") || "",
+            image: getMetaContent(html, "image") || "",
+            url: url,
+            siteName: getMetaContent(html, "site_name") || "",
+        };
+
+        res.status(200).json({ success: true, data: preview });
+    } catch (error) {
+        console.error("❌ Lỗi khi lấy link preview:", error);
+        res.status(500).json({ success: false, message: "Lỗi hệ thống.", error: error.message });
+    }
+};
