@@ -205,6 +205,7 @@ let allConversations = []; // 🌟 Biến toàn cục chứa danh sách cuộc t
 let currentChatPartnerId = null;
 let socket = null;
 let typingTimeout = null;
+let lastTypingEmitTime = 0;
 let pendingFriendRequests = [];
 let notificationsList = [];
 let replyingToMessage = null;
@@ -735,9 +736,6 @@ function showMobileOverlay(messageEl) {
         overlay = document.createElement("div");
         overlay.id = "mobile-action-overlay";
         overlay.addEventListener("click", hideMobileOverlay);
-        overlay.addEventListener("touchstart", hideMobileOverlay, {
-            passive: true,
-        });
         overlay.addEventListener("touchmove", (e) => e.preventDefault(), {
             passive: false,
         });
@@ -3481,17 +3479,20 @@ if (messageInput) {
             if (sendBtn) sendBtn.style.display = 'none';
         }
 
-        // Phát sự kiện Socket Typing
-        if (!socket) return;
-        if (currentChatPartnerId) {
-            socket.emit("typing", { receiverId: currentChatPartnerId, senderName: myName });
-        }
-        if (currentConversationId) {
-            socket.emit("typing", {
-                conversationId: currentConversationId,
-                senderId: myId,
-                senderName: myName,
-            });
+        // Phát sự kiện Socket Typing (Throttled: Tối đa 1 lần mỗi 2.5 giây)
+        const nowTime = Date.now();
+        if (socket && nowTime - lastTypingEmitTime > 2500) {
+            lastTypingEmitTime = nowTime;
+            if (currentChatPartnerId) {
+                socket.emit("typing", { receiverId: currentChatPartnerId, senderName: myName });
+            }
+            if (currentConversationId) {
+                socket.emit("typing", {
+                    conversationId: currentConversationId,
+                    senderId: myId,
+                    senderName: myName,
+                });
+            }
         }
 
         clearTimeout(typingTimeout);
@@ -3572,7 +3573,6 @@ if (messageInput) {
     };
 
     document.addEventListener("click", dismissKeyboard);
-    document.addEventListener("touchstart", dismissKeyboard, { passive: true });
 }
 
 // Xử lý nút mũi tên mở rộng lại cụm ảnh/file khi đang gõ
@@ -8196,15 +8196,21 @@ document.addEventListener("DOMContentLoaded", () => {
     const scrollBtn = document.getElementById("scroll-to-bottom-btn");
 
     if (messagesDiv && scrollBtn) {
+        let isThrottled = false;
         messagesDiv.addEventListener("scroll", () => {
-            const distanceFromBottom = messagesDiv.scrollHeight - messagesDiv.scrollTop - messagesDiv.clientHeight;
-            // Nếu người dùng cuộn lên quá 300px thì hiện nút
-            if (distanceFromBottom > 300) {
-                scrollBtn.classList.add("visible");
-            } else {
-                scrollBtn.classList.remove("visible");
-            }
-        });
+            if (isThrottled) return;
+            isThrottled = true;
+            
+            requestAnimationFrame(() => {
+                const distanceFromBottom = messagesDiv.scrollHeight - messagesDiv.scrollTop - messagesDiv.clientHeight;
+                if (distanceFromBottom > 300) {
+                    scrollBtn.classList.add("visible");
+                } else {
+                    scrollBtn.classList.remove("visible");
+                }
+                isThrottled = false;
+            });
+        }, { passive: true });
 
         scrollBtn.addEventListener("click", () => {
             messagesDiv.scrollTo({
