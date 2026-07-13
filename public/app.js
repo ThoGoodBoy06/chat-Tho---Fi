@@ -1967,6 +1967,14 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
 
         // 🌟 Tải danh sách tin nhắn ghim của cuộc trò chuyện
         loadPinnedMessages(currentConversationId);
+
+        // 🌟 Tự động focus ô nhập tin nhắn và bật bàn phím khi mở cuộc trò chuyện
+        const messageInputInit = document.getElementById("message-input");
+        if (messageInputInit) {
+            setTimeout(() => {
+                messageInputInit.focus();
+            }, 300); // Đợi 300ms để hiệu ứng trượt mở khung chat hoàn tất rồi mới bật bàn phím
+        }
     } catch (error) {
         alert("Lỗi khi mở phòng trò chuyện: " + error.message);
     }
@@ -3346,6 +3354,9 @@ function sendMessage(imageContent = null) {
 
         editMessageApi(messageIdToEdit, content);
         cancelReply();
+        
+        // 🌟 Giữ bàn phím mở sau khi sửa xong tin nhắn
+        input.focus();
         return;
     }
 
@@ -3430,6 +3441,9 @@ function sendMessage(imageContent = null) {
             const idx = currentChatMessages.findIndex(m => m.id === optimisticId);
             if (idx !== -1) currentChatMessages.splice(idx, 1);
         });
+
+    // 🌟 Giữ bàn phím mở sau khi gửi bằng cách tự động lấy lại focus
+    input.focus();
 }
 
 // 6. Bấm phím Enter để gửi & Sự kiện gõ phím
@@ -3553,35 +3567,19 @@ if (messageInput) {
         // không cần window.scrollTo thủ công ở đây nữa.
     });
 
-    // Tự động tắt bàn phím khi bấm vào vùng trống bất kỳ (danh sách tin nhắn hoặc header chat)
-    const messagesContainer = document.getElementById("messages");
-    const chatHeaderEl = document.getElementById("chat-header-container");
-
+    // Tự động tắt bàn phím khi bấm vào vùng trống bất kỳ trên trang (giống Messenger)
     const dismissKeyboard = (e) => {
-        // Tránh ẩn bàn phím nếu bấm vào các thẻ a, button, icon của header hoặc input
-        if (e.target.closest('a, button, input, textarea, .reaction-palette, .more-menu')) return;
+        const messageInput = document.getElementById("message-input");
+        if (!messageInput || document.activeElement !== messageInput) return;
         
-        const inputArea = document.getElementById("input-area");
-        const emojiPanel = document.getElementById("emoji-picker-panel");
-        const isInsideInput = inputArea && inputArea.contains(e.target);
-        const isInsideEmoji = emojiPanel && emojiPanel.contains(e.target);
-
-        // Nếu click ra ngoài vùng nhập và emoji, đồng thời bàn phím đang hoạt động (active)
-        if (!isInsideInput && !isInsideEmoji) {
-            if (document.activeElement === messageInput) {
-                messageInput.blur();
-            }
-        }
+        // Tránh ẩn bàn phím nếu bấm vào các thẻ nhập liệu, nút bấm hoặc các bảng tùy chọn
+        if (e.target.closest('a, button, input, textarea, .reaction-palette, .more-menu, #input-area, #emoji-picker-panel')) return;
+        
+        messageInput.blur();
     };
 
-    if (messagesContainer) {
-        messagesContainer.addEventListener("click", dismissKeyboard);
-        messagesContainer.addEventListener("touchstart", dismissKeyboard, { passive: true });
-    }
-    if (chatHeaderEl) {
-        chatHeaderEl.addEventListener("click", dismissKeyboard);
-        chatHeaderEl.addEventListener("touchstart", dismissKeyboard, { passive: true });
-    }
+    document.addEventListener("click", dismissKeyboard);
+    document.addEventListener("touchstart", dismissKeyboard, { passive: true });
 }
 
 // Xử lý nút mũi tên mở rộng lại cụm ảnh/file khi đang gõ
