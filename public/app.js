@@ -1738,11 +1738,6 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
     if (!receiverId) {
         return alert("Lỗi: Không tìm thấy ID người nhận tin nhắn.");
     }
-    // FOCUS TỰ ĐỘNG để hiển thị bàn phím ảo ngay lập tức trên cả Android và iOS
-    const messageInputInit = document.getElementById("message-input");
-    if (messageInputInit) {
-        messageInputInit.focus();
-    }
     try {
         // Đảm bảo chuyển tab về tab tin nhắn để ẩn hoàn toàn các tab danh bạ/tin tức khác ở chế độ nền
         const navMessages = document.querySelector('.nav-item[onclick*="tab-messages"]');
@@ -1759,6 +1754,12 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
 
         document.getElementById("chat-screen").classList.add("mobile-chat-active");
         document.body.classList.add("mobile-chat-active");
+
+        // FOCUS TỰ ĐỘNG đồng bộ ngay lập tức sau khi tab và khung chat đã hiển thị để mở bàn phím ảo thành công
+        const messageInputInit = document.getElementById("message-input");
+        if (messageInputInit) {
+            messageInputInit.focus();
+        }
         
         // Giữ nguyên header làm con của .chat-window để thừa hưởng vị trí và hiệu ứng chuyển động tự nhiên
         // Không di chuyển ra body để tránh bị trôi lệch hoặc bị che khuất bởi trình duyệt khi cuộn/keyboard hiển thị
@@ -1967,14 +1968,6 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
 
         // 🌟 Tải danh sách tin nhắn ghim của cuộc trò chuyện
         loadPinnedMessages(currentConversationId);
-
-        // 🌟 Tự động focus ô nhập tin nhắn và bật bàn phím khi mở cuộc trò chuyện
-        const messageInputInit = document.getElementById("message-input");
-        if (messageInputInit) {
-            setTimeout(() => {
-                messageInputInit.focus();
-            }, 300); // Đợi 300ms để hiệu ứng trượt mở khung chat hoàn tất rồi mới bật bàn phím
-        }
     } catch (error) {
         alert("Lỗi khi mở phòng trò chuyện: " + error.message);
     }
