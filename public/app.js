@@ -735,7 +735,13 @@ function showMobileOverlay(messageEl) {
     if (!overlay) {
         overlay = document.createElement("div");
         overlay.id = "mobile-action-overlay";
-        overlay.addEventListener("click", hideMobileOverlay);
+        overlay.addEventListener("click", (e) => {
+            const shownAt = parseInt(overlay.dataset.shownAt || "0", 10);
+            if (Date.now() - shownAt < 300) {
+                return;
+            }
+            hideMobileOverlay();
+        });
         overlay.addEventListener("touchmove", (e) => e.preventDefault(), {
             passive: false,
         });
@@ -752,6 +758,7 @@ function showMobileOverlay(messageEl) {
     document.body.classList.add("overlay-active");
     messageEl.classList.add("show-mobile-actions");
     overlay.classList.add("show");
+    overlay.dataset.shownAt = Date.now().toString();
 
     // Kiem tra vi tri tin nhan: neu gan day man hinh, dao nguoc action panel len tren
     requestAnimationFrame(() => {
@@ -3180,11 +3187,16 @@ function displayMessage(msg, targetContainer = null) {
                     clearTimeout(pressTimer);
                 }
             } else {
+                if (isLongPress && e && e.type === "touchend") {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    isLongPress = false;
+                }
                 clearTimeout(pressTimer);
             }
         };
 
-        messageContent.addEventListener("touchend", cancelPress);
+        messageContent.addEventListener("touchend", cancelPress, { passive: false });
         messageContent.addEventListener("touchmove", cancelPress, {
             passive: true,
         });
@@ -4156,6 +4168,13 @@ async function flipCamera() {
 
 // Đóng tất cả bảng cảm xúc & menu khi chạm ngoài
 document.addEventListener("click", () => {
+    const overlay = document.getElementById("mobile-action-overlay");
+    if (overlay && overlay.classList.contains("show")) {
+        const shownAt = parseInt(overlay.dataset.shownAt || "0", 10);
+        if (Date.now() - shownAt < 300) {
+            return; // Bỏ qua click chuột phát sinh ngay sau khi mở overlay
+        }
+    }
     document
         .querySelectorAll(".reaction-palette.show")
         .forEach((p) => p.classList.remove("show"));
