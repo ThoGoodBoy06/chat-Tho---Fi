@@ -2537,30 +2537,11 @@ function displayMessage(msg, targetContainer = null) {
     const lastMessageEl = messageElements.length > 0 ? messageElements[messageElements.length - 1] : null;
 
     let isConsecutive = false;
-    let isSameMinute = false;
-
     if (lastMessageEl && lastMessageEl.dataset.senderId === msg.senderId) {
         const lastMsgTime = parseInt(lastMessageEl.dataset.timestamp || "0");
         const currentMsgTime = msg.createdAt ? new Date(msg.createdAt).getTime() : Date.now();
-        
-        // 1. Nhóm tin nhắn liên tiếp trong 5 phút để đổi khoảng cách bong bóng
-        if (lastMsgTime && Math.abs(currentMsgTime - lastMsgTime) < 300000) {
+        if (lastMsgTime && Math.abs(currentMsgTime - lastMsgTime) < 300000) { // 5 phút
             isConsecutive = true;
-        }
-
-        // 2. Kiểm tra nếu gửi cùng một phút (để ẩn mốc thời gian trùng lặp)
-        if (lastMsgTime) {
-            const lastDate = new Date(lastMsgTime);
-            const currentDate = new Date(currentMsgTime);
-            if (
-                lastDate.getFullYear() === currentDate.getFullYear() &&
-                lastDate.getMonth() === currentDate.getMonth() &&
-                lastDate.getDate() === currentDate.getDate() &&
-                lastDate.getHours() === currentDate.getHours() &&
-                lastDate.getMinutes() === currentDate.getMinutes()
-            ) {
-                isSameMinute = true;
-            }
         }
     }
 
@@ -2570,15 +2551,6 @@ function displayMessage(msg, targetContainer = null) {
             const prevAvatar = lastMessageEl.querySelector(".message-avatar");
             if (prevAvatar) {
                 prevAvatar.style.visibility = "hidden"; // Ẩn avatar trước đó để chỉ hiện ở tin nhắn dưới cùng của nhóm
-            }
-        }
-    }
-
-    if (isSameMinute) {
-        if (lastMessageEl) {
-            const prevMeta = lastMessageEl.querySelector(".message-meta");
-            if (prevMeta) {
-                prevMeta.style.display = "none"; // Ẩn timestamp cũ nếu gửi cùng phút
             }
         }
     }
@@ -2770,15 +2742,7 @@ function displayMessage(msg, targetContainer = null) {
                 messageContent.appendChild(editedLabel);
             }
 
-            // Click vào nội dung tin nhắn chữ để ẩn/hiện thời gian (giống Messenger)
-            messageContent.onclick = (e) => {
-                e.stopPropagation();
-                const meta = messageElement.querySelector(".message-meta");
-                if (meta) {
-                    const isHidden = window.getComputedStyle(meta).display === "none";
-                    meta.style.display = isHidden ? "flex" : "none";
-                }
-            };
+
         }
 
         // Nâng cấp: Hiển thị tin nhắn trích dẫn (Replied Message Preview)
@@ -3228,10 +3192,29 @@ function displayMessage(msg, targetContainer = null) {
     const metaElement = document.createElement("div");
     metaElement.className = "message-meta";
     const timeElement = document.createElement("span");
+    timeElement.className = "message-time";
+    timeElement.style.display = "none"; // 🌟 Mặc định ẩn thời gian giống Messenger
+    
     const date = msg.createdAt ? new Date(msg.createdAt) : new Date();
+    const now = new Date();
     const hours = date.getHours().toString().padStart(2, "0");
     const minutes = date.getMinutes().toString().padStart(2, "0");
-    timeElement.innerText = `${hours}:${minutes}`;
+    
+    let timeStr = `${hours}:${minutes}`;
+    
+    // Nếu qua 1 ngày khác (không phải hôm nay) thì hiện ngày tháng năm kèm giờ phút
+    const isToday = date.getDate() === now.getDate() && 
+                    date.getMonth() === now.getMonth() && 
+                    date.getFullYear() === now.getFullYear();
+                    
+    if (!isToday) {
+        const day = date.getDate().toString().padStart(2, "0");
+        const month = (date.getMonth() + 1).toString().padStart(2, "0");
+        const year = date.getFullYear();
+        timeStr = `${hours}:${minutes} ${day}/${month}/${year}`;
+    }
+    
+    timeElement.innerText = timeStr;
     metaElement.appendChild(timeElement);
 
     // Trạng thái "Đang gửi" hoặc "Đã gửi" chỉ dành cho tin nhắn của bản thân
@@ -3245,6 +3228,26 @@ function displayMessage(msg, targetContainer = null) {
         }
         metaElement.appendChild(statusElement);
     }
+
+    // 🌟 TÍNH NĂNG MESSENGER: Click vào bong bóng chat để ẩn/hiện thời gian
+    messageContent.addEventListener("click", (e) => {
+        // Tránh toggle khi click vào các nút điều khiển của audio, ảnh hoặc card tải file
+        if (
+            e.target.tagName === "AUDIO" || 
+            e.target.tagName === "IMG" || 
+            e.target.closest(".file-message-card") ||
+            e.target.closest(".action-item") ||
+            e.target.closest(".reaction-palette")
+        ) {
+            return;
+        }
+        e.stopPropagation();
+        const timeEl = messageElement.querySelector(".message-time");
+        if (timeEl) {
+            const isHidden = window.getComputedStyle(timeEl).display === "none";
+            timeEl.style.display = isHidden ? "inline" : "none";
+        }
+    });
 
     messageElement.appendChild(messageBody);
     messageElement.appendChild(metaElement);
@@ -8940,7 +8943,7 @@ function navigateSearchResult(index) {
 }
 
 // Event listeners cho search bar
-document.addEventListener("DOMContentLoaded", () => {
+const initSearchEvents = () => {
     const searchInput = document.getElementById("search-input");
     const prevBtn = document.getElementById("search-prev-btn");
     const nextBtn = document.getElementById("search-next-btn");
@@ -8975,7 +8978,13 @@ document.addEventListener("DOMContentLoaded", () => {
         navigateSearchResult(currentSearchIndex);
     };
     if (closeBtn) closeBtn.onclick = closeSearchBar;
-});
+};
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initSearchEvents);
+} else {
+    initSearchEvents();
+}
 
 
 // ═══════════════════════════════════════════════════════════════════
