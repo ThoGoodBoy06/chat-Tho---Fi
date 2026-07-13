@@ -2848,6 +2848,16 @@ function displayMessage(msg, targetContainer = null) {
             messageContent.prepend(forwardedIndicator);
         }
 
+        // 🌟 Hiển thị nhãn/huy hiệu ghim tin nhắn
+        if (msg.isPinned) {
+            const pinBadge = document.createElement("div");
+            pinBadge.className = "message-pin-badge";
+            pinBadge.innerHTML = '<i class="fas fa-thumbtack"></i>';
+            pinBadge.title = "Tin nhắn được ghim";
+            messageContent.appendChild(pinBadge);
+            messageElement.classList.add("pinned-message");
+        }
+
         // TẠO NÚT THẢ CẢM XÚC (Reaction)
         const reactBtn = document.createElement("div");
         reactBtn.className = "action-item react-btn";
@@ -2939,7 +2949,7 @@ function displayMessage(msg, targetContainer = null) {
             // Ghim tin nhắn
             const pinOption = document.createElement("div");
             pinOption.className = "menu-item pin-action";
-            pinOption.innerText = msg.isPinned ? "Bỏ ghim" : "Ghim tin nhắn";
+            pinOption.innerText = msg.isPinned || messageElement.classList.contains("pinned-message") ? "Bỏ ghim" : "Ghim tin nhắn";
             pinOption.onclick = (e) => {
                 e.stopPropagation();
                 const currentMsgId = messageElement.dataset.messageId;
@@ -3589,6 +3599,7 @@ if (expandBtnUI) {
 
 // 10. Đóng khung trò chuyện trên di động
 function closeChatMobile() {
+    if (typeof hideMobileOverlay === "function") hideMobileOverlay(); // 🌟 Giải phóng các lớp phủ khoá click khi đóng màn hình chat
     document.getElementById("chat-screen").classList.remove("mobile-chat-active");
     document.body.classList.remove("mobile-chat-active");
     document.documentElement.style.removeProperty('--vv-height');
@@ -4528,6 +4539,7 @@ let isSwitchingTab = false;
 
 // Chuyển đổi giữa các Tab
 function switchTab(tabId, navElement) {
+    if (typeof hideMobileOverlay === "function") hideMobileOverlay(); // 🌟 Giải phóng các lớp phủ khoá click khi chuyển tab
     // Nếu tab đã hiển thị sẵn rồi thì không làm gì (Tránh render lại dư thừa)
     const targetTab = document.getElementById(tabId);
     if (targetTab && targetTab.classList.contains("active")) return;
@@ -8775,7 +8787,12 @@ async function loadPinnedMessages(conversationId) {
         });
         const data = await res.json();
         if (data.success && data.data.length > 0) {
-            pinnedMessages = data.data;
+            // Chuẩn hóa cấu trúc dữ liệu để luôn có cả 'id' và 'messageId'
+            pinnedMessages = data.data.map(p => ({
+                ...p,
+                id: p.id || p.messageId,
+                messageId: p.messageId || p.id
+            }));
             currentPinnedIndex = 0;
             renderPinnedBar();
         } else {
@@ -8868,20 +8885,68 @@ async function pinMessage(messageId) {
 const initSocketPinListeners = (socketInstance) => {
     if (!socketInstance) return;
     socketInstance.on("message_pinned", (data) => {
-        pinnedMessages.unshift(data);
+        // Chuẩn hóa dữ liệu
+        const normalized = {
+            ...data,
+            id: data.id || data.messageId,
+            messageId: data.messageId || data.id
+        };
+        pinnedMessages.unshift(normalized);
         if (pinnedMessages.length > 3) pinnedMessages = pinnedMessages.slice(0, 3);
         currentPinnedIndex = 0;
         renderPinnedBar();
+
+        // 🌟 Đồng bộ cập nhật DOM của tin nhắn bong bóng ngay lập tức
+        const msgId = normalized.id;
+        const msgEl = document.querySelector(`.message[data-message-id="${msgId}"]`);
+        if (msgEl) {
+            msgEl.classList.add("pinned-message");
+            const msgContent = msgEl.querySelector(".message-content");
+            if (msgContent && !msgContent.querySelector(".message-pin-badge")) {
+                const pinBadge = document.createElement("div");
+                pinBadge.className = "message-pin-badge";
+                pinBadge.innerHTML = '<i class="fas fa-thumbtack"></i>';
+                pinBadge.title = "Tin nhắn được ghim";
+                msgContent.appendChild(pinBadge);
+            }
+            const pinAction = msgEl.querySelector(".pin-action");
+            if (pinAction) pinAction.innerText = "Bỏ ghim";
+        }
+        const msgIndex = currentChatMessages.findIndex(m => m.id === msgId);
+        if (msgIndex !== -1) {
+            currentChatMessages[msgIndex].isPinned = true;
+        }
     });
+
     socketInstance.on("message_unpinned", (data) => {
-        pinnedMessages = pinnedMessages.filter((p) => p.messageId !== data.messageId);
+        const unpinId = data.id || data.messageId;
+        pinnedMessages = pinnedMessages.filter((p) => {
+            const pId = p.id || p.messageId;
+            return pId !== unpinId;
+        });
+
         if (pinnedMessages.length === 0) {
             hidePinnedBar();
         } else {
             currentPinnedIndex = 0;
             renderPinnedBar();
         }
+
+        // 🌟 Đồng bộ gỡ bỏ pin badge khỏi bong bóng tin nhắn DOM ngay lập tức
+        const msgEl = document.querySelector(`.message[data-message-id="${unpinId}"]`);
+        if (msgEl) {
+            msgEl.classList.remove("pinned-message");
+            const pinBadge = msgEl.querySelector(".message-pin-badge");
+            if (pinBadge) pinBadge.remove();
+            const pinAction = msgEl.querySelector(".pin-action");
+            if (pinAction) pinAction.innerText = "Ghim tin nhắn";
+        }
+        const msgIndex = currentChatMessages.findIndex(m => m.id === unpinId);
+        if (msgIndex !== -1) {
+            currentChatMessages[msgIndex].isPinned = false;
+        }
     });
+
     socketInstance.on("pin_error", (data) => {
         alert(data.message);
     });
