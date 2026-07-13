@@ -247,6 +247,29 @@ class _WebViewScreenState extends State<WebViewScreen> {
   String _myId = "";
   String _token = "";
 
+  // Hỗ trợ thêm cho iOS: thử focus lại ô nhập liệu qua vài khung hình
+  // (kết hợp với swizzle native ở AppDelegate.swift để đảm bảo bàn phím bật lên)
+  void _forceFocusChatInput() {
+    if (!Platform.isIOS) return;
+    _controller.runJavaScript("""
+      (function() {
+        var attempts = 0;
+        function tryFocus(attemptsLeft) {
+          var el = document.querySelector('textarea, input[type="text"], [contenteditable="true"]');
+          if (el) {
+            el.focus();
+            el.dispatchEvent(new Event('touchstart', {bubbles: true}));
+            el.dispatchEvent(new Event('click', {bubbles: true}));
+          }
+          if (attemptsLeft > 0) {
+            requestAnimationFrame(function() { tryFocus(attemptsLeft - 1); });
+          }
+        }
+        tryFocus(8);
+      })();
+    """);
+  }
+
   // Hàm đồng bộ tài khoản bằng Token trực tiếp qua HTTP
   Future<void> _syncAuthWithToken(String tokenVal) async {
     if (tokenVal.isEmpty || tokenVal == "null") return;
@@ -408,6 +431,9 @@ class _WebViewScreenState extends State<WebViewScreen> {
                   _partnerStatus = 'Đang hoạt động'; // Trạng thái mặc định ban đầu
                   _partnerOnline = true;
                 });
+
+                // Cố gắng buộc bàn phím ảo hiện lên trên iOS sau khi mở phòng chat
+                Future.delayed(const Duration(milliseconds: 150), _forceFocusChatInput);
               } else if (event == 'close_chat') {
                 setState(() {
                   _isChatActive = false;
@@ -501,9 +527,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      body: SafeArea(
-        child: WebViewWidget(controller: _controller),
-      ),
+      body: WebViewWidget(controller: _controller),
     );
   }
 }
