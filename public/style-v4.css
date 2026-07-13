@@ -8871,3 +8871,31 @@ body[data-theme="dark"] .scroll-to-bottom-btn:hover {
         opacity: 1;
     }
 }
+
+/* TỐI ƯU HÓA KHÔNG GIAN TRÊN MOBILE: ĐẨY BONG BÓNG CHAT SÁT MÉP TRÁI GIỐNG MESSENGER */
+@media screen and (max-width: 768px) {
+    #messages {
+        padding-left: 4px !important;
+        padding-right: 4px !important;
+    }
+    
+    .message-avatar {
+        width: 28px !important;
+        height: 28px !important;
+        margin-left: 2px !important;
+        margin-right: 4px !important;
+    }
+    
+    .message-body {
+        gap: 0px !important;
+        max-width: 85% !important; /* Mở rộng tối đa chiều ngang bong bóng chat */
+    }
+    
+    .other-message .message-meta {
+        margin-left: 34px !important; /* Căn thẳng hàng với bong bóng chat */
+    }
+    
+    .my-message .message-meta {
+        margin-right: 0px !important;
+    }
+}
