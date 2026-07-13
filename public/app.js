@@ -2537,11 +2537,30 @@ function displayMessage(msg, targetContainer = null) {
     const lastMessageEl = messageElements.length > 0 ? messageElements[messageElements.length - 1] : null;
 
     let isConsecutive = false;
+    let isSameMinute = false;
+
     if (lastMessageEl && lastMessageEl.dataset.senderId === msg.senderId) {
         const lastMsgTime = parseInt(lastMessageEl.dataset.timestamp || "0");
         const currentMsgTime = msg.createdAt ? new Date(msg.createdAt).getTime() : Date.now();
-        if (lastMsgTime && Math.abs(currentMsgTime - lastMsgTime) < 300000) { // 5 phút
+        
+        // 1. Nhóm tin nhắn liên tiếp trong 5 phút để đổi khoảng cách bong bóng
+        if (lastMsgTime && Math.abs(currentMsgTime - lastMsgTime) < 300000) {
             isConsecutive = true;
+        }
+
+        // 2. Kiểm tra nếu gửi cùng một phút (để ẩn mốc thời gian trùng lặp)
+        if (lastMsgTime) {
+            const lastDate = new Date(lastMsgTime);
+            const currentDate = new Date(currentMsgTime);
+            if (
+                lastDate.getFullYear() === currentDate.getFullYear() &&
+                lastDate.getMonth() === currentDate.getMonth() &&
+                lastDate.getDate() === currentDate.getDate() &&
+                lastDate.getHours() === currentDate.getHours() &&
+                lastDate.getMinutes() === currentDate.getMinutes()
+            ) {
+                isSameMinute = true;
+            }
         }
     }
 
@@ -2552,9 +2571,14 @@ function displayMessage(msg, targetContainer = null) {
             if (prevAvatar) {
                 prevAvatar.style.visibility = "hidden"; // Ẩn avatar trước đó để chỉ hiện ở tin nhắn dưới cùng của nhóm
             }
+        }
+    }
+
+    if (isSameMinute) {
+        if (lastMessageEl) {
             const prevMeta = lastMessageEl.querySelector(".message-meta");
             if (prevMeta) {
-                prevMeta.style.display = "none"; // Ẩn timestamp cũ, chỉ hiển thị dưới cùng của nhóm liên tiếp
+                prevMeta.style.display = "none"; // Ẩn timestamp cũ nếu gửi cùng phút
             }
         }
     }
@@ -9190,6 +9214,7 @@ function openCustomReactionPicker(messageId, clientX, clientY) {
     const closeHandler = () => {
         picker.remove();
         document.removeEventListener("click", closeHandler);
+        hideMobileOverlay();
     };
     setTimeout(() => {
         document.addEventListener("click", closeHandler);

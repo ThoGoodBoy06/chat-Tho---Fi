@@ -271,7 +271,6 @@
                             </div>
                         </div>
                         <div class="chat-header-actions">
-                            <i class="fas fa-search icon-btn" onclick="toggleSearchBar()" title="Tìm kiếm tin nhắn"></i>
                             <i class="fas fa-phone-alt icon-btn" onclick="startCall('voice')"></i>
                             <i class="fas fa-video icon-btn" onclick="startCall('video')"></i>
                             <i class="fas fa-info-circle icon-btn" onclick="openChatInfoPanel()"
@@ -923,6 +922,10 @@
                 <div class="chat-info-action-item" onclick="closeChatInfoPanel(); openThemeModal();">
                     <div class="chat-info-action-icon"><i class="fas fa-palette"></i></div>
                     <span>Đổi chủ đề</span>
+                </div>
+                <div class="chat-info-action-item" onclick="closeChatInfoPanel(); toggleSearchBar();">
+                    <div class="chat-info-action-icon"><i class="fas fa-search"></i></div>
+                    <span>Tìm tin nhắn</span>
                 </div>
             </div>
         </div>
