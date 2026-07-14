@@ -1,6 +1,16 @@
 const SERVER_URL = window.location.origin;
 const API_URL = `${SERVER_URL}/api`;
 
+// Nuốt toàn bộ click giả (synthesized click) sinh ra ngay sau khi nhấc ngón tay khỏi cú nhấn giữ trên di động (toàn cục)
+window.addEventListener("click", (e) => {
+    if (typeof longPressJustOccurred !== "undefined" && longPressJustOccurred) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        longPressJustOccurred = false; // Reset flag
+    }
+}, true); // Dùng capture phase ở cấp cao nhất để chặn mọi click giả ở bất kỳ element nào (kể cả overlay hay ảnh)
+
 // --- PHÁT HIỆN NATIVE FLUTTER HEADER ---
 document.addEventListener("DOMContentLoaded", () => {
     if (window.FlutterHeaderChannel || window.webkit?.messageHandlers?.FlutterHeaderChannel) {
@@ -3500,15 +3510,7 @@ function displayMessage(msg, targetContainer = null) {
         });
         messageContent.addEventListener("touchcancel", cancelPress);
         
-        // Nuốt toàn bộ click tổng hợp (synthesized click) sinh ra ngay sau khi nhả ngón tay từ cú nhấn giữ
-        messageContent.addEventListener("click", (e) => {
-            if (longPressJustOccurred) {
-                e.preventDefault();
-                e.stopPropagation();
-                e.stopImmediatePropagation();
-                longPressJustOccurred = false; // Reset flag
-            }
-        }, true); // Sử dụng capture phase để chặn trước khi sự kiện click chạm tới các thẻ con (như img onclick)
+
 
         messageContent.addEventListener("contextmenu", (e) => {
             if (window.innerWidth <= 768) {
