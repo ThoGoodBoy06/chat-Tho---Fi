@@ -914,8 +914,18 @@ RIGHT WINDOW & CHAT MESSAGES
     box-shadow: var(--shadow-sm);
 }
 
+.message-img-container {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+}
+
 .message-image {
-    max-width: 250px;
+    max-width: 100%;
+    max-height: 350px; /* Chặn ảnh quá dài theo chiều dọc */
+    width: auto;
+    height: auto;
+    object-fit: contain; /* Giữ nguyên tỷ lệ chuẩn */
     border-radius: 12px;
     cursor: pointer;
     display: block;
@@ -3557,6 +3567,12 @@ REPLY, FILE MESSAGING, & OPTIMISTIC SPINNER
     background: rgba(59, 130, 246, 0.15) !important;
 }
 
+.message.show-mobile-actions .menu-item.save-image-action::before {
+    content: "\f019" !important; /* fa-download */
+    color: #f59e0b !important;   /* Amber color */
+    background: rgba(245, 158, 11, 0.15) !important;
+}
+
 .file-message-card {
     display: flex;
     align-items: center;
@@ -4918,7 +4934,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         background: rgba(255, 77, 79, 0.15);
     }
 
-    .message.show-mobile-actions .menu-item:not(.text-danger):not(.reply-action):not(.copy-action):not(.edit-action)::before {
+    .message.show-mobile-actions .menu-item:not(.text-danger):not(.reply-action):not(.copy-action):not(.edit-action):not(.save-image-action)::before {
         content: "\f2ed";
         color: #e5e5e5;
     }

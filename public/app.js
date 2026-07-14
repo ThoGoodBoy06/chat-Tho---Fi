@@ -2748,7 +2748,7 @@ function displayMessage(msg, targetContainer = null) {
                     msg.content.startsWith("http") ||
                     msg.content.match(/\.(jpeg|jpg|gif|png)(\?.*)?$/i)))
         ) {
-            messageContent.innerHTML = `<img src="${msg.content}" class="message-image" loading="lazy" onload="if(typeof window.scrollToBottomInstant === 'function') window.scrollToBottomInstant()" onclick="openLightbox(this.src)" alt="Ảnh tin nhắn" />`;
+            messageContent.innerHTML = `<div class="message-img-container"><img src="${msg.content}" class="message-image" loading="lazy" onload="if(typeof window.scrollToBottomInstant === 'function') window.scrollToBottomInstant()" onclick="openLightbox(this.src)" alt="Ảnh tin nhắn" /></div>`;
             messageContent.style.background = "transparent";
             messageContent.style.padding = "0";
         } else {
@@ -2951,6 +2951,52 @@ function displayMessage(msg, targetContainer = null) {
                 hideMobileOverlay();
             };
             moreMenu.appendChild(copyOption);
+
+            // Lưu ảnh (Chỉ dành cho tin nhắn ảnh)
+            const isImageMsg = msg.type === "image" || (msg.content && (msg.content.startsWith("data:image/") || msg.content.startsWith("http") || msg.content.match(/\.(jpeg|jpg|gif|png)(\?.*)?$/i)));
+            if (isImageMsg) {
+                const saveOption = document.createElement("div");
+                saveOption.className = "menu-item save-image-action";
+                saveOption.innerText = "Lưu ảnh";
+                saveOption.onclick = async (e) => {
+                    e.stopPropagation();
+                    moreMenu.classList.remove("show");
+                    hideMobileOverlay();
+                    
+                    try {
+                        let imageUrl = msg.content;
+                        if (imageUrl.startsWith("data:image/")) {
+                            const a = document.createElement('a');
+                            a.style.display = 'none';
+                            a.href = imageUrl;
+                            a.download = `tho-fi-image-${Date.now()}.png`; 
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                        } else {
+                            const response = await fetch(imageUrl);
+                            const blob = await response.blob();
+                            const blobUrl = window.URL.createObjectURL(blob);
+
+                            const a = document.createElement('a');
+                            a.style.display = 'none';
+                            a.href = blobUrl;
+                            a.download = `tho-fi-image-${Date.now()}.jpg`; 
+                            document.body.appendChild(a);
+                            a.click();
+
+                            window.URL.revokeObjectURL(blobUrl);
+                            document.body.removeChild(a);
+                        }
+                        showToast("Đã lưu ảnh");
+                    } catch (error) {
+                        console.error('Lỗi khi tải ảnh:', error);
+                        // Fallback: Mở ảnh trong tab mới nếu bị CORS chặn
+                        window.open(imageUrl, '_blank');
+                    }
+                };
+                moreMenu.appendChild(saveOption);
+            }
 
             // Ghim tin nhắn
             const pinOption = document.createElement("div");
