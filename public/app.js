@@ -963,32 +963,16 @@ function showMobileOverlay(messageEl) {
         msgContent.addEventListener("touchstart", dismissHandler, { passive: true }); // Dùng touchstart thay vì touchend
     }
 
-    // Kiểm tra vị trí tin nhắn để xác định lật ngược menu lên trên nếu quá gần cạnh dưới màn hình
+    // Mặc định Emojis luôn ở trên đầu tin nhắn và Menu luôn ở dưới tin nhắn theo yêu cầu (không tự đảo chiều nữa)
     requestAnimationFrame(() => {
-        const rect = messageEl.getBoundingClientRect();
-        const spaceBelow = window.innerHeight - rect.bottom;
-        const isFlipped = spaceBelow < 280;
-
-        if (isFlipped) {
-            messageEl.classList.add("flip-up");
-            if (palette) {
-                palette.style.setProperty("top", "calc(100% + 8px)", "important");
-                palette.style.setProperty("bottom", "auto", "important");
-            }
-            if (moreMenu) {
-                moreMenu.style.setProperty("bottom", "calc(100% + 8px)", "important");
-                moreMenu.style.setProperty("top", "auto", "important");
-            }
-        } else {
-            messageEl.classList.remove("flip-up");
-            if (palette) {
-                palette.style.setProperty("bottom", "calc(100% + 8px)", "important");
-                palette.style.setProperty("top", "auto", "important");
-            }
-            if (moreMenu) {
-                moreMenu.style.setProperty("top", "calc(100% + 8px)", "important");
-                moreMenu.style.setProperty("bottom", "auto", "important");
-            }
+        messageEl.classList.remove("flip-up");
+        if (palette) {
+            palette.style.setProperty("bottom", "calc(100% + 8px)", "important");
+            palette.style.setProperty("top", "auto", "important");
+        }
+        if (moreMenu) {
+            moreMenu.style.setProperty("top", "calc(100% + 8px)", "important");
+            moreMenu.style.setProperty("bottom", "auto", "important");
         }
     });
 }
@@ -3178,19 +3162,22 @@ function displayMessage(msg, targetContainer = null) {
         moreMenu.appendChild(replyOption);
 
         if (!msg.isRecalled) {
-            const copyOption = document.createElement("div");
-            copyOption.className = "menu-item copy-action";
-            copyOption.innerText = "Sao chép";
-            copyOption.onclick = (e) => {
-                e.stopPropagation();
-                copyMessageText(msg.content);
-                moreMenu.classList.remove("show");
-                hideMobileOverlay();
-            };
-            moreMenu.appendChild(copyOption);
+            const isImageMsg = msg.type === "image" || (msg.content && (msg.content.startsWith("data:image/") || msg.content.startsWith("http") || msg.content.match(/\.(jpeg|jpg|gif|png)(\?.*)?$/i)));
+
+            if (!isImageMsg) {
+                const copyOption = document.createElement("div");
+                copyOption.className = "menu-item copy-action";
+                copyOption.innerText = "Sao chép";
+                copyOption.onclick = (e) => {
+                    e.stopPropagation();
+                    copyMessageText(msg.content);
+                    moreMenu.classList.remove("show");
+                    hideMobileOverlay();
+                };
+                moreMenu.appendChild(copyOption);
+            }
 
             // Lưu ảnh (Chỉ dành cho tin nhắn ảnh)
-            const isImageMsg = msg.type === "image" || (msg.content && (msg.content.startsWith("data:image/") || msg.content.startsWith("http") || msg.content.match(/\.(jpeg|jpg|gif|png)(\?.*)?$/i)));
             if (isImageMsg) {
                 const saveOption = document.createElement("div");
                 saveOption.className = "menu-item save-image-action";
@@ -3235,18 +3222,20 @@ function displayMessage(msg, targetContainer = null) {
                 moreMenu.appendChild(saveOption);
             }
 
-            // Ghim tin nhắn
-            const pinOption = document.createElement("div");
-            pinOption.className = "menu-item pin-action";
-            pinOption.innerText = msg.isPinned || messageElement.classList.contains("pinned-message") ? "Bỏ ghim" : "Ghim tin nhắn";
-            pinOption.onclick = (e) => {
-                e.stopPropagation();
-                const currentMsgId = messageElement.dataset.messageId;
-                pinMessage(currentMsgId);
-                moreMenu.classList.remove("show");
-                hideMobileOverlay();
-            };
-            moreMenu.appendChild(pinOption);
+            // Ghim tin nhắn (Chỉ cho tin nhắn văn bản, ẩn cho hình ảnh giống Messenger)
+            if (!isImageMsg) {
+                const pinOption = document.createElement("div");
+                pinOption.className = "menu-item pin-action";
+                pinOption.innerText = msg.isPinned || messageElement.classList.contains("pinned-message") ? "Bỏ ghim" : "Ghim tin nhắn";
+                pinOption.onclick = (e) => {
+                    e.stopPropagation();
+                    const currentMsgId = messageElement.dataset.messageId;
+                    pinMessage(currentMsgId);
+                    moreMenu.classList.remove("show");
+                    hideMobileOverlay();
+                };
+                moreMenu.appendChild(pinOption);
+            }
 
             // Chuyển tiếp tin nhắn
             const forwardOption = document.createElement("div");
