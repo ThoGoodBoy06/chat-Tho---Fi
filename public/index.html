@@ -15,7 +15,7 @@
     <meta name="apple-mobile-web-app-title" content="Chat Tho-Fi" />
     <link rel="icon" href="icon.png" type="image/png" />
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
-    <link rel="stylesheet" href="style-v4.css?v=83" />
+    <link rel="stylesheet" href="style-v4.css?v=101" />
 </head>
 
 <body>
@@ -629,20 +629,24 @@
         </div>
         <!-- Kết thúc tab-content-container -->
 
-        <!-- Sticky mobile header search container (Zalo style) -->
+        <!-- Sticky mobile header search container (Messenger layout on Zalo Blue) -->
         <header class="zalo-mobile-header" id="mobile-header">
+            <div class="mobile-header-top">
+                <div class="mobile-header-title-wrapper">
+                    <h1 class="mobile-header-title">Chat Tho-Fi</h1>
+                </div>
+                <div class="mobile-header-actions">
+                    <!-- Thay thế dấu cộng bằng Chuông thông báo trên mobile -->
+                    <div class="notification-bell-wrapper mobile-bell-wrapper" onclick="toggleNotificationsDropdown(event)">
+                        <i class="fas fa-bell" id="mobile-bell-btn" title="Thông báo"></i>
+                        <span class="nav-badge" id="mobile-notifications-badge" style="display: none;">0</span>
+                    </div>
+                </div>
+            </div>
             <div class="mobile-search-wrapper">
                 <i class="fas fa-search mobile-search-icon"></i>
-                <input type="text" id="mobile-search-input" placeholder="Tìm kiếm"
+                <input type="text" id="mobile-search-input" placeholder="Tìm kiếm..."
                     onkeyup="if (event.key === 'Enter') searchUser();" />
-            </div>
-            <!-- Thay thế dấu cộng bằng Chuông thông báo trên mobile -->
-            <div class="notification-bell-wrapper mobile-bell-wrapper" onclick="toggleNotificationsDropdown(event)"
-                style="position: relative; display: inline-block; cursor: pointer; padding: 6px;">
-                <i class="fas fa-bell icon-btn" id="mobile-bell-btn" title="Thông báo"
-                    style="pointer-events: none; color: white; font-size: 20px;"></i>
-                <span class="nav-badge" id="mobile-notifications-badge"
-                    style="display: none; position: absolute; top: -2px; right: -2px; width: 16px; height: 16px; font-size: 9px; border-radius: 50%; background: #ef4444; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 1.5px solid #0068ff; pointer-events: none;">0</span>
             </div>
         </header>
     </div>
@@ -1120,7 +1124,7 @@
                     </label>
                 </div>
 
-                <div class="zalo-menu-item"
+                <!-- <div class="zalo-menu-item"
                     style="border-bottom: 1px solid var(--border-color); padding: 12px 0; display: flex; justify-content: space-between; align-items: center;">
                     <div class="menu-left" style="font-weight: 500; font-size: 13.5px;">
                         <i class="fas fa-bell menu-icon" style="color: #f59e0b; width: 20px;"></i> Thông báo Web Push
@@ -1130,7 +1134,7 @@
                         style="padding: 6px 14px; font-size: 12px; border-radius: 6px; margin: 0; min-height: unset; height: 32px; display: inline-flex; align-items: center; justify-content: center;">
                         Bật
                     </button>
-                </div>
+                </div> -->
 
 
 
@@ -1167,7 +1171,7 @@
 
     <!-- Import Socket.IO và file xử lý logic -->
     <script src="/socket.io/socket.io.js"></script>
-    <script src="app.js?v=34086"></script>
+    <script src="app.js?v=34089"></script>
 </body>
 
 </html>

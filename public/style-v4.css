@@ -200,6 +200,7 @@ AUTH SCREEN (LOGIN / REGISTER)
         opacity: 0;
         transform: translateY(10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -427,19 +428,23 @@ APP CONTAINER & NAVIGATION (SIDEBAR)
 /* Shake animation for call indicators */
 
 @keyframes shake {
+
     10%,
     90% {
         transform: translate3d(-1px, 0, 0);
     }
+
     20%,
     80% {
         transform: translate3d(2px, 0, 0);
     }
+
     30%,
     50%,
     70% {
         transform: translate3d(-3px, 0, 0);
     }
+
     40%,
     60% {
         transform: translate3d(3px, 0, 0);
@@ -480,6 +485,7 @@ APP CONTAINER & NAVIGATION (SIDEBAR)
     from {
         opacity: 0;
     }
+
     to {
         opacity: 1;
     }
@@ -694,7 +700,8 @@ TAB 1: MESSAGE VIEW & SIDE CHAT LIST
     transition: all var(--transition-normal);
     border-bottom: 1px solid var(--border-color);
     content-visibility: auto;
-    contain-intrinsic-size: 72px; /* Chiều cao cố định của một phần tử chat */
+    contain-intrinsic-size: 72px;
+    /* Chiều cao cố định của một phần tử chat */
 }
 
 @media (hover: hover) {
@@ -842,7 +849,8 @@ RIGHT WINDOW & CHAT MESSAGES
     will-change: scroll-position;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
-    -webkit-overflow-scrolling: touch; /* 🌟 Cuộn động lượng cực mượt trên iOS */
+    -webkit-overflow-scrolling: touch;
+    /* 🌟 Cuộn động lượng cực mượt trên iOS */
 }
 
 
@@ -853,10 +861,13 @@ RIGHT WINDOW & CHAT MESSAGES
     display: flex;
     flex-direction: column;
     position: relative;
-    will-change: transform, opacity; /* 🌟 Kích hoạt Hardware Acceleration qua GPU */
-    transform: translate3d(0, 0, 0); /* 🌟 Ép tăng tốc phần cứng qua GPU */
+    will-change: transform, opacity;
+    /* 🌟 Kích hoạt Hardware Acceleration qua GPU */
+    transform: translate3d(0, 0, 0);
+    /* 🌟 Ép tăng tốc phần cứng qua GPU */
     content-visibility: auto;
-    contain-intrinsic-size: 60px; /* Chiều cao trung bình ước lượng của tin nhắn */
+    contain-intrinsic-size: 60px;
+    /* Chiều cao trung bình ước lượng của tin nhắn */
     animation: messageSlideIn 0.22s cubic-bezier(0.25, 0.8, 0.25, 1) both;
 }
 
@@ -865,6 +876,7 @@ RIGHT WINDOW & CHAT MESSAGES
         opacity: 0;
         transform: translateY(8px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -986,7 +998,8 @@ RIGHT WINDOW & CHAT MESSAGES
 
 /* Gộp tin nhắn liên tiếp: giảm khoảng cách */
 .message.consecutive-message {
-    margin-top: -10px; /* Bù trừ khoảng cách gap 16px của flex container */
+    margin-top: -10px;
+    /* Bù trừ khoảng cách gap 16px của flex container */
 }
 
 /* Điều chỉnh vị trí text/icon cho trạng thái đã gửi để trông gọn hơn */
@@ -1208,9 +1221,11 @@ RIGHT WINDOW & CHAT MESSAGES
         transform: scale(0.3);
         opacity: 0;
     }
+
     70% {
         transform: scale(1.15);
     }
+
     100% {
         transform: scale(1);
         opacity: 1;
@@ -1259,10 +1274,12 @@ RIGHT WINDOW & CHAT MESSAGES
         transform: translate(-50%, -50%) translate(0, 0) scale(0.3);
         opacity: 1;
     }
+
     15% {
         transform: translate(-50%, -50%) translate(0, 0) scale(1.3);
         opacity: 1;
     }
+
     100% {
         transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0.7);
         opacity: 0;
@@ -1331,20 +1348,25 @@ RIGHT WINDOW & CHAT MESSAGES
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0, 0, 0, 0.4); /* 🌟 Tối nền giống Messenger */
-    backdrop-filter: blur(12px); /* 🌟 Hiệu ứng làm mờ nền phía sau */
-    -webkit-backdrop-filter: blur(12px); /* Hỗ trợ iOS WebView */
+    background: rgba(0, 0, 0, 0.4);
+    /* 🌟 Tối nền giống Messenger */
+    backdrop-filter: blur(12px);
+    /* 🌟 Hiệu ứng làm mờ nền phía sau */
+    -webkit-backdrop-filter: blur(12px);
+    /* Hỗ trợ iOS WebView */
     z-index: 200 !important;
     opacity: 0;
     visibility: hidden;
-    pointer-events: none; /* 🌟 Mặc định không nhận click khi đang ẩn hoặc đang fade-out */
+    pointer-events: none;
+    /* 🌟 Mặc định không nhận click khi đang ẩn hoặc đang fade-out */
     transition: opacity 0.25s ease-out, visibility 0.25s;
 }
 
 #mobile-action-overlay.show {
     opacity: 1;
     visibility: visible;
-    pointer-events: auto; /* 🌟 Chỉ nhận click chặn màn hình khi đã mở hoàn chỉnh */
+    pointer-events: auto;
+    /* 🌟 Chỉ nhận click chặn màn hình khi đã mở hoàn chỉnh */
 }
 
 .message.show-mobile-actions {
@@ -1365,8 +1387,10 @@ INPUT AREA FOR CHAT (MESSENGER STYLE)
 .input-area {
     padding: 6px 12px 6px 12px;
     padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
-    background: var(--chat-bg); /* Đồng bộ màu nền chat */
-    border-top: none; /* Loại bỏ đường viền phân tách khối */
+    background: var(--chat-bg);
+    /* Đồng bộ màu nền chat */
+    border-top: none;
+    /* Loại bỏ đường viền phân tách khối */
     display: flex;
     align-items: center;
     gap: 8px;
@@ -1428,7 +1452,8 @@ INPUT AREA FOR CHAT (MESSENGER STYLE)
 
 .input-wrapper {
     flex: 1;
-    background: var(--msg-receiver-bg); /* Làm bong bóng nhập liệu màu trắng nổi bật */
+    background: var(--msg-receiver-bg);
+    /* Làm bong bóng nhập liệu màu trắng nổi bật */
     border-radius: 20px;
     padding: 4px 12px;
     min-height: 36px;
@@ -1436,7 +1461,8 @@ INPUT AREA FOR CHAT (MESSENGER STYLE)
     display: flex;
     align-items: center;
     transition: all var(--transition-normal);
-    border: 1px solid var(--border-color); /* Thêm viền nhẹ mỏng tinh tế */
+    border: 1px solid var(--border-color);
+    /* Thêm viền nhẹ mỏng tinh tế */
 }
 
 .input-wrapper:focus-within {
@@ -1528,6 +1554,7 @@ body[data-theme="dark"] .skeleton-friend-item {
     0% {
         background-position: 200% 0;
     }
+
     100% {
         background-position: -200% 0;
     }
@@ -1661,6 +1688,7 @@ body[data-theme="dark"] .skeleton-friend-item {
         opacity: 0;
         transform: translateY(10px) scale(0.95);
     }
+
     to {
         opacity: 1;
         transform: translateY(0) scale(1);
@@ -1835,6 +1863,7 @@ body[data-theme="dark"] .skeleton-friend-item {
 /* Mobile responsive */
 
 @media (max-width: 768px) {
+
     #message-input,
     #ai-message-input,
     .search-box input,
@@ -1845,6 +1874,7 @@ body[data-theme="dark"] .skeleton-friend-item {
     #custom-prompt-input {
         font-size: 16px !important;
     }
+
     .emoji-picker-panel {
         position: relative;
         bottom: unset;
@@ -1860,9 +1890,11 @@ body[data-theme="dark"] .skeleton-friend-item {
         border-top: 1px solid var(--border-color);
         animation: none;
     }
+
     .emoji-items {
         grid-template-columns: repeat(8, 1fr);
     }
+
     .emoji-item {
         font-size: 26px;
         padding: 5px 2px;
@@ -1953,11 +1985,13 @@ TYPING INDICATORS
 }
 
 @keyframes bounce {
+
     0%,
     80%,
     100% {
         transform: scale(0);
     }
+
     40% {
         transform: scale(1);
     }
@@ -2005,10 +2039,12 @@ TYPING INDICATORS
 }
 
 @keyframes floatEmpty {
+
     0%,
     100% {
         transform: translateY(0);
     }
+
     50% {
         transform: translateY(-8px);
     }
@@ -2629,7 +2665,8 @@ body.call-active {
     width: 100%;
     height: 100% !important;
     background-color: #000000;
-    z-index: 9999999 !important; /* Đẩy z-index cao hơn .chat-header (100000) để không bị đè lên khi gọi điện */
+    z-index: 9999999 !important;
+    /* Đẩy z-index cao hơn .chat-header (100000) để không bị đè lên khi gọi điện */
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -2770,9 +2807,11 @@ body.call-active {
     0% {
         box-shadow: 0 0 0 0 rgba(52, 199, 89, 0.7);
     }
+
     70% {
         box-shadow: 0 0 0 20px rgba(52, 199, 89, 0);
     }
+
     100% {
         box-shadow: 0 0 0 0 rgba(52, 199, 89, 0);
     }
@@ -2922,6 +2961,7 @@ PINNED MESSAGES BAR
     gap: 8px;
     min-height: 40px;
 }
+
 .pinned-bar-content {
     display: flex;
     align-items: center;
@@ -2930,11 +2970,13 @@ PINNED MESSAGES BAR
     min-width: 0;
     cursor: pointer;
 }
+
 .pinned-bar-icon {
     color: var(--primary-color);
     font-size: 14px;
     transform: rotate(45deg);
 }
+
 .pinned-bar-text {
     font-size: 13px;
     color: var(--text-main);
@@ -2942,12 +2984,15 @@ PINNED MESSAGES BAR
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
 .pinned-bar-nav {
     display: flex;
     align-items: center;
     gap: 8px;
 }
-.pinned-nav-btn, .pinned-close-btn {
+
+.pinned-nav-btn,
+.pinned-close-btn {
     cursor: pointer;
     padding: 4px 6px;
     border-radius: 4px;
@@ -2955,7 +3000,9 @@ PINNED MESSAGES BAR
     font-size: 12px;
     transition: background 0.15s, color 0.15s;
 }
-.pinned-nav-btn:hover, .pinned-close-btn:hover {
+
+.pinned-nav-btn:hover,
+.pinned-close-btn:hover {
     background: var(--hover-bg);
     color: var(--primary-color);
 }
@@ -2973,16 +3020,19 @@ SEARCH BAR
     z-index: 99;
     gap: 8px;
 }
+
 .search-bar-content {
     display: flex;
     align-items: center;
     gap: 10px;
     flex: 1;
 }
+
 .search-bar-icon {
     color: var(--text-light);
     font-size: 14px;
 }
+
 .search-input {
     flex: 1;
     border: none;
@@ -2992,20 +3042,25 @@ SEARCH BAR
     outline: none;
     padding: 4px 0;
 }
+
 .search-input::placeholder {
     color: var(--text-light);
 }
+
 .search-bar-nav {
     display: flex;
     align-items: center;
     gap: 6px;
 }
+
 .search-result-count {
     font-size: 12px;
     color: var(--text-light);
     white-space: nowrap;
 }
-.search-nav-btn, .search-close-btn {
+
+.search-nav-btn,
+.search-close-btn {
     cursor: pointer;
     padding: 4px 6px;
     border-radius: 4px;
@@ -3013,15 +3068,19 @@ SEARCH BAR
     font-size: 12px;
     transition: background 0.15s, color 0.15s;
 }
-.search-nav-btn:hover, .search-close-btn:hover {
+
+.search-nav-btn:hover,
+.search-close-btn:hover {
     background: var(--hover-bg);
     color: var(--primary-color);
 }
+
 .message-search-highlight {
     background: rgba(255, 235, 59, 0.5) !important;
     border-radius: 4px;
     padding: 1px 2px;
 }
+
 .message-search-active {
     background: rgba(255, 152, 0, 0.6) !important;
     box-shadow: 0 0 0 2px rgba(255, 152, 0, 0.3);
@@ -3043,6 +3102,7 @@ FORWARD MODAL
     justify-content: center;
     animation: fadeIn 0.2s ease;
 }
+
 .forward-modal {
     background: var(--sidebar-bg);
     border-radius: 16px;
@@ -3054,10 +3114,19 @@ FORWARD MODAL
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     animation: scaleIn 0.2s ease;
 }
+
 @keyframes scaleIn {
-    from { transform: scale(0.9); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
+    from {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
+
 .forward-modal-header {
     display: flex;
     align-items: center;
@@ -3065,24 +3134,29 @@ FORWARD MODAL
     padding: 16px 20px;
     border-bottom: 1px solid var(--border-color);
 }
+
 .forward-modal-header h3 {
     font-size: 16px;
     font-weight: 600;
     color: var(--text-main);
     margin: 0;
 }
+
 .forward-modal-close {
     cursor: pointer;
     color: var(--text-light);
     font-size: 16px;
     padding: 4px;
 }
+
 .forward-modal-close:hover {
     color: var(--text-main);
 }
+
 .forward-modal-search {
     padding: 12px 20px;
 }
+
 .forward-modal-search input {
     width: 100%;
     padding: 10px 14px;
@@ -3094,15 +3168,18 @@ FORWARD MODAL
     outline: none;
     box-sizing: border-box;
 }
+
 .forward-modal-search input:focus {
     border-color: var(--primary-color);
 }
+
 .forward-modal-list {
     flex: 1;
     overflow-y: auto;
     padding: 0 8px;
     max-height: 40vh;
 }
+
 .forward-item {
     display: flex;
     align-items: center;
@@ -3112,12 +3189,15 @@ FORWARD MODAL
     cursor: pointer;
     transition: background 0.15s;
 }
+
 .forward-item:hover {
     background: var(--hover-bg);
 }
+
 .forward-item.selected {
     background: rgba(var(--primary-color-rgb, 0, 132, 255), 0.1);
 }
+
 .forward-item-avatar {
     width: 40px;
     height: 40px;
@@ -3125,6 +3205,7 @@ FORWARD MODAL
     object-fit: cover;
     flex-shrink: 0;
 }
+
 .forward-item-name {
     flex: 1;
     font-size: 14px;
@@ -3133,6 +3214,7 @@ FORWARD MODAL
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
 .forward-item-check {
     width: 20px;
     height: 20px;
@@ -3144,10 +3226,12 @@ FORWARD MODAL
     flex-shrink: 0;
     transition: all 0.15s;
 }
+
 .forward-item.selected .forward-item-check {
     background: var(--primary-color);
     border-color: var(--primary-color);
 }
+
 .forward-item.selected .forward-item-check::after {
     content: '\f00c';
     font-family: 'Font Awesome 5 Free';
@@ -3155,12 +3239,14 @@ FORWARD MODAL
     font-size: 10px;
     color: white;
 }
+
 .forward-modal-footer {
     padding: 12px 20px;
     border-top: 1px solid var(--border-color);
     display: flex;
     justify-content: flex-end;
 }
+
 .forward-send-btn {
     padding: 10px 24px;
     border-radius: 10px;
@@ -3172,10 +3258,12 @@ FORWARD MODAL
     cursor: pointer;
     transition: opacity 0.15s;
 }
+
 .forward-send-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
 }
+
 .forward-send-btn:not(:disabled):hover {
     opacity: 0.85;
 }
@@ -3195,17 +3283,21 @@ LINK PREVIEW CARD
     transition: opacity 0.15s;
     background: var(--sidebar-bg);
 }
+
 .link-preview-card:hover {
     opacity: 0.85;
 }
+
 .link-preview-image {
     width: 100%;
     height: 140px;
     object-fit: cover;
 }
+
 .link-preview-info {
     padding: 10px 12px;
 }
+
 .link-preview-title {
     font-size: 13px;
     font-weight: 600;
@@ -3217,6 +3309,7 @@ LINK PREVIEW CARD
     overflow: hidden;
     margin-bottom: 4px;
 }
+
 .link-preview-desc {
     font-size: 12px;
     color: var(--text-light);
@@ -3226,6 +3319,7 @@ LINK PREVIEW CARD
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
+
 .link-preview-site {
     font-size: 11px;
     color: var(--text-light);
@@ -3246,19 +3340,41 @@ SELF-DESTRUCT COUNTDOWN
     margin-top: 4px;
     animation: pulse 1s ease-in-out infinite;
 }
+
 .self-destruct-badge i {
     font-size: 10px;
 }
+
 @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
 }
+
 .message-self-destructing {
     animation: fadeOutMessage 0.5s ease forwards;
 }
+
 @keyframes fadeOutMessage {
-    from { opacity: 1; transform: scale(1); }
-    to { opacity: 0; transform: scale(0.8); height: 0; margin: 0; padding: 0; overflow: hidden; }
+    from {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: scale(0.8);
+        height: 0;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+    }
 }
 
 
@@ -3283,6 +3399,7 @@ REPLY, FILE MESSAGING, & OPTIMISTIC SPINNER
         transform: translateY(100%);
         opacity: 0;
     }
+
     to {
         transform: translateY(0);
         opacity: 1;
@@ -3371,14 +3488,17 @@ REPLY, FILE MESSAGING, & OPTIMISTIC SPINNER
         box-shadow: 0 0 0 0 rgba(10, 138, 110, 0.7);
         transform: scale(1);
     }
+
     25% {
         box-shadow: 0 0 15px 5px rgba(10, 138, 110, 0.5);
         transform: scale(1.02);
     }
+
     50% {
         box-shadow: 0 0 15px 5px rgba(10, 138, 110, 0.5);
         transform: scale(1.02);
     }
+
     100% {
         box-shadow: 0 0 0 0 rgba(10, 138, 110, 0);
         transform: scale(1);
@@ -3515,6 +3635,7 @@ REPLY, FILE MESSAGING, & OPTIMISTIC SPINNER
         opacity: 1;
         transform: scale(1);
     }
+
     to {
         opacity: 0.6;
         transform: scale(1.15);
@@ -3585,7 +3706,8 @@ REPLY, FILE MESSAGING, & OPTIMISTIC SPINNER
 
 .sent-icon {
     font-size: 11px;
-    color: var(--theme-primary-start); /* Đồng bộ màu accent động theo chủ đề chat */
+    color: var(--theme-primary-start);
+    /* Đồng bộ màu accent động theo chủ đề chat */
     opacity: 0.95;
 }
 
@@ -3754,6 +3876,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
 }
 
 @media screen and (max-width: 768px) {
+
     /* --- HIỆU ỨNG CHẠM NHẠY BÉN TRÊN MOBILE (ACTIVE TOUCH FEEDBACK) --- */
     a,
     button,
@@ -3771,6 +3894,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         -webkit-tap-highlight-color: transparent !important;
         outline: none !important;
     }
+
     .nav-item:active,
     .mobile-back-btn:active,
     .expand-actions-btn:active,
@@ -3785,11 +3909,13 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         opacity: 0.8 !important;
         transition: transform 0.05s cubic-bezier(0.25, 1, 0.5, 1) !important;
     }
+
     #user-list li:active {
         background-color: var(--hover-bg) !important;
         transform: scale(0.99) !important;
         transition: background-color 0.1s ease, transform 0.05s ease !important;
     }
+
     #tab-messages.active,
     #tab-contacts.active,
     #tab-profile.active {
@@ -3797,30 +3923,37 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         flex-direction: row !important;
         overflow: hidden !important;
     }
+
     .chat-list {
         width: 100%;
         min-width: 100%;
     }
+
     .chat-list-container {
         background: var(--msg-receiver-bg) !important;
         padding-bottom: 68px !important;
     }
+
     .chat-window {
         display: none;
         width: 100%;
     }
+
     #chat-screen.mobile-chat-active .chat-list {
         display: none;
     }
+
     #chat-screen.mobile-chat-active .chat-window {
         display: flex;
     }
+
     .back-btn {
         display: flex;
         margin-right: 8px;
         font-size: 18px;
         color: white !important;
     }
+
     .contacts-container {
         max-width: 100%;
         margin-top: 0;
@@ -3832,56 +3965,69 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         flex-direction: column !important;
         padding-bottom: 0 !important;
     }
+
     .contacts-scroll-content {
         padding-bottom: 68px !important;
     }
+
     .auth-card {
         width: 92%;
         padding: 36px 24px;
     }
+
     .message {
         max-width: 90% !important;
     }
+
     .chat-header {
         padding: 10px 16px !important;
         background: #0068ff !important;
         color: white !important;
         border-bottom: none !important;
     }
+
     .chat-header-text h3 {
         font-size: 15px;
         color: white !important;
     }
+
     .input-area {
         padding: 10px 12px;
         gap: 6px;
     }
+
     .input-wrapper {
         flex: 1 !important;
         min-width: 0 !important;
         width: 100% !important;
     }
+
     #messages {
         padding: 16px;
     }
+
     input,
     textarea,
     button {
         font-size: 16px !important;
     }
+
     .message.my-message {
         align-items: flex-end !important;
         width: 100%;
     }
+
     .my-message .message-body {
         margin-right: 0 !important;
         padding-right: 0 !important;
         justify-content: flex-end !important;
         max-width: 80% !important;
     }
+
     .other-message .message-body {
         max-width: 80% !important;
     }
+
     .my-message .message-meta {
         align-self: flex-end !important;
         margin-right: 0px !important;
@@ -3890,6 +4036,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         position: relative;
         z-index: 2;
     }
+
     .my-message .message-status {
         display: inline-flex !important;
         align-items: center;
@@ -3897,10 +4044,12 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         min-width: 18px;
         min-height: 18px;
     }
+
     .read-receipt-avatar {
         width: 18px;
         height: 18px;
     }
+
     #chat-screen {
         display: flex;
         flex-direction: column !important;
@@ -3911,6 +4060,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         height: 100dvh !important;
         height: -webkit-fill-available !important;
     }
+
     /* Tab Bar Viên Thuốc + Kính mờ (Bản Floating Capsule cực sang trọng) */
     /* ── TAB BAR CONTAINER ── */
     .sidebar {
@@ -3944,6 +4094,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         padding: 4px 12px 2px 12px !important;
         gap: 0 !important;
     }
+
     body[data-theme="dark"] .sidebar {
         background: rgba(18, 18, 18, 0.85) !important;
         border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
@@ -3952,6 +4103,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         border-bottom: none !important;
         box-shadow: 0 -3px 12px rgba(0, 0, 0, 0.3) !important;
     }
+
     /* ── SLIDING PILL INDICATOR ── */
     .nav-slider-pill {
         position: absolute;
@@ -3968,10 +4120,12 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         left: 12px;
         width: calc((100% - 24px) / 5);
     }
+
     body[data-theme="dark"] .nav-slider-pill {
         background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
         box-shadow: 0 4px 20px rgba(37, 99, 235, 0.45);
     }
+
     /* ── NAV ITEM ── */
     .nav-item {
         width: calc((100% - 24px) / 5) !important;
@@ -3990,10 +4144,12 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         z-index: 1;
         overflow: visible;
     }
+
     .nav-item:active {
         transform: scale(0.88) !important;
         transition: transform 0.1s ease !important;
     }
+
     /* Active pill handled by slider, no background needed */
     .nav-item.active {
         background: transparent !important;
@@ -4001,6 +4157,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         border: none !important;
         transform: translateY(-1px);
     }
+
     /* ── NAV ICON WRAP (for glow effect) ── */
     .nav-icon-wrap {
         display: flex;
@@ -4008,15 +4165,18 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         justify-content: center;
         transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
+
     .nav-item.active .nav-icon-wrap {
         animation: icon-bounce 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
     }
+
     /* ── ICON ── */
     .nav-item i {
         font-size: 21px;
         color: var(--text-light);
         transition: color 0.25s ease, filter 0.25s ease;
     }
+
     .nav-item.active i {
         color: #ffffff !important;
         filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.6));
@@ -4025,6 +4185,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         -webkit-background-clip: unset !important;
         -webkit-text-fill-color: initial !important;
     }
+
     /* ── LABEL ── */
     .nav-label {
         display: block;
@@ -4037,11 +4198,13 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         color: var(--text-light);
         transition: color 0.25s ease, transform 0.3s ease;
     }
+
     .nav-item.active .nav-label {
         color: #ffffff !important;
         font-weight: 700 !important;
         transform: scale(1.05);
     }
+
     /* ── RIPPLE ── */
     .nav-ripple {
         position: absolute;
@@ -4052,27 +4215,33 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         pointer-events: none;
         z-index: 2;
     }
+
     @keyframes nav-ripple-anim {
         to {
             transform: scale(4);
             opacity: 0;
         }
     }
+
     /* ── ANIMATIONS ── */
     @keyframes icon-bounce {
         0% {
             transform: scale(0.65) rotate(-12deg);
         }
+
         60% {
             transform: scale(1.28) rotate(6deg);
         }
+
         80% {
             transform: scale(0.94) rotate(-2deg);
         }
+
         100% {
             transform: scale(1.0) rotate(0deg);
         }
     }
+
     /* ── BADGE ── */
     .nav-badge {
         top: -4px;
@@ -4081,45 +4250,161 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         transform: none;
         z-index: 3;
     }
+
     .ai-header {
         height: calc(60px + env(safe-area-inset-top, 0px)) !important;
         padding-top: env(safe-area-inset-top, 0px) !important;
         box-sizing: border-box !important;
     }
+
     .zalo-mobile-header {
         order: 1 !important;
         display: flex !important;
-        align-items: center;
-        justify-content: space-between;
-        background: #0068ff !important;
-        padding: 10px 16px;
-        padding-top: calc(10px + env(safe-area-inset-top, 0px));
-        gap: 14px;
-        color: white;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        justify-content: flex-start !important;
+        background: linear-gradient(135deg, #0068ff 0%, #004ecc 100%) !important;
+        /* Premium Zalo Blue gradient background */
+        padding: 12px 16px 10px 16px !important;
+        padding-top: calc(12px + env(safe-area-inset-top, 0px)) !important;
+        gap: 10px !important;
+        color: white !important;
         position: sticky;
         top: 0;
         z-index: 95;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
         box-sizing: border-box;
         width: 100%;
-        height: calc(56px + env(safe-area-inset-top, 0px));
+        height: auto !important;
     }
+
+    body[data-theme="dark"] .zalo-mobile-header {
+        background: linear-gradient(135deg, #004ecc 0%, #003799 100%) !important;
+        /* Deeper blue for dark mode */
+    }
+
+    .mobile-header-top {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        width: 100% !important;
+    }
+
+    .mobile-header-title-wrapper {
+        display: inline-block !important;
+        animation: gentleSwayScale 1.5s ease-in-out infinite !important;
+        will-change: transform !important;
+    }
+
+    .mobile-header-title {
+        font-size: 24px !important;
+        font-weight: 800 !important;
+        letter-spacing: -0.5px !important;
+        margin: 0 !important;
+        background: linear-gradient(to right,
+                #ff0000,
+                #ff7f00,
+                #ffff00,
+                #00ff00,
+                #0000ff,
+                #4b0082,
+                #8b00ff,
+                #ff0000);
+        background-size: 200% auto;
+        -webkit-background-clip: text !important;
+        -webkit-text-fill-color: transparent !important;
+        background-clip: text !important;
+        animation: rainbowShift 0.6s linear infinite !important;
+        font-family: "Outfit", "Inter", sans-serif !important;
+        display: block !important;
+    }
+
+    .mobile-header-actions {
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+    }
+
+    .mobile-header-actions .mobile-bell-wrapper {
+        position: relative !important;
+        display: inline-block !important;
+        cursor: pointer !important;
+        padding: 4px !important;
+        background: rgba(255, 255, 255, 0.15) !important;
+        /* Translucent white circle */
+        border-radius: 50% !important;
+        width: 36px !important;
+        height: 36px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        box-sizing: border-box !important;
+        transition: background var(--transition-fast) !important;
+    }
+
+    .mobile-header-actions .mobile-bell-wrapper:active {
+        background: rgba(255, 255, 255, 0.25) !important;
+    }
+
+    .mobile-header-actions .mobile-bell-wrapper i {
+        color: white !important;
+        font-size: 18px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    .mobile-header-actions .mobile-bell-wrapper .nav-badge {
+        position: absolute !important;
+        top: -2px !important;
+        right: -2px !important;
+        width: 16px !important;
+        height: 16px !important;
+        font-size: 9px !important;
+        border-radius: 50% !important;
+        background: #ef4444 !important;
+        color: #fff !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-weight: bold !important;
+        border: 1.5px solid #0068ff !important;
+    }
+
+    body[data-theme="dark"] .mobile-header-actions .mobile-bell-wrapper .nav-badge {
+        border: 1.5px solid #004ecc !important;
+    }
+
     .mobile-search-wrapper {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        background: rgba(255, 255, 255, 0.15);
-        border-radius: 20px;
-        padding: 6px 14px;
-        gap: 8px;
-        box-sizing: border-box;
+        flex: unset !important;
+        width: 100% !important;
+        display: flex !important;
+        align-items: center !important;
+        background: rgba(255, 255, 255, 0.15) !important;
+        /* Semi-transparent white search bar */
+        border-radius: 20px !important;
+        padding: 8px 14px !important;
+        gap: 8px !important;
+        box-sizing: border-box !important;
+        height: 36px !important;
     }
+
+    @keyframes gentleSwayScale {
+        0%, 100% {
+            transform: scale(1) rotate(-2.5deg);
+        }
+        50% {
+            transform: scale(1.08) rotate(2.5deg);
+        }
+    }
+
     .mobile-search-icon {
         font-size: 14px !important;
         color: rgba(255, 255, 255, 0.8) !important;
     }
+
     .zalo-mobile-header input {
-        flex: 1;
+        flex: 1 !important;
         background: transparent !important;
         border: none !important;
         color: white !important;
@@ -4128,29 +4413,31 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         padding: 0 !important;
         margin: 0 !important;
     }
+
     .zalo-mobile-header input::placeholder {
-        color: rgba(255, 255, 255, 0.75);
+        color: rgba(255, 255, 255, 0.75) !important;
     }
-    .mobile-add-btn {
-        background: transparent !important;
-        border: none !important;
-        color: white !important;
-        font-size: 18px !important;
-        cursor: pointer !important;
-        display: flex !important;
-        align-items: center;
-        justify-content: center;
-        width: 32px;
-        height: 32px;
-        padding: 0 !important;
-        margin: 0 !important;
+
+    @keyframes rainbowShift {
+        0% {
+            background-position: 0% center;
+        }
+
+        100% {
+            background-position: 200% center;
+        }
     }
+
+
+
     .sidebar-header {
         display: none !important;
     }
+
     .chat-list .search-box {
         display: none;
     }
+
     .tab-content-container {
         order: 2 !important;
         flex: 1;
@@ -4163,11 +4450,13 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         padding-bottom: 0 !important;
         box-sizing: border-box !important;
     }
+
     .tab-pane {
         height: 100% !important;
         height: -webkit-fill-available !important;
         width: 100%;
     }
+
     .chat-list {
         width: 100%;
         height: 100% !important;
@@ -4177,15 +4466,19 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         flex-direction: column !important;
         overflow: hidden !important;
     }
+
     #chat-screen.mobile-chat-active .chat-list {
         display: none !important;
     }
+
     body.has-native-header .chat-header {
         display: none !important;
     }
+
     body.has-native-header #messages {
         padding-top: 16px !important;
     }
+
     html:has(body.mobile-chat-active),
     body.mobile-chat-active {
         position: fixed !important;
@@ -4193,22 +4486,29 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         height: 100% !important;
         overflow: hidden !important;
     }
+
     #user-list li {
         padding: 14px 16px;
         border-bottom: 1px solid var(--border-color);
         gap: 8px !important;
     }
+
     .chat-list-time {
         font-size: 10px !important;
         color: var(--text-light) !important;
     }
+
     .chat-window {
-        position: fixed !important; /* Đổi sang fixed */
-        top: 0 !important; /* Cố định sát mép trên Visual Viewport */
-        bottom: auto !important; /* Tránh xung đột chiều cao khi thay đổi */
+        position: fixed !important;
+        /* Đổi sang fixed */
+        top: 0 !important;
+        /* Cố định sát mép trên Visual Viewport */
+        bottom: auto !important;
+        /* Tránh xung đột chiều cao khi thay đổi */
         left: 100vw !important;
         right: 0 !important;
-        height: 100% !important; /* Mặc định 100% để Android tự co giãn cực mượt */
+        height: 100% !important;
+        /* Mặc định 100% để Android tự co giãn cực mượt */
         width: 100vw !important;
         z-index: 9999 !important;
         display: flex !important;
@@ -4217,12 +4517,14 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         background: var(--chat-bg) !important;
         overflow: hidden !important;
     }
+
     body.is-ios .chat-window {
         /* FIX iOS #10: Dùng 100% thay vì 100dvh vì trong Flutter WKWebView + SafeArea,
            100dvh có thể lớn hơn viewport thực tế, gây tràn layout */
         height: var(--vv-height, 100%) !important;
         bottom: auto !important;
     }
+
     #chat-screen.mobile-chat-active {
         display: block !important;
         background: var(--chat-bg) !important;
@@ -4233,21 +4535,27 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         height: 100% !important;
         z-index: 9998 !important;
     }
+
     body.overlay-active .chat-header,
     body.overlay-active .input-area,
     body.overlay-active .message:not(.show-mobile-actions) {
         pointer-events: none !important;
     }
+
     #chat-screen.mobile-chat-active .tab-content-container {
         padding-bottom: 0 !important;
     }
+
     #chat-screen.mobile-chat-active .chat-window {
-        left: 0 !important; /* Khi active thì left: 0 */
+        left: 0 !important;
+        /* Khi active thì left: 0 */
     }
+
     #chat-screen.mobile-chat-active .zalo-mobile-header {
         display: none !important;
         z-index: -1 !important;
     }
+
     body.mobile-chat-active {
         position: fixed !important;
         top: 0 !important;
@@ -4256,19 +4564,24 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         height: 100% !important;
         overflow: hidden !important;
     }
+
     body.mobile-chat-active .sidebar {
         display: none !important;
         z-index: -1 !important;
     }
+
     /* ── HEADER CỐ ĐỊNH TRÊN CÙNG (sticky, không đụng offset) ── */
     .chat-header {
-        position: fixed !important; /* ← Ghim cứng bằng fixed để iOS tự neo theo Visual Viewport mượt mà */
-        top: 0 !important; /* ← Cố định sát mép trên */
+        position: fixed !important;
+        /* ← Ghim cứng bằng fixed để iOS tự neo theo Visual Viewport mượt mà */
+        top: 0 !important;
+        /* ← Cố định sát mép trên */
         left: 0 !important;
         right: 0 !important;
         width: 100% !important;
         height: calc(56px + env(safe-area-inset-top, 0px)) !important;
-        padding-top: env(safe-area-inset-top, 0px) !important; /* FIX iOS: Đẩy nội dung lùi xuống dưới status bar */
+        padding-top: env(safe-area-inset-top, 0px) !important;
+        /* FIX iOS: Đẩy nội dung lùi xuống dưới status bar */
         flex-shrink: 0 !important;
         z-index: 100000 !important;
         background: rgba(255, 255, 255, 0.85) !important;
@@ -4279,18 +4592,22 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         display: flex !important;
         align-items: center !important;
     }
+
     body[data-theme="dark"] .chat-header {
         background: rgba(30, 30, 30, 0.85) !important;
     }
+
     .chat-header h3,
     .chat-header-text h3 {
         color: var(--text-dark) !important;
         font-size: 17px !important;
     }
+
     .chat-header-text .status {
         color: var(--text-light) !important;
         font-size: 12px !important;
     }
+
     .chat-header-actions .icon-btn,
     .chat-header-actions i,
     .chat-header-info .icon-btn,
@@ -4298,12 +4615,14 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
     .back-btn {
         color: var(--primary-color) !important;
     }
+
     .back-btn {
         display: flex !important;
         margin-right: 12px;
         font-size: 20px;
         color: white !important;
     }
+
     /* ── THANH NHẬP LIỆU (luôn nằm cuối, không bị co chiều cao) ── */
     .input-area {
         position: relative !important;
@@ -4316,9 +4635,11 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         border-top: 1px solid var(--border-color) !important;
         margin-bottom: 0 !important;
     }
+
     .input-actions-left {
         padding-bottom: 0 !important;
     }
+
     .input-actions-right {
         display: flex !important;
         align-items: center !important;
@@ -4326,15 +4647,18 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         height: 38px !important;
         margin-left: 12px !important;
     }
+
     .input-area.emoji-open {
         padding-bottom: 8px !important;
     }
+
     .input-actions-left-wrapper {
         overflow: hidden;
         transition: max-width 0.3s ease, opacity 0.2s ease;
         max-width: 160px;
         opacity: 1;
     }
+
     .input-area.is-typing .input-actions-left-wrapper {
         max-width: 0 !important;
         opacity: 0 !important;
@@ -4342,6 +4666,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         padding: 0 !important;
         pointer-events: none !important;
     }
+
     .input-wrapper {
         flex: 1 !important;
         min-width: 0 !important;
@@ -4349,17 +4674,20 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         border: none !important;
         padding: 6px 12px !important;
     }
+
     .input-wrapper:focus-within {
         background: var(--msg-receiver-bg) !important;
         border-color: var(--primary-color) !important;
         box-shadow: 0 0 0 2px rgba(0, 132, 255, 0.15) !important;
     }
+
     /* ── VÙNG TIN NHẮN (flex:1 co giãn tự nhiên trong container .chat-window) ── */
     #messages {
         position: relative !important;
-        margin-top: 0 !important; 
+        margin-top: 0 !important;
         padding: 16px 12px;
-        padding-top: calc(56px + env(safe-area-inset-top, 0px) + 16px) !important; /* Đẩy tin nhắn lùi xuống dưới header absolute */
+        padding-top: calc(56px + env(safe-area-inset-top, 0px) + 16px) !important;
+        /* Đẩy tin nhắn lùi xuống dưới header absolute */
         background: transparent !important;
         flex: 1 !important;
         overflow-y: auto !important;
@@ -4371,6 +4699,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         -webkit-backface-visibility: hidden !important;
         /* bảo vệ cuộn tin nhắn trên thiết bị cảm ứng */
     }
+
     .zalo-profile-layout {
         max-width: 100%;
         box-shadow: none;
@@ -4382,12 +4711,14 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         flex-direction: column !important;
         padding-bottom: 0 !important;
     }
+
     .personal-main-content {
         flex: 1;
         overflow-y: auto !important;
         -webkit-overflow-scrolling: touch !important;
         padding-bottom: 68px !important;
     }
+
     .zalo-profile-header {
         position: sticky;
         top: 0;
@@ -4399,21 +4730,25 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         padding: 16px;
         padding-top: calc(16px + env(safe-area-inset-top));
     }
+
     .zalo-profile-header h3 {
         margin: 0;
         font-size: 18px;
         flex: 1;
         color: white;
     }
+
     .zalo-profile-header i {
         font-size: 20px;
         color: white;
     }
+
     .profile-tab-cover {
         aspect-ratio: 16 / 9;
         max-height: 240px;
         flex-shrink: 0;
     }
+
     .profile-info-card {
         display: flex;
         align-items: center;
@@ -4423,6 +4758,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         border-bottom: 1px solid var(--border-color);
         flex-shrink: 0;
     }
+
     .profile-info-card .profile-avatar-wrapper {
         position: static;
         transform: none;
@@ -4432,30 +4768,36 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         margin-right: 16px;
         flex-shrink: 0;
     }
+
     .profile-text-info {
         text-align: left;
         flex: 1;
         min-width: 0;
     }
+
     .profile-text-info #profile-name {
         margin: 0 0 4px 0;
         font-size: 18px;
         font-weight: 600;
         color: var(--text-dark);
     }
+
     .profile-text-info #profile-bio {
         margin: 0;
         font-size: 13px;
         color: var(--text-light);
     }
+
     .message-actions {
         display: none !important;
     }
+
     .message.show-mobile-actions .message-body {
         position: relative !important;
         z-index: 251 !important;
         pointer-events: auto !important;
     }
+
     .message.show-mobile-actions .message-actions {
         display: flex !important;
         flex-direction: column !important;
@@ -4474,14 +4816,17 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         visibility: visible;
         pointer-events: auto !important;
     }
+
     .my-message.show-mobile-actions .message-actions {
         right: 0 !important;
         left: auto !important;
     }
+
     .other-message.show-mobile-actions .message-actions {
         left: 0 !important;
         right: auto !important;
     }
+
     .message.show-mobile-actions .reaction-palette {
         position: relative !important;
         top: auto !important;
@@ -4503,12 +4848,14 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         pointer-events: auto !important;
         z-index: 253 !important;
     }
+
     .message.show-mobile-actions .reaction-palette span {
         font-size: 22px !important;
         pointer-events: auto !important;
         cursor: pointer !important;
         -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1) !important;
     }
+
     .message.show-mobile-actions .more-menu {
         position: relative !important;
         top: auto !important;
@@ -4529,9 +4876,11 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         visibility: visible !important;
         width: 100%;
     }
+
     .message.show-mobile-actions .more-menu::after {
         display: none !important;
     }
+
     .message.show-mobile-actions .menu-item {
         display: flex !important;
         flex-direction: column !important;
@@ -4545,6 +4894,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         text-align: center !important;
         gap: 8px !important;
     }
+
     .message.show-mobile-actions .menu-item::before {
         font-family: "Font Awesome 6 Free";
         font-weight: 900;
@@ -4557,18 +4907,22 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         background: rgba(255, 255, 255, 0.15);
         border-radius: 50%;
     }
+
     .message.show-mobile-actions .menu-item.text-danger {
         color: #ff4d4f !important;
     }
+
     .message.show-mobile-actions .menu-item.text-danger::before {
         content: "\f2ea";
         color: #ff4d4f;
         background: rgba(255, 77, 79, 0.15);
     }
+
     .message.show-mobile-actions .menu-item:not(.text-danger):not(.reply-action):not(.copy-action):not(.edit-action)::before {
         content: "\f2ed";
         color: #e5e5e5;
     }
+
     .message.show-mobile-actions .action-item {
         width: 100%;
         height: auto;
@@ -4579,21 +4933,26 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         margin: 0;
         padding: 0;
     }
+
     .message.show-mobile-actions .action-item>i {
         display: none !important;
     }
+
     .message {
         max-width: 100% !important;
     }
+
     .message.my-message {
         align-self: flex-end !important;
     }
+
     .message.show-mobile-actions.flip-up .message-actions {
         top: auto !important;
         bottom: 100% !important;
         margin-top: 0 !important;
         margin-bottom: 8px !important;
     }
+
     .ai-container {
         max-width: 100vw;
         border-left: none;
@@ -4602,29 +4961,36 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         height: -webkit-fill-available !important;
         width: 100%;
     }
+
     .ai-chat-history {
         padding: 16px;
         gap: 12px;
     }
+
     .ai-message {
         max-width: 95%;
     }
+
     .ai-message.ai-bot {
         max-width: 100%;
         width: 100%;
     }
+
     .ai-message .ai-bubble {
         font-size: 14px;
     }
+
     .ai-chat-input-area {
         padding: 12px 16px;
         padding-bottom: 68px !important;
     }
+
     .ai-code-wrapper {
         max-width: calc(100vw - 32px);
         width: 100%;
         touch-action: pan-x pan-y !important;
     }
+
     .ai-code-block pre {
         font-size: 12px !important;
         overflow-x: auto !important;
@@ -4743,6 +5109,7 @@ body[data-theme="dark"] .new-message-toast .toast-msg-text {
         opacity: 0;
         transform: translateY(-20px) scale(0.95);
     }
+
     to {
         opacity: 1;
         transform: translateY(0) scale(1);
@@ -4754,6 +5121,7 @@ body[data-theme="dark"] .new-message-toast .toast-msg-text {
         opacity: 1;
         transform: translateY(0) scale(1);
     }
+
     to {
         opacity: 0;
         transform: translateY(-10px) scale(0.95);
@@ -5075,6 +5443,7 @@ OTHER USER PROFILE FLOATING MODAL (DESKTOP & MOBILE CENTERED)
     from {
         transform: rotate(0deg);
     }
+
     to {
         transform: rotate(360deg);
     }
@@ -5403,6 +5772,7 @@ body[data-theme="dark"] .ai-welcome-logo {
         opacity: 0;
         transform: translateY(8px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -5629,11 +5999,13 @@ body[data-theme="dark"] .ai-typing-indicator span {
 }
 
 @keyframes ai-bounce {
+
     0%,
     80%,
     100% {
         transform: scale(0);
     }
+
     40% {
         transform: scale(1.0);
     }
@@ -5644,6 +6016,7 @@ body[data-theme="dark"] .ai-typing-indicator span {
         align-items: flex-end;
         background: rgba(0, 0, 0, 0.55);
     }
+
     .profile-modal-card {
         width: 100%;
         max-width: 100%;
@@ -5662,9 +6035,11 @@ body[data-theme="dark"] .ai-typing-indicator span {
         box-sizing: border-box;
         flex-shrink: 0;
     }
+
     #user-profile-modal.active .profile-modal-card {
         transform: translateY(0);
     }
+
     .profile-cover {
         height: 150px;
         min-height: 150px;
@@ -5674,6 +6049,7 @@ body[data-theme="dark"] .ai-typing-indicator span {
         background: #c9d6df;
         overflow: hidden;
     }
+
     .profile-cover img {
         display: block;
         width: 100%;
@@ -5681,6 +6057,7 @@ body[data-theme="dark"] .ai-typing-indicator span {
         object-fit: cover;
         content-visibility: visible;
     }
+
     .profile-modal-avatar-header {
         display: flex;
         justify-content: center;
@@ -5688,6 +6065,7 @@ body[data-theme="dark"] .ai-typing-indicator span {
         height: 45px;
         flex-shrink: 0;
     }
+
     .profile-avatar {
         position: absolute;
         top: -45px;
@@ -5700,6 +6078,7 @@ body[data-theme="dark"] .ai-typing-indicator span {
         overflow: hidden;
         flex-shrink: 0;
     }
+
     .profile-avatar img {
         display: block;
         width: 100%;
@@ -5707,6 +6086,7 @@ body[data-theme="dark"] .ai-typing-indicator span {
         border-radius: 50%;
         object-fit: cover;
     }
+
     .profile-info {
         display: flex;
         flex-direction: column;
@@ -5716,16 +6096,19 @@ body[data-theme="dark"] .ai-typing-indicator span {
         padding: 10px 20px 14px;
         flex-shrink: 0;
     }
+
     .profile-info h2 {
         font-size: 18px;
         font-weight: 600;
         margin: 0;
     }
+
     .profile-info .profile-bio {
         font-size: 13px;
         color: var(--text-secondary, var(--text-light));
         margin: 0;
     }
+
     .profile-actions {
         display: flex;
         justify-content: center;
@@ -5733,6 +6116,7 @@ body[data-theme="dark"] .ai-typing-indicator span {
         padding: 0 24px 16px;
         flex-shrink: 0;
     }
+
     .profile-action-btn i {
         width: 52px;
         height: 52px;
@@ -5743,10 +6127,12 @@ body[data-theme="dark"] .ai-typing-indicator span {
         justify-content: center;
         color: white;
     }
+
     .profile-action-btn span {
         font-size: 11px;
         color: var(--text-dark);
     }
+
     .profile-modal-close {
         position: absolute;
         top: 10px;
@@ -5766,11 +6152,13 @@ body[data-theme="dark"] .ai-typing-indicator span {
         z-index: 10;
         backdrop-filter: blur(4px);
     }
+
     #other-user-profile-modal {
         align-items: center !important;
         justify-content: center !important;
         background: rgba(0, 0, 0, 0.6) !important;
     }
+
     #other-user-profile-modal .floating-profile-card {
         width: 340px !important;
         max-width: 88vw !important;
@@ -5781,6 +6169,7 @@ body[data-theme="dark"] .ai-typing-indicator span {
         margin: auto !important;
         padding-bottom: 0 !important;
     }
+
     #other-user-profile-modal.active .floating-profile-card {
         transform: scale(1) translateY(0) !important;
     }
@@ -6013,10 +6402,12 @@ body:not([data-theme="dark"]) .ai-code-expand-btn:hover {
         touch-action: pan-y !important;
         overflow-y: auto !important;
     }
+
     .ai-code-wrapper {
         max-width: calc(100vw - 32px) !important;
         touch-action: pan-x pan-y !important;
     }
+
     .ai-code-block pre {
         font-size: 12px !important;
         overflow-x: auto !important;
@@ -6595,6 +6986,7 @@ NOTIFICATIONS DROPDOWN POPUP
         opacity: 0;
         transform: translateY(-8px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -6623,6 +7015,7 @@ NOTIFICATIONS DROPDOWN POPUP
         /* Đè lên toàn bộ app */
         background: var(--bg-color) !important;
     }
+
     .notifications-dropdown-header {
         padding: 12px 16px !important;
         padding-top: calc(14px + env(safe-area-inset-top, 0px)) !important;
@@ -6634,11 +7027,13 @@ NOTIFICATIONS DROPDOWN POPUP
         gap: 12px;
         justify-content: flex-start;
     }
+
     .notifications-dropdown-header h4 {
         flex: 1;
         font-size: 16px !important;
         margin: 0;
     }
+
     .notifications-back-btn {
         display: inline-flex !important;
         align-items: center;
@@ -6654,9 +7049,11 @@ NOTIFICATIONS DROPDOWN POPUP
         margin-right: 12px;
         -webkit-tap-highlight-color: transparent;
     }
+
     .notifications-dropdown-list {
         max-height: calc(100vh - 64px - env(safe-area-inset-top, 0px)) !important;
     }
+
     /* Vô hiệu hóa chọn chữ mặc định trên di động khi nhấn giữ tin nhắn */
     .message-content,
     .message-content *,
@@ -6737,10 +7134,12 @@ NOTIFICATIONS DROPDOWN POPUP
 }
 
 @keyframes pulseDownloadIcon {
+
     0%,
     100% {
         transform: translateY(0) scale(1);
     }
+
     50% {
         transform: translateY(-3px) scale(1.1);
     }
@@ -6953,6 +7352,7 @@ TIN TỨC (NEWS) STYLE SECTION
         padding-bottom: 0;
         margin-bottom: 0;
     }
+
     100% {
         opacity: 1;
         transform: translateY(0);
@@ -7189,6 +7589,7 @@ body[data-theme="dark"] .news-detail-meta {
         transform: scale(1);
         box-shadow: 0 2px 6px rgba(255, 0, 85, 0.3);
     }
+
     100% {
         transform: scale(1.05);
         box-shadow: 0 2px 12px rgba(255, 0, 85, 0.6);
@@ -7269,6 +7670,7 @@ body[data-theme="dark"] .read-status-badge.hot-new {
         opacity: 0;
         transform: translateY(-8px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -7297,6 +7699,7 @@ body[data-theme="dark"] .read-status-badge.hot-new {
         /* Đè lên toàn bộ app */
         background: var(--bg-color) !important;
     }
+
     .notifications-dropdown-header {
         padding: 12px 16px !important;
         padding-top: calc(14px + env(safe-area-inset-top, 0px)) !important;
@@ -7308,11 +7711,13 @@ body[data-theme="dark"] .read-status-badge.hot-new {
         gap: 12px;
         justify-content: flex-start;
     }
+
     .notifications-dropdown-header h4 {
         flex: 1;
         font-size: 16px !important;
         margin: 0;
     }
+
     .notifications-back-btn {
         display: inline-flex !important;
         align-items: center;
@@ -7328,9 +7733,11 @@ body[data-theme="dark"] .read-status-badge.hot-new {
         margin-right: 12px;
         -webkit-tap-highlight-color: transparent;
     }
+
     .notifications-dropdown-list {
         max-height: calc(100vh - 64px - env(safe-area-inset-top, 0px)) !important;
     }
+
     /* Vô hiệu hóa chọn chữ mặc định trên di động khi nhấn giữ tin nhắn */
     .message-content,
     .message-content *,
@@ -7411,10 +7818,12 @@ body[data-theme="dark"] .read-status-badge.hot-new {
 }
 
 @keyframes pulseDownloadIcon {
+
     0%,
     100% {
         transform: translateY(0) scale(1);
     }
+
     50% {
         transform: translateY(-3px) scale(1.1);
     }
@@ -7614,6 +8023,7 @@ TIN TỨC (NEWS) STYLE SECTION
         padding-bottom: 0;
         margin-bottom: 0;
     }
+
     100% {
         opacity: 1;
         transform: translateY(0);
@@ -7850,6 +8260,7 @@ body[data-theme="dark"] .news-detail-meta {
         transform: scale(1);
         box-shadow: 0 2px 6px rgba(255, 0, 85, 0.3);
     }
+
     100% {
         transform: scale(1.05);
         box-shadow: 0 2px 12px rgba(255, 0, 85, 0.6);
@@ -7934,6 +8345,7 @@ body[data-theme="dark"] .news-detail-meta {
         transform: scale(1);
         box-shadow: 0 2px 6px rgba(255, 0, 85, 0.3);
     }
+
     100% {
         transform: scale(1.05);
         box-shadow: 0 2px 12px rgba(255, 0, 85, 0.6);
@@ -8014,6 +8426,7 @@ body[data-theme="dark"] .read-status-badge.hot-new {
         opacity: 0;
         transform: translateY(-8px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -8042,6 +8455,7 @@ body[data-theme="dark"] .read-status-badge.hot-new {
         /* Đè lên toàn bộ app */
         background: var(--bg-color) !important;
     }
+
     .notifications-dropdown-header {
         padding: 12px 16px !important;
         padding-top: calc(14px + env(safe-area-inset-top, 0px)) !important;
@@ -8053,11 +8467,13 @@ body[data-theme="dark"] .read-status-badge.hot-new {
         gap: 12px;
         justify-content: flex-start;
     }
+
     .notifications-dropdown-header h4 {
         flex: 1;
         font-size: 16px !important;
         margin: 0;
     }
+
     .notifications-back-btn {
         display: inline-flex !important;
         align-items: center;
@@ -8073,9 +8489,11 @@ body[data-theme="dark"] .read-status-badge.hot-new {
         margin-right: 12px;
         -webkit-tap-highlight-color: transparent;
     }
+
     .notifications-dropdown-list {
         max-height: calc(100vh - 64px - env(safe-area-inset-top, 0px)) !important;
     }
+
     /* Vô hiệu hóa chọn chữ mặc định trên di động khi nhấn giữ tin nhắn */
     .message-content,
     .message-content *,
@@ -8156,10 +8574,12 @@ body[data-theme="dark"] .read-status-badge.hot-new {
 }
 
 @keyframes pulseDownloadIcon {
+
     0%,
     100% {
         transform: translateY(0) scale(1);
     }
+
     50% {
         transform: translateY(-3px) scale(1.1);
     }
@@ -8358,6 +8778,7 @@ TIN TỨC (NEWS) STYLE SECTION
         padding-bottom: 0;
         margin-bottom: 0;
     }
+
     100% {
         opacity: 1;
         transform: translateY(0);
@@ -8594,6 +9015,7 @@ body[data-theme="dark"] .news-detail-meta {
         transform: scale(1);
         box-shadow: 0 2px 6px rgba(255, 0, 85, 0.3);
     }
+
     100% {
         transform: scale(1.05);
         box-shadow: 0 2px 12px rgba(255, 0, 85, 0.6);
@@ -8684,18 +9106,22 @@ body[data-theme="dark"] .scroll-to-bottom-btn:hover {
         transform: translate(-50%, -50%) scale(0) rotate(-15deg);
         opacity: 0;
     }
+
     15% {
         transform: translate(-50%, -50%) scale(1.4) rotate(10deg);
         opacity: 0.9;
     }
+
     30% {
         transform: translate(-50%, -50%) scale(1.2) rotate(-5deg);
         opacity: 1;
     }
+
     75% {
         transform: translate(-50%, -50%) scale(1.2) rotate(-5deg);
         opacity: 1;
     }
+
     100% {
         transform: translate(-50%, -50%) scale(0.6) translateY(-45px) rotate(15deg);
         opacity: 0;
@@ -8828,9 +9254,9 @@ body[data-theme="dark"] .scroll-to-bottom-btn:hover {
     justify-content: center;
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.35);
     margin-bottom: 24px;
-    transform: scale(0.85);
+    transform: translateY(-250px);
     opacity: 0;
-    animation: logoZoomScale 0.8s cubic-bezier(0.25, 0.8, 0.25, 1) 0.15s forwards;
+    animation: logoFallDown 0.9s cubic-bezier(0.25, 1, 0.5, 1) 0.1s forwards;
     padding: 12px;
 }
 
@@ -8849,8 +9275,7 @@ body[data-theme="dark"] .scroll-to-bottom-btn:hover {
     letter-spacing: 2px;
     font-family: 'Outfit', 'Inter', sans-serif;
     opacity: 0;
-    transform: translateY(30px);
-    animation: titleSlideUpFade 1s cubic-bezier(0.25, 0.8, 0.25, 1) 0.2s forwards;
+    transform: translateY(80px);
     /* Gradient Text */
     background: linear-gradient(135deg, #00ff88, #00ccff, #ff00ff, #00ff88);
     background-size: 300% 300%;
@@ -8863,23 +9288,54 @@ body[data-theme="dark"] .scroll-to-bottom-btn:hover {
     text-shadow: 0 0 30px rgba(0, 255, 136, 0.4), 0 0 60px rgba(0, 204, 255, 0.2);
     margin-bottom: 20px;
     position: relative;
-    animation: titleSlideUpFade 1s cubic-bezier(0.25, 0.8, 0.25, 1) 0.2s forwards, titleGlow 3s ease-in-out 1.2s infinite;
+    animation: titleSlideUpFade 0.8s cubic-bezier(0.25, 1, 0.5, 1) 0.7s forwards, titleGlow 3s ease-in-out 1.5s infinite;
 }
 
 
 /* Các keyframe hoạt ảnh mượt mà */
 
-@keyframes logoZoomScale {
-    to {
-        transform: scale(1);
+@keyframes logoFallDown {
+    0% {
+        transform: translateY(-250px);
+        opacity: 0;
+    }
+
+    60% {
+        transform: translateY(20px);
+        opacity: 1;
+    }
+
+    80% {
+        transform: translateY(-10px);
+    }
+
+    100% {
+        transform: translateY(0);
         opacity: 1;
     }
 }
 
 @keyframes titleSlideUpFade {
-    to {
+    0% {
+        transform: translateY(80px);
+        opacity: 0;
+    }
+
+    100% {
         transform: translateY(0);
         opacity: 1;
+    }
+}
+
+@keyframes titleGlow {
+
+    0%,
+    100% {
+        filter: drop-shadow(0 0 15px rgba(0, 255, 136, 0.6)) drop-shadow(0 0 30px rgba(0, 204, 255, 0.3));
+    }
+
+    50% {
+        filter: drop-shadow(0 0 25px rgba(0, 255, 136, 0.8)) drop-shadow(0 0 50px rgba(0, 204, 255, 0.5));
     }
 }
 
@@ -8889,23 +9345,25 @@ body[data-theme="dark"] .scroll-to-bottom-btn:hover {
         padding-left: 4px !important;
         padding-right: 4px !important;
     }
-    
+
     .message-avatar {
         width: 28px !important;
         height: 28px !important;
         margin-left: 2px !important;
         margin-right: 4px !important;
     }
-    
+
     .message-body {
         gap: 0px !important;
-        max-width: 85% !important; /* Mở rộng tối đa chiều ngang bong bóng chat */
+        max-width: 85% !important;
+        /* Mở rộng tối đa chiều ngang bong bóng chat */
     }
-    
+
     .other-message .message-meta {
-        margin-left: 34px !important; /* Căn thẳng hàng với bong bóng chat */
+        margin-left: 34px !important;
+        /* Căn thẳng hàng với bong bóng chat */
     }
-    
+
     .my-message .message-meta {
         margin-right: 0px !important;
     }
@@ -8916,13 +9374,13 @@ body[data-theme="dark"] .scroll-to-bottom-btn:hover {
         color: #eab308 !important;
         background: rgba(234, 179, 8, 0.15) !important;
     }
-    
+
     .message.show-mobile-actions .menu-item.forward-action::before {
         content: "\f064" !important;
         color: #a855f7 !important;
         background: rgba(168, 85, 247, 0.15) !important;
     }
-    
+
     .message.show-mobile-actions .menu-item.delete-action::before {
         content: "\f2ed" !important;
         color: #ef4444 !important;
@@ -8938,7 +9396,7 @@ body[data-theme="dark"] .scroll-to-bottom-btn:hover {
         z-index: 999 !important;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
     }
-    
+
     body.has-pinned-bar #messages {
         padding-top: calc(56px + env(safe-area-inset-top, 0px) + 40px + 16px) !important;
     }
@@ -8953,6 +9411,7 @@ body[data-theme="dark"] .scroll-to-bottom-btn:hover {
     font-size: 12px;
     transition: background 0.15s, color 0.15s;
 }
+
 .pinned-unpin-btn:hover {
     background: rgba(239, 68, 68, 0.15);
     color: #ef4444;
@@ -8972,10 +9431,12 @@ body[data-theme="dark"] .scroll-to-bottom-btn:hover {
     padding-bottom: 4px;
     width: 100%;
 }
+
 .other-message .forwarded-indicator {
     color: var(--text-light);
     border-bottom: 1px solid var(--border-color);
 }
+
 .emoji-only-message .forwarded-indicator {
     display: none !important;
 }
@@ -8999,17 +9460,21 @@ body[data-theme="dark"] .scroll-to-bottom-btn:hover {
     z-index: 5;
     animation: popInBounce 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
+
 .other-message .message-pin-badge {
     right: auto;
     left: 8px;
 }
+
 body[data-theme="dark"] .message-pin-badge {
     border-color: #242526;
 }
+
 .emoji-only-message .message-pin-badge {
     bottom: -4px;
     right: -4px;
 }
+
 .other-message.emoji-only-message .message-pin-badge {
     left: -4px;
     right: auto;

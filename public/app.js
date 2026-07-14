@@ -8832,9 +8832,53 @@ if (window.visualViewport) {
 
     handleViewportChange();
 }
+// --- ÂM THANH CHÀO MỪNG NHẸ NHÀNG (Splash Screen Sound) ---
+let splashSoundPlayed = false;
+
+function playSingleSound(src, delay, volume) {
+    setTimeout(() => {
+        try {
+            const audio = new Audio(src);
+            audio.volume = volume;
+            audio.play().catch(err => {
+                console.log("Hệ thống chặn tự phát âm thanh " + src + ":", err);
+            });
+        } catch (e) {
+            console.error("Lỗi âm thanh:", e);
+        }
+    }, delay);
+}
+
+function playSplashSound() {
+    if (splashSoundPlayed) return;
+    
+    // Âm thanh 1: Khi logo bắt đầu rơi từ trên xuống (t = 100ms)
+    playSingleSound("amthanhtinnhan.mp3", 100, 0.12);
+    
+    // Âm thanh 2: Khi chữ Chat Tho-Fi bắt đầu đẩy từ dưới lên (t = 700ms)
+    playSingleSound("amthanhtinnhan.mp3", 700, 0.15);
+    
+    splashSoundPlayed = true;
+    
+    // Gỡ bỏ các trình lắng nghe chạm khi đã phát thành công
+    document.removeEventListener("click", playSplashSoundFallback);
+    document.removeEventListener("touchstart", playSplashSoundFallback);
+}
+
+function playSplashSoundFallback() {
+    playSplashSound();
+}
+
+// Cơ chế fallback khi WebView di động chặn tự động phát âm thanh (autoplay policy)
+// Nhạc sẽ phát ngay khi người dùng chạm ngón tay vào màn hình lần đầu tiên
+document.addEventListener("click", playSplashSoundFallback, { once: true });
+document.addEventListener("touchstart", playSplashSoundFallback, { once: true });
 
 // --- ĐÓNG MÀN HÌNH CHÀO SPLASH SCREEN ---
 function hideSplashScreen() {
+    // Cố gắng phát âm thanh chào mừng ngay khi khởi động
+    playSplashSound();
+    
     setTimeout(() => {
         const splash = document.getElementById("splash-screen");
         if (splash) {
