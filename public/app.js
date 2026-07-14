@@ -732,20 +732,34 @@ function hideMobileOverlay() {
 
 function showMobileOverlay(messageEl) {
     let overlay = document.getElementById("mobile-action-overlay");
+    if (overlay && overlay.classList.contains("show")) {
+        // Nếu overlay đang hiển thị rồi thì không làm gì cả để tránh reset dataset.shownAt (gây ra lỗi bấm 2 lần mới đóng)
+        return;
+    }
     if (!overlay) {
         overlay = document.createElement("div");
         overlay.id = "mobile-action-overlay";
-        overlay.addEventListener("click", (e) => {
+        
+        const closeOverlay = (e) => {
             const shownAt = parseInt(overlay.dataset.shownAt || "0", 10);
             if (Date.now() - shownAt < 300) {
                 return;
             }
+            if (e.cancelable && e.type === "touchstart") e.preventDefault();
             hideMobileOverlay();
-        });
-        overlay.addEventListener("touchmove", (e) => e.preventDefault(), {
+        };
+
+        overlay.addEventListener("click", closeOverlay);
+        overlay.addEventListener("touchstart", closeOverlay, { passive: false }); // Thay touchend bằng touchstart để nhạy hơn
+
+        overlay.addEventListener("touchmove", (e) => {
+            if (e.cancelable) e.preventDefault();
+        }, {
             passive: false,
         });
     }
+    // Đặt overlay vào trong #messages để cùng stacking context với tin nhắn.
+    // Nhờ đó, tin nhắn đang chọn (z-index 250) sẽ nổi lên trên overlay (z-index 200) và không bị mờ (blur).
     const messagesDiv = document.getElementById("messages");
     if (messagesDiv) {
         messagesDiv.appendChild(overlay);
@@ -759,6 +773,20 @@ function showMobileOverlay(messageEl) {
     messageEl.classList.add("show-mobile-actions");
     overlay.classList.add("show");
     overlay.dataset.shownAt = Date.now().toString();
+
+    // Cho phép click/tap vào phần nội dung tin nhắn (ảnh, text) nhưng không phải nút chức năng để đóng overlay
+    const msgContent = messageEl.querySelector(".message-content");
+    if (msgContent) {
+        const dismissHandler = (e) => {
+            // Nếu click vào bên trong .message-actions hoặc .reaction-palette thì bỏ qua
+            if (e.target.closest('.message-actions, .reaction-palette, .more-menu')) return;
+            hideMobileOverlay();
+            msgContent.removeEventListener("click", dismissHandler);
+            msgContent.removeEventListener("touchstart", dismissHandler);
+        };
+        msgContent.addEventListener("click", dismissHandler);
+        msgContent.addEventListener("touchstart", dismissHandler, { passive: true }); // Dùng touchstart thay vì touchend
+    }
 
     // Kiem tra vi tri tin nhan: neu gan day man hinh, dao nguoc action panel len tren
     requestAnimationFrame(() => {
