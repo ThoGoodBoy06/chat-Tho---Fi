@@ -716,18 +716,93 @@ function hideMobileOverlay() {
     const overlay = document.getElementById("mobile-action-overlay");
     if (overlay) overlay.classList.remove("show");
     document.body.classList.remove("overlay-active");
-    document
-        .querySelectorAll(".message.show-mobile-actions")
-        .forEach((m) => {
-            m.classList.remove("show-mobile-actions");
-            m.classList.remove("flip-up");
+    
+    document.querySelectorAll(".message").forEach((m) => {
+        m.classList.remove("show-mobile-actions");
+        m.classList.remove("flip-up");
+        
+        const msgContent = m.querySelector(".message-content");
+        if (msgContent) {
+            msgContent.style.removeProperty("position");
+            msgContent.style.removeProperty("z-index");
+        }
+        
+        const actions = m.querySelector(".message-actions");
+        if (actions) {
+            actions.style.removeProperty("display");
+            actions.style.removeProperty("position");
+            actions.style.removeProperty("top");
+            actions.style.removeProperty("left");
+            actions.style.removeProperty("width");
+            actions.style.removeProperty("height");
+            actions.style.removeProperty("pointer-events");
+            actions.style.removeProperty("z-index");
+            actions.style.removeProperty("background");
+            actions.style.removeProperty("box-shadow");
+            actions.style.removeProperty("margin");
+            actions.style.removeProperty("padding");
+        }
+        
+        m.querySelectorAll(".action-item").forEach((item) => {
+            item.style.removeProperty("position");
+            item.style.removeProperty("top");
+            item.style.removeProperty("left");
+            item.style.removeProperty("width");
+            item.style.removeProperty("height");
+            item.style.removeProperty("margin");
+            item.style.removeProperty("padding");
+            item.style.removeProperty("border");
+            item.style.removeProperty("background");
+            item.style.removeProperty("box-shadow");
+            item.style.removeProperty("overflow");
+            item.style.removeProperty("pointer-events");
+            
+            const icon = item.querySelector("i");
+            if (icon) icon.style.removeProperty("display");
         });
-    document
-        .querySelectorAll(".reaction-palette.show")
-        .forEach((p) => p.classList.remove("show"));
-    document
-        .querySelectorAll(".more-menu.show")
-        .forEach((m) => m.classList.remove("show"));
+        
+        const palette = m.querySelector(".reaction-palette");
+        if (palette) {
+            palette.classList.remove("show");
+            palette.style.removeProperty("position");
+            palette.style.removeProperty("z-index");
+            palette.style.removeProperty("display");
+            palette.style.removeProperty("opacity");
+            palette.style.removeProperty("visibility");
+            palette.style.removeProperty("width");
+            palette.style.removeProperty("background");
+            palette.style.removeProperty("border-radius");
+            palette.style.removeProperty("padding");
+            palette.style.removeProperty("box-shadow");
+            palette.style.removeProperty("gap");
+            palette.style.removeProperty("pointer-events");
+            palette.style.removeProperty("left");
+            palette.style.removeProperty("right");
+            palette.style.removeProperty("top");
+            palette.style.removeProperty("bottom");
+        }
+        
+        const moreMenu = m.querySelector(".more-menu");
+        if (moreMenu) {
+            moreMenu.classList.remove("show");
+            moreMenu.style.removeProperty("position");
+            moreMenu.style.removeProperty("z-index");
+            moreMenu.style.removeProperty("display");
+            moreMenu.style.removeProperty("flex-direction");
+            moreMenu.style.removeProperty("opacity");
+            moreMenu.style.removeProperty("visibility");
+            moreMenu.style.removeProperty("width");
+            moreMenu.style.removeProperty("background");
+            moreMenu.style.removeProperty("border-radius");
+            moreMenu.style.removeProperty("padding");
+            moreMenu.style.removeProperty("box-shadow");
+            moreMenu.style.removeProperty("pointer-events");
+            moreMenu.style.removeProperty("left");
+            moreMenu.style.removeProperty("right");
+            moreMenu.style.removeProperty("top");
+            moreMenu.style.removeProperty("bottom");
+        }
+    });
 }
 
 function showMobileOverlay(messageEl) {
@@ -2979,6 +3054,10 @@ function displayMessage(msg, targetContainer = null) {
 
                 replyBox.onclick = (e) => {
                     e.stopPropagation();
+                    const overlay = document.getElementById("mobile-action-overlay");
+                    if (overlay && overlay.classList.contains("show")) {
+                        return; // Chặn nhảy tin nhắn khi đang mở hoặc vừa mở menu di động
+                    }
                     scrollToAndHighlightMessage(msg.replyMessageId);
                 };
 

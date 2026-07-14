@@ -921,12 +921,11 @@ RIGHT WINDOW & CHAT MESSAGES
 }
 
 .message-image {
-    max-width: 100%;
-    max-height: 350px; /* Chặn ảnh quá dài theo chiều dọc */
-    width: auto;
-    height: auto;
-    object-fit: contain; /* Giữ nguyên tỷ lệ chuẩn */
-    border-radius: 12px;
+    max-width: 100% !important;
+    width: 220px !important;
+    height: 280px !important;
+    object-fit: cover !important; /* Giúp ảnh luôn lấp đầy khung tỉ lệ vàng, giống hệt Messenger */
+    border-radius: 16px !important; /* Bo góc tròn mềm mại */
     cursor: pointer;
     display: block;
     box-shadow: var(--shadow-md);
