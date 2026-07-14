@@ -434,10 +434,10 @@ exports.sendMessage = async(req, res) => {
                     android: {
                         priority: "high",
                         notification: {
-                            channel_id: "chat_messages_v2",
+                            channelId: "chat_messages_v3",
+                            channel_id: "chat_messages_v3",
                             sound: "amthanhtinnhan",
-                            priority: "high",
-                            default_vibrate_timings: true,
+                            defaultVibrateTimings: true,
                         },
                     },
                     apns: {
@@ -819,10 +819,10 @@ exports.sendPushNotification = async(fcmToken, title, body, customData = null, d
         android: {
             priority: "high",
             notification: {
-                channel_id: dataOnly ? "incoming_calls_v2" : "chat_messages_v2",
+                channelId: dataOnly ? "incoming_calls_v3" : "chat_messages_v3",
+                channel_id: dataOnly ? "incoming_calls_v3" : "chat_messages_v3",
                 sound: dataOnly ? "ringtone" : "amthanhtinnhan",
-                priority: "high",
-                default_vibrate_timings: true,
+                defaultVibrateTimings: true,
             },
         },
         apns: {
