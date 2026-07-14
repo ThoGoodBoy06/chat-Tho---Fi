@@ -1351,6 +1351,7 @@ RIGHT WINDOW & CHAT MESSAGES
     z-index: 250 !important;
     position: relative !important;
     overflow: visible !important;
+    content-visibility: visible !important;
 }
 
 

@@ -3189,6 +3189,7 @@ function displayMessage(msg, targetContainer = null) {
                 const diffX = Math.abs(e.touches[0].clientX - longPressStartX);
                 if (diffY > 10 || diffX > 10) {
                     clearTimeout(pressTimer);
+                    clearTimeout(mouseTimer);
                 }
             } else {
                 if (isLongPress && e && e.type === "touchend") {
@@ -3197,6 +3198,7 @@ function displayMessage(msg, targetContainer = null) {
                     isLongPress = false;
                 }
                 clearTimeout(pressTimer);
+                clearTimeout(mouseTimer);
             }
         };
 
@@ -3208,8 +3210,43 @@ function displayMessage(msg, targetContainer = null) {
         messageContent.addEventListener("contextmenu", (e) => {
             if (window.innerWidth <= 768) {
                 e.preventDefault();
+                showMobileOverlay(messageElement);
+                const palette = messageElement.querySelector(".reaction-palette");
+                if (palette) palette.classList.add("show");
             }
         });
+
+        // Hỗ trợ nhấn giữ bằng chuột (cho môi trường Web responsive giả lập trên desktop)
+        let mouseTimer;
+        let isMouseLongPress = false;
+
+        messageContent.addEventListener("mousedown", (e) => {
+            if (window.innerWidth > 768) return;
+            if (e.button !== 0) return; // Chỉ nhận chuột trái
+            isMouseLongPress = false;
+            mouseTimer = setTimeout(() => {
+                isMouseLongPress = true;
+                showMobileOverlay(messageElement);
+                const palette = messageElement.querySelector(".reaction-palette");
+                if (palette) palette.classList.add("show");
+            }, 300);
+        });
+
+        const cancelMousePress = (e) => {
+            clearTimeout(mouseTimer);
+            if (isMouseLongPress && e && e.type === "mouseup") {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                isMouseLongPress = false;
+            }
+        };
+
+        messageContent.addEventListener("mouseup", cancelMousePress);
+        messageContent.addEventListener("mousemove", (e) => {
+            // Nếu di chuột thì huỷ nhấn giữ
+            clearTimeout(mouseTimer);
+        });
+        messageContent.addEventListener("mouseleave", cancelMousePress);
 
         // Xử lý Double click / Double tap thả tim giống Messenger
         let lastTap = 0;
