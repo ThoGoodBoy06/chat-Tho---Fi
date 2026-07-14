@@ -4182,7 +4182,12 @@ async function flipCamera() {
 
     try {
         const newStream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: currentFacingMode },
+            video: {
+                facingMode: currentFacingMode,
+                width: { ideal: 640, max: 1280 },
+                height: { ideal: 480, max: 720 },
+                frameRate: { ideal: 24, max: 30 }
+            },
             audio: false,
         });
 
@@ -5192,10 +5197,15 @@ async function openEditProfileModal() {
 // ==========================================
 
 async function upgradeToVideoCall() {
-    if (callTypeGlobal !== "voice" || !localStream || !peerConnection) {
+    if (!localStream || !peerConnection) {
         console.warn(
-            "Không thể nâng cấp: cuộc gọi không phải di động hoặc chưa kết nối.",
+            "Không thể nâng cấp: cuộc gọi chưa kết nối.",
         );
+        return;
+    }
+
+    if (localStream.getVideoTracks().length > 0) {
+        console.log("Đã có video track trong localStream.");
         return;
     }
 
@@ -5203,8 +5213,12 @@ async function upgradeToVideoCall() {
         console.log("Đang yêu cầu quyền truy cập camera để nâng cấp...");
 
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        const videoConstraints = isMobile ? { facingMode: currentFacingMode } :
-            true;
+        const videoConstraints = {
+            width: { ideal: 640, max: 1280 },
+            height: { ideal: 480, max: 720 },
+            frameRate: { ideal: 24, max: 30 },
+            ...(isMobile ? { facingMode: currentFacingMode } : {})
+        };
         const videoStream = await navigator.mediaDevices.getUserMedia({
             video: videoConstraints,
             audio: false,
@@ -5378,9 +5392,13 @@ async function startCall(callType) {
                 echoCancellation: true,
                 ...(selectedMicId ? { deviceId: { exact: selectedMicId } } : {})
             },
-            video: callTypeGlobal === "video" ?
-                (selectedCamId ? { deviceId: { exact: selectedCamId } } :
-                    (isMobile ? { facingMode: currentFacingMode } : true)) : false,
+            video: callTypeGlobal === "video" ? {
+                width: { ideal: 640, max: 1280 },
+                height: { ideal: 480, max: 720 },
+                frameRate: { ideal: 24, max: 30 },
+                ...(selectedCamId ? { deviceId: { exact: selectedCamId } } : {}),
+                ...(isMobile ? { facingMode: currentFacingMode } : {})
+            } : false,
         };
 
         try {
@@ -5712,9 +5730,13 @@ async function startCallSession(isCaller, calleeInfo = null) {
                     autoGainControl: true, // Kích hoạt tự động tăng âm lượng micro
                     ...(selectedMicId ? { deviceId: { exact: selectedMicId } } : {})
                 },
-                video: callTypeGlobal === "video" ?
-                    (selectedCamId ? { deviceId: { exact: selectedCamId } } :
-                        (isMobile ? { facingMode: currentFacingMode } : true)) : false,
+                video: callTypeGlobal === "video" ? {
+                    width: { ideal: 640, max: 1280 },
+                    height: { ideal: 480, max: 720 },
+                    frameRate: { ideal: 24, max: 30 },
+                    ...(selectedCamId ? { deviceId: { exact: selectedCamId } } : {}),
+                    ...(isMobile ? { facingMode: currentFacingMode } : {})
+                } : false,
             };
 
             try {
