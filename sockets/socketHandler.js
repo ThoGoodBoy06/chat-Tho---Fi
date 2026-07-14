@@ -13,55 +13,59 @@ module.exports = (io) => {
 
     // 1. Lắng nghe khi người dùng đăng nhập app thành công
     socket.on("user_connected", async (userId) => {
-      userSockets.set(userId, socket.id);
-      socket.userId = userId;
-
-      // Đưa user vào một "phòng" có tên là ID của họ để dễ dàng gửi tin nhắn cá nhân
-      socket.join(userId);
-
-      // Tự động join vào các phòng chat mà user này là thành viên
-      const conversations = await prisma.conversationMembers.findMany({
-        where: { userId },
-        select: { conversationId: true },
-      });
-      conversations.forEach((conv) => {
-        socket.join(conv.conversationId);
-      });
-
-      // Lấy danh sách lời mời kết bạn đang chờ và gửi cho client
       try {
-        const pendingRequests = await prisma.friendRequests.findMany({
-          where: { receiverId: userId, status: "PENDING" },
-          include: {
-            requester: {
-              select: { id: true, fullName: true },
+        userSockets.set(userId, socket.id);
+        socket.userId = userId;
+
+        // Đưa user vào một "phòng" có tên là ID của họ để dễ dàng gửi tin nhắn cá nhân
+        socket.join(userId);
+
+        // Tự động join vào các phòng chat mà user này là thành viên
+        const conversations = await prisma.conversationMembers.findMany({
+          where: { userId },
+          select: { conversationId: true },
+        });
+        conversations.forEach((conv) => {
+          socket.join(conv.conversationId);
+        });
+
+        // Lấy danh sách lời mời kết bạn đang chờ và gửi cho client
+        try {
+          const pendingRequests = await prisma.friendRequests.findMany({
+            where: { receiverId: userId, status: "PENDING" },
+            include: {
+              requester: {
+                select: { id: true, fullName: true },
+              },
             },
-          },
+          });
+
+          // Map avatar sang URL tĩnh
+          const mappedPending = pendingRequests.map(r => {
+            if (r.requester) {
+              r.requester.avatar = `/api/users/${r.requester.id}/avatar`;
+            }
+            return r;
+          });
+
+          socket.emit("initial_friend_requests", mappedPending);
+        } catch (e) {
+          console.error("Lỗi khi lấy danh sách lời mời kết bạn:", e);
+        }
+
+        // Cập nhật trạng thái "Đang Online" vào Database
+        await prisma.users.update({
+          where: { id: userId },
+          data: { isOnline: true },
         });
 
-        // Map avatar sang URL tĩnh
-        const mappedPending = pendingRequests.map(r => {
-          if (r.requester) {
-            r.requester.avatar = `/api/users/${r.requester.id}/avatar`;
-          }
-          return r;
-        });
-
-        socket.emit("initial_friend_requests", mappedPending);
-      } catch (e) {
-        console.error("Lỗi khi lấy danh sách lời mời kết bạn:", e);
+        // Báo cho mọi người khác biết user này vừa online (cả 2 dạng sự kiện để tương thích)
+        io.emit("user_status_changed", { userId, isOnline: true });
+        io.emit("user_status_change", { userId, isOnline: true });
+        console.log(`👤 User ${userId} đã kết nối.`);
+      } catch (err) {
+        console.error("❌ Lỗi trong sự kiện user_connected:", err);
       }
-
-      // Cập nhật trạng thái "Đang Online" vào Database
-      await prisma.users.update({
-        where: { id: userId },
-        data: { isOnline: true },
-      });
-
-      // Báo cho mọi người khác biết user này vừa online (cả 2 dạng sự kiện để tương thích)
-      io.emit("user_status_changed", { userId, isOnline: true });
-      io.emit("user_status_change", { userId, isOnline: true });
-      console.log(`👤 User ${userId} đã kết nối.`);
     });
 
     // 1b. Lắng nghe khi người dùng chuyển ứng dụng chạy ngầm (go_offline)

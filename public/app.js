@@ -774,12 +774,112 @@ function showMobileOverlay(messageEl) {
     overlay.classList.add("show");
     overlay.dataset.shownAt = Date.now().toString();
 
-    // Cho phép click/tap vào phần nội dung tin nhắn (ảnh, text) nhưng không phải nút chức năng để đóng overlay
+    // Lấy các element để ép style inline, tránh bị lưu cache CSS cũ trên thiết bị di động
     const msgContent = messageEl.querySelector(".message-content");
+    const palette = messageEl.querySelector(".reaction-palette");
+    const moreMenu = messageEl.querySelector(".more-menu");
+    const actions = messageEl.querySelector(".message-actions");
+    const isMyMessage = messageEl.classList.contains("my-message");
+
+    if (msgContent) {
+        msgContent.style.setProperty("position", "relative", "important");
+        msgContent.style.setProperty("z-index", "251", "important");
+    }
+
+    if (actions) {
+        actions.style.setProperty("display", "block", "important");
+        actions.style.setProperty("position", "absolute", "important");
+        actions.style.setProperty("top", "0", "important");
+        actions.style.setProperty("left", "0", "important");
+        actions.style.setProperty("width", "100%", "important");
+        actions.style.setProperty("height", "100%", "important");
+        actions.style.setProperty("pointer-events", "none", "important");
+        actions.style.setProperty("z-index", "252", "important");
+        actions.style.setProperty("background", "transparent", "important");
+        actions.style.setProperty("box-shadow", "none", "important");
+        actions.style.setProperty("margin", "0", "important");
+        actions.style.setProperty("padding", "0", "important");
+    }
+
+    // Ẩn hoàn toàn các nút tròn trigger gốc của desktop (smiley & ba chấm) để tránh làm méo bong bóng chat
+    const actionItems = messageEl.querySelectorAll(".action-item");
+    actionItems.forEach((item) => {
+        item.style.setProperty("position", "absolute", "important");
+        item.style.setProperty("top", "0", "important");
+        item.style.setProperty("left", "0", "important");
+        item.style.setProperty("width", "100%", "important"); // Thay đổi từ 0 thành 100% để calc(100% + 8px) nhận chiều cao thực tế của tin nhắn
+        item.style.setProperty("height", "100%", "important"); // Thay đổi từ 0 thành 100%
+        item.style.setProperty("margin", "0", "important");
+        item.style.setProperty("padding", "0", "important");
+        item.style.setProperty("border", "none", "important");
+        item.style.setProperty("background", "transparent", "important");
+        item.style.setProperty("box-shadow", "none", "important");
+        item.style.setProperty("overflow", "visible", "important");
+        item.style.setProperty("pointer-events", "none", "important");
+
+        const icon = item.querySelector("i");
+        if (icon) {
+            icon.style.setProperty("display", "none", "important");
+        }
+    });
+
+    if (palette) {
+        palette.style.setProperty("position", "absolute", "important");
+        palette.style.setProperty("z-index", "253", "important");
+        palette.style.setProperty("display", "flex", "important");
+        palette.style.setProperty("opacity", "1", "important");
+        palette.style.setProperty("visibility", "visible", "important");
+        palette.style.setProperty("width", "max-content", "important");
+        palette.style.setProperty("background", "rgba(30, 30, 30, 0.95)", "important");
+        palette.style.setProperty("border-radius", "30px", "important");
+        palette.style.setProperty("padding", "6px 12px", "important");
+        palette.style.setProperty("box-shadow", "0 4px 16px rgba(0, 0, 0, 0.25)", "important");
+        palette.style.setProperty("gap", "10px", "important");
+        palette.style.setProperty("pointer-events", "auto", "important"); // Nhận tương tác click
+
+        if (isMyMessage) {
+            palette.style.setProperty("right", "0", "important");
+            palette.style.setProperty("left", "auto", "important");
+        } else {
+            palette.style.setProperty("left", "0", "important"); // Căn đúng lề trái của bong bóng tin nhắn (không bị lệch do avatar)
+            palette.style.setProperty("right", "auto", "important");
+        }
+    }
+
+    if (moreMenu) {
+        moreMenu.style.setProperty("position", "absolute", "important");
+        moreMenu.style.setProperty("z-index", "252", "important");
+        moreMenu.style.setProperty("display", "flex", "important");
+        moreMenu.style.setProperty("flex-direction", "column", "important");
+        moreMenu.style.setProperty("opacity", "1", "important");
+        moreMenu.style.setProperty("visibility", "visible", "important");
+        moreMenu.style.setProperty("width", "220px", "important");
+        moreMenu.style.setProperty("background", "rgba(30, 30, 30, 0.95)", "important");
+        moreMenu.style.setProperty("border-radius", "14px", "important");
+        moreMenu.style.setProperty("padding", "4px 0", "important");
+        moreMenu.style.setProperty("box-shadow", "0 8px 32px rgba(0, 0, 0, 0.3)", "important");
+        moreMenu.style.setProperty("pointer-events", "auto", "important"); // Nhận tương tác click
+
+        if (isMyMessage) {
+            moreMenu.style.setProperty("right", "0", "important");
+            moreMenu.style.setProperty("left", "auto", "important");
+        } else {
+            moreMenu.style.setProperty("left", "0", "important"); // Căn đúng lề trái của bong bóng tin nhắn (không bị lệch do avatar)
+            moreMenu.style.setProperty("right", "auto", "important");
+        }
+    }
+
+    // Cho phép click/tap vào phần nội dung tin nhắn (ảnh, text) nhưng không phải nút chức năng để đóng overlay
     if (msgContent) {
         const dismissHandler = (e) => {
             // Nếu click vào bên trong .message-actions hoặc .reaction-palette thì bỏ qua
             if (e.target.closest('.message-actions, .reaction-palette, .more-menu')) return;
+            
+            const shownAt = parseInt(overlay.dataset.shownAt || "0", 10);
+            if (Date.now() - shownAt < 300) {
+                return;
+            }
+
             hideMobileOverlay();
             msgContent.removeEventListener("click", dismissHandler);
             msgContent.removeEventListener("touchstart", dismissHandler);
@@ -788,21 +888,33 @@ function showMobileOverlay(messageEl) {
         msgContent.addEventListener("touchstart", dismissHandler, { passive: true }); // Dùng touchstart thay vì touchend
     }
 
-    // Kiem tra vi tri tin nhan: neu gan day man hinh, dao nguoc action panel len tren
+    // Kiểm tra vị trí tin nhắn để xác định lật ngược menu lên trên nếu quá gần cạnh dưới màn hình
     requestAnimationFrame(() => {
-        // Cuộn tin nhắn vào vị trí hiển thị tốt nhất (ở giữa màn hình) để tránh bị che khuất bởi bàn phím hoặc input area
-        messageEl.scrollIntoView({ behavior: "smooth", block: "center" });
+        const rect = messageEl.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const isFlipped = spaceBelow < 280;
 
-        setTimeout(() => {
-            const rect = messageEl.getBoundingClientRect();
-            const spaceBelow = window.innerHeight - rect.bottom;
-            // Cần ít nhất 270px cho reaction palette + menu
-            if (spaceBelow < 270) {
-                messageEl.classList.add("flip-up");
-            } else {
-                messageEl.classList.remove("flip-up");
+        if (isFlipped) {
+            messageEl.classList.add("flip-up");
+            if (palette) {
+                palette.style.setProperty("top", "calc(100% + 8px)", "important");
+                palette.style.setProperty("bottom", "auto", "important");
             }
-        }, 150);
+            if (moreMenu) {
+                moreMenu.style.setProperty("bottom", "calc(100% + 8px)", "important");
+                moreMenu.style.setProperty("top", "auto", "important");
+            }
+        } else {
+            messageEl.classList.remove("flip-up");
+            if (palette) {
+                palette.style.setProperty("bottom", "calc(100% + 8px)", "important");
+                palette.style.setProperty("top", "auto", "important");
+            }
+            if (moreMenu) {
+                moreMenu.style.setProperty("top", "calc(100% + 8px)", "important");
+                moreMenu.style.setProperty("bottom", "auto", "important");
+            }
+        }
     });
 }
 
@@ -2898,10 +3010,12 @@ function displayMessage(msg, targetContainer = null) {
         reactBtn.innerHTML = '<i class="far fa-smile"></i>';
         const reactionPalette = document.createElement("div");
         reactionPalette.className = "reaction-palette";
-        const EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "😡"];
+        const EMOJIS = ["❤️", "😆", "😮", "😢", "😡", "👍"];
         EMOJIS.forEach((emoji) => {
             const emojiSpan = document.createElement("span");
             emojiSpan.innerText = emoji;
+            emojiSpan.style.fontSize = "24px";
+            emojiSpan.style.transition = "transform 0.15s";
             const handleReact = (e) => {
                 e.stopPropagation();
                 e.preventDefault();
@@ -2915,11 +3029,27 @@ function displayMessage(msg, targetContainer = null) {
             reactionPalette.appendChild(emojiSpan);
         });
 
+        // 📷 Nút camera màu xanh giống Messenger
+        const cameraSpan = document.createElement("span");
+        cameraSpan.innerHTML = `<span style="display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; background: #0084ff; border-radius: 50%; color: white; font-size: 12px;"><i class="fas fa-camera"></i></span>`;
+        cameraSpan.style.cursor = "pointer";
+        cameraSpan.style.display = "inline-flex";
+        cameraSpan.style.alignItems = "center";
+        cameraSpan.style.justifyContent = "center";
+        cameraSpan.style.transition = "transform 0.15s";
+        cameraSpan.onclick = (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            const imgInput = document.getElementById("image-upload");
+            if (imgInput) imgInput.click();
+            hideMobileOverlay();
+        };
+        reactionPalette.appendChild(cameraSpan);
+
         // ➕ Nút cộng để chọn các emoji khác giống Messenger
         const plusSpan = document.createElement("span");
-        plusSpan.innerText = "➕";
+        plusSpan.innerHTML = `<span style="display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; background: rgba(255, 255, 255, 0.15); border-radius: 50%; color: white; font-size: 12px;"><i class="fas fa-plus"></i></span>`;
         plusSpan.style.cursor = "pointer";
-        plusSpan.style.fontSize = "13px";
         plusSpan.style.display = "inline-flex";
         plusSpan.style.alignItems = "center";
         plusSpan.style.justifyContent = "center";
@@ -3140,8 +3270,8 @@ function displayMessage(msg, targetContainer = null) {
         actions.appendChild(reactBtn);
         actions.appendChild(moreBtn);
 
+        messageContent.appendChild(actions);
         messageBody.appendChild(messageContent);
-        messageBody.appendChild(actions);
 
         renderReactions(messageBody, msg.reactions);
 

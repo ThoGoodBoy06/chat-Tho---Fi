@@ -68,6 +68,17 @@ exports.getConversations = async(req, res) => {
                             orderBy: { createdAt: "desc" },
                             take: 1,
                         },
+                        // Đếm số tin nhắn chưa đọc của người khác gửi bằng tính năng Relation Count của Prisma
+                        _count: {
+                            select: {
+                                Messages: {
+                                    where: {
+                                        senderId: { not: userId },
+                                        isRead: false,
+                                    },
+                                },
+                            },
+                        },
                     },
                 },
             },
@@ -94,42 +105,25 @@ exports.getConversations = async(req, res) => {
             return getLatestTime(b) - getLatestTime(a);
         });
 
-        // Map avatar sang URL tĩnh và đếm số lượng tin nhắn chưa đọc của đối phương gửi
-        const mappedConversations = await Promise.all(
-            conversations.map(async(item) => {
-                if (!item.Conversations) return item;
+        // Map avatar sang URL tĩnh mà không cần truy vấn DB lại
+        const mappedConversations = conversations.map((item) => {
+            if (!item.Conversations) return item;
 
-                // Đếm số tin nhắn chưa đọc của người khác gửi trong hội thoại này
-                const unreadCount = await prisma.messages.count({
-                    where: {
-                        conversationId: item.Conversations.id,
-                        senderId: { not: userId },
-                        isRead: false,
-                    },
+            const conv = { ...item.Conversations };
+
+            if (conv.ConversationMembers) {
+                conv.ConversationMembers.forEach((member) => {
+                    if (member.Users) {
+                        member.Users.avatar = `/api/users/${member.Users.id}/avatar`;
+                    }
                 });
+            }
 
-                // Nhân bản object Conversations để chèn thêm avatar & count
-                const conv = {
-                    ...item.Conversations,
-                    _count: {
-                        Messages: unreadCount,
-                    },
-                };
-
-                if (conv.ConversationMembers) {
-                    conv.ConversationMembers.forEach((member) => {
-                        if (member.Users) {
-                            member.Users.avatar = `/api/users/${member.Users.id}/avatar`;
-                        }
-                    });
-                }
-
-                return {
-                    ...item,
-                    Conversations: conv,
-                };
-            })
-        );
+            return {
+                ...item,
+                Conversations: conv,
+            };
+        });
 
         res.status(200).json({ success: true, data: mappedConversations });
     } catch (error) {

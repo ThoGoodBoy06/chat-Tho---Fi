@@ -3,6 +3,12 @@ require("dotenv").config();
 // Tự động đồng bộ hóa cấu trúc Database khi khởi chạy ứng dụng (ví dụ trên Render)
 try {
     const { execSync } = require("child_process");
+    console.log("🧹 Dọn dẹp các kết nối cũ còn treo trên database...");
+    try {
+        execSync("node kill_connections.js", { stdio: "inherit" });
+    } catch (e) {
+        console.error("⚠️ Không thể dọn dẹp kết nối treo:", e.message);
+    }
     console.log("🔄 Đang tiến hành đồng bộ hóa cấu trúc Database (Prisma generate & db push)...");
     execSync("node node_modules/prisma/build/index.js generate && node node_modules/prisma/build/index.js db push --accept-data-loss", { stdio: "inherit" });
     console.log("✅ Đồng bộ hóa Database thành công!");
@@ -517,123 +523,138 @@ server.listen(PORT, () => {
     ];
 
     async function updateRealNews(ioInstance) {
-        for (const feed of FEEDS) {
-            try {
-                const response = await fetch(feed.url, {
-                    headers: {
-                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-                    },
-                    signal: AbortSignal.timeout(15000)
-                });
-                const xmlText = await response.text();
+        try {
+            // 1. Tải toàn bộ tiêu đề tin tức hiện có từ database để so khớp trùng lặp trong bộ nhớ (chỉ mất 1 query duy nhất)
+            const allExistingNews = await prisma.news.findMany({
+                select: { title: true }
+            });
+            const existingTitlesSet = new Set(allExistingNews.map((n) => n.title));
 
-                const items = [];
-                const itemRegex = /<item>([\s\S]*?)<\/item>/g;
-                let match;
-                while ((match = itemRegex.exec(xmlText)) !== null) {
-                    const itemContent = match[1];
-
-                    const extractTag = (tag) => {
-                        const regex = new RegExp(`<${tag}>(?:<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>|([\\s\\S]*?))<\/${tag}>`);
-                        const tagMatch = itemContent.match(regex);
-                        if (tagMatch) {
-                            return (tagMatch[1] || tagMatch[2] || "").trim();
-                        }
-                        return "";
-                    };
-
-                    let title = extractTag("title");
-                    let description = extractTag("description");
-                    let pubDate = extractTag("pubDate");
-                    let link = extractTag("link");
-
-                    // Google News: xóa " - TênNguồn" ở cuối title (ví dụ: "Tiêu đề - CafeF")
-                    if (feed.url.includes("news.google.com")) {
-                        if (title.includes(" - ")) {
-                            title = title.replace(/\s*-\s*[^-]+$/, "").trim();
-                        }
-                        // Google News description chỉ là HTML tag rác, dùng trực tiếp title làm content
-                        description = title;
-                    }
-
-                    // Giải mã các thực thể HTML trước để khôi phục các ký tự <, >, &, ", ', khoảng trắng
-                    let cleanDesc = (description || "")
-                        .replace(/&lt;/gi, "<")
-                        .replace(/&gt;/gi, ">")
-                        .replace(/&amp;/gi, "&")
-                        .replace(/&quot;/gi, '"')
-                        .replace(/&apos;/gi, "'")
-                        .replace(/&nbsp;/gi, " ");
-
-                    // Tách nội dung sau thẻ xuống dòng (nếu nguồn chứa ảnh minh họa ở phần đầu description)
-                    if (cleanDesc.includes("<br/>") || cleanDesc.includes("<br>")) {
-                        cleanDesc = cleanDesc.split(/<br\s*\/?>/i).pop();
-                    }
-
-                    // Xóa các thẻ HTML
-                    cleanDesc = cleanDesc.replace(/<a[\s\S]*?<\/a>/gi, "");
-                    cleanDesc = cleanDesc.replace(/<script[\s\S]*?<\/script>/gi, "");
-                    cleanDesc = cleanDesc.replace(/<style[\s\S]*?<\/style>/gi, "");
-                    cleanDesc = cleanDesc.replace(/<[^>]*>?/gm, "");
-                    
-                    // Chuẩn hóa khoảng trắng và trim
-                    description = cleanDesc.replace(/\s+/g, " ").trim();
-
-                    // Bỏ qua tin tiếng Anh: kiểm tra nếu title chứa quá nhiều ký tự Latin
-                    // (tin tiếng Việt luôn có dấu, nên tỷ lệ ký tự ASCII thấp hơn)
-                    if (title) {
-                        const nonAsciiCount = (title.match(/[^\x00-\x7F]/g) || []).length;
-                        const totalChars = title.replace(/\s/g, "").length;
-                        const vietnameseRatio = totalChars > 0 ? nonAsciiCount / totalChars : 0;
-                        
-                        // Nếu tỷ lệ ký tự tiếng Việt < 15%, bỏ qua (khả năng cao là tiếng Anh)
-                        // Bỏ qua kiểm tra này đối với nguồn Google News tiếng Việt (đã được cấu hình hl=vi) để tránh bỏ sót các tin có nhiều thuật ngữ tiếng Anh
-                        const isGoogleVi = feed.url.includes("news.google.com") && feed.url.includes("hl=vi");
-                        if (!isGoogleVi && vietnameseRatio < 0.15 && totalChars > 10) {
-                            continue;
-                        }
-
-                        items.push({
-                            title,
-                            content: description,
-                            link,
-                            pubDate: pubDate ? new Date(pubDate) : new Date()
-                        });
-                    }
-                }
-
-                // Sắp xếp bài từ cũ đến mới
-                items.reverse();
-
-                for (const item of items) {
-                    const existing = await prisma.news.findFirst({
-                        where: { title: item.title }
+            for (const feed of FEEDS) {
+                try {
+                    const response = await fetch(feed.url, {
+                        headers: {
+                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                        },
+                        signal: AbortSignal.timeout(10000) // 10 giây timeout cho mỗi feed
                     });
+                    const xmlText = await response.text();
 
-                    if (!existing) {
-                        const newNewsItem = await prisma.news.create({
-                            data: {
+                    const items = [];
+                    const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+                    let match;
+                    while ((match = itemRegex.exec(xmlText)) !== null) {
+                        const itemContent = match[1];
+
+                        const extractTag = (tag) => {
+                            const regex = new RegExp(`<${tag}>(?:<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>|([\\s\\S]*?))<\/${tag}>`);
+                            const tagMatch = itemContent.match(regex);
+                            if (tagMatch) {
+                                return (tagMatch[1] || tagMatch[2] || "").trim();
+                            }
+                            return "";
+                        };
+
+                        let title = extractTag("title");
+                        let description = extractTag("description");
+                        let pubDate = extractTag("pubDate");
+                        let link = extractTag("link");
+
+                        // Google News: xóa " - TênNguồn" ở cuối title
+                        if (feed.url.includes("news.google.com")) {
+                            if (title.includes(" - ")) {
+                                title = title.replace(/\s*-\s*[^-]+$/, "").trim();
+                            }
+                            description = title;
+                        }
+
+                        // Giải mã các thực thể HTML
+                        let cleanDesc = (description || "")
+                            .replace(/&lt;/gi, "<")
+                            .replace(/&gt;/gi, ">")
+                            .replace(/&amp;/gi, "&")
+                            .replace(/&quot;/gi, '"')
+                            .replace(/&apos;/gi, "'")
+                            .replace(/&nbsp;/gi, " ");
+
+                        // Tách nội dung sau thẻ xuống dòng
+                        if (cleanDesc.includes("<br/>") || cleanDesc.includes("<br>")) {
+                            cleanDesc = cleanDesc.split(/<br\s*\/?>/i).pop();
+                        }
+
+                        // Xóa các thẻ HTML
+                        cleanDesc = cleanDesc.replace(/<a[\s\S]*?<\/a>/gi, "");
+                        cleanDesc = cleanDesc.replace(/<script[\s\S]*?<\/script>/gi, "");
+                        cleanDesc = cleanDesc.replace(/<style[\s\S]*?<\/style>/gi, "");
+                        cleanDesc = cleanDesc.replace(/<[^>]*>?/gm, "");
+                        
+                        description = cleanDesc.replace(/\s+/g, " ").trim();
+
+                        // Bỏ qua tin tiếng Anh nếu là các nguồn Việt Nam
+                        if (title) {
+                            const nonAsciiCount = (title.match(/[^\x00-\x7F]/g) || []).length;
+                            const totalChars = title.replace(/\s/g, "").length;
+                            const vietnameseRatio = totalChars > 0 ? nonAsciiCount / totalChars : 0;
+                            
+                            const isGoogleVi = feed.url.includes("news.google.com") && feed.url.includes("hl=vi");
+                            if (!isGoogleVi && vietnameseRatio < 0.15 && totalChars > 10) {
+                                continue;
+                            }
+
+                            items.push({
+                                title,
+                                content: description,
+                                link,
+                                pubDate: pubDate ? new Date(pubDate) : new Date()
+                            });
+                        }
+                    }
+
+                    // Sắp xếp từ cũ đến mới
+                    items.reverse();
+
+                    // Tìm những tin thực sự mới (chưa có trong database)
+                    const newItemsToCreate = [];
+                    for (const item of items) {
+                        if (!existingTitlesSet.has(item.title)) {
+                            newItemsToCreate.push({
                                 title: item.title,
                                 content: item.content,
                                 category: feed.category,
                                 link: item.link,
                                 createdAt: item.pubDate
-                            }
-                        });
-
-                        if (ioInstance) {
-                            ioInstance.emit("new_news_broadcast", newNewsItem);
+                            });
+                            existingTitlesSet.add(item.title); // Thêm vào set tạm thời để tránh trùng lặp cùng đợt quét
                         }
                     }
+
+                    // Lưu hàng loạt (Bulk create) chỉ với 1 query duy nhất cho mỗi feed
+                    if (newItemsToCreate.length > 0) {
+                        await prisma.news.createMany({
+                            data: newItemsToCreate,
+                            skipDuplicates: true
+                        });
+                        console.log(`📡 Đã cào thêm ${newItemsToCreate.length} tin mới từ feed: ${feed.url}`);
+
+                        if (ioInstance) {
+                            newItemsToCreate.forEach((newNewsItem) => {
+                                ioInstance.emit("new_news_broadcast", newNewsItem);
+                            });
+                        }
+                    }
+                } catch (error) {
+                    console.error(`❌ Lỗi khi cào tin từ ${feed.url}:`, error.message);
                 }
-            } catch (error) {
-                console.error(`❌ Lỗi khi cào tin từ ${feed.url}:`, error.message);
             }
+        } catch (dbErr) {
+            console.error("❌ Lỗi khi dọn dẹp hoặc quét trùng lặp DB:", dbErr.message);
         }
     }
 
-    // Tải tin tức ngay khi khởi động server
-    updateRealNews(null);
+    // Tải tin tức sau khi khởi động server 15 giây để tránh nghẽn Database Pool khi user load trang lần đầu
+    setTimeout(() => {
+        updateRealNews(null);
+    }, 15000);
 
     // Định kỳ quét RSS sau mỗi 5 phút (300.000 ms) để tìm tin mới
     setInterval(() => {
