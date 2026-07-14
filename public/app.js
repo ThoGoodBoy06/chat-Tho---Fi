@@ -975,6 +975,24 @@ function showMobileOverlay(messageEl) {
             moreMenu.style.setProperty("top", "calc(100% + 8px)", "important");
             moreMenu.style.setProperty("bottom", "auto", "important");
         }
+
+        // Tự động đẩy tin nhắn lên trên nếu menu bên dưới bị đè/cắt bởi cạnh dưới màn hình (khung chat input)
+        if (msgContent && moreMenu) {
+            const rect = msgContent.getBoundingClientRect();
+            const inputArea = document.querySelector(".chat-input-area");
+            const limitY = inputArea ? inputArea.getBoundingClientRect().top : (window.innerHeight - 75);
+            
+            // Chiều cao menu (thường khoảng 220px cho 5 item)
+            const menuHeight = moreMenu.getBoundingClientRect().height || 220;
+            const menuBottom = rect.bottom + 8 + menuHeight;
+            const overflow = menuBottom - limitY;
+
+            if (overflow > 0) {
+                // Di chuyển bong bóng chat lên trên mượt mà
+                msgContent.style.setProperty("transition", "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)", "important");
+                msgContent.style.setProperty("transform", `translateY(-${overflow + 16}px)`, "important");
+            }
+        }
     });
 }
 
