@@ -215,6 +215,7 @@ let currentNicknames = {};
 let mediaRecorder = null;
 let audioChunks = [];
 let isRecording = false;
+let longPressJustOccurred = false; // Flag chặn click giả từ sự kiện long press di động
 
 // --- PAGINATION STATE (Tối ưu hiệu năng) ---
 let hasMoreMessages = false;
@@ -3448,6 +3449,7 @@ function displayMessage(msg, targetContainer = null) {
                 const _isIOSLp = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
                 pressTimer = setTimeout(() => {
                     isLongPress = true;
+                    longPressJustOccurred = true; // Bật flag chặn click giả khi nhấc ngón tay
                     showMobileOverlay(messageElement);
                     const palette = messageElement.querySelector(".reaction-palette");
                     if (palette) palette.classList.add("show");
@@ -3479,6 +3481,17 @@ function displayMessage(msg, targetContainer = null) {
             passive: true,
         });
         messageContent.addEventListener("touchcancel", cancelPress);
+        
+        // Nuốt toàn bộ click tổng hợp (synthesized click) sinh ra ngay sau khi nhả ngón tay từ cú nhấn giữ
+        messageContent.addEventListener("click", (e) => {
+            if (longPressJustOccurred) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                longPressJustOccurred = false; // Reset flag
+            }
+        }, true); // Sử dụng capture phase để chặn trước khi sự kiện click chạm tới các thẻ con (như img onclick)
+
         messageContent.addEventListener("contextmenu", (e) => {
             if (window.innerWidth <= 768) {
                 e.preventDefault();
@@ -4743,6 +4756,11 @@ function toggleDarkMode(checkbox) {
 // =========================================
 
 function openLightbox(src) {
+    const overlay = document.getElementById("mobile-action-overlay");
+    if (overlay && overlay.classList.contains("show")) {
+        return; // Đang hiện menu phản hồi di động, không kích hoạt xem ảnh!
+    }
+
     const lightbox = document.getElementById("image-lightbox");
     const img = document.getElementById("lightbox-img");
 
