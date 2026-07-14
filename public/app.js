@@ -989,7 +989,7 @@ function showMobileOverlay(messageEl) {
         // Tự động đẩy tin nhắn lên trên nếu menu bên dưới bị đè/cắt bởi cạnh dưới màn hình (khung chat input)
         if (msgContent && moreMenu) {
             const rect = msgContent.getBoundingClientRect();
-            const inputArea = document.querySelector(".chat-input-area");
+            const inputArea = document.getElementById("input-area");
             const limitY = inputArea ? inputArea.getBoundingClientRect().top : (window.innerHeight - 75);
             
             // Chiều cao menu (thường khoảng 220px cho 5 item)
@@ -3478,6 +3478,7 @@ function displayMessage(msg, targetContainer = null) {
                 pressTimer = setTimeout(() => {
                     isLongPress = true;
                     longPressJustOccurred = true; // Bật flag chặn click giả khi nhấc ngón tay
+                    setTimeout(() => { longPressJustOccurred = false; }, 500); // Tự động tắt sau 500ms để tránh kẹt flag
                     showMobileOverlay(messageElement);
                     const palette = messageElement.querySelector(".reaction-palette");
                     if (palette) palette.classList.add("show");
