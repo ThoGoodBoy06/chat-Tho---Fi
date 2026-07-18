@@ -4557,6 +4557,12 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         pointer-events: none !important;
     }
 
+    /* Khi overlay đang hiển thị, tắt content-visibility: auto trên tất cả tin nhắn
+       để trình duyệt không tự ẩn bong bóng chat đang được chọn */
+    body.overlay-active .message {
+        content-visibility: visible !important;
+    }
+
     body.overlay-active .chat-header {
         z-index: 99 !important;
     }

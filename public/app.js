@@ -736,6 +736,8 @@ function hideMobileOverlay() {
         if (msgContent) {
             msgContent.style.removeProperty("position");
             msgContent.style.removeProperty("z-index");
+            msgContent.style.removeProperty("transform");
+            msgContent.style.removeProperty("transition");
         }
         
         const actions = m.querySelector(".message-actions");
@@ -854,8 +856,11 @@ function showMobileOverlay(messageEl) {
         chatArea.appendChild(overlay);
     }
 
-    hideMobileOverlay();
+    // Đặt overlay-active LÊN TRƯỚC để CSS content-visibility: visible !important
+    // đã có hiệu lực khi hideMobileOverlay() dọn dẹp (tránh trình duyệt ẩn tin nhắn)
     document.body.classList.add("overlay-active");
+    hideMobileOverlay();
+    document.body.classList.add("overlay-active"); // Gán lại vì hideMobileOverlay() đã xóa
     messageEl.classList.add("show-mobile-actions");
     overlay.classList.add("show");
     overlay.dataset.shownAt = Date.now().toString();
@@ -4788,6 +4793,16 @@ function openLightbox(src) {
     if (lightbox && img) {
         img.src = src;
         lightbox.style.display = "flex";
+
+        // Ẩn khu vực tin nhắn để emoji/reaction không lọt lên trên lightbox
+        // (do transform trên .message tạo stacking context riêng)
+        const messagesDiv = document.getElementById("messages");
+        if (messagesDiv) messagesDiv.style.visibility = "hidden";
+        const chatHeader = document.querySelector(".chat-header");
+        if (chatHeader) chatHeader.style.visibility = "hidden";
+        const inputArea = document.getElementById("input-area");
+        if (inputArea) inputArea.style.visibility = "hidden";
+
         setTimeout(() => {
             lightbox.style.opacity = "1";
             img.style.transform = "scale(1)";
@@ -4805,6 +4820,14 @@ function closeLightbox() {
         setTimeout(() => {
             lightbox.style.display = "none";
             img.src = "";
+
+            // Khôi phục lại khu vực tin nhắn
+            const messagesDiv = document.getElementById("messages");
+            if (messagesDiv) messagesDiv.style.visibility = "";
+            const chatHeader = document.querySelector(".chat-header");
+            if (chatHeader) chatHeader.style.visibility = "";
+            const inputArea = document.getElementById("input-area");
+            if (inputArea) inputArea.style.visibility = "";
         }, 300);
     }
 }
