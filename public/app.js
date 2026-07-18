@@ -2999,7 +2999,7 @@ function displayMessage(msg, targetContainer = null) {
                     msg.content.startsWith("http") ||
                     msg.content.match(/\.(jpeg|jpg|gif|png)(\?.*)?$/i)))
         ) {
-            messageContent.innerHTML = `<div class="message-img-container"><img src="${msg.content}" class="message-image" loading="lazy" onload="if(typeof window.scrollToBottomInstant === 'function') window.scrollToBottomInstant()" onclick="openLightbox(this.src)" alt="Ảnh tin nhắn" /></div>`;
+            messageContent.innerHTML = `<div class="message-img-container"><img src="${msg.content}" class="message-image" loading="lazy" onload="if(typeof window.scrollToBottomInstant === 'function') window.scrollToBottomInstant()" onclick="openLightbox(this.src)" draggable="false" oncontextmenu="return false;" alt="Ảnh tin nhắn" /></div>`;
             messageContent.style.background = "transparent";
             messageContent.style.padding = "0";
         } else {

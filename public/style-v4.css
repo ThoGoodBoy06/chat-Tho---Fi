@@ -928,6 +928,9 @@ RIGHT WINDOW & CHAT MESSAGES
     display: block;
     box-shadow: var(--shadow-md);
     transition: transform var(--transition-normal);
+    -webkit-touch-callout: none !important; /* Vô hiệu hóa menu chạm giữ của iOS */
+    -webkit-user-select: none !important;
+    user-select: none !important;
 }
 
 .message-image:hover {
