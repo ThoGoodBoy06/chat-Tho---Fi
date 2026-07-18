@@ -4584,6 +4584,8 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         overflow: hidden !important;
         touch-action: none !important;
         overscroll-behavior: none !important;
+        transform: none !important; /* 🌟 Hủy stacking context để overlay fixed bao phủ toàn màn hình */
+        will-change: auto !important; /* Hủy will-change để tránh tạo stacking context trên iOS */
     }
 
     body.overlay-active .chat-header,
@@ -5016,7 +5018,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         width: 100% !important;
         height: 100% !important;
         overflow: visible !important;
-        pointer-events: auto !important;
+        pointer-events: none !important; /* FIX: chỉ dùng làm neo định vị, KHÔNG được chặn tap trên bong bóng ảnh/text */
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;

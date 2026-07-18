@@ -14,6 +14,12 @@ window.addEventListener("click", (e) => {
     }
 }, true); // Dùng capture phase ở cấp cao nhất để chặn mọi click giả ở bất kỳ element nào (kể cả overlay hay ảnh)
 
+// Đóng bất kỳ .more-menu nào đang mở khi click ra ngoài (delegate 1 listener duy nhất, không rò rỉ)
+document.addEventListener("click", (e) => {
+    if (e.target && e.target.closest && (e.target.closest(".more-btn") || e.target.closest(".more-menu"))) return;
+    document.querySelectorAll(".more-menu.show").forEach((m) => m.classList.remove("show"));
+});
+
 // --- PHÁT HIỆN NATIVE FLUTTER HEADER ---
 document.addEventListener("DOMContentLoaded", () => {
     if (window.FlutterHeaderChannel || window.webkit?.messageHandlers?.FlutterHeaderChannel) {
@@ -924,7 +930,7 @@ function showMobileOverlay(messageEl) {
         item.style.setProperty("background", "transparent", "important");
         item.style.setProperty("box-shadow", "none", "important");
         item.style.setProperty("overflow", "visible", "important");
-        item.style.setProperty("pointer-events", "auto", "important");
+        item.style.setProperty("pointer-events", "none", "important"); // FIX: để tap xuyên qua tới ảnh/text bên dưới
 
         const icon = item.querySelector("i");
         if (icon) {
@@ -980,6 +986,12 @@ function showMobileOverlay(messageEl) {
 
     // Cho phép click/tap vào phần nội dung tin nhắn (ảnh, text) nhưng không phải nút chức năng để đóng overlay
     if (msgContent) {
+        // FIX: gỡ handler cũ (nếu có) từ lần mở overlay trước, tránh chồng chất listener
+        if (msgContent._dismissHandler) {
+            msgContent.removeEventListener("click", msgContent._dismissHandler);
+            msgContent.removeEventListener("touchstart", msgContent._dismissHandler);
+        }
+
         const dismissHandler = (e) => {
             // Nếu click vào bên trong .message-actions hoặc .reaction-palette thì bỏ qua
             if (e.target.closest('.message-actions, .reaction-palette, .more-menu')) return;
@@ -992,7 +1004,9 @@ function showMobileOverlay(messageEl) {
             hideMobileOverlay();
             msgContent.removeEventListener("click", dismissHandler);
             msgContent.removeEventListener("touchstart", dismissHandler);
+            msgContent._dismissHandler = null;
         };
+        msgContent._dismissHandler = dismissHandler;
         msgContent.addEventListener("click", dismissHandler);
         msgContent.addEventListener("touchstart", dismissHandler, { passive: true });
     }
@@ -3424,8 +3438,6 @@ function displayMessage(msg, targetContainer = null) {
             });
             moreMenu.classList.toggle("show");
         };
-
-        document.addEventListener("click", () => moreMenu.classList.remove("show"));
 
         moreBtn.appendChild(moreMenu);
 
