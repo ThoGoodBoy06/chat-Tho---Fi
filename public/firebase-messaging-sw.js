@@ -61,7 +61,7 @@ self.addEventListener("notificationclick", function(event) {
 
   if (notificationData && notificationData.type === "incoming_call") {
     // Tạo URL chứa query parameters cuộc gọi để trang web nhận diện và mở giao diện cuộc gọi
-    let url = `/?action=incoming_call&callerId=${notificationData.callerId}&callerName=${encodeURIComponent(notificationData.callerName)}&callType=${notificationData.callType}&callerAvatar=${encodeURIComponent(notificationData.callerAvatar || "")}`;
+    let url = `/?action=incoming_call&callerId=${notificationData.callerId}&callerName=${encodeURIComponent(notificationData.callerName)}&callType=${notificationData.callType}&callerAvatar=${encodeURIComponent(notificationData.callerAvatar || "")}&t=${Date.now()}`;
     
     if (action === "accept") {
       url += "&autoAccept=true";

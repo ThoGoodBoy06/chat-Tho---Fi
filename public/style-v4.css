@@ -839,7 +839,7 @@ RIGHT WINDOW & CHAT MESSAGES
 
 #messages {
     flex: 1;
-    padding: 24px;
+    padding: 24px 24px 40px 24px;
     overflow-y: auto;
     overflow-x: hidden;
     display: flex;
@@ -851,6 +851,7 @@ RIGHT WINDOW & CHAT MESSAGES
     -webkit-backface-visibility: hidden;
     -webkit-overflow-scrolling: touch;
     /* 🌟 Cuộn động lượng cực mượt trên iOS */
+    overflow-anchor: auto !important;
 }
 
 
@@ -865,9 +866,6 @@ RIGHT WINDOW & CHAT MESSAGES
     /* 🌟 Kích hoạt Hardware Acceleration qua GPU */
     transform: translate3d(0, 0, 0);
     /* 🌟 Ép tăng tốc phần cứng qua GPU */
-    content-visibility: auto;
-    contain-intrinsic-size: 60px;
-    /* Chiều cao trung bình ước lượng của tin nhắn */
     animation: messageSlideIn 0.22s cubic-bezier(0.25, 0.8, 0.25, 1) both;
 }
 
@@ -1366,7 +1364,7 @@ RIGHT WINDOW & CHAT MESSAGES
     z-index: 200 !important;
     opacity: 0;
     visibility: hidden;
-    pointer-events: none;
+    pointer-events: none !important; /* Khóa cứng để luôn quét hit-test xuyên thấu */
     /* 🌟 Mặc định không nhận click khi đang ẩn hoặc đang fade-out */
     transition: opacity 0.25s ease-out, visibility 0.25s;
 }
@@ -1374,15 +1372,15 @@ RIGHT WINDOW & CHAT MESSAGES
 #mobile-action-overlay.show {
     opacity: 1;
     visibility: visible;
-    pointer-events: auto;
-    /* 🌟 Chỉ nhận click chặn màn hình khi đã mở hoàn chỉnh */
+    pointer-events: none !important; /* Vẫn giữ none !important để không chặn ngón tay */
 }
 
 .message.show-mobile-actions {
     z-index: 250 !important;
     position: relative !important;
     overflow: visible !important;
-    content-visibility: visible !important;
+    transform: none !important;
+    will-change: auto !important;
 }
 
 
@@ -4018,7 +4016,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
     }
 
     #messages {
-        padding: 16px;
+        padding: 16px 16px 36px 16px !important;
     }
 
     input,
@@ -4551,17 +4549,23 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         z-index: 9998 !important;
     }
 
+    body.overlay-active {
+        touch-action: none !important;
+        overscroll-behavior: none !important;
+    }
+
+    body.overlay-active #messages {
+        overflow: hidden !important;
+        touch-action: none !important;
+        overscroll-behavior: none !important;
+    }
+
     body.overlay-active .chat-header,
     body.overlay-active .input-area,
     body.overlay-active .message:not(.show-mobile-actions) {
         pointer-events: none !important;
     }
 
-    /* Khi overlay đang hiển thị, tắt content-visibility: auto trên tất cả tin nhắn
-       để trình duyệt không tự ẩn bong bóng chat đang được chọn */
-    body.overlay-active .message {
-        content-visibility: visible !important;
-    }
 
     body.overlay-active .chat-header {
         z-index: 99 !important;
@@ -4834,7 +4838,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         left: 0 !important;
         width: 100% !important;
         height: 100% !important;
-        pointer-events: none !important;
+        pointer-events: auto !important;
         z-index: 252 !important;
         background: transparent !important;
         box-shadow: none !important;
@@ -4844,24 +4848,24 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
 
     .message.show-mobile-actions .reaction-palette {
         position: absolute !important;
-        bottom: calc(100% + 8px) !important; /* Mặc định nằm TRÊN tin nhắn */
+        bottom: calc(100% + 12px) !important; /* Dịch lên 12px cho thoáng mát */
         top: auto !important;
         transform: none !important;
         display: flex !important;
         justify-content: space-between !important;
-        background: rgba(30, 30, 30, 0.95) !important;
+        background: rgba(30, 30, 30, 0.96) !important;
         backdrop-filter: blur(20px) !important;
         -webkit-backdrop-filter: blur(20px) !important;
-        border-radius: 30px !important; /* Bo tròn kiểu Messenger */
-        padding: 6px 12px !important;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
+        border-radius: 40px !important; /* Bo tròn kiểu bong bóng to tròn */
+        padding: 8px 16px !important; /* Tăng khoảng đệm để thanh to tròn hơn */
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
         opacity: 1 !important;
         visibility: visible !important;
         width: max-content !important;
         max-width: 90vw !important;
         pointer-events: auto !important;
         z-index: 253 !important;
-        gap: 10px !important;
+        gap: 12px !important; /* Giãn khoảng cách giữa các emoji để lướt chọn chuẩn xác */
     }
 
     /* Đối với tin nhắn của mình (ở bên phải) thì căn lề phải */
@@ -4879,14 +4883,21 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
     }
 
     .message.show-mobile-actions .reaction-palette span {
-        font-size: 24px !important;
+        font-size: 32px !important; /* Emoji to hơn nổi bật */
         pointer-events: auto !important;
         cursor: pointer !important;
         transition: transform 0.15s ease !important;
     }
     
-    .message.show-mobile-actions .reaction-palette span:active {
+    .message.show-mobile-actions .reaction-palette span:active,
+    .message.show-mobile-actions .reaction-palette span.drag-hover {
         transform: scale(1.4) !important;
+    }
+
+    .message.show-mobile-actions .more-menu .menu-item.drag-hover {
+        background: rgba(255, 255, 255, 0.2) !important;
+        transform: scale(1.05) !important;
+        transition: transform 0.1s, background 0.1s !important;
     }
 
     .message.show-mobile-actions .more-menu {
@@ -4973,7 +4984,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         width: 100% !important;
         height: 100% !important;
         overflow: visible !important;
-        pointer-events: none !important;
+        pointer-events: auto !important;
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
@@ -7110,6 +7121,7 @@ NOTIFICATIONS DROPDOWN POPUP
     .message-content *,
     .ai-bubble,
     .ai-bubble * {
+        -webkit-touch-callout: none !important;
         -webkit-user-select: none !important;
         -moz-user-select: none !important;
         -ms-user-select: none !important;
@@ -7794,6 +7806,7 @@ body[data-theme="dark"] .read-status-badge.hot-new {
     .message-content *,
     .ai-bubble,
     .ai-bubble * {
+        -webkit-touch-callout: none !important;
         -webkit-user-select: none !important;
         -moz-user-select: none !important;
         -ms-user-select: none !important;
@@ -8550,6 +8563,7 @@ body[data-theme="dark"] .read-status-badge.hot-new {
     .message-content *,
     .ai-bubble,
     .ai-bubble * {
+        -webkit-touch-callout: none !important;
         -webkit-user-select: none !important;
         -moz-user-select: none !important;
         -ms-user-select: none !important;

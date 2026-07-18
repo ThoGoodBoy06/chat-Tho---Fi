@@ -226,6 +226,7 @@ let mediaRecorder = null;
 let audioChunks = [];
 let isRecording = false;
 let longPressJustOccurred = false; // Flag chặn click giả từ sự kiện long press di động
+let activeOverlayMessageEl = null; // Quản lý tin nhắn đang hiển thị tùy chọn trên mobile
 
 // --- PAGINATION STATE (Tối ưu hiệu năng) ---
 let hasMoreMessages = false;
@@ -724,6 +725,7 @@ function getPartnerAvatar() {
 
 // --- QUẢN LÝ OVERLAY TRÊN MOBILE ---
 function hideMobileOverlay() {
+    activeOverlayMessageEl = null;
     const overlay = document.getElementById("mobile-action-overlay");
     if (overlay) overlay.classList.remove("show");
     document.body.classList.remove("overlay-active");
@@ -734,10 +736,19 @@ function hideMobileOverlay() {
         
         const msgContent = m.querySelector(".message-content");
         if (msgContent) {
-            msgContent.style.removeProperty("position");
-            msgContent.style.removeProperty("z-index");
-            msgContent.style.removeProperty("transform");
-            msgContent.style.removeProperty("transition");
+            // Đưa tin nhắn về vị trí ban đầu bằng transition trượt mượt mà
+            msgContent.style.setProperty("transform", "translateY(0)", "important");
+            
+            // Chờ hiệu ứng trượt kết thúc (200ms) rồi mới dọn dẹp các thuộc tính CSS inline khác
+            setTimeout(() => {
+                // Kiểm tra xem tin nhắn này không bị kích hoạt lại overlay trong lúc chờ
+                if (!m.classList.contains("show-mobile-actions")) {
+                    msgContent.style.removeProperty("position");
+                    msgContent.style.removeProperty("z-index");
+                    msgContent.style.removeProperty("transform");
+                    msgContent.style.removeProperty("transition");
+                }
+            }, 200);
         }
         
         const actions = m.querySelector(".message-actions");
@@ -838,7 +849,6 @@ function showMobileOverlay(messageEl) {
         };
 
         overlay.addEventListener("click", closeOverlay);
-        overlay.addEventListener("touchstart", closeOverlay, { passive: false }); // Thay touchend bằng touchstart để nhạy hơn
 
         overlay.addEventListener("touchmove", (e) => {
             if (e.cancelable) e.preventDefault();
@@ -862,6 +872,7 @@ function showMobileOverlay(messageEl) {
     hideMobileOverlay();
     document.body.classList.add("overlay-active"); // Gán lại vì hideMobileOverlay() đã xóa
     messageEl.classList.add("show-mobile-actions");
+    activeOverlayMessageEl = messageEl; // Thiết lập tin nhắn hiện tại hiển thị overlay
     overlay.classList.add("show");
     overlay.dataset.shownAt = Date.now().toString();
 
@@ -871,6 +882,10 @@ function showMobileOverlay(messageEl) {
     const moreMenu = messageEl.querySelector(".more-menu");
     const actions = messageEl.querySelector(".message-actions");
     const isMyMessage = messageEl.classList.contains("my-message");
+
+    // Hỗ trợ lướt chọn cảm xúc và menu chức năng kiểu Messenger: nhấn giữ -> kéo qua lại để chọn -> thả ra để thực thi
+    window.dragSelectedEmoji = null;
+    window.dragSelectedAction = null;
 
     if (msgContent) {
         msgContent.style.setProperty("position", "relative", "important");
@@ -884,7 +899,7 @@ function showMobileOverlay(messageEl) {
         actions.style.setProperty("left", "0", "important");
         actions.style.setProperty("width", "100%", "important");
         actions.style.setProperty("height", "100%", "important");
-        actions.style.setProperty("pointer-events", "none", "important");
+        actions.style.setProperty("pointer-events", "auto", "important");
         actions.style.setProperty("z-index", "252", "important");
         actions.style.setProperty("background", "transparent", "important");
         actions.style.setProperty("box-shadow", "none", "important");
@@ -906,7 +921,7 @@ function showMobileOverlay(messageEl) {
         item.style.setProperty("background", "transparent", "important");
         item.style.setProperty("box-shadow", "none", "important");
         item.style.setProperty("overflow", "visible", "important");
-        item.style.setProperty("pointer-events", "none", "important");
+        item.style.setProperty("pointer-events", "auto", "important");
 
         const icon = item.querySelector("i");
         if (icon) {
@@ -973,10 +988,8 @@ function showMobileOverlay(messageEl) {
 
             hideMobileOverlay();
             msgContent.removeEventListener("click", dismissHandler);
-            msgContent.removeEventListener("touchstart", dismissHandler);
         };
         msgContent.addEventListener("click", dismissHandler);
-        msgContent.addEventListener("touchstart", dismissHandler, { passive: true }); // Dùng touchstart thay vì touchend
     }
 
     // Mặc định Emojis luôn ở trên đầu tin nhắn và Menu luôn ở dưới tin nhắn theo yêu cầu (không tự đảo chiều nữa)
@@ -1521,6 +1534,11 @@ function initizeChatSession(userData, userToken) {
 
             // Render giao diện mới
             renderReactions(msgEl, newReactions);
+
+            // Cuộn xuống cuối thông minh nếu người dùng đang ở gần đáy (tránh nảy/lệch giao diện do chiều cao tin nhắn tăng lên khi có reaction)
+            if (typeof window.smartScrollToBottom === "function") {
+                window.smartScrollToBottom();
+            }
 
             // Chỉ phát âm thanh và nổ hiệu ứng nếu không phải mình làm và là hành động thả cảm xúc
             if (reaction && !isRemoved) {
@@ -3111,18 +3129,18 @@ function displayMessage(msg, targetContainer = null) {
         EMOJIS.forEach((emoji) => {
             const emojiSpan = document.createElement("span");
             emojiSpan.innerText = emoji;
-            emojiSpan.style.fontSize = "24px";
+            emojiSpan.style.fontSize = "32px";
             emojiSpan.style.transition = "transform 0.15s";
             const handleReact = (e) => {
                 e.stopPropagation();
                 e.preventDefault();
                 const currentMsgId = messageElement.dataset.messageId;
+                if (currentMsgId && currentMsgId.toString().startsWith("optimistic-")) return;
                 reactToMessage(currentMsgId, emoji);
                 reactionPalette.classList.remove("show");
                 hideMobileOverlay();
             };
             emojiSpan.onclick = handleReact;
-            emojiSpan.addEventListener("touchend", handleReact, { passive: false });
             reactionPalette.appendChild(emojiSpan);
         });
 
@@ -3157,11 +3175,11 @@ function displayMessage(msg, targetContainer = null) {
             e.stopPropagation();
             e.preventDefault();
             const currentMsgId = messageElement.dataset.messageId;
+            if (currentMsgId && currentMsgId.toString().startsWith("optimistic-")) return;
             openCustomReactionPicker(currentMsgId, e.clientX, e.clientY);
             reactionPalette.classList.remove("show");
         };
         plusSpan.onclick = handlePlusReact;
-        plusSpan.addEventListener("touchend", handlePlusReact, { passive: false });
         reactionPalette.appendChild(plusSpan);
 
         reactBtn.appendChild(reactionPalette);
@@ -3390,6 +3408,7 @@ function displayMessage(msg, targetContainer = null) {
         messageElement.appendChild(swipeIndicator);
 
         messageBody.addEventListener("pointerdown", (e) => {
+            if (document.body.classList.contains("overlay-active")) return;
             if (e.button !== 0) return; // Chỉ nhận chuột trái
             isDragging = true;
             startX = e.clientX;
@@ -3400,6 +3419,10 @@ function displayMessage(msg, targetContainer = null) {
         });
 
         messageBody.addEventListener("pointermove", (e) => {
+            if (document.body.classList.contains("overlay-active")) {
+                isDragging = false;
+                return;
+            }
             if (!isDragging) return;
             const diffX = e.clientX - startX;
             const diffY = e.clientY - startY;
@@ -3442,6 +3465,10 @@ function displayMessage(msg, targetContainer = null) {
         });
 
         const endDrag = (e) => {
+            if (document.body.classList.contains("overlay-active")) {
+                isDragging = false;
+                return;
+            }
             if (!isDragging) return;
             isDragging = false;
 
@@ -3482,8 +3509,6 @@ function displayMessage(msg, targetContainer = null) {
                 const _isIOSLp = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
                 pressTimer = setTimeout(() => {
                     isLongPress = true;
-                    longPressJustOccurred = true; // Bật flag chặn click giả khi nhấc ngón tay
-                    setTimeout(() => { longPressJustOccurred = false; }, 500); // Tự động tắt sau 500ms để tránh kẹt flag
                     showMobileOverlay(messageElement);
                     const palette = messageElement.querySelector(".reaction-palette");
                     if (palette) palette.classList.add("show");
@@ -3501,8 +3526,8 @@ function displayMessage(msg, targetContainer = null) {
                 }
             } else {
                 if (isLongPress && e && e.type === "touchend") {
-                    e.preventDefault();
-                    e.stopImmediatePropagation();
+                    longPressJustOccurred = true; // Bật flag nuốt click giả khi người dùng nhấc ngón tay lên
+                    setTimeout(() => { longPressJustOccurred = false; }, 500); // Tự động tắt sau 500ms
                     isLongPress = false;
                 }
                 clearTimeout(pressTimer);
@@ -3548,6 +3573,8 @@ function displayMessage(msg, targetContainer = null) {
             if (isMouseLongPress && e && e.type === "mouseup") {
                 e.preventDefault();
                 e.stopImmediatePropagation();
+                longPressJustOccurred = true; // Bật flag nuốt click sinh ra ngay sau khi thả chuột
+                setTimeout(() => { longPressJustOccurred = false; }, 500);
                 isMouseLongPress = false;
             }
         };
@@ -4164,9 +4191,35 @@ async function deleteMessageForMe(messageId) {
     }
 }
 
-// 12. Gửi cảm xúc vào tin nhắn
+// 12. Gửi cảm xúc vào tin nhắn (Cập nhật Optimistic UI cho trải nghiệm tức thì)
 async function reactToMessage(messageId, reaction) {
     ChatSounds.playReact();
+    
+    const msgEl = document.getElementById(`msg-${messageId}`);
+    let oldReactions = null;
+    
+    if (msgEl) {
+        // Lưu trữ trạng thái cũ để hoàn tác (revert) nếu xảy ra lỗi mạng/API
+        oldReactions = msgEl.dataset.reactions ? JSON.parse(msgEl.dataset.reactions) : {};
+        let reactions = { ...oldReactions };
+        const wasReactedWithSame = reactions[myId] === reaction;
+
+        // Cập nhật trạng thái mới ngay lập tức trên UI
+        if (wasReactedWithSame) {
+            delete reactions[myId];
+        } else {
+            reactions[myId] = reaction;
+        }
+
+        // Render giao diện mới ngay lập tức
+        renderReactions(msgEl, reactions);
+
+        // Hiệu ứng nổ hạt cảm xúc tức thì
+        if (!wasReactedWithSame) {
+            createReactionBurst(messageId, reaction);
+        }
+    }
+
     try {
         const res = await fetch(`${API_URL}/chat/messages/${messageId}/react`, {
             method: "POST",
@@ -4179,9 +4232,13 @@ async function reactToMessage(messageId, reaction) {
 
         const data = await res.json();
         if (!data.success) {
+            // Hoàn tác (Revert) lại trạng thái cũ do API báo lỗi
+            if (msgEl && oldReactions) renderReactions(msgEl, oldReactions);
             alert("Lỗi gửi cảm xúc: " + data.message);
         }
     } catch (error) {
+        // Hoàn tác (Revert) lại trạng thái cũ do lỗi kết nối mạng
+        if (msgEl && oldReactions) renderReactions(msgEl, oldReactions);
         alert("Lỗi kết nối khi gửi cảm xúc: " + error.message);
     }
 }
@@ -6368,6 +6425,18 @@ function checkUrlParamsForCall() {
         const callerAvatar = urlParams.get("callerAvatar");
         const autoAccept = urlParams.get("autoAccept") === "true";
         const autoDecline = urlParams.get("autoDecline") === "true";
+        const callTime = urlParams.get("t") || "";
+
+        // 🌟 Chống trùng lặp cuộc gọi nhỡ do cơ chế khôi phục tab/tải lại URL của trình duyệt di động
+        const callSignature = `${callerId}_${callType}_${autoAccept}_${autoDecline}_${callTime}`;
+        const lastProcessedCall = localStorage.getItem("last_processed_call_signature");
+        if (lastProcessedCall === callSignature) {
+            console.log("🚫 Cuộc gọi này đã được xử lý từ trước (ngăn chặn trùng lặp cuộc gọi nhỡ do tải lại trang).");
+            // Xóa query params để URL luôn sạch sẽ
+            window.history.replaceState({}, document.title, window.location.pathname);
+            return;
+        }
+        localStorage.setItem("last_processed_call_signature", callSignature);
 
         // Xóa các query params để tránh việc kích hoạt lại khi refresh trang
         window.history.replaceState({}, document.title, window.location.pathname);
@@ -9882,4 +9951,201 @@ function createFullScreenEmojiShower(emoji) {
     setTimeout(() => {
         container.remove();
     }, 6000);
-}
+}
+
+// Đăng ký bộ lắng nghe sự kiện kéo thả di động một lần duy nhất tại cấp window để tránh lỗi không nhận sự kiện touchmove/touchend của WebKit/iOS.
+window.addEventListener("touchmove", (e) => {
+    if (!activeOverlayMessageEl) return;
+    if (!e.touches || e.touches.length === 0) return;
+    
+    const palette = activeOverlayMessageEl.querySelector(".reaction-palette");
+    const moreMenu = activeOverlayMessageEl.querySelector(".more-menu");
+    if (!palette && !moreMenu) return;
+    
+    if (e.cancelable) e.preventDefault(); // Chặn cuộn màn hình khi đang kéo chọn
+    
+    const x = e.touches[0].clientX;
+    const y = e.touches[0].clientY;
+    
+    // Debug overlay box to inspect what element is detected under the finger
+    let debugBox = document.getElementById("debug-touch-box");
+    if (!debugBox) {
+        debugBox = document.createElement("div");
+        debugBox.id = "debug-touch-box";
+        debugBox.style.cssText = "position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.85); color: #00ff00; padding: 10px; font-family: monospace; font-size: 11px; z-index: 999999; pointer-events: none; border-radius: 4px; line-height: 1.4;";
+        document.body.appendChild(debugBox);
+    }
+    
+    // Tạm thời vô hiệu hóa pointer-events của overlay để đảm bảo hit-test xuyên xuống đúng mục tiêu bên dưới
+    const overlay = document.getElementById("mobile-action-overlay");
+    let prevOverlayPointerEvents = "";
+    if (overlay) {
+        prevOverlayPointerEvents = overlay.style.pointerEvents;
+        overlay.style.setProperty("pointer-events", "none", "important");
+    }
+    
+    const hoveredEl = document.elementFromPoint(x, y);
+    
+    if (overlay) {
+        if (prevOverlayPointerEvents) {
+            overlay.style.setProperty("pointer-events", prevOverlayPointerEvents, "important");
+        } else {
+            overlay.style.removeProperty("pointer-events");
+        }
+    }
+    
+    let activeEmojiChild = null;
+    let activeActionChild = null;
+    
+    if (hoveredEl) {
+        activeEmojiChild = hoveredEl.closest(".reaction-palette span");
+        activeActionChild = hoveredEl.closest(".more-menu .menu-item");
+    }
+    
+    // 🌟 Safety Fallback: Nếu elementFromPoint không tìm thấy (do lỗi WebView/DPI/Scale), 
+    // chúng ta sẽ dò tìm trực tiếp bằng hộp tọa độ getBoundingClientRect()
+    if (!activeEmojiChild && palette) {
+        Array.from(palette.children).forEach((child) => {
+            const rect = child.getBoundingClientRect();
+            if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+                activeEmojiChild = child;
+            }
+        });
+    }
+    
+    if (!activeActionChild && moreMenu) {
+        Array.from(moreMenu.children).forEach((child) => {
+            const rect = child.getBoundingClientRect();
+            if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+                activeActionChild = child;
+            }
+        });
+    }
+    
+    if (debugBox) {
+        debugBox.innerHTML = `
+            X: ${Math.round(x)}, Y: ${Math.round(y)}<br>
+            Hovered: ${hoveredEl ? hoveredEl.tagName + " ." + hoveredEl.className : "null"}<br>
+            Emoji: ${activeEmojiChild ? (activeEmojiChild.innerText || "Emoji") : "null"}<br>
+            Action: ${activeActionChild ? activeActionChild.innerText : "null"}
+        `;
+    }
+    
+    if (palette) {
+        Array.from(palette.children).forEach((child) => {
+            if (child === activeEmojiChild) {
+                child.classList.add("drag-hover");
+                if (child.classList.contains("reaction-plus-btn")) {
+                    window.dragSelectedEmoji = "PLUS";
+                } else {
+                    window.dragSelectedEmoji = child.innerText;
+                }
+            } else {
+                child.classList.remove("drag-hover");
+            }
+        });
+    }
+
+    if (moreMenu) {
+        Array.from(moreMenu.children).forEach((child) => {
+            if (child === activeActionChild) {
+                child.classList.add("drag-hover");
+                window.dragSelectedAction = child;
+            } else {
+                child.classList.remove("drag-hover");
+            }
+        });
+    }
+    
+    // Nếu đang lướt chọn ở khu vực này thì giải phóng highlight ở khu vực khác
+    if (activeEmojiChild) {
+        window.dragSelectedAction = null;
+        if (moreMenu) {
+            Array.from(moreMenu.children).forEach((child) => {
+                child.classList.remove("drag-hover");
+            });
+        }
+    } else if (activeActionChild) {
+        window.dragSelectedEmoji = null;
+        if (palette) {
+            Array.from(palette.children).forEach((child) => {
+                child.classList.remove("drag-hover");
+            });
+        }
+    }
+}, { passive: false });
+
+window.addEventListener("touchend", (e) => {
+    const debugBox = document.getElementById("debug-touch-box");
+    if (debugBox) debugBox.remove();
+
+    if (!activeOverlayMessageEl) return;
+    
+    const palette = activeOverlayMessageEl.querySelector(".reaction-palette");
+    const moreMenu = activeOverlayMessageEl.querySelector(".more-menu");
+    
+    // Khôi phục kích thước các emoji về bình thường
+    if (palette) {
+        Array.from(palette.children).forEach((child) => {
+            child.classList.remove("drag-hover");
+        });
+    }
+
+    // Khôi phục menu chức năng về bình thường
+    if (moreMenu) {
+        Array.from(moreMenu.children).forEach((child) => {
+            child.classList.remove("drag-hover");
+        });
+    }
+
+    if (window.dragSelectedEmoji) {
+        const currentMsgId = activeOverlayMessageEl.dataset.messageId;
+        if (window.dragSelectedEmoji === "PLUS") {
+            if (currentMsgId && !currentMsgId.startsWith("optimistic-")) {
+                const touch = e.changedTouches ? e.changedTouches[0] : null;
+                const clientX = touch ? touch.clientX : window.innerWidth / 2;
+                const clientY = touch ? touch.clientY : window.innerHeight / 2;
+                openCustomReactionPicker(currentMsgId, clientX, clientY);
+                if (palette) palette.classList.remove("show");
+            }
+        } else {
+            if (currentMsgId && !currentMsgId.startsWith("optimistic-")) {
+                reactToMessage(currentMsgId, window.dragSelectedEmoji);
+            }
+            hideMobileOverlay();
+        }
+        window.dragSelectedEmoji = null;
+    } else if (window.dragSelectedAction) {
+        const actionToClick = window.dragSelectedAction;
+        window.dragSelectedAction = null;
+        
+        // 🌟 Giải pháp khắc phục lỗi WebKit/iOS WebView chặn gọi click() trên thẻ div phi-tương-tác:
+        // Chúng ta sẽ trực tiếp thực thi hàm onclick gán sẵn trên phần tử kèm một event giả lập
+        if (typeof actionToClick.onclick === "function") {
+            actionToClick.onclick({ stopPropagation: () => {} });
+        } else {
+            actionToClick.click();
+        }
+        hideMobileOverlay();
+    }
+});
+
+// Đăng ký bộ lắng nghe sự kiện click/touchstart cấp window để đóng overlay khi tap ra ngoài vùng hoạt động
+const handleWindowDismissOverlay = (e) => {
+    if (!activeOverlayMessageEl) return;
+    
+    // Nếu tap vào bên trong các vùng tương tác của tin nhắn hiện tại thì bỏ qua
+    const palette = activeOverlayMessageEl.querySelector(".reaction-palette");
+    const moreMenu = activeOverlayMessageEl.querySelector(".more-menu");
+    
+    const isInsideMessage = e.target.closest(".message.show-mobile-actions");
+    const isInsidePalette = palette && palette.contains(e.target);
+    const isInsideMenu = moreMenu && moreMenu.contains(e.target);
+    const isCustomPicker = e.target.closest("#custom-reaction-picker, .picker-container");
+    
+    if (!isInsideMessage && !isInsidePalette && !isInsideMenu && !isCustomPicker) {
+        hideMobileOverlay();
+    }
+};
+window.addEventListener("click", handleWindowDismissOverlay, { passive: true });
+window.addEventListener("touchstart", handleWindowDismissOverlay, { passive: true });
