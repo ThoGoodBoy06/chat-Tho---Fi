@@ -919,10 +919,11 @@ RIGHT WINDOW & CHAT MESSAGES
 }
 
 .message-image {
-    max-width: 100% !important;
-    width: 220px !important;
-    height: 280px !important;
-    object-fit: cover !important; /* Giúp ảnh luôn lấp đầy khung tỉ lệ vàng, giống hệt Messenger */
+    max-width: min(260px, 70vw) !important; /* Giới hạn chiều rộng tối đa, co giãn theo màn hình */
+    max-height: 280px !important; /* Giới hạn chiều cao tối đa */
+    width: auto !important; /* Tự động theo tỷ lệ ảnh gốc giống Messenger */
+    height: auto !important; /* Tự động theo tỷ lệ ảnh gốc giống Messenger */
+    object-fit: contain !important; /* Bảo toàn trọn vẹn chi tiết ảnh gốc */
     border-radius: 16px !important; /* Bo góc tròn mềm mại */
     cursor: pointer;
     display: block;
@@ -935,6 +936,19 @@ RIGHT WINDOW & CHAT MESSAGES
 
 .message-image:hover {
     transform: scale(1.02);
+}
+
+/* 🌟 Loại bỏ hoàn toàn nền, đường viền và bóng của khung chứa ảnh */
+.message-content.image-message-content {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+}
+
+/* 🌟 Triệt tiêu khoảng trống padding bottom khi tin nhắn ảnh có chứa cảm xúc (giống Messenger) */
+.message-content.image-message-content.has-reactions {
+    padding-bottom: 0 !important;
 }
 
 .my-message .message-content {
@@ -1367,7 +1381,7 @@ RIGHT WINDOW & CHAT MESSAGES
     z-index: 200 !important;
     opacity: 0;
     visibility: hidden;
-    pointer-events: none !important; /* Khóa cứng để luôn quét hit-test xuyên thấu */
+    pointer-events: none;
     /* 🌟 Mặc định không nhận click khi đang ẩn hoặc đang fade-out */
     transition: opacity 0.25s ease-out, visibility 0.25s;
 }
@@ -1375,7 +1389,7 @@ RIGHT WINDOW & CHAT MESSAGES
 #mobile-action-overlay.show {
     opacity: 1;
     visibility: visible;
-    pointer-events: none !important; /* Vẫn giữ none !important để không chặn ngón tay */
+    pointer-events: auto !important; /* Nhận tương tác click vào vùng trống để tắt overlay */
 }
 
 .message.show-mobile-actions {

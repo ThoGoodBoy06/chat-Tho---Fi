@@ -849,6 +849,7 @@ function showMobileOverlay(messageEl) {
         };
 
         overlay.addEventListener("click", closeOverlay);
+        overlay.addEventListener("touchstart", closeOverlay, { passive: false });
 
         overlay.addEventListener("touchmove", (e) => {
             if (e.cancelable) e.preventDefault();
@@ -995,30 +996,79 @@ function showMobileOverlay(messageEl) {
     // Mặc định Emojis luôn ở trên đầu tin nhắn và Menu luôn ở dưới tin nhắn theo yêu cầu (không tự đảo chiều nữa)
     requestAnimationFrame(() => {
         messageEl.classList.remove("flip-up");
-        if (palette) {
+        
+        const viewportWidth = window.innerWidth;
+        const msgRect = msgContent ? msgContent.getBoundingClientRect() : null;
+
+        if (palette && msgRect) {
             palette.style.setProperty("bottom", "calc(100% + 8px)", "important");
             palette.style.setProperty("top", "auto", "important");
+            
+            // 🌟 Căn giữa palette theo tin nhắn và chống tràn màn hình (cách cạnh tối thiểu 12px)
+            const paletteWidth = palette.offsetWidth || 320;
+            const msgCenterViewport = msgRect.left + msgRect.width / 2;
+            let desiredLeftViewport = msgCenterViewport - paletteWidth / 2;
+            desiredLeftViewport = Math.max(12, Math.min(viewportWidth - paletteWidth - 12, desiredLeftViewport));
+            const leftOffset = desiredLeftViewport - msgRect.left;
+            
+            palette.style.setProperty("left", `${leftOffset}px`, "important");
+            palette.style.setProperty("right", "auto", "important");
         }
-        if (moreMenu) {
+        
+        if (moreMenu && msgRect) {
             moreMenu.style.setProperty("top", "calc(100% + 8px)", "important");
             moreMenu.style.setProperty("bottom", "auto", "important");
+            
+            // 🌟 Căn lề moreMenu chống tràn viền màn hình di động
+            const menuWidth = 220;
+            let desiredLeftViewport;
+            if (isMyMessage) {
+                desiredLeftViewport = (msgRect.left + msgRect.width) - menuWidth;
+            } else {
+                desiredLeftViewport = msgRect.left;
+            }
+            desiredLeftViewport = Math.max(12, Math.min(viewportWidth - menuWidth - 12, desiredLeftViewport));
+            const menuLeftOffset = desiredLeftViewport - msgRect.left;
+            
+            moreMenu.style.setProperty("left", `${menuLeftOffset}px`, "important");
+            moreMenu.style.setProperty("right", "auto", "important");
         }
 
-        // Tự động đẩy tin nhắn lên trên nếu menu bên dưới bị đè/cắt bởi cạnh dưới màn hình (khung chat input)
-        if (msgContent && moreMenu) {
+        // Tự động dịch chuyển tin nhắn theo chiều dọc để tránh bị cắt/đè ở cả cạnh trên và cạnh dưới màn hình
+        if (msgContent) {
             const rect = msgContent.getBoundingClientRect();
-            const inputArea = document.getElementById("input-area");
-            const limitY = inputArea ? inputArea.getBoundingClientRect().top : (window.innerHeight - 75);
             
-            // Chiều cao menu (thường khoảng 220px cho 5 item)
-            const menuHeight = moreMenu.getBoundingClientRect().height || 220;
-            const menuBottom = rect.bottom + 8 + menuHeight;
-            const overflow = menuBottom - limitY;
-
-            if (overflow > 0) {
-                // Di chuyển bong bóng chat lên trên mượt mà
+            // Giới hạn phía trên (Header)
+            const chatHeader = document.querySelector(".chat-header");
+            const limitTop = chatHeader ? chatHeader.getBoundingClientRect().bottom : 60;
+            const paletteHeight = 55; // Chiều cao ước tính của thanh cảm xúc
+            const minAllowedTop = limitTop + paletteHeight + 12; // Cần trống tối thiểu khoảng này ở phía trên
+            
+            // Giới hạn phía dưới (Input Area / Cạnh dưới)
+            const inputArea = document.getElementById("input-area");
+            const limitBottom = inputArea ? inputArea.getBoundingClientRect().top : (window.innerHeight - 75);
+            const menuHeight = moreMenu ? (moreMenu.getBoundingClientRect().height || 220) : 220;
+            const maxAllowedBottom = limitBottom - menuHeight - 12; // Cần trống tối thiểu khoảng này ở phía dưới
+            
+            let translateY = 0;
+            if (rect.top < minAllowedTop) {
+                // Tin nhắn quá gần mép trên -> Dịch xuống dưới
+                translateY = minAllowedTop - rect.top;
+            } else if (rect.bottom > maxAllowedBottom) {
+                // Tin nhắn quá gần mép dưới -> Dịch lên trên
+                translateY = maxAllowedBottom - rect.bottom;
+                
+                // 🌟 BẢO VỆ CẠNH TRÊN (TOP PRIORITY): Sau khi dịch lên trên, nếu mép trên của tin nhắn
+                // bị đẩy lên quá mức giới hạn trên (gây mất thanh Emojis), chúng ta sẽ ưu tiên giữ lề trên
+                // và chấp nhận cho menu phía dưới bị đè/tràn lấn.
+                if (rect.top + translateY < minAllowedTop) {
+                    translateY = minAllowedTop - rect.top;
+                }
+            }
+            
+            if (translateY !== 0) {
                 msgContent.style.setProperty("transition", "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)", "important");
-                msgContent.style.setProperty("transform", `translateY(-${overflow + 16}px)`, "important");
+                msgContent.style.setProperty("transform", `translateY(${translateY}px)`, "important");
             }
         }
     });
@@ -3002,6 +3052,7 @@ function displayMessage(msg, targetContainer = null) {
             messageContent.innerHTML = `<div class="message-img-container"><img src="${msg.content}" class="message-image" loading="lazy" onload="if(typeof window.scrollToBottomInstant === 'function') window.scrollToBottomInstant()" onclick="openLightbox(this.src)" draggable="false" oncontextmenu="return false;" alt="Ảnh tin nhắn" /></div>`;
             messageContent.style.background = "transparent";
             messageContent.style.padding = "0";
+            messageContent.classList.add("image-message-content");
         } else {
             messageContent.innerText = msg.content;
 
@@ -10101,22 +10152,4 @@ window.addEventListener("touchend", (e) => {
     }
 });
 
-// Đăng ký bộ lắng nghe sự kiện click/touchstart cấp window để đóng overlay khi tap ra ngoài vùng hoạt động
-const handleWindowDismissOverlay = (e) => {
-    if (!activeOverlayMessageEl) return;
-    
-    // Nếu tap vào bên trong các vùng tương tác của tin nhắn hiện tại thì bỏ qua
-    const palette = activeOverlayMessageEl.querySelector(".reaction-palette");
-    const moreMenu = activeOverlayMessageEl.querySelector(".more-menu");
-    
-    const isInsideMessage = e.target.closest(".message.show-mobile-actions");
-    const isInsidePalette = palette && palette.contains(e.target);
-    const isInsideMenu = moreMenu && moreMenu.contains(e.target);
-    const isCustomPicker = e.target.closest("#custom-reaction-picker, .picker-container");
-    
-    if (!isInsideMessage && !isInsidePalette && !isInsideMenu && !isCustomPicker) {
-        hideMobileOverlay();
-    }
-};
-window.addEventListener("click", handleWindowDismissOverlay, { passive: true });
-window.addEventListener("touchstart", handleWindowDismissOverlay, { passive: true });
+
