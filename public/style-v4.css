@@ -4886,12 +4886,17 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         font-size: 32px !important; /* Emoji to hơn nổi bật */
         pointer-events: auto !important;
         cursor: pointer !important;
-        transition: transform 0.15s ease !important;
+        transition: transform 0.18s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important; /* 🌟 Hiệu ứng lò xo mượt mà */
     }
     
-    .message.show-mobile-actions .reaction-palette span:active,
-    .message.show-mobile-actions .reaction-palette span.drag-hover {
+    .message.show-mobile-actions .reaction-palette span:active {
         transform: scale(1.4) !important;
+    }
+
+    .message.show-mobile-actions .reaction-palette span.drag-hover {
+        transform: scale(1.65) !important; /* 🌟 Phóng to vượt trội khi kéo tay gần tới */
+        text-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+        z-index: 99 !important;
     }
 
     .message.show-mobile-actions .more-menu .menu-item.drag-hover {

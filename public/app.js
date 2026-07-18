@@ -9968,47 +9968,36 @@ window.addEventListener("touchmove", (e) => {
     const y = e.touches[0].clientY;
     
 
-    // Tạm thời vô hiệu hóa pointer-events của overlay để đảm bảo hit-test xuyên xuống đúng mục tiêu bên dưới
-    const overlay = document.getElementById("mobile-action-overlay");
-    let prevOverlayPointerEvents = "";
-    if (overlay) {
-        prevOverlayPointerEvents = overlay.style.pointerEvents;
-        overlay.style.setProperty("pointer-events", "none", "important");
-    }
-    
-    const hoveredEl = document.elementFromPoint(x, y);
-    
-    if (overlay) {
-        if (prevOverlayPointerEvents) {
-            overlay.style.setProperty("pointer-events", prevOverlayPointerEvents, "important");
-        } else {
-            overlay.style.removeProperty("pointer-events");
-        }
-    }
-    
     let activeEmojiChild = null;
     let activeActionChild = null;
     
-    if (hoveredEl) {
-        activeEmojiChild = hoveredEl.closest(".reaction-palette span");
-        activeActionChild = hoveredEl.closest(".more-menu .menu-item");
-    }
-    
-    // 🌟 Safety Fallback: Nếu elementFromPoint không tìm thấy (do lỗi WebView/DPI/Scale), 
-    // chúng ta sẽ dò tìm trực tiếp bằng hộp tọa độ getBoundingClientRect()
-    if (!activeEmojiChild && palette) {
+    // 🌟 Định vị thông minh dựa trên khoảng cách (Proximity Distance Detection):
+    // Cho phép người dùng trỏ gần đến icon/menu là có thể chọn được, tạo trải nghiệm mượt mà giống Messenger.
+    const maxEmojiDistance = 75; // Bán kính nhận diện emoji (pixels)
+    if (palette) {
+        let minDistance = Infinity;
         Array.from(palette.children).forEach((child) => {
             const rect = child.getBoundingClientRect();
-            if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const dist = Math.hypot(x - centerX, y - centerY);
+            if (dist < minDistance && dist < maxEmojiDistance) {
+                minDistance = dist;
                 activeEmojiChild = child;
             }
         });
     }
-    
-    if (!activeActionChild && moreMenu) {
+
+    const maxActionDistance = 60; // Bán kính nhận diện dòng menu (pixels)
+    if (moreMenu) {
+        let minDistance = Infinity;
         Array.from(moreMenu.children).forEach((child) => {
             const rect = child.getBoundingClientRect();
-            if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const dist = Math.hypot(x - centerX, y - centerY);
+            if (dist < minDistance && dist < maxActionDistance) {
+                minDistance = dist;
                 activeActionChild = child;
             }
         });
