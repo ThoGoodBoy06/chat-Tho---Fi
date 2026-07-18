@@ -312,7 +312,8 @@ module.exports = (io) => {
               callerId: String(callerId),
               callerName: String(callerName),
               callType: String(callType),
-              callerAvatar: String(callerAvatar || "")
+              callerAvatar: String(callerAvatar || ""),
+              t: String(Date.now()) // 🌟 Thêm timestamp để kiểm tra quá hạn ở client
             };
             
             try {

@@ -6503,6 +6503,18 @@ function checkUrlParamsForCall() {
         const autoDecline = urlParams.get("autoDecline") === "true";
         const callTime = urlParams.get("t") || "";
 
+        // 🌟 FIX: Ngăn chặn xử lý các URL cuộc gọi quá cũ (lớn hơn 1 phút) do khôi phục tab/lịch sử duyệt web của trình duyệt
+        if (callTime && callTime.trim() !== "") {
+            const callTimestamp = parseInt(callTime, 10);
+            const now = Date.now();
+            if (!isNaN(callTimestamp) && Math.abs(now - callTimestamp) > 60000) { // 60 giây
+                console.log("🚫 URL cuộc gọi đã quá hạn (stale URL từ lịch sử/khôi phục tab), bỏ qua.");
+                // Xóa query params để URL sạch sẽ
+                window.history.replaceState({}, document.title, window.location.pathname);
+                return;
+            }
+        }
+
         // 🌟 Chống trùng lặp cuộc gọi nhỡ do cơ chế khôi phục tab/tải lại URL của trình duyệt di động
         const callSignature = `${callerId}_${callType}_${autoAccept}_${autoDecline}_${callTime}`;
         const lastProcessedCall = localStorage.getItem("last_processed_call_signature");
