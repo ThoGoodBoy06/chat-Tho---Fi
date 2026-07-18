@@ -847,6 +847,7 @@ RIGHT WINDOW & CHAT MESSAGES
     gap: 16px;
     position: relative;
     will-change: scroll-position;
+    transform: translateZ(0); /* 🌟 Ép tăng tốc phần cứng GPU */
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
     -webkit-overflow-scrolling: touch;
@@ -865,7 +866,9 @@ RIGHT WINDOW & CHAT MESSAGES
     will-change: transform, opacity;
     /* 🌟 Kích hoạt Hardware Acceleration qua GPU */
     transform: translate3d(0, 0, 0);
-    /* 🌟 Ép tăng tốc phần cứng qua GPU */
+}
+
+.message.new-message {
     animation: messageSlideIn 0.22s cubic-bezier(0.25, 0.8, 0.25, 1) both;
 }
 
@@ -4571,6 +4574,12 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         overscroll-behavior: none !important;
     }
 
+    body.overlay-active .message-content {
+        -webkit-touch-callout: none !important;
+        -webkit-user-select: none !important;
+        user-select: none !important;
+    }
+
     body.overlay-active #messages {
         overflow: hidden !important;
         touch-action: none !important;
@@ -4745,6 +4754,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         overscroll-behavior-y: contain !important;
         touch-action: pan-y !important;
         will-change: scroll-position !important;
+        transform: translateZ(0) !important; /* 🌟 Tăng tốc phần cứng cho mobile */
         backface-visibility: hidden !important;
         -webkit-backface-visibility: hidden !important;
         /* bảo vệ cuộn tin nhắn trên thiết bị cảm ứng */

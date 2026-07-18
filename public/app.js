@@ -4,9 +4,12 @@ const API_URL = `${SERVER_URL}/api`;
 // Nuốt toàn bộ click giả (synthesized click) sinh ra ngay sau khi nhấc ngón tay khỏi cú nhấn giữ trên di động (toàn cục)
 window.addEventListener("click", (e) => {
     if (typeof longPressJustOccurred !== "undefined" && longPressJustOccurred) {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
+        // Chỉ nuốt click nếu click xảy ra trên chính tin nhắn vừa được nhấn giữ
+        if (e.target && e.target.closest && e.target.closest(".message")) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+        }
         longPressJustOccurred = false; // Reset flag
     }
 }, true); // Dùng capture phase ở cấp cao nhất để chặn mọi click giả ở bất kỳ element nào (kể cả overlay hay ảnh)
@@ -844,7 +847,6 @@ function showMobileOverlay(messageEl) {
             if (Date.now() - shownAt < 300) {
                 return;
             }
-            if (e.cancelable && e.type === "touchstart") e.preventDefault();
             hideMobileOverlay();
         };
 
@@ -989,8 +991,10 @@ function showMobileOverlay(messageEl) {
 
             hideMobileOverlay();
             msgContent.removeEventListener("click", dismissHandler);
+            msgContent.removeEventListener("touchstart", dismissHandler);
         };
         msgContent.addEventListener("click", dismissHandler);
+        msgContent.addEventListener("touchstart", dismissHandler, { passive: true });
     }
 
     // Mặc định Emojis luôn ở trên đầu tin nhắn và Menu luôn ở dưới tin nhắn theo yêu cầu (không tự đảo chiều nữa)
@@ -2852,8 +2856,10 @@ function displayMessage(msg, targetContainer = null) {
     const messagesDiv = document.getElementById("messages");
     const messageElement = document.createElement("div");
     messageElement.id = `msg-${msg.id}`;
-    messageElement.className = `message ${msg.senderId === myId ? "my-message" : "other-message"
-        }`;
+    messageElement.className = `message ${msg.senderId === myId ? "my-message" : "other-message"}`;
+    if (!targetContainer) {
+        messageElement.classList.add("new-message");
+    }
     messageElement.dataset.messageId = msg.id;
     messageElement.dataset.senderId = msg.senderId || "";
     messageElement.dataset.isRead = msg.isRead ? "true" : "false";
@@ -3325,20 +3331,18 @@ function displayMessage(msg, targetContainer = null) {
                 moreMenu.appendChild(saveOption);
             }
 
-            // Ghim tin nhắn (Chỉ cho tin nhắn văn bản, ẩn cho hình ảnh giống Messenger)
-            if (!isImageMsg) {
-                const pinOption = document.createElement("div");
-                pinOption.className = "menu-item pin-action";
-                pinOption.innerText = msg.isPinned || messageElement.classList.contains("pinned-message") ? "Bỏ ghim" : "Ghim tin nhắn";
-                pinOption.onclick = (e) => {
-                    e.stopPropagation();
-                    const currentMsgId = messageElement.dataset.messageId;
-                    pinMessage(currentMsgId);
-                    moreMenu.classList.remove("show");
-                    hideMobileOverlay();
-                };
-                moreMenu.appendChild(pinOption);
-            }
+            // Ghim tin nhắn
+            const pinOption = document.createElement("div");
+            pinOption.className = "menu-item pin-action";
+            pinOption.innerText = msg.isPinned || messageElement.classList.contains("pinned-message") ? "Bỏ ghim" : "Ghim tin nhắn";
+            pinOption.onclick = (e) => {
+                e.stopPropagation();
+                const currentMsgId = messageElement.dataset.messageId;
+                pinMessage(currentMsgId);
+                moreMenu.classList.remove("show");
+                hideMobileOverlay();
+            };
+            moreMenu.appendChild(pinOption);
 
             // Chuyển tiếp tin nhắn
             const forwardOption = document.createElement("div");
