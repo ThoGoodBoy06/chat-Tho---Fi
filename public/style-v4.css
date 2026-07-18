@@ -4854,10 +4854,18 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         display: none !important;
     }
 
+    .message.show-mobile-actions {
+        pointer-events: none !important; /* FIX: Cho phép click xuyên qua toàn bộ độ rộng dòng chứa tin nhắn */
+    }
+
     .message.show-mobile-actions .message-body {
         position: relative !important;
         z-index: 251 !important;
-        pointer-events: auto !important;
+        pointer-events: none !important; /* FIX: Cho phép click xuyên qua khoảng trống 75% width của body */
+    }
+
+    .message.show-mobile-actions .message-content {
+        pointer-events: auto !important; /* Nhận sự kiện trực tiếp trên bong bóng tin nhắn */
     }
 
     .message.show-mobile-actions .message-actions {
@@ -4867,7 +4875,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         left: 0 !important;
         width: 100% !important;
         height: 100% !important;
-        pointer-events: auto !important;
+        pointer-events: none !important; /* FIX: để không chặn click/tap lên ảnh/text */
         z-index: 252 !important;
         background: transparent !important;
         box-shadow: none !important;

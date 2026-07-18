@@ -908,7 +908,7 @@ function showMobileOverlay(messageEl) {
         actions.style.setProperty("left", "0", "important");
         actions.style.setProperty("width", "100%", "important");
         actions.style.setProperty("height", "100%", "important");
-        actions.style.setProperty("pointer-events", "auto", "important");
+        actions.style.setProperty("pointer-events", "none", "important"); // FIX: Để chạm xuyên qua khung chứa nút đến ảnh/text
         actions.style.setProperty("z-index", "252", "important");
         actions.style.setProperty("background", "transparent", "important");
         actions.style.setProperty("box-shadow", "none", "important");
