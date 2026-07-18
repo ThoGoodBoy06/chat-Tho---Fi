@@ -9967,15 +9967,7 @@ window.addEventListener("touchmove", (e) => {
     const x = e.touches[0].clientX;
     const y = e.touches[0].clientY;
     
-    // Debug overlay box to inspect what element is detected under the finger
-    let debugBox = document.getElementById("debug-touch-box");
-    if (!debugBox) {
-        debugBox = document.createElement("div");
-        debugBox.id = "debug-touch-box";
-        debugBox.style.cssText = "position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.85); color: #00ff00; padding: 10px; font-family: monospace; font-size: 11px; z-index: 999999; pointer-events: none; border-radius: 4px; line-height: 1.4;";
-        document.body.appendChild(debugBox);
-    }
-    
+
     // Tạm thời vô hiệu hóa pointer-events của overlay để đảm bảo hit-test xuyên xuống đúng mục tiêu bên dưới
     const overlay = document.getElementById("mobile-action-overlay");
     let prevOverlayPointerEvents = "";
@@ -10022,15 +10014,7 @@ window.addEventListener("touchmove", (e) => {
         });
     }
     
-    if (debugBox) {
-        debugBox.innerHTML = `
-            X: ${Math.round(x)}, Y: ${Math.round(y)}<br>
-            Hovered: ${hoveredEl ? hoveredEl.tagName + " ." + hoveredEl.className : "null"}<br>
-            Emoji: ${activeEmojiChild ? (activeEmojiChild.innerText || "Emoji") : "null"}<br>
-            Action: ${activeActionChild ? activeActionChild.innerText : "null"}
-        `;
-    }
-    
+
     if (palette) {
         Array.from(palette.children).forEach((child) => {
             if (child === activeEmojiChild) {
@@ -10076,8 +10060,6 @@ window.addEventListener("touchmove", (e) => {
 }, { passive: false });
 
 window.addEventListener("touchend", (e) => {
-    const debugBox = document.getElementById("debug-touch-box");
-    if (debugBox) debugBox.remove();
 
     if (!activeOverlayMessageEl) return;
     
