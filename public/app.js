@@ -4036,14 +4036,23 @@ if (messageInput) {
 // Xử lý nút mũi tên mở rộng lại cụm ảnh/file khi đang gõ
 const expandBtnUI = document.getElementById('expand-btn');
 if (expandBtnUI) {
-    expandBtnUI.addEventListener('click', function(e) {
+    const handleExpand = (e) => {
         e.preventDefault();
         e.stopPropagation();
         const inputArea = document.getElementById('input-area');
         if (inputArea) {
             inputArea.classList.remove('is-typing');
         }
-    });
+        // Giữ tiêu điểm (focus) vào input để bàn phím không bị ẩn
+        const messageInput = document.getElementById('message-input');
+        if (messageInput) {
+            messageInput.focus();
+        }
+    };
+
+    expandBtnUI.addEventListener('click', handleExpand);
+    expandBtnUI.addEventListener('mousedown', handleExpand);
+    expandBtnUI.addEventListener('touchstart', handleExpand, { passive: false });
 }
 
 // 10. Đóng khung trò chuyện trên di động
