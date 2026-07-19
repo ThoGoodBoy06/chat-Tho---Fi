@@ -2190,7 +2190,14 @@ async function startChat(receiverId, receiverName, receiverAvatar, type = "priva
         if (isGroup) {
             if (btnBlockUser) btnBlockUser.style.display = "none";
             if (btnInfoCreateGroup) btnInfoCreateGroup.style.display = "none";
-            if (actionsGrid) actionsGrid.style.display = "none";
+            
+            // Ẩn trang cá nhân và biệt danh trong nhóm chat
+            const btnInfoProfile = document.getElementById("btn-info-profile");
+            const btnInfoNickname = document.getElementById("btn-info-nickname");
+            if (btnInfoProfile) btnInfoProfile.style.display = "none";
+            if (btnInfoNickname) btnInfoNickname.style.display = "none";
+            
+            if (actionsGrid) actionsGrid.style.display = "flex";
             if (groupManagementPanel) groupManagementPanel.style.display = "block";
             updateHeaderStatusUI(false, null, "Nhóm trò chuyện");
             
@@ -2199,6 +2206,13 @@ async function startChat(receiverId, receiverName, receiverAvatar, type = "priva
         } else {
             if (btnBlockUser) btnBlockUser.style.display = "block";
             if (btnInfoCreateGroup) btnInfoCreateGroup.style.display = "block";
+            
+            // Hiện lại trang cá nhân và biệt danh ngoài nhóm chat
+            const btnInfoProfile = document.getElementById("btn-info-profile");
+            const btnInfoNickname = document.getElementById("btn-info-nickname");
+            if (btnInfoProfile) btnInfoProfile.style.display = "flex";
+            if (btnInfoNickname) btnInfoNickname.style.display = "flex";
+            
             if (actionsGrid) actionsGrid.style.display = "flex";
             if (groupManagementPanel) groupManagementPanel.style.display = "none";
 
@@ -7069,6 +7083,10 @@ function renderNotifications() {
             let iconClass = "fa-comments";
             if (notif.type && (notif.type.includes("FRIEND") || notif.type.includes("friend"))) {
                 iconClass = "fa-user-plus";
+            } else if (notif.type && notif.type === "GROUP_KICKED") {
+                iconClass = "fa-user-slash";
+            } else if (notif.type && notif.type === "GROUP_DISSOLVED") {
+                iconClass = "fa-users-slash";
             } else if (notif.content && (notif.content.includes("kết bạn") || notif.content.includes("lời mời") || notif.content.includes("chấp nhận"))) {
                 iconClass = "fa-user-plus";
             }
@@ -7084,7 +7102,7 @@ function renderNotifications() {
             </div>
           </div>
           <div class="notification-content">
-            <p class="notification-text"><b>${sender.fullName}</b> ${notif.content}</p>
+            <p class="notification-text">${(notif.type === "GROUP_KICKED" || notif.type === "GROUP_DISSOLVED") ? notif.content : `<b>${sender.fullName}</b> ${notif.content}`}</p>
             <p class="notification-time">${timeStr}</p>
           </div>
         `;
@@ -8057,7 +8075,24 @@ function toggleConversationMenu(event, conversationId) {
         if (m.id !== menuId) m.style.display = "none";
     });
 
-    menu.style.display = menu.style.display === "block" ? "none" : "block";
+    const isShowing = menu.style.display === "block";
+    if (isShowing) {
+        menu.style.display = "none";
+    } else {
+        // Tính toán vị trí dựa trên nút 3 chấm
+        const btn = event.currentTarget || event.target;
+        const rect = btn.getBoundingClientRect();
+        menu.style.display = "block";
+        menu.style.top = (rect.bottom + 4) + "px";
+        menu.style.left = "auto";
+        menu.style.right = (window.innerWidth - rect.right) + "px";
+
+        // Đảm bảo không bị tràn ra ngoài viewport phía dưới
+        const menuRect = menu.getBoundingClientRect();
+        if (menuRect.bottom > window.innerHeight) {
+            menu.style.top = (rect.top - menuRect.height - 4) + "px";
+        }
+    }
 }
 
 async function confirmDeleteConversation(event, conversationId) {
@@ -8187,9 +8222,21 @@ function openChatInfoPanel() {
     if (btnInfoCreateGroup) {
         if (currentChatPartnerId) {
             btnInfoCreateGroup.style.display = "block";
+            const partnerName = nameEl ? nameEl.textContent : "đối phương";
+            btnInfoCreateGroup.innerHTML = `<i class="fas fa-users"></i> Tạo nhóm với ${partnerName}`;
         } else {
             btnInfoCreateGroup.style.display = "none";
         }
+    }
+
+    const btnInfoProfile = document.getElementById("btn-info-profile");
+    const btnInfoNickname = document.getElementById("btn-info-nickname");
+    if (currentChatPartnerId) {
+        if (btnInfoProfile) btnInfoProfile.style.display = "flex";
+        if (btnInfoNickname) btnInfoNickname.style.display = "flex";
+    } else {
+        if (btnInfoProfile) btnInfoProfile.style.display = "none";
+        if (btnInfoNickname) btnInfoNickname.style.display = "none";
     }
 
     const actionsGrid = document.querySelector("#chat-info-panel .chat-info-actions-grid");
@@ -10512,6 +10559,22 @@ function initGroupSocketListeners(socket) {
             loadGroupMembers(currentConversationId);
         }
     });
+
+    // Lắng nghe nhóm bị giải tán
+    socket.on("group:dissolved", (data) => {
+        if (isSameId(data.conversationId, currentConversationId)) {
+            // Đóng info panel nếu đang mở
+            const chatInfoModal = document.getElementById("chat-info-modal");
+            if (chatInfoModal) chatInfoModal.classList.remove("active");
+
+            currentConversationId = null;
+            currentChatPartnerId = null;
+            document.getElementById("chat-header-container").style.display = "none";
+            document.getElementById("input-area").style.display = "none";
+            document.getElementById("messages").innerHTML = `<div style="text-align: center; color: var(--text-light); margin-top: 50px;">Nhóm "${data.groupName}" đã được giải tán.</div>`;
+        }
+        if (typeof loadConversations === "function") loadConversations();
+    });
 }
 
 let isGroupDirectWithPartner = false; // Trạng thái tạo nhóm trực tiếp 2 người với đối phương
@@ -10780,6 +10843,12 @@ function renderGroupMembers(members, myRole) {
         btnAddMember.style.display = "block";
     }
 
+    // Hiển thị nút giải tán nhóm chỉ cho admin
+    const btnDissolve = document.getElementById("btn-dissolve-group");
+    if (btnDissolve) {
+        btnDissolve.style.display = myRole === "admin" ? "flex" : "none";
+    }
+
     members.forEach(member => {
         const avatarUrl = member.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`;
         
@@ -10886,7 +10955,48 @@ function handleChangeMemberRole(targetUserId, newRole) {
     });
 }
 
-// --- THÀNH PHẦN MENU DẤU CỘNG (+) ---
+// Xử lý giải tán nhóm (chỉ Admin)
+function confirmDissolveGroup() {
+    customConfirm("Bạn có chắc chắn muốn giải tán nhóm này? Tất cả tin nhắn và thành viên sẽ bị xóa vĩnh viễn.", async (confirmed) => {
+        if (!confirmed) return;
+
+        showLoading();
+        try {
+            const res = await fetch(`${API_URL}/chat/group/dissolve`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ conversationId: currentConversationId }),
+            });
+
+            const data = await res.json();
+            hideLoading();
+
+            if (data.success) {
+                showTempToast("Đã giải tán nhóm thành công!");
+                // Đóng info panel
+                const chatInfoModal = document.getElementById("chat-info-modal");
+                if (chatInfoModal) chatInfoModal.classList.remove("active");
+                
+                currentConversationId = null;
+                currentChatPartnerId = null;
+                document.getElementById("chat-header-container").style.display = "none";
+                document.getElementById("input-area").style.display = "none";
+                document.getElementById("messages").innerHTML = "";
+                if (typeof loadConversations === "function") loadConversations();
+            } else {
+                showTempToast("Lỗi: " + data.message);
+            }
+        } catch (error) {
+            hideLoading();
+            showTempToast("Lỗi hệ thống khi giải tán nhóm.");
+        }
+    });
+}
+
+
 function togglePlusMenu(event) {
     event.stopPropagation();
     const dropdown = document.getElementById("plus-dropdown-menu");
@@ -10925,5 +11035,48 @@ document.addEventListener("click", () => {
     const dropdownMobile = document.getElementById("plus-dropdown-menu-mobile");
     if (dropdownMobile) dropdownMobile.style.display = "none";
 });
+
+// Tạo nhóm 2 người ngay lập tức từ đoạn chat (không hiện popup hỏi tên hay thành viên)
+async function createGroupDirectlyWithPartner() {
+    if (!currentChatPartnerId) {
+        showTempToast("Không xác định được đối phương để tạo nhóm.");
+        return;
+    }
+
+    const partnerName = document.getElementById("chat-header-name")?.dataset.realName || "đối phương";
+    // Đặt tên nhóm mặc định là tên của 2 người
+    const defaultGroupName = `${myName}, ${partnerName}`;
+
+    showLoading();
+    try {
+        const res = await fetch(`${API_URL}/chat/group/create`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ groupName: defaultGroupName, userIds: [currentChatPartnerId] }),
+        });
+
+        const data = await res.json();
+        hideLoading();
+
+        if (data.success) {
+            showTempToast("Tạo nhóm thành công!");
+            
+            // Tải lại danh sách hội thoại
+            await loadConversations();
+
+            // Bắt đầu chat với nhóm mới ngay lập tức
+            const groupAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(defaultGroupName)}&background=random&color=fff`;
+            startChat(data.conversation.id, defaultGroupName, groupAvatar, "group");
+        } else {
+            showTempToast("Lỗi: " + data.message);
+        }
+    } catch (error) {
+        hideLoading();
+        showTempToast("Lỗi hệ thống khi tạo nhóm.");
+    }
+}
 
 

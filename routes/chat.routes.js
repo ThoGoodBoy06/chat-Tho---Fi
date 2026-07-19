@@ -33,6 +33,7 @@ router.get("/link-preview", chatController.getLinkPreview);
 router.post("/group/create", groupController.createGroup);
 router.post("/group/add", groupController.addMembers);
 router.post("/group/kick", groupController.kickMember);
+router.post("/group/dissolve", groupController.dissolveGroup);
 router.post("/group/role", groupController.changeMemberRole);
 router.get("/group/:conversationId/members", groupController.getGroupMembers);
 

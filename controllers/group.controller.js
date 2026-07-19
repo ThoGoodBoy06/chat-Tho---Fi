@@ -275,6 +275,33 @@ exports.kickMember = async (req, res) => {
             // Gửi tin nhắn hệ thống vào phòng
             io.to(conversationId).emit("receive_message", systemMessage);
 
+            // Tạo thông báo chuông cho người bị kick
+            const conversation = await prisma.conversations.findUnique({
+                where: { id: conversationId },
+                select: { name: true },
+                
+            });
+            const groupDisplayName = conversation && conversation.name ? conversation.name : "nhóm";
+            const kickNotification = await prisma.notifications.create({
+                data: {
+                    userId: targetUserId,
+                    senderId: adminId,
+                    type: "GROUP_KICKED",
+                    content: `Bạn đã bị xóa khỏi nhóm bởi ${adminName}.`,
+                },
+                include: {
+                    Sender: { select: { id: true, fullName: true } },
+                },
+            });
+            const mappedKickNotif = {
+                ...kickNotification,
+                Sender: kickNotification.Sender ? {
+                    ...kickNotification.Sender,
+                    avatar: `/api/users/${kickNotification.Sender.id}/avatar`
+                } : null
+            };
+            io.to(targetUserId).emit("new_global_notification", mappedKickNotif);
+
             // Báo cho người dùng bị kích
             io.to(targetUserId).emit("group:kicked", { conversationId, userId: targetUserId });
 
@@ -305,6 +332,110 @@ exports.kickMember = async (req, res) => {
     } catch (error) {
         console.error("❌ Lỗi khi kích thành viên:", error);
         res.status(500).json({ success: false, message: "Lỗi hệ thống khi kích thành viên.", error: error.message });
+    }
+};
+
+// 3b. Giải tán nhóm (chỉ Admin)
+exports.dissolveGroup = async (req, res) => {
+    try {
+        const adminId = req.user.id;
+        const { conversationId } = req.body;
+
+        if (!conversationId) {
+            return res.status(400).json({ success: false, message: "Thiếu ID cuộc trò chuyện." });
+        }
+
+        // Kiểm tra quyền Admin
+        const requesterMember = await prisma.conversationMembers.findFirst({
+            where: { conversationId, userId: adminId }
+        });
+
+        if (!requesterMember || requesterMember.role !== "admin") {
+            return res.status(403).json({ success: false, message: "Chỉ quản trị viên mới được quyền giải tán nhóm." });
+        }
+
+        // Lấy thông tin nhóm
+        const conversation = await prisma.conversations.findUnique({
+            where: { id: conversationId },
+            select: { name: true, type: true }
+        });
+
+        if (!conversation || conversation.type !== "group") {
+            return res.status(400).json({ success: false, message: "Cuộc trò chuyện này không phải nhóm." });
+        }
+
+        // Lấy toàn bộ thành viên (bao gồm admin) để gửi thông báo
+        const allMembers = await prisma.conversationMembers.findMany({
+            where: { conversationId },
+            include: {
+                Users: { select: { id: true, fullName: true } }
+            }
+        });
+
+        const adminUser = await prisma.users.findUnique({
+            where: { id: adminId },
+            select: { fullName: true }
+        });
+        const adminName = adminUser ? adminUser.fullName : "Quản trị viên";
+
+        // Tên nhóm hiển thị
+        let groupDisplayName = conversation.name;
+        if (!groupDisplayName || !groupDisplayName.trim()) {
+            // Nếu chưa đặt tên nhóm, ghép tên thành viên
+            groupDisplayName = allMembers.map(m => m.Users ? m.Users.fullName : "Người dùng").join(", ");
+        }
+
+        // Xóa tất cả tin nhắn thuộc nhóm
+        await prisma.messages.deleteMany({
+            where: { conversationId }
+        });
+
+        // Xóa tất cả thành viên
+        await prisma.conversationMembers.deleteMany({
+            where: { conversationId }
+        });
+
+        // Xóa phòng chat
+        await prisma.conversations.delete({
+            where: { id: conversationId }
+        });
+
+        // Gửi thông báo Socket + Chuông cho từng thành viên
+        const io = req.app.get("io");
+        if (io) {
+            for (const member of allMembers) {
+                const memberId = member.userId;
+
+                // Tạo thông báo chuông
+                const dissolveNotification = await prisma.notifications.create({
+                    data: {
+                        userId: memberId,
+                        senderId: adminId,
+                        type: "GROUP_DISSOLVED",
+                        content: `Nhóm ${groupDisplayName} đã được giải tán.`,
+                    },
+                    include: {
+                        Sender: { select: { id: true, fullName: true } },
+                    },
+                });
+                const mappedNotif = {
+                    ...dissolveNotification,
+                    Sender: dissolveNotification.Sender ? {
+                        ...dissolveNotification.Sender,
+                        avatar: `/api/users/${dissolveNotification.Sender.id}/avatar`
+                    } : null
+                };
+                io.to(memberId).emit("new_global_notification", mappedNotif);
+
+                // Sự kiện giải tán để frontend xử lý
+                io.to(memberId).emit("group:dissolved", { conversationId, groupName: groupDisplayName });
+            }
+        }
+
+        res.status(200).json({ success: true, message: "Đã giải tán nhóm thành công." });
+    } catch (error) {
+        console.error("❌ Lỗi khi giải tán nhóm:", error);
+        res.status(500).json({ success: false, message: "Lỗi hệ thống khi giải tán nhóm.", error: error.message });
     }
 };
 

@@ -1339,17 +1339,15 @@ RIGHT WINDOW & CHAT MESSAGES
 
 .conv-dropdown-menu {
     display: none;
-    position: absolute;
-    right: 8px;
-    left: auto; /* Fix Webkit layout bugs on mobile browsers */
-    top: 26px;
+    position: fixed;
     background: var(--msg-receiver-bg);
     border: 1px solid var(--border-color);
     border-radius: 8px;
     box-shadow: var(--shadow-lg);
-    z-index: 1000;
-    min-width: 135px;
+    z-index: 9999;
+    min-width: 170px;
     padding: 4px 0;
+    white-space: nowrap;
 }
 
 .conv-menu-item {
