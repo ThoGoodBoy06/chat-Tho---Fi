@@ -658,9 +658,9 @@
                         <span class="nav-badge" id="mobile-notifications-badge" style="display: none;">0</span>
                     </div>
                     <!-- Menu Dấu cộng (+) trên Mobile -->
-                    <div class="plus-menu-wrapper" style="position: relative; display: inline-block; cursor: pointer;">
-                        <i class="fas fa-plus icon-btn" id="btn-mobile-plus-menu" onclick="togglePlusMenuMobile(event)" title="Thêm" style="font-size: 16px; color: var(--text-dark); display: inline-block;"></i>
-                        <div id="plus-dropdown-menu-mobile" class="plus-dropdown-menu" style="display: none; position: absolute; top: 38px; right: 0; background: var(--chat-bg); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; width: 140px; padding: 4px 0;">
+                    <div class="plus-menu-wrapper mobile-plus-wrapper" onclick="togglePlusMenuMobile(event)" style="position: relative; display: flex; align-items: center; justify-content: center; cursor: pointer; width: 36px; height: 36px; background: rgba(255, 255, 255, 0.15); border-radius: 50%; box-sizing: border-box; transition: background var(--transition-fast, 0.15s);">
+                        <i class="fas fa-plus" id="btn-mobile-plus-menu" style="font-size: 18px; color: white; display: flex; align-items: center; justify-content: center;"></i>
+                        <div id="plus-dropdown-menu-mobile" class="plus-dropdown-menu" style="display: none; position: absolute; top: 40px; right: 0; background: var(--chat-bg); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; width: 140px; padding: 4px 0;">
                             <div class="plus-menu-item" onclick="openCreateGroupModalFromPlusMobile()" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'" style="padding: 10px 12px; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text-dark); display: flex; align-items: center; gap: 8px; transition: background 0.2s;">
                                 <i class="fas fa-users" style="color: var(--primary-color);"></i> Tạo nhóm mới
                             </div>

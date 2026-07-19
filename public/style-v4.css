@@ -1340,7 +1340,8 @@ RIGHT WINDOW & CHAT MESSAGES
 .conv-dropdown-menu {
     display: none;
     position: absolute;
-    right: 0;
+    right: 8px;
+    left: auto; /* Fix Webkit layout bugs on mobile browsers */
     top: 26px;
     background: var(--msg-receiver-bg);
     border: 1px solid var(--border-color);
