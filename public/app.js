@@ -2199,7 +2199,7 @@ async function startChat(receiverId, receiverName, receiverAvatar, type = "priva
         } else {
             if (btnBlockUser) btnBlockUser.style.display = "block";
             if (btnInfoCreateGroup) btnInfoCreateGroup.style.display = "block";
-            if (actionsGrid) actionsGrid.style.display = "grid";
+            if (actionsGrid) actionsGrid.style.display = "flex";
             if (groupManagementPanel) groupManagementPanel.style.display = "none";
 
             // Đồng bộ trạng thái online/offline của đối phương lên header
@@ -8195,7 +8195,7 @@ function openChatInfoPanel() {
     const actionsGrid = document.querySelector("#chat-info-panel .chat-info-actions-grid");
     if (actionsGrid) {
         if (currentChatPartnerId) {
-            actionsGrid.style.display = "grid";
+            actionsGrid.style.display = "flex";
         } else {
             actionsGrid.style.display = "none";
         }
