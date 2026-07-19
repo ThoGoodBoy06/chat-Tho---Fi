@@ -241,7 +241,35 @@ exports.getMessages = async(req, res) => {
             if (m.nickname) nicknames[m.userId] = m.nickname;
         });
 
-        res.status(200).json({ success: true, data: mappedMessages, hasMore, theme, nicknames });
+        // Kiểm tra trạng thái chặn (blockState) giữa current user và đối phương
+        let blockState = { blocked: false, blockerId: null, blockedId: null };
+        const otherMember = await prisma.conversationMembers.findFirst({
+            where: {
+                conversationId,
+                userId: { not: req.user.id }
+            },
+            select: { userId: true }
+        });
+
+        if (otherMember) {
+            const blockRecord = await prisma.block.findFirst({
+                where: {
+                    OR: [
+                        { blockerId: req.user.id, blockedId: otherMember.userId },
+                        { blockerId: otherMember.userId, blockedId: req.user.id }
+                    ]
+                }
+            });
+            if (blockRecord) {
+                blockState = {
+                    blocked: true,
+                    blockerId: blockRecord.blockerId,
+                    blockedId: blockRecord.blockedId
+                };
+            }
+        }
+
+        res.status(200).json({ success: true, data: mappedMessages, hasMore, theme, nicknames, blockState });
     } catch (error) {
         res.status(500).json({ message: "Lỗi server", error: error.message });
     }
@@ -304,6 +332,32 @@ exports.sendMessage = async(req, res) => {
             } catch (uploadError) {
                 console.error("❌ Lỗi upload media lên Supabase (Sẽ fallback lưu base64 vào DB):", uploadError);
                 // Fallback: Giữ nguyên finalContent = content để lưu base64 tránh mất tin nhắn của user
+            }
+        }
+
+        // Kiểm tra xem 2 người đã chặn nhau chưa
+        const conversation = await prisma.conversations.findUnique({
+            where: { id: conversationId },
+            include: {
+                ConversationMembers: true
+            }
+        });
+
+        if (conversation && conversation.type === "private") {
+            const otherMember = conversation.ConversationMembers.find(m => m.userId !== senderId);
+            if (otherMember) {
+                const isBlocked = await prisma.block.findFirst({
+                    where: {
+                        OR: [
+                            { blockerId: senderId, blockedId: otherMember.userId },
+                            { blockerId: otherMember.userId, blockedId: senderId }
+                        ]
+                    }
+                });
+
+                if (isBlocked) {
+                    return res.status(403).json({ success: false, message: "Không thể gửi tin nhắn do đã chặn nhau." });
+                }
             }
         }
 
@@ -1468,5 +1522,168 @@ exports.getLinkPreview = async (req, res) => {
     } catch (error) {
         console.error("❌ Lỗi khi lấy link preview:", error);
         res.status(500).json({ success: false, message: "Lỗi hệ thống.", error: error.message });
+    }
+};
+
+exports.blockUser = async (req, res) => {
+    try {
+        const blockerId = req.user.id;
+        const { targetUserId, action } = req.body;
+
+        if (!targetUserId) {
+            return res.status(400).json({ success: false, message: "Thiếu ID người dùng mục tiêu" });
+        }
+
+        if (blockerId === targetUserId) {
+            return res.status(400).json({ success: false, message: "Không thể tự chặn chính mình" });
+        }
+
+        if (action === "block") {
+            const existing = await prisma.block.findUnique({
+                where: {
+                    blockerId_blockedId: { blockerId, blockedId: targetUserId }
+                }
+            });
+
+            if (!existing) {
+                await prisma.block.create({
+                    data: {
+                        blockerId,
+                        blockedId: targetUserId
+                    }
+                });
+            }
+
+            // Find private conversation to add a system message
+            const existingConversations = await prisma.conversationMembers.findMany({
+                where: { userId: blockerId },
+                select: { conversationId: true }
+            });
+            const conversationIds = existingConversations.map((c) => c.conversationId).filter(Boolean);
+
+            const match = await prisma.conversationMembers.findFirst({
+                where: {
+                    conversationId: { in: conversationIds },
+                    userId: targetUserId,
+                },
+                include: {
+                    Conversations: true
+                }
+            });
+
+            const blockerUser = await prisma.users.findUnique({
+                where: { id: blockerId },
+                select: { fullName: true }
+            });
+            const blockerName = blockerUser ? blockerUser.fullName : "Người dùng";
+
+            let systemMessage = null;
+            if (match && match.Conversations && match.Conversations.type === "private") {
+                const systemContent = `${blockerName} đã chặn cuộc trò chuyện này.`;
+                systemMessage = await prisma.messages.create({
+                    data: {
+                        id: uuidv4(),
+                        conversationId: match.conversationId,
+                        senderId: blockerId,
+                        content: systemContent,
+                        type: "system",
+                    }
+                });
+            }
+
+            // Emit socket event to notify both users
+            const io = req.app.get("io");
+            if (io) {
+                io.to(targetUserId).emit("block_status_changed", {
+                    blockerId,
+                    blockedId: targetUserId,
+                    action: "block"
+                });
+                io.to(blockerId).emit("block_status_changed", {
+                    blockerId,
+                    blockedId: targetUserId,
+                    action: "block"
+                });
+                if (systemMessage) {
+                    io.to(targetUserId).emit("receive_message", systemMessage);
+                    io.to(blockerId).emit("receive_message", systemMessage);
+                }
+            }
+
+            return res.status(200).json({ success: true, message: "Đã chặn người dùng", systemMessage });
+        } else if (action === "unblock") {
+            try {
+                await prisma.block.delete({
+                    where: {
+                        blockerId_blockedId: { blockerId, blockedId: targetUserId }
+                    }
+                });
+            } catch (err) {
+                // Ignore if not exists
+            }
+
+            // Find private conversation to add a system message
+            const existingConversations = await prisma.conversationMembers.findMany({
+                where: { userId: blockerId },
+                select: { conversationId: true }
+            });
+            const conversationIds = existingConversations.map((c) => c.conversationId).filter(Boolean);
+
+            const match = await prisma.conversationMembers.findFirst({
+                where: {
+                    conversationId: { in: conversationIds },
+                    userId: targetUserId,
+                },
+                include: {
+                    Conversations: true
+                }
+            });
+
+            const blockerUser = await prisma.users.findUnique({
+                where: { id: blockerId },
+                select: { fullName: true }
+            });
+            const blockerName = blockerUser ? blockerUser.fullName : "Người dùng";
+
+            let systemMessage = null;
+            if (match && match.Conversations && match.Conversations.type === "private") {
+                const systemContent = `${blockerName} đã bỏ chặn cuộc trò chuyện này.`;
+                systemMessage = await prisma.messages.create({
+                    data: {
+                        id: uuidv4(),
+                        conversationId: match.conversationId,
+                        senderId: blockerId,
+                        content: systemContent,
+                        type: "system",
+                    }
+                });
+            }
+
+            // Emit socket event to notify both users
+            const io = req.app.get("io");
+            if (io) {
+                io.to(targetUserId).emit("block_status_changed", {
+                    blockerId,
+                    blockedId: targetUserId,
+                    action: "unblock"
+                });
+                io.to(blockerId).emit("block_status_changed", {
+                    blockerId,
+                    blockedId: targetUserId,
+                    action: "unblock"
+                });
+                if (systemMessage) {
+                    io.to(targetUserId).emit("receive_message", systemMessage);
+                    io.to(blockerId).emit("receive_message", systemMessage);
+                }
+            }
+
+            return res.status(200).json({ success: true, message: "Đã bỏ chặn người dùng", systemMessage });
+        } else {
+            return res.status(400).json({ success: false, message: "Hành động không hợp lệ" });
+        }
+    } catch (error) {
+        console.error("Lỗi khi xử lý chặn/bỏ chặn:", error);
+        return res.status(500).json({ success: false, message: "Lỗi server", error: error.message });
     }
 };

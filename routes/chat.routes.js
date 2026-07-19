@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const chatController = require("../controllers/chat.controller");
+const groupController = require("../controllers/group.controller");
 const authMiddleware = require("../middlewares/auth.middleware");
 
 // Bật lớp bảo vệ: Chỉ user đã đăng nhập (có Token) mới được dùng các API này
@@ -8,6 +9,7 @@ router.use(authMiddleware);
 
 router.get("/conversations", chatController.getConversations);
 router.post("/conversations", chatController.createConversation);
+router.post("/block", chatController.blockUser);
 router.patch("/conversations/:conversationId/theme", chatController.changeConversationTheme);
 router.patch("/conversations/:conversationId/nickname", chatController.setNickname);
 router.delete("/conversations/:conversationId", chatController.deleteConversation);
@@ -26,5 +28,12 @@ router.get("/:conversationId/pins", chatController.getPinnedMessages);
 router.get("/:conversationId/search", chatController.searchMessages);
 router.post("/messages/forward", chatController.forwardMessage);
 router.get("/link-preview", chatController.getLinkPreview);
+
+// API cho tính năng nhóm (Group Chat)
+router.post("/group/create", groupController.createGroup);
+router.post("/group/add", groupController.addMembers);
+router.post("/group/kick", groupController.kickMember);
+router.post("/group/role", groupController.changeMemberRole);
+router.get("/group/:conversationId/members", groupController.getGroupMembers);
 
 module.exports = router;

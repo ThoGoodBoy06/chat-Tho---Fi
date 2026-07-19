@@ -96,6 +96,8 @@ model Users {
   received_requests FriendRequests[] @relation("received_requests")
   NotificationsReceived Notifications[] @relation("UserNotifications")
   NotificationsSent     Notifications[] @relation("SenderNotifications")
+  blocksSent     Block[] @relation("UserBlocks")
+  blocksReceived Block[] @relation("UserBlockedBy")
   fcmToken  String?  
 }
 
@@ -135,4 +137,16 @@ model News {
   link        String?  // Đường dẫn gốc của bài báo
   fullContent String?  // Nội dung chi tiết bài báo (cào từ VNExpress)
   createdAt   DateTime @default(now())
+}
+
+model Block {
+  id        String   @id @default(uuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  blocker   Users    @relation("UserBlocks", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   Users    @relation("UserBlockedBy", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
 }

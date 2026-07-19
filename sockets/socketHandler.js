@@ -11,6 +11,12 @@ module.exports = (io) => {
   io.on("connection", (socket) => {
     console.log("⚡ Một thiết bị vừa kết nối với Socket: " + socket.id);
 
+    // Lắng nghe khi client yêu cầu tham gia phòng trò chuyện (như khi được thêm vào nhóm)
+    socket.on("join_conversation", (conversationId) => {
+        socket.join(conversationId);
+        console.log(`📡 Socket ${socket.id} đã vào phòng: ${conversationId}`);
+    });
+
     // 1. Lắng nghe khi người dùng đăng nhập app thành công
     socket.on("user_connected", async (userId) => {
       try {
@@ -148,6 +154,17 @@ module.exports = (io) => {
     // 3. Lắng nghe trạng thái Đang gõ...
     socket.on("typing", async (payload) => {
       if (payload && payload.receiverId) {
+        // Kiểm tra chặn trước khi gửi sự kiện typing
+        const isBlocked = await prisma.block.findFirst({
+            where: {
+                OR: [
+                    { blockerId: socket.userId, blockedId: payload.receiverId },
+                    { blockerId: payload.receiverId, blockedId: socket.userId }
+                ]
+            }
+        });
+        if (isBlocked) return;
+
         // Chuyển tiếp trực tiếp cho người nhận kèm tên người gửi
         socket.to(payload.receiverId).emit("typing", { 
           senderId: socket.userId || payload.senderId,
@@ -291,6 +308,22 @@ module.exports = (io) => {
     socket.on(
       "request_call",
       async ({ callerId, callerName, calleeId, callType, callerAvatar }) => {
+        // Kiểm tra chặn trước khi kết nối cuộc gọi
+        const isBlocked = await prisma.block.findFirst({
+            where: {
+                OR: [
+                    { blockerId: callerId, blockedId: calleeId },
+                    { blockerId: calleeId, blockedId: callerId }
+                ]
+            }
+        });
+
+        if (isBlocked) {
+            socket.emit("call_rejected", { reason: "blocked" });
+            console.log(`🚫 Cuộc gọi bị chặn giữa ${callerId} và ${calleeId} do chặn nhau`);
+            return;
+        }
+
         // Kiểm tra trạng thái online thời gian thực của callee qua room Socket.IO
         const calleeRoom = io.sockets.adapter.rooms.get(calleeId);
         const isCalleeOnline = calleeRoom && calleeRoom.size > 0;

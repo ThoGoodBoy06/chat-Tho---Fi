@@ -30,7 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // --- NHẬN FCM TOKEN TỪ FLUTTER HYBRID BRIDGE ---
-window.onFlutterFcmTokenReceived = function(fcmTokenVal) {
+window.onFlutterFcmTokenReceived = function (fcmTokenVal) {
     console.log("🔥 Đã nhận native FCM Token từ Flutter:", fcmTokenVal);
     const userToken = localStorage.getItem("authToken");
     if (!userToken) {
@@ -47,9 +47,9 @@ window.onFlutterFcmTokenReceived = function(fcmTokenVal) {
         },
         body: JSON.stringify({ fcmToken: fcmTokenVal }),
     })
-    .then(res => res.json())
-    .then(data => console.log("✅ Đã lưu native FCM Token thành công:", data))
-    .catch(err => console.error("❌ Lỗi gửi native FCM Token:", err));
+        .then(res => res.json())
+        .then(data => console.log("✅ Đã lưu native FCM Token thành công:", data))
+        .catch(err => console.error("❌ Lỗi gửi native FCM Token:", err));
 };
 if (window.flutterFcmToken) {
     window.onFlutterFcmTokenReceived(window.flutterFcmToken);
@@ -65,7 +65,7 @@ function formatUrl(url) {
 // TỰ ĐỘNG THAY THẾ ẢNH LỖI (404) BẰNG ẢNH MẶC ĐỊNH
 document.addEventListener(
     "error",
-    function(e) {
+    function (e) {
         if (e.target.tagName && e.target.tagName.toLowerCase() === "img") {
             const fallback =
                 "https://ui-avatars.com/api/?name=User&background=random";
@@ -87,10 +87,10 @@ const ChatSounds = {
 
     _init() {
         if (!this._ctx) {
-            this._ctx = new(window.AudioContext || window.webkitAudioContext)();
+            this._ctx = new (window.AudioContext || window.webkitAudioContext)();
         }
         if (this._ctx.state === "suspended") {
-            this._ctx.resume().catch(() => {});
+            this._ctx.resume().catch(() => { });
         }
         return this._ctx;
     },
@@ -352,7 +352,7 @@ let activeGains = {
 
 function getAudioContext() {
     if (!audioCtx) {
-        audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
     return audioCtx;
 }
@@ -566,8 +566,8 @@ function getReadReceiptTarget(myMessages) {
     // Fallback: tìm tin nhắn của mình được đọc cuối cùng theo data attribute
     return (
         [...myMessages]
-        .reverse()
-        .find((message) => message.dataset.isRead === "true") || null
+            .reverse()
+            .find((message) => message.dataset.isRead === "true") || null
     );
 }
 
@@ -738,16 +738,16 @@ function hideMobileOverlay() {
     const overlay = document.getElementById("mobile-action-overlay");
     if (overlay) overlay.classList.remove("show");
     document.body.classList.remove("overlay-active");
-    
+
     document.querySelectorAll(".message").forEach((m) => {
         m.classList.remove("show-mobile-actions");
         m.classList.remove("flip-up");
-        
+
         const msgContent = m.querySelector(".message-content");
         if (msgContent) {
             // Đưa tin nhắn về vị trí ban đầu bằng transition trượt mượt mà
             msgContent.style.setProperty("transform", "translateY(0)", "important");
-            
+
             // Chờ hiệu ứng trượt kết thúc (200ms) rồi mới dọn dẹp các thuộc tính CSS inline khác
             setTimeout(() => {
                 // Kiểm tra xem tin nhắn này không bị kích hoạt lại overlay trong lúc chờ
@@ -759,7 +759,7 @@ function hideMobileOverlay() {
                 }
             }, 200);
         }
-        
+
         const actions = m.querySelector(".message-actions");
         if (actions) {
             actions.style.removeProperty("display");
@@ -775,7 +775,7 @@ function hideMobileOverlay() {
             actions.style.removeProperty("margin");
             actions.style.removeProperty("padding");
         }
-        
+
         m.querySelectorAll(".action-item").forEach((item) => {
             item.style.removeProperty("position");
             item.style.removeProperty("top");
@@ -789,11 +789,11 @@ function hideMobileOverlay() {
             item.style.removeProperty("box-shadow");
             item.style.removeProperty("overflow");
             item.style.removeProperty("pointer-events");
-            
+
             const icon = item.querySelector("i");
             if (icon) icon.style.removeProperty("display");
         });
-        
+
         const palette = m.querySelector(".reaction-palette");
         if (palette) {
             palette.classList.remove("show");
@@ -814,7 +814,7 @@ function hideMobileOverlay() {
             palette.style.removeProperty("top");
             palette.style.removeProperty("bottom");
         }
-        
+
         const moreMenu = m.querySelector(".more-menu");
         if (moreMenu) {
             moreMenu.classList.remove("show");
@@ -847,7 +847,7 @@ function showMobileOverlay(messageEl) {
     if (!overlay) {
         overlay = document.createElement("div");
         overlay.id = "mobile-action-overlay";
-        
+
         const closeOverlay = (e) => {
             const shownAt = parseInt(overlay.dataset.shownAt || "0", 10);
             if (Date.now() - shownAt < 300) {
@@ -995,7 +995,7 @@ function showMobileOverlay(messageEl) {
         const dismissHandler = (e) => {
             // Nếu click vào bên trong .message-actions hoặc .reaction-palette thì bỏ qua
             if (e.target.closest('.message-actions, .reaction-palette, .more-menu')) return;
-            
+
             const shownAt = parseInt(overlay.dataset.shownAt || "0", 10);
             if (Date.now() - shownAt < 300) {
                 return;
@@ -1014,29 +1014,29 @@ function showMobileOverlay(messageEl) {
     // Mặc định Emojis luôn ở trên đầu tin nhắn và Menu luôn ở dưới tin nhắn theo yêu cầu (không tự đảo chiều nữa)
     requestAnimationFrame(() => {
         messageEl.classList.remove("flip-up");
-        
+
         const viewportWidth = window.innerWidth;
         const msgRect = msgContent ? msgContent.getBoundingClientRect() : null;
 
         if (palette && msgRect) {
             palette.style.setProperty("bottom", "calc(100% + 8px)", "important");
             palette.style.setProperty("top", "auto", "important");
-            
+
             // 🌟 Căn giữa palette theo tin nhắn và chống tràn màn hình (cách cạnh tối thiểu 12px)
             const paletteWidth = palette.offsetWidth || 320;
             const msgCenterViewport = msgRect.left + msgRect.width / 2;
             let desiredLeftViewport = msgCenterViewport - paletteWidth / 2;
             desiredLeftViewport = Math.max(12, Math.min(viewportWidth - paletteWidth - 12, desiredLeftViewport));
             const leftOffset = desiredLeftViewport - msgRect.left;
-            
+
             palette.style.setProperty("left", `${leftOffset}px`, "important");
             palette.style.setProperty("right", "auto", "important");
         }
-        
+
         if (moreMenu && msgRect) {
             moreMenu.style.setProperty("top", "calc(100% + 8px)", "important");
             moreMenu.style.setProperty("bottom", "auto", "important");
-            
+
             // 🌟 Căn lề moreMenu chống tràn viền màn hình di động
             const menuWidth = 220;
             let desiredLeftViewport;
@@ -1047,7 +1047,7 @@ function showMobileOverlay(messageEl) {
             }
             desiredLeftViewport = Math.max(12, Math.min(viewportWidth - menuWidth - 12, desiredLeftViewport));
             const menuLeftOffset = desiredLeftViewport - msgRect.left;
-            
+
             moreMenu.style.setProperty("left", `${menuLeftOffset}px`, "important");
             moreMenu.style.setProperty("right", "auto", "important");
         }
@@ -1055,19 +1055,19 @@ function showMobileOverlay(messageEl) {
         // Tự động dịch chuyển tin nhắn theo chiều dọc để tránh bị cắt/đè ở cả cạnh trên và cạnh dưới màn hình
         if (msgContent) {
             const rect = msgContent.getBoundingClientRect();
-            
+
             // Giới hạn phía trên (Header)
             const chatHeader = document.querySelector(".chat-header");
             const limitTop = chatHeader ? chatHeader.getBoundingClientRect().bottom : 60;
             const paletteHeight = 55; // Chiều cao ước tính của thanh cảm xúc
             const minAllowedTop = limitTop + paletteHeight + 12; // Cần trống tối thiểu khoảng này ở phía trên
-            
+
             // Giới hạn phía dưới (Input Area / Cạnh dưới)
             const inputArea = document.getElementById("input-area");
             const limitBottom = inputArea ? inputArea.getBoundingClientRect().top : (window.innerHeight - 75);
             const menuHeight = moreMenu ? (moreMenu.getBoundingClientRect().height || 220) : 220;
             const maxAllowedBottom = limitBottom - menuHeight - 12; // Cần trống tối thiểu khoảng này ở phía dưới
-            
+
             let translateY = 0;
             if (rect.top < minAllowedTop) {
                 // Tin nhắn quá gần mép trên -> Dịch xuống dưới
@@ -1075,7 +1075,7 @@ function showMobileOverlay(messageEl) {
             } else if (rect.bottom > maxAllowedBottom) {
                 // Tin nhắn quá gần mép dưới -> Dịch lên trên
                 translateY = maxAllowedBottom - rect.bottom;
-                
+
                 // 🌟 BẢO VỆ CẠNH TRÊN (TOP PRIORITY): Sau khi dịch lên trên, nếu mép trên của tin nhắn
                 // bị đẩy lên quá mức giới hạn trên (gây mất thanh Emojis), chúng ta sẽ ưu tiên giữ lề trên
                 // và chấp nhận cho menu phía dưới bị đè/tràn lấn.
@@ -1083,7 +1083,7 @@ function showMobileOverlay(messageEl) {
                     translateY = minAllowedTop - rect.top;
                 }
             }
-            
+
             if (translateY !== 0) {
                 msgContent.style.setProperty("transition", "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)", "important");
                 msgContent.style.setProperty("transform", `translateY(${translateY}px)`, "important");
@@ -1093,7 +1093,7 @@ function showMobileOverlay(messageEl) {
 }
 
 // Hệ thống gài quét lỗi toàn cục
-window.onerror = function(msg, url, lineNo, columnNo, error) {
+window.onerror = function (msg, url, lineNo, columnNo, error) {
     if (
         typeof msg === "string" &&
         (msg.includes("ResizeObserver") ||
@@ -1207,10 +1207,10 @@ function initizeChatSession(userData, userToken) {
     document.getElementById("profile-name").innerText = myName;
     if (document.getElementById("my-avatar-profile"))
         document.getElementById("my-avatar-profile").src =
-        document.getElementById("my-avatar").src;
+            document.getElementById("my-avatar").src;
     if (document.getElementById("profile-bio"))
         document.getElementById("profile-bio").innerText =
-        userData.bio || "Chưa có tiểu sử";
+            userData.bio || "Chưa có tiểu sử";
     if (document.getElementById("my-cover")) {
         const coverUrl = userData.coverPhoto || userData.coverImage;
         if (coverUrl) {
@@ -1240,6 +1240,7 @@ function initizeChatSession(userData, userToken) {
     // Kết nối Socket.IO Real-time
     socket = io(SERVER_URL);
     initSocketPinListeners(socket); // 🌟 Kích hoạt các socket listener cho ghim & tự hủy
+    initGroupSocketListeners(socket); // 👥 Kích hoạt các socket listener cho chat nhóm
     socket.on("connect", () => {
         console.log("⚡ Kết nối Socket thành công, đang xác thực user_connected: " + myId);
         socket.emit("user_connected", myId);
@@ -1284,7 +1285,7 @@ function initizeChatSession(userData, userToken) {
     });
 
     // Nghe khi mình chấp nhận lời mời của ai đó
-    socket.on("you_accepted_friend_request", async(newFriend) => {
+    socket.on("you_accepted_friend_request", async (newFriend) => {
         alert(`Bạn và ${newFriend.fullName} đã trở thành bạn bè!`);
         try {
             await fetch(`${API_URL}/chat/conversations`, {
@@ -1295,13 +1296,13 @@ function initizeChatSession(userData, userToken) {
                 },
                 body: JSON.stringify({ receiverId: newFriend.id }),
             });
-        } catch (e) {}
+        } catch (e) { }
         loadConversations();
         loadFriends();
     });
 
     // Nghe khi lời mời của mình được chấp nhận
-    socket.on("friend_request_accepted", async(userWhoAccepted) => {
+    socket.on("friend_request_accepted", async (userWhoAccepted) => {
         alert(`${userWhoAccepted.fullName} đã chấp nhận lời mời của bạn!`);
         try {
             await fetch(`${API_URL}/chat/conversations`, {
@@ -1312,7 +1313,7 @@ function initizeChatSession(userData, userToken) {
                 },
                 body: JSON.stringify({ receiverId: userWhoAccepted.id }),
             });
-        } catch (e) {}
+        } catch (e) { }
         loadConversations();
     });
 
@@ -1654,6 +1655,28 @@ function initizeChatSession(userData, userToken) {
         loadConversations();
     });
 
+    // Nghe sự kiện chặn/bỏ chặn người dùng
+    socket.on("block_status_changed", ({ blockerId, blockedId, action }) => {
+        if (
+            (isSameId(blockerId, myId) && isSameId(blockedId, currentChatPartnerId)) ||
+            (isSameId(blockerId, currentChatPartnerId) && isSameId(blockedId, myId))
+        ) {
+            if (action === "block") {
+                applyBlockState({
+                    blocked: true,
+                    blockerId,
+                    blockedId
+                });
+            } else {
+                applyBlockState({
+                    blocked: false
+                });
+            }
+            // Tự động đóng menu chữ "i"
+            closeChatInfoPanel();
+        }
+    });
+
     // Gắn sự kiện cho các nút trong cuộc gọi
     document.getElementById("reject-call-btn").onclick = () => endCall(true);
     document.getElementById("end-call-btn").onclick = () => endCall(true);
@@ -1700,7 +1723,7 @@ function initizeChatSession(userData, userToken) {
 }
 
 // Hàm hỗ trợ Flutter chủ động lấy thông tin xác thực để đồng bộ Chat Native
-window.getAuthDataForMobile = function() {
+window.getAuthDataForMobile = function () {
     if (window.FlutterHeaderChannel && token && myId) {
         window.FlutterHeaderChannel.postMessage(JSON.stringify({
             event: 'auth_sync',
@@ -1751,13 +1774,13 @@ function setupFirebaseMessaging(userToken) {
                         if (currentToken) {
                             console.log("🔥 Đã lấy được FCM Token:", currentToken);
                             fetch(`${API_URL}/users/fcm-token`, {
-                                    method: "POST",
-                                    headers: {
-                                        "Content-Type": "application/json",
-                                        Authorization: `Bearer ${userToken}`,
-                                    },
-                                    body: JSON.stringify({ fcmToken: currentToken }),
-                                })
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                    Authorization: `Bearer ${userToken}`,
+                                },
+                                body: JSON.stringify({ fcmToken: currentToken }),
+                            })
                                 .then(res => res.json())
                                 .then(data => {
                                     console.log("💾 Đã lưu thành công FCM Token lên server:", data);
@@ -1773,8 +1796,8 @@ function setupFirebaseMessaging(userToken) {
             } else {
                 // Fallback nếu trình duyệt không hỗ trợ Service Worker
                 messaging.getToken({
-                        vapidKey: "BBtraQSvar7RExe_T8aVhoA3TebgLw0S-ucoMcuV-Oef-H7ULkJGWyBctnxfY5tLnawpWQ9Wn8Aihi-wJaLiGu0",
-                    })
+                    vapidKey: "BBtraQSvar7RExe_T8aVhoA3TebgLw0S-ucoMcuV-Oef-H7ULkJGWyBctnxfY5tLnawpWQ9Wn8Aihi-wJaLiGu0",
+                })
                     .then((currentToken) => {
                         if (currentToken) {
                             console.log("🔥 Đã lấy được FCM Token (fallback):", currentToken);
@@ -1893,105 +1916,133 @@ async function loadConversations() {
 
         data.data.forEach((item) => {
             const conv = item.Conversations;
-            const otherMember = conv.ConversationMembers.find(
-                (m) => m.userId !== myId,
-            );
+            const isGroup = conv.type === "group";
 
-            if (otherMember) {
+            let chatName = "";
+            let avatarUrl = "";
+            let isOnline = false;
+            let lastActive = "";
+            let targetId = "";
+            let otherMember = null;
+
+            if (isGroup) {
+                chatName = conv.name || "Nhóm trò chuyện";
+                avatarUrl = conv.avatar ?
+                    formatUrl(conv.avatar) :
+                    `https://ui-avatars.com/api/?name=${encodeURIComponent(chatName)}&background=random&color=fff`;
+                targetId = conv.id;
+            } else {
+                otherMember = conv.ConversationMembers.find(
+                    (m) => m.userId !== myId,
+                );
+                if (!otherMember) return;
                 const user = otherMember.Users;
-                let lastMsg = "Bắt đầu trò chuyện!";
-                let timeStr = "";
-                if (conv.Messages.length > 0) {
-                    const firstMsg = conv.Messages[0];
-                    const msgDate = firstMsg.createdAt ? new Date(firstMsg.createdAt) : new Date();
-                    timeStr = `${msgDate.getHours().toString().padStart(2, "0")}:${msgDate.getMinutes().toString().padStart(2, "0")}`;
-                    if (firstMsg.isRecalled) {
-                        lastMsg = "Tin nhắn đã bị thu hồi";
-                    } else if (firstMsg.type === "file") {
-                        try {
-                            const fileData = JSON.parse(firstMsg.content);
-                            lastMsg = `[ Tệp tin: ${fileData.fileName} ]`;
-                        } catch (e) {
-                            lastMsg = "[ Tệp tin ]";
-                        }
-                    } else if (firstMsg.type === "audio") {
-                        lastMsg = "[ Tin nhắn thoại ]";
-                    } else if (
-                        firstMsg.content &&
-                        (firstMsg.content.startsWith("data:image") ||
-                            firstMsg.content.match(/\.(jpeg|jpg|gif|png)$/i))
-                    ) {
-                        lastMsg = "[ Hình ảnh ]";
-                    } else {
-                        lastMsg = firstMsg.content;
-                    }
-                }
-
-                const avatarUrl = user.avatar ?
+                chatName = otherMember.nickname || user.fullName || "Người dùng";
+                avatarUrl = user.avatar ?
                     formatUrl(user.avatar) :
-                    `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                        user.fullName || "User",
-                    )}&background=random`;
-
-                const unreadCount =
-                    conv._count && conv._count.Messages ? conv._count.Messages : 0;
-                const unreadBadgeHtml =
-                    unreadCount > 0 ?
-                    `<span class="unread-badge">${unreadCount > 99 ? "99+" : unreadCount
-                        }</span>` :
-                    "";
-                const msgStyle =
-                    unreadCount > 0 ? "font-weight: 600; color: var(--text-dark);" : "";
-
-                const li = document.createElement("li");
-                li.className = "conversation-item";
-                li.dataset.conversationId = conv.id;
-
-                // Lưu nicknames vào dataset để tra cứu sau này
-                const nicksMap = {};
-                if (conv.ConversationMembers) {
-                    conv.ConversationMembers.forEach(m => {
-                        if (m.nickname) nicksMap[m.userId] = m.nickname;
-                    });
-                }
-                li.dataset.nicknames = JSON.stringify(nicksMap);
-                li.dataset.userId = user.id;
-                li.dataset.isOnline = user.isOnline ? "true" : "false";
-                li.dataset.lastActive = user.lastActive || "";
-
-                if (isSameId(conv.id, currentConversationId))
-                    li.classList.add("active");
-                li.onclick = () =>
-                    startChat(user.id, otherMember.nickname || user.fullName || user.username, avatarUrl);
-                li.innerHTML = `
-          <div class="avatar" style="cursor: pointer;" onclick="event.stopPropagation(); showUserProfile('${user.id}')">
-            <img src="${avatarUrl}" alt="Avatar">
-            <div class="online-dot" style="display: ${user.isOnline ? 'block' : 'none'};"></div>
-          </div>
-          <div class="chat-list-content">
-            <div class="chat-list-header">
-              <span class="chat-list-name">${otherMember.nickname || user.fullName || "Người dùng"}</span>
-              <div class="chat-list-right" style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
-                <span class="chat-list-time" style="font-size: 11px; color: var(--text-light);">${timeStr}</span>
-                ${unreadBadgeHtml}
-              </div>
-            </div>
-            <div class="chat-list-msg" style="${msgStyle}">${lastMsg}</div>
-          </div>
-          <div class="conv-actions-wrapper" onclick="event.stopPropagation();">
-            <i class="fas fa-ellipsis-v conv-options-btn" onclick="toggleConversationMenu(event, '${conv.id}')"></i>
-            <div class="conv-dropdown-menu" id="conv-menu-${conv.id}">
-              <div class="conv-menu-item text-danger" onclick="confirmDeleteConversation(event, '${conv.id}')">
-                <i class="fas fa-trash-alt"></i> Xóa cuộc trò chuyện
-              </div>
-            </div>
-          </div>
-        `;
-                userList.appendChild(li);
+                    `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName || "User")}&background=random`;
+                isOnline = user.isOnline || false;
+                lastActive = user.lastActive || "";
+                targetId = user.id;
             }
+
+            let lastMsg = "Bắt đầu trò chuyện!";
+            let timeStr = "";
+
+            if (conv.Messages.length > 0) {
+                const firstMsg = conv.Messages[0];
+                const msgDate = firstMsg.createdAt ? new Date(firstMsg.createdAt) : new Date();
+                timeStr = `${msgDate.getHours().toString().padStart(2, "0")}:${msgDate.getMinutes().toString().padStart(2, "0")}`;
+                
+                let senderPrefix = "";
+                if (isGroup && firstMsg.senderId && firstMsg.type !== "system") {
+                    senderPrefix = firstMsg.senderId === myId ? "Bạn: " : (firstMsg.Users ? `${firstMsg.Users.fullName}: ` : "");
+                }
+
+                if (firstMsg.isRecalled) {
+                    lastMsg = "Tin nhắn đã bị thu hồi";
+                } else if (firstMsg.type === "file") {
+                    try {
+                        const fileData = JSON.parse(firstMsg.content);
+                        lastMsg = `${senderPrefix}[ Tệp tin: ${fileData.fileName} ]`;
+                    } catch (e) {
+                        lastMsg = `${senderPrefix}[ Tệp tin ]`;
+                    }
+                } else if (firstMsg.type === "audio") {
+                    lastMsg = `${senderPrefix}[ Tin nhắn thoại ]`;
+                } else if (
+                    firstMsg.content &&
+                    (firstMsg.content.startsWith("data:image") ||
+                        firstMsg.content.match(/\.(jpeg|jpg|gif|png)$/i))
+                ) {
+                    lastMsg = `${senderPrefix}[ Hình ảnh ]`;
+                } else {
+                    lastMsg = `${senderPrefix}${firstMsg.content}`;
+                }
+            }
+
+            const unreadCount = conv._count && conv._count.Messages ? conv._count.Messages : 0;
+            const unreadBadgeHtml = unreadCount > 0 
+                ? `<span class="unread-badge">${unreadCount > 99 ? "99+" : unreadCount}</span>` 
+                : "";
+            const msgStyle = unreadCount > 0 ? "font-weight: 600; color: var(--text-dark);" : "";
+
+            const li = document.createElement("li");
+            li.className = "conversation-item";
+            li.dataset.conversationId = conv.id;
+
+            // Lưu nicknames vào dataset
+            const nicksMap = {};
+            if (conv.ConversationMembers) {
+                conv.ConversationMembers.forEach(m => {
+                    if (m.nickname) nicksMap[m.userId] = m.nickname;
+                });
+            }
+            li.dataset.nicknames = JSON.stringify(nicksMap);
+            li.dataset.userId = targetId;
+            li.dataset.isOnline = isOnline ? "true" : "false";
+            li.dataset.lastActive = lastActive;
+
+            if (isSameId(conv.id, currentConversationId)) {
+                li.classList.add("active");
+            }
+            
+            li.onclick = () => startChat(targetId, chatName, avatarUrl, isGroup ? "group" : "private");
+
+            const avatarHtml = isGroup 
+                ? `<div class="avatar">
+                     <img src="${avatarUrl}" alt="Avatar">
+                   </div>`
+                : `<div class="avatar" style="cursor: pointer;" onclick="event.stopPropagation(); showUserProfile('${targetId}')">
+                     <img src="${avatarUrl}" alt="Avatar">
+                     <div class="online-dot" style="display: ${isOnline ? 'block' : 'none'};"></div>
+                   </div>`;
+
+            li.innerHTML = `
+              ${avatarHtml}
+              <div class="chat-list-content">
+                <div class="chat-list-header">
+                  <span class="chat-list-name">${chatName}</span>
+                  <div class="chat-list-right" style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+                    <span class="chat-list-time" style="font-size: 11px; color: var(--text-light);">${timeStr}</span>
+                    ${unreadBadgeHtml}
+                  </div>
+                </div>
+                <div class="chat-list-msg" style="${msgStyle}">${lastMsg}</div>
+              </div>
+              <div class="conv-actions-wrapper" onclick="event.stopPropagation();">
+                <i class="fas fa-ellipsis-v conv-options-btn" onclick="toggleConversationMenu(event, '${conv.id}')"></i>
+                <div class="conv-dropdown-menu" id="conv-menu-${conv.id}">
+                  <div class="conv-menu-item text-danger" onclick="confirmDeleteConversation(event, '${conv.id}')">
+                    <i class="fas fa-trash-alt"></i> Xóa cuộc trò chuyện
+                  </div>
+                </div>
+              </div>
+            `;
+            userList.appendChild(li);
         });
     } catch (error) {
-        alert("Lỗi tải danh sách câu chuyện: " + error.message);
+        console.error("Lỗi tải danh sách câu chuyện:", error);
     }
     updateTotalMessagesBadge();
 }
@@ -2058,10 +2109,11 @@ async function searchUser() {
 }
 
 // 3. Bắt đầu trò chuyện với ai đó
-async function startChat(receiverId, receiverName, receiverAvatar) {
+async function startChat(receiverId, receiverName, receiverAvatar, type = "private") {
     if (!receiverId) {
-        return alert("Lỗi: Không tìm thấy ID người nhận tin nhắn.");
+        return alert("Lỗi: Không tìm thấy ID người nhận hoặc phòng chat.");
     }
+    const isGroup = type === "group";
     try {
         // Đảm bảo chuyển tab về tab tin nhắn để ẩn hoàn toàn các tab danh bạ/tin tức khác ở chế độ nền
         const navMessages = document.querySelector('.nav-item[onclick*="tab-messages"]');
@@ -2084,12 +2136,20 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
         if (messageInputInit) {
             messageInputInit.focus();
         }
-        
+
         // Giữ nguyên header làm con của .chat-window để thừa hưởng vị trí và hiệu ứng chuyển động tự nhiên
         // Không di chuyển ra body để tránh bị trôi lệch hoặc bị che khuất bởi trình duyệt khi cuộn/keyboard hiển thị
         const mobileHeader = document.getElementById("chat-header-container");
         document.getElementById("chat-header-placeholder").style.display = "none";
-        currentChatPartnerId = receiverId;
+        
+        if (isGroup) {
+            currentChatPartnerId = null;
+            window.currentChatUserId = null;
+            currentConversationId = receiverId;
+        } else {
+            currentChatPartnerId = receiverId;
+            window.currentChatUserId = receiverId;
+        }
 
         // Gửi sự kiện mở phòng chat lên Flutter native
         if (window.FlutterHeaderChannel) {
@@ -2097,7 +2157,8 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
                 event: 'open_chat',
                 partnerId: receiverId,
                 partnerName: receiverName,
-                partnerAvatar: receiverAvatar
+                partnerAvatar: receiverAvatar,
+                isGroup: isGroup
             }));
         }
 
@@ -2120,39 +2181,58 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
                 receiverName,
             )}&background=random`;
 
-        // Đồng bộ trạng thái online/offline của đối phương lên header
-        let partnerOnline = false;
-        let partnerLastActive = null;
+        // Ẩn/hiện nút chặn & panel quản lý thành viên tùy theo loại phòng chat
+        const btnBlockUser = document.getElementById("btn-block-user");
+        const btnInfoCreateGroup = document.getElementById("btn-info-create-group");
+        const groupManagementPanel = document.getElementById("group-management-panel");
 
-        const sidebarItem = document.querySelector(`#user-list li[data-user-id="${receiverId}"]`);
-        if (sidebarItem) {
-            partnerOnline = sidebarItem.dataset.isOnline === "true";
-            partnerLastActive = sidebarItem.dataset.lastActive;
-        }
+        if (isGroup) {
+            if (btnBlockUser) btnBlockUser.style.display = "none";
+            if (btnInfoCreateGroup) btnInfoCreateGroup.style.display = "none";
+            if (groupManagementPanel) groupManagementPanel.style.display = "block";
+            updateHeaderStatusUI(false, null, "Nhóm trò chuyện");
+            
+            // Tải danh sách thành viên nhóm
+            loadGroupMembers(currentConversationId);
+        } else {
+            if (btnBlockUser) btnBlockUser.style.display = "block";
+            if (btnInfoCreateGroup) btnInfoCreateGroup.style.display = "block";
+            if (groupManagementPanel) groupManagementPanel.style.display = "none";
 
-        updateHeaderStatusUI(partnerOnline, partnerLastActive);
+            // Đồng bộ trạng thái online/offline của đối phương lên header
+            let partnerOnline = false;
+            let partnerLastActive = null;
 
-        // Luôn fetch profile mới nhất để đảm bảo trạng thái hoạt động chính xác nhất
-        fetch(`/api/users/${receiverId}/profile`, {
+            const sidebarItem = document.querySelector(`#user-list li[data-user-id="${receiverId}"]`);
+            if (sidebarItem) {
+                partnerOnline = sidebarItem.dataset.isOnline === "true";
+                partnerLastActive = sidebarItem.dataset.lastActive;
+            }
+
+            updateHeaderStatusUI(partnerOnline, partnerLastActive);
+
+            // Luôn fetch profile mới nhất để đảm bảo trạng thái hoạt động chính xác nhất
+            fetch(`/api/users/${receiverId}/profile`, {
                 headers: { Authorization: `Bearer ${token}` }
             })
-            .then(res => res.json())
-            .then(profileData => {
-                if (profileData && isSameId(receiverId, currentChatPartnerId)) {
-                    partnerOnline = profileData.status === "online";
-                    partnerLastActive = profileData.lastActive;
-                    updateHeaderStatusUI(partnerOnline, partnerLastActive);
+                .then(res => res.json())
+                .then(profileData => {
+                    if (profileData && isSameId(receiverId, currentChatPartnerId)) {
+                        partnerOnline = profileData.status === "online";
+                        partnerLastActive = profileData.lastActive;
+                        updateHeaderStatusUI(partnerOnline, partnerLastActive);
 
-                    // Đồng bộ lại vào sidebar dataset nếu có
-                    if (sidebarItem) {
-                        sidebarItem.dataset.isOnline = partnerOnline ? "true" : "false";
-                        if (partnerLastActive) sidebarItem.dataset.lastActive = partnerLastActive;
-                        const dot = sidebarItem.querySelector(".online-dot");
-                        if (dot) dot.style.display = partnerOnline ? "block" : "none";
+                        // Đồng bộ lại vào sidebar dataset nếu có
+                        if (sidebarItem) {
+                            sidebarItem.dataset.isOnline = partnerOnline ? "true" : "false";
+                            if (partnerLastActive) sidebarItem.dataset.lastActive = partnerLastActive;
+                            const dot = sidebarItem.querySelector(".online-dot");
+                            if (dot) dot.style.display = partnerOnline ? "block" : "none";
+                        }
                     }
-                }
-            })
-            .catch(e => console.warn("Không thể tải trạng thái hoạt động thời gian thực:", e));
+                })
+                .catch(e => console.warn("Không thể tải trạng thái hoạt động thời gian thực:", e));
+        }
 
         document.getElementById("input-area").style.display = "flex";
 
@@ -2165,31 +2245,33 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
         const inputArea = document.getElementById("input-area");
         if (inputArea) {
             inputArea.classList.remove("is-typing");
-            // CSS media query đã xử lý mobile layout, không cần JavaScript override
         }
         const likeBtn = document.getElementById('like-btn');
         const sendBtn = document.getElementById('send-btn');
         if (likeBtn) likeBtn.style.display = 'flex';
         if (sendBtn) sendBtn.style.display = 'none';
 
-        const res = await fetch(`${API_URL}/chat/conversations`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ receiverId }),
-        });
+        if (!isGroup) {
+            const res = await fetch(`${API_URL}/chat/conversations`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ receiverId }),
+            });
 
-        if (!res.ok) {
-            const errorText = await res.text();
-            throw new Error(`Không thể kết nối phòng chat (HTTP ${res.status}): ${errorText.substring(0, 100)}`);
+            if (!res.ok) {
+                const errorText = await res.text();
+                throw new Error(`Không thể kết nối phòng chat (HTTP ${res.status}): ${errorText.substring(0, 100)}`);
+            }
+
+            const data = await res.json();
+            if (!data.success) return alert("Đã tạo phòng chat: " + data.message);
+
+            currentConversationId = data.data.id;
         }
 
-        const data = await res.json();
-        if (!data.success) return alert("Đã tạo phòng chat: " + data.message);
-
-        currentConversationId = data.data.id;
         if (!currentConversationId || currentConversationId === "undefined" || currentConversationId === "null") {
             throw new Error("ID phòng chat nhận về không hợp lệ.");
         }
@@ -2233,8 +2315,8 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
 
         const resMsg = await fetch(
             `${API_URL}/chat/${currentConversationId}/messages?limit=50`, {
-                headers: { Authorization: `Bearer ${token}` },
-            },
+            headers: { Authorization: `Bearer ${token}` },
+        },
         );
 
         if (!resMsg.ok) {
@@ -2243,6 +2325,14 @@ async function startChat(receiverId, receiverName, receiverAvatar) {
         }
 
         const dataMsg = await resMsg.json();
+
+        // Áp dụng trạng thái chặn người dùng (mặc định false với nhóm)
+        if (isGroup) {
+            applyBlockState({ blocked: false });
+        } else {
+            applyBlockState(dataMsg.blockState);
+        }
+
         messagesDiv.innerHTML = "";
 
         // Lưu và áp dụng biệt danh
@@ -2398,14 +2488,18 @@ async function reloadCurrentChat() {
     try {
         const resMsg = await fetch(
             `${API_URL}/chat/${currentConversationId}/messages?limit=50`, {
-                headers: { Authorization: `Bearer ${token}` },
-            },
+            headers: { Authorization: `Bearer ${token}` },
+        },
         );
         if (!resMsg.ok) {
             const errorText = await resMsg.text();
             throw new Error(`HTTP ${resMsg.status}: ${errorText.substring(0, 100)}`);
         }
         const dataMsg = await resMsg.json();
+
+        // Áp dụng trạng thái chặn người dùng
+        applyBlockState(dataMsg.blockState);
+
         const messagesDiv = document.getElementById("messages");
         messagesDiv.innerHTML = "";
 
@@ -2450,7 +2544,7 @@ function setupInfiniteScroll(messagesDiv) {
     if (_scrollListenerAttached) return; // Chỉ gắn 1 lần
     _scrollListenerAttached = true;
 
-    messagesDiv.addEventListener("scroll", debounce(function() {
+    messagesDiv.addEventListener("scroll", debounce(function () {
         // Khi cuộn gần đến đầu khung chat (cách top < 80px)
         if (messagesDiv.scrollTop < 80 && hasMoreMessages && !isLoadingMoreMessages) {
             loadOlderMessages();
@@ -2460,7 +2554,7 @@ function setupInfiniteScroll(messagesDiv) {
 
 function debounce(fn, delay) {
     let timer;
-    return function(...args) {
+    return function (...args) {
         clearTimeout(timer);
         timer = setTimeout(() => fn.apply(this, args), delay);
     };
@@ -2482,8 +2576,8 @@ async function loadOlderMessages() {
 
         const res = await fetch(
             `${API_URL}/chat/${currentConversationId}/messages?limit=50&before=${oldestMsg.id}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            },
+            headers: { Authorization: `Bearer ${token}` },
+        },
         );
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -2991,7 +3085,7 @@ function displayMessage(msg, targetContainer = null) {
         const partnerAvatarUrl = getPartnerAvatar() || "https://ui-avatars.com/api/?name=User&background=random";
         avatarImg.src = partnerAvatarUrl;
         avatarImg.alt = "Avatar";
-        avatarImg.onerror = function() {
+        avatarImg.onerror = function () {
             this.src = "https://ui-avatars.com/api/?name=User&background=random";
         };
         messageBody.appendChild(avatarImg);
@@ -3241,7 +3335,7 @@ function displayMessage(msg, targetContainer = null) {
         plusSpan.style.justifyContent = "center";
         plusSpan.style.transition = "transform 0.15s";
         plusSpan.className = "reaction-plus-btn";
-        
+
         const handlePlusReact = (e) => {
             e.stopPropagation();
             e.preventDefault();
@@ -3309,14 +3403,14 @@ function displayMessage(msg, targetContainer = null) {
                     e.stopPropagation();
                     moreMenu.classList.remove("show");
                     hideMobileOverlay();
-                    
+
                     try {
                         let imageUrl = msg.content;
                         if (imageUrl.startsWith("data:image/")) {
                             const a = document.createElement('a');
                             a.style.display = 'none';
                             a.href = imageUrl;
-                            a.download = `tho-fi-image-${Date.now()}.png`; 
+                            a.download = `tho-fi-image-${Date.now()}.png`;
                             document.body.appendChild(a);
                             a.click();
                             document.body.removeChild(a);
@@ -3328,7 +3422,7 @@ function displayMessage(msg, targetContainer = null) {
                             const a = document.createElement('a');
                             a.style.display = 'none';
                             a.href = blobUrl;
-                            a.download = `tho-fi-image-${Date.now()}.jpg`; 
+                            a.download = `tho-fi-image-${Date.now()}.jpg`;
                             document.body.appendChild(a);
                             a.click();
 
@@ -3552,7 +3646,7 @@ function displayMessage(msg, targetContainer = null) {
                 if (navigator.vibrate) {
                     try {
                         navigator.vibrate(30);
-                    } catch (err) {}
+                    } catch (err) { }
                 }
             }
         };
@@ -3607,7 +3701,7 @@ function displayMessage(msg, targetContainer = null) {
             passive: true,
         });
         messageContent.addEventListener("touchcancel", cancelPress);
-        
+
 
 
         messageContent.addEventListener("contextmenu", (e) => {
@@ -3692,26 +3786,26 @@ function displayMessage(msg, targetContainer = null) {
     const timeElement = document.createElement("span");
     timeElement.className = "message-time";
     timeElement.style.display = "none"; // 🌟 Mặc định ẩn thời gian giống Messenger
-    
+
     const date = msg.createdAt ? new Date(msg.createdAt) : new Date();
     const now = new Date();
     const hours = date.getHours().toString().padStart(2, "0");
     const minutes = date.getMinutes().toString().padStart(2, "0");
-    
+
     let timeStr = `${hours}:${minutes}`;
-    
+
     // Nếu qua 1 ngày khác (không phải hôm nay) thì hiện ngày tháng năm kèm giờ phút
-    const isToday = date.getDate() === now.getDate() && 
-                    date.getMonth() === now.getMonth() && 
-                    date.getFullYear() === now.getFullYear();
-                    
+    const isToday = date.getDate() === now.getDate() &&
+        date.getMonth() === now.getMonth() &&
+        date.getFullYear() === now.getFullYear();
+
     if (!isToday) {
         const day = date.getDate().toString().padStart(2, "0");
         const month = (date.getMonth() + 1).toString().padStart(2, "0");
         const year = date.getFullYear();
         timeStr = `${hours}:${minutes} ${day}/${month}/${year}`;
     }
-    
+
     timeElement.innerText = timeStr;
     metaElement.appendChild(timeElement);
 
@@ -3731,8 +3825,8 @@ function displayMessage(msg, targetContainer = null) {
     messageContent.addEventListener("click", (e) => {
         // Tránh toggle khi click vào các nút điều khiển của audio, ảnh hoặc card tải file
         if (
-            e.target.tagName === "AUDIO" || 
-            e.target.tagName === "IMG" || 
+            e.target.tagName === "AUDIO" ||
+            e.target.tagName === "IMG" ||
             e.target.closest(".file-message-card") ||
             e.target.closest(".action-item") ||
             e.target.closest(".reaction-palette")
@@ -3758,7 +3852,7 @@ function displayMessage(msg, targetContainer = null) {
         messagesDiv.appendChild(messageElement);
         // updateReadReceiptsDOM() được gọi một lần duy nhất sau khi toàn bộ tin nhắn đã render xong
         // (trong startChat / reloadCurrentChat / socket receive_message). Không gọi ở đây để tránh flicker.
-        
+
         if (msg.senderId === myId) {
             // Tin nhắn của chính mình gửi đi: cuộn xuống đáy ngay lập tức để có cảm giác phản hồi nhanh
             if (typeof window.scrollToBottomInstant === "function") {
@@ -3803,7 +3897,7 @@ function sendMessage(imageContent = null) {
 
         editMessageApi(messageIdToEdit, content);
         cancelReply();
-        
+
         // 🌟 Giữ bàn phím mở sau khi sửa xong tin nhắn
         input.focus();
         return;
@@ -3855,13 +3949,13 @@ function sendMessage(imageContent = null) {
     cancelReply();
 
     fetch(`${API_URL}/chat/${currentConversationId}/messages`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(payload),
-        })
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+    })
         .then((response) => response.json())
         .then((data) => {
             if (data.success) {
@@ -3898,14 +3992,14 @@ function sendMessage(imageContent = null) {
 // 6. Bấm phím Enter để gửi & Sự kiện gõ phím
 const messageInput = document.getElementById("message-input");
 if (messageInput) {
-    messageInput.addEventListener("keydown", function(e) {
+    messageInput.addEventListener("keydown", function (e) {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             sendMessage();
         }
     });
 
-    messageInput.addEventListener("input", function() {
+    messageInput.addEventListener("input", function () {
         // Tự động giãn dòng nhưng giới hạn tối đa
         this.style.height = 'auto';
         const newHeight = Math.min(this.scrollHeight, 80); // Giới hạn max 80px
@@ -3987,7 +4081,7 @@ if (messageInput) {
     window.scrollToBottomInstant = scrollToBottomInstant;
 
     // Khi người dùng bấm click vào ô nhập (Focus) -> thu gọn menu trái để nhường chỗ
-    messageInput.addEventListener("focus", function() {
+    messageInput.addEventListener("focus", function () {
         const inputArea = document.getElementById('input-area');
         if (inputArea) inputArea.classList.add('is-typing');
         if (typeof closeEmojiPicker === "function") closeEmojiPicker();
@@ -4001,7 +4095,7 @@ if (messageInput) {
     });
 
     // Đảm bảo click/tap vào ô nhập cũng lập tức thu gọn menu chức năng trái
-    messageInput.addEventListener("click", function() {
+    messageInput.addEventListener("click", function () {
         const inputArea = document.getElementById('input-area');
         if (inputArea) inputArea.classList.add('is-typing');
         if (window.innerWidth > 768) {
@@ -4010,7 +4104,7 @@ if (messageInput) {
     });
 
     // Khi người dùng bấm ra ngoài (Blur) -> hiển thị lại menu trái nếu ô nhập trống
-    messageInput.addEventListener("blur", function() {
+    messageInput.addEventListener("blur", function () {
         const inputArea = document.getElementById('input-area');
         if (this.value.trim().length === 0) {
             if (inputArea) inputArea.classList.remove('is-typing');
@@ -4023,10 +4117,10 @@ if (messageInput) {
     const dismissKeyboard = (e) => {
         const messageInput = document.getElementById("message-input");
         if (!messageInput || document.activeElement !== messageInput) return;
-        
+
         // Tránh ẩn bàn phím nếu bấm vào các thẻ nhập liệu, nút bấm hoặc các bảng tùy chọn
         if (e.target.closest('a, button, input, textarea, .reaction-palette, .more-menu, #input-area, #emoji-picker-panel')) return;
-        
+
         messageInput.blur();
     };
 
@@ -4063,7 +4157,7 @@ function closeChatMobile() {
     document.documentElement.style.removeProperty('--vv-height');
     document.documentElement.style.removeProperty('--vv-offset');
     document.documentElement.style.removeProperty('--keyboard-shift');
-    
+
     // Gửi sự kiện đóng phòng chat lên Flutter native
     if (window.FlutterHeaderChannel) {
         window.FlutterHeaderChannel.postMessage(JSON.stringify({ event: 'close_chat' }));
@@ -4080,7 +4174,7 @@ function closeChatMobile() {
 // 7. Sự kiện Gửi Hình ảnh
 const imageUploadInput = document.getElementById("image-upload");
 if (imageUploadInput) {
-    imageUploadInput.addEventListener("change", async function(e) {
+    imageUploadInput.addEventListener("change", async function (e) {
         const file = e.target.files[0];
         if (!file) return;
 
@@ -4094,7 +4188,7 @@ if (imageUploadInput) {
             hideLoading();
             // Fallback gửi ảnh gốc nếu lỗi nén
             const reader = new FileReader();
-            reader.onload = function(event) {
+            reader.onload = function (event) {
                 sendMessage(event.target.result);
             };
             reader.readAsDataURL(file);
@@ -4105,7 +4199,7 @@ if (imageUploadInput) {
 // Sự kiện Chụp và gửi hình ảnh qua Camera
 const cameraUploadInput = document.getElementById("camera-upload");
 if (cameraUploadInput) {
-    cameraUploadInput.addEventListener("change", async function(e) {
+    cameraUploadInput.addEventListener("change", async function (e) {
         const file = e.target.files[0];
         if (!file) return;
 
@@ -4119,7 +4213,7 @@ if (cameraUploadInput) {
             hideLoading();
             // Fallback gửi ảnh gốc nếu lỗi nén
             const reader = new FileReader();
-            reader.onload = function(event) {
+            reader.onload = function (event) {
                 sendMessage(event.target.result);
             };
             reader.readAsDataURL(file);
@@ -4130,7 +4224,7 @@ if (cameraUploadInput) {
 // Sự kiện Gửi Tệp tin (File/Document)
 const fileUploadInput = document.getElementById("file-upload");
 if (fileUploadInput) {
-    fileUploadInput.addEventListener("change", function(e) {
+    fileUploadInput.addEventListener("change", function (e) {
         const file = e.target.files[0];
         if (!file) return;
 
@@ -4140,7 +4234,7 @@ if (fileUploadInput) {
         }
 
         const reader = new FileReader();
-        reader.onload = function(event) {
+        reader.onload = function (event) {
             const base64Data = event.target.result;
             const filePayload = {
                 fileName: file.name,
@@ -4156,7 +4250,7 @@ if (fileUploadInput) {
 // 9. Sự kiện Tải lên Avatar Mới
 const avatarUploadInput = document.getElementById("avatar-upload");
 if (avatarUploadInput) {
-    avatarUploadInput.addEventListener("change", async function(e) {
+    avatarUploadInput.addEventListener("change", async function (e) {
         const file = e.target.files[0];
         if (!file) return;
 
@@ -4186,11 +4280,11 @@ if (avatarUploadInput) {
                     document.getElementById("my-avatar-personal-tab").src = avatarUrlWithVersion;
                 showTempToast("Đã cập nhật ảnh đại diện mới thành công!");
             } else {
-                alert("Lỗi tải ảnh: " + data.message);
+                showTempToast("Lỗi tải ảnh: " + data.message);
             }
         } catch (error) {
             hideLoading();
-            alert("Lỗi hệ thống khi tải ảnh lên!");
+            showTempToast("Lỗi hệ thống khi tải ảnh lên!");
         }
     });
 }
@@ -4270,10 +4364,10 @@ async function deleteMessageForMe(messageId) {
 // 12. Gửi cảm xúc vào tin nhắn (Cập nhật Optimistic UI cho trải nghiệm tức thì)
 async function reactToMessage(messageId, reaction) {
     ChatSounds.playReact();
-    
+
     const msgEl = document.getElementById(`msg-${messageId}`);
     let oldReactions = null;
-    
+
     if (msgEl) {
         // Lưu trữ trạng thái cũ để hoàn tác (revert) nếu xảy ra lỗi mạng/API
         oldReactions = msgEl.dataset.reactions ? JSON.parse(msgEl.dataset.reactions) : {};
@@ -4423,7 +4517,7 @@ function createReactionBurst(messageId, emoji) {
 // 1. Chống chụm ngón tay (Pinch Zoom)
 document.addEventListener(
     "touchmove",
-    function(e) {
+    function (e) {
         if (e.touches.length > 1) {
             e.preventDefault();
         }
@@ -4447,7 +4541,7 @@ function getNicknameForUser(userId, conversationId) {
                     try {
                         const nicks = JSON.parse(item.dataset.nicknames);
                         if (nicks[userId]) return nicks[userId];
-                    } catch (e) {}
+                    } catch (e) { }
                 }
             }
         }
@@ -5019,7 +5113,7 @@ async function openOtherUserProfileModal(userId) {
         }
 
         if (callBtn) {
-            callBtn.onclick = async() => {
+            callBtn.onclick = async () => {
                 closeOtherUserProfileModal();
                 await startChat(user.id, user.name, formatUrl(user.profileAvatarUrl));
                 startCall("voice");
@@ -5027,7 +5121,7 @@ async function openOtherUserProfileModal(userId) {
         }
 
         if (videoBtn) {
-            videoBtn.onclick = async() => {
+            videoBtn.onclick = async () => {
                 closeOtherUserProfileModal();
                 await startChat(user.id, user.name, formatUrl(user.profileAvatarUrl));
                 startCall("video");
@@ -5035,8 +5129,8 @@ async function openOtherUserProfileModal(userId) {
         }
 
         modal.classList.add("active");
-    } catch (error) {
-        alert("Lỗi tải hồ sơ người dùng: " + error.message);
+        showTempToast("Không thể tải hồ sơ người dùng lúc này.");
+        console.error("Lỗi tải hồ sơ người dùng:", error);
     } finally {
         hideLoading();
     }
@@ -5302,7 +5396,7 @@ async function sendAiMessage() {
                 try {
                     const errData = await response.json();
                     if (errData && errData.error) errorMsg = errData.error;
-                } catch (e) {}
+                } catch (e) { }
             }
             throw new Error(errorMsg);
         }
@@ -5538,7 +5632,7 @@ async function logout() {
     document.getElementById("chat-screen").style.display = "none";
     document.getElementById("chat-screen").classList.remove("mobile-chat-active");
     document.body.classList.remove("mobile-chat-active");
-    
+
     // Trả header lại vào trong .chat-window để hiển thị bình thường trên desktop
     const mobileHeader = document.getElementById("chat-header-container");
     const mobileChatWindow = document.querySelector(".chat-window");
@@ -5604,11 +5698,11 @@ if (coverUploadInput) {
                 document.getElementById("my-cover").src = coverUrlWithVersion;
                 showTempToast("Đã cập nhật ảnh bìa mới thành công!");
             } else {
-                alert("Lỗi tải ảnh bìa: " + data.message);
+                showTempToast("Lỗi tải ảnh bìa: " + data.message);
             }
         } catch (error) {
             hideLoading();
-            alert("Lỗi hệ thống khi tải ảnh bìa lên!");
+            showTempToast("Lỗi hệ thống khi tải ảnh bìa lên!");
         }
     });
 }
@@ -5834,7 +5928,13 @@ function stopOutgoingRingtone() {
 
 // 1. Bắt đầu cuộc gọi (Người gọi)
 async function startCall(callType) {
-    if (!currentChatPartnerId) return alert("Vui lòng chọn một người để gọi.");
+    if (!currentChatPartnerId) {
+        if (currentConversationId) {
+            showTempToast("Cuộc gọi nhóm tạm thời giới hạn tối đa 4 người để tránh quá tải WebRTC Mesh!");
+            return;
+        }
+        return alert("Vui lòng chọn một người để gọi.");
+    }
 
     // Phát nhạc chờ cuộc gọi đi đồng bộ ngay lập tức để giữ gesture context trên di động
     playOutgoingRingtone();
@@ -6081,9 +6181,11 @@ function handleCallRejected(data) {
     stopOutgoingRingtone();
     const reason = data ? data.reason : null;
     if (reason === "offline") {
-        alert("Người dùng hiện không trực tuyến.");
+        showTempToast("Người dùng hiện không trực tuyến.");
+    } else if (reason === "blocked") {
+        showTempToast("Cuộc gọi không thể kết nối.");
     } else {
-        alert("Người dùng đã từ chối cuộc gọi.");
+        showTempToast("Người dùng đã từ chối cuộc gọi.");
     }
     endCall(false);
 }
@@ -8069,6 +8171,24 @@ function openChatInfoPanel() {
         infoName.textContent = nameEl.textContent || "Người dùng";
     }
 
+    const btnBlockUser = document.getElementById("btn-block-user");
+    if (btnBlockUser) {
+        if (currentChatPartnerId) {
+            btnBlockUser.style.display = "flex";
+        } else {
+            btnBlockUser.style.display = "none";
+        }
+    }
+
+    const btnInfoCreateGroup = document.getElementById("btn-info-create-group");
+    if (btnInfoCreateGroup) {
+        if (currentChatPartnerId) {
+            btnInfoCreateGroup.style.display = "block";
+        } else {
+            btnInfoCreateGroup.style.display = "none";
+        }
+    }
+
     const modal = document.getElementById("chat-info-panel");
     modal.style.display = "flex";
     setTimeout(() => {
@@ -8300,10 +8420,17 @@ function formatLastActive(timestamp) {
 }
 
 // Cập nhật giao diện thanh Chat Header Status
-function updateHeaderStatusUI(isOnline, lastActive) {
+function updateHeaderStatusUI(isOnline, lastActive, customText = null) {
     const dot = document.getElementById("chat-header-status-dot");
     const statusText = document.getElementById("chat-header-status");
     if (!dot || !statusText) return;
+
+    if (customText) {
+        dot.style.display = "none";
+        statusText.innerText = customText;
+        statusText.classList.remove("online");
+        return;
+    }
 
     let textVal = "";
     if (isOnline) {
@@ -8773,7 +8900,7 @@ document.addEventListener("DOMContentLoaded", () => {
         messagesDiv.addEventListener("scroll", () => {
             if (isThrottled) return;
             isThrottled = true;
-            
+
             requestAnimationFrame(() => {
                 const distanceFromBottom = messagesDiv.scrollHeight - messagesDiv.scrollTop - messagesDiv.clientHeight;
                 if (distanceFromBottom > 300) {
@@ -9218,7 +9345,7 @@ window.closeReactionsDetailModal = closeReactionsDetailModal;
 // --- OPTIMIZATION FOR MOBILE KEYBOARD (VISUAL VIEWPORT) ---
 // Hàm kiểm tra người dùng có đang ở gần cuối danh sách tin nhắn không
 // Ngưỡng 150px: nếu cách đáy <= 150px thì coi như "đang ở cuối"
-window.isNearBottom = function(threshold) {
+window.isNearBottom = function (threshold) {
     const messagesDiv = document.getElementById("messages");
     if (!messagesDiv) return true;
     const t = threshold || 150;
@@ -9227,7 +9354,7 @@ window.isNearBottom = function(threshold) {
 
 // Smart scroll: Chỉ scroll xuống cuối nếu người dùng đang ở gần cuối
 // Nếu họ đang kéo lên xem tin cũ → KHÔNG scroll
-window.smartScrollToBottom = function() {
+window.smartScrollToBottom = function () {
     if (window.isNearBottom(150)) {
         if (typeof window.scrollToBottomSmooth === "function") {
             window.scrollToBottomSmooth();
@@ -9245,8 +9372,8 @@ if (window.visualViewport) {
     let lastVvHeight = vv.height;
 
     // Phát hiện thiết bị iOS (iPhone, iPad, iPod)
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
     if (isIOS) {
         document.body.classList.add('is-ios');
@@ -9342,15 +9469,15 @@ function playSingleSound(src, delay, volume) {
 
 function playSplashSound() {
     if (splashSoundPlayed) return;
-    
+
     // Âm thanh 1: Khi logo bắt đầu rơi từ trên xuống (t = 100ms)
     playSingleSound("amthanhtinnhan.mp3", 100, 0.12);
-    
+
     // Âm thanh 2: Khi chữ Chat Tho-Fi bắt đầu đẩy từ dưới lên (t = 700ms)
     playSingleSound("amthanhtinnhan.mp3", 700, 0.15);
-    
+
     splashSoundPlayed = true;
-    
+
     // Gỡ bỏ các trình lắng nghe chạm khi đã phát thành công
     document.removeEventListener("click", playSplashSoundFallback);
     document.removeEventListener("touchstart", playSplashSoundFallback);
@@ -9369,7 +9496,7 @@ document.addEventListener("touchstart", playSplashSoundFallback, { once: true })
 function hideSplashScreen() {
     // Cố gắng phát âm thanh chào mừng ngay khi khởi động
     playSplashSound();
-    
+
     setTimeout(() => {
         const splash = document.getElementById("splash-screen");
         if (splash) {
@@ -9459,7 +9586,7 @@ const initPinnedBarEvents = () => {
         renderPinnedBar();
     };
     if (closeBtn) closeBtn.onclick = () => hidePinnedBar();
-    
+
     // Nút bỏ ghim tin nhắn này (trash icon)
     const unpinBtn = document.getElementById("pinned-unpin-btn");
     if (unpinBtn) {
@@ -9914,9 +10041,9 @@ function openCustomReactionPicker(messageId, clientX, clientY) {
     picker.className = "custom-reaction-picker";
 
     const popularEmojis = [
-        "👍", "❤️", "😂", "😮", "😢", "😡", 
-        "🔥", "🎉", "👏", "🙌", "🤔", "💯", 
-        "👀", "🚀", "💡", "🤫", "💩", "🤡", 
+        "👍", "❤️", "😂", "😮", "😢", "😡",
+        "🔥", "🎉", "👏", "🙌", "🤔", "💯",
+        "👀", "🚀", "💡", "🤫", "💩", "🤡",
         "🙏", "✨", "🤝", "🥳", "💔", "✔️"
     ];
 
@@ -9970,7 +10097,7 @@ function openCustomReactionPicker(messageId, clientX, clientY) {
 function triggerWordEffects(text) {
     if (!text) return;
     const lower = text.toLowerCase();
-    
+
     let emoji = "";
     if (lower.includes("yêu") || lower.includes("love") || lower.includes("thương") || lower.includes("tim")) {
         emoji = "❤️";
@@ -10005,7 +10132,7 @@ function createFullScreenEmojiShower(emoji) {
         el.style.position = "absolute";
         el.style.fontSize = `${Math.random() * 24 + 16}px`;
         el.style.userSelect = "none";
-        
+
         const startLeft = Math.random() * 100;
         el.style.left = `${startLeft}vw`;
 
@@ -10045,20 +10172,20 @@ function createFullScreenEmojiShower(emoji) {
 window.addEventListener("touchmove", (e) => {
     if (!activeOverlayMessageEl) return;
     if (!e.touches || e.touches.length === 0) return;
-    
+
     const palette = activeOverlayMessageEl.querySelector(".reaction-palette");
     const moreMenu = activeOverlayMessageEl.querySelector(".more-menu");
     if (!palette && !moreMenu) return;
-    
+
     if (e.cancelable) e.preventDefault(); // Chặn cuộn màn hình khi đang kéo chọn
-    
+
     const x = e.touches[0].clientX;
     const y = e.touches[0].clientY;
-    
+
 
     let activeEmojiChild = null;
     let activeActionChild = null;
-    
+
     // 🌟 Định vị thông minh dựa trên khoảng cách (Proximity Distance Detection):
     // Cho phép người dùng trỏ gần đến icon/menu là có thể chọn được, tạo trải nghiệm mượt mà giống Messenger.
     const maxEmojiDistance = 75; // Bán kính nhận diện emoji (pixels)
@@ -10090,7 +10217,7 @@ window.addEventListener("touchmove", (e) => {
             }
         });
     }
-    
+
 
     if (palette) {
         Array.from(palette.children).forEach((child) => {
@@ -10117,7 +10244,7 @@ window.addEventListener("touchmove", (e) => {
             }
         });
     }
-    
+
     // Nếu đang lướt chọn ở khu vực này thì giải phóng highlight ở khu vực khác
     if (activeEmojiChild) {
         window.dragSelectedAction = null;
@@ -10139,10 +10266,10 @@ window.addEventListener("touchmove", (e) => {
 window.addEventListener("touchend", (e) => {
 
     if (!activeOverlayMessageEl) return;
-    
+
     const palette = activeOverlayMessageEl.querySelector(".reaction-palette");
     const moreMenu = activeOverlayMessageEl.querySelector(".more-menu");
-    
+
     // Khôi phục kích thước các emoji về bình thường
     if (palette) {
         Array.from(palette.children).forEach((child) => {
@@ -10177,11 +10304,11 @@ window.addEventListener("touchend", (e) => {
     } else if (window.dragSelectedAction) {
         const actionToClick = window.dragSelectedAction;
         window.dragSelectedAction = null;
-        
+
         // 🌟 Giải pháp khắc phục lỗi WebKit/iOS WebView chặn gọi click() trên thẻ div phi-tương-tác:
         // Chúng ta sẽ trực tiếp thực thi hàm onclick gán sẵn trên phần tử kèm một event giả lập
         if (typeof actionToClick.onclick === "function") {
-            actionToClick.onclick({ stopPropagation: () => {} });
+            actionToClick.onclick({ stopPropagation: () => { } });
         } else {
             actionToClick.click();
         }
@@ -10189,4 +10316,584 @@ window.addEventListener("touchend", (e) => {
     }
 });
 
-
+// --- LOGIC CHẶN NGƯỜI DÙNG (BLOCK USER) ---
+function applyBlockState(blockState) {
+    const btnBlockUser = document.getElementById('btn-block-user');
+    const blockText = document.getElementById('block-text');
+    const blockedBanner = document.getElementById('blocked-banner');
+    const inputArea = document.getElementById('input-area');
+
+    if (!btnBlockUser || !blockedBanner || !inputArea) return;
+
+    if (blockState && blockState.blocked) {
+        if (blockState.blockerId === myId) {
+            btnBlockUser.setAttribute('data-blocked', 'true');
+            if (blockText) blockText.textContent = "Bỏ chặn người này";
+            blockedBanner.innerHTML = `<i class="fas fa-ban"></i> <span>Bạn đã chặn người dùng này.</span>`;
+            blockedBanner.style.display = 'flex';
+            inputArea.style.display = 'none';
+        } else {
+            btnBlockUser.setAttribute('data-blocked', 'false');
+            if (blockText) blockText.textContent = "Chặn người này";
+            blockedBanner.innerHTML = `<i class="fas fa-ban"></i> <span>Bạn không thể trả lời cuộc trò chuyện này.</span>`;
+            blockedBanner.style.display = 'flex';
+            inputArea.style.display = 'none';
+        }
+    } else {
+        btnBlockUser.setAttribute('data-blocked', 'false');
+        if (blockText) blockText.textContent = "Chặn người này";
+        blockedBanner.style.display = 'none';
+        inputArea.style.display = 'flex';
+    }
+}
+
+// Bắt sự kiện click nút chặn người dùng
+document.addEventListener("DOMContentLoaded", () => {
+    const btnBlockUser = document.getElementById('btn-block-user');
+    const blockText = document.getElementById('block-text');
+
+    if (btnBlockUser) {
+        btnBlockUser.addEventListener('click', async () => {
+            const isBlocked = btnBlockUser.getAttribute('data-blocked') === 'true';
+            const targetUserId = currentChatPartnerId; // Lấy ID của đối phương
+
+            if (!targetUserId) {
+                return showTempToast("Không xác định được người dùng để thực hiện.");
+            }
+
+            // Đóng panel thông tin trước khi hiện confirm để tránh bị đè lên
+            closeChatInfoPanel();
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+            const confirmTitle = isBlocked ? "Bỏ chặn người dùng" : "Chặn người dùng";
+            const confirmMsg = isBlocked
+                ? "Bạn có chắc chắn muốn bỏ chặn người dùng này?"
+                : "Bạn có chắc chắn muốn chặn người dùng này? Hai người sẽ không thể gửi tin nhắn hoặc gọi điện cho nhau.";
+
+            const consent = await customConfirm(confirmTitle, confirmMsg, isBlocked ? "Bỏ chặn" : "Chặn người này", "Hủy", !isBlocked);
+            if (!consent) {
+                // Nếu người dùng chọn Hủy, mở lại menu chữ i
+                openChatInfoPanel();
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/chat/block', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ targetUserId, action: isBlocked ? 'unblock' : 'block' })
+                });
+
+                if (response.ok) {
+                    const newState = !isBlocked;
+                    btnBlockUser.setAttribute('data-blocked', newState ? 'true' : 'false');
+                    if (blockText) blockText.textContent = newState ? "Bỏ chặn người này" : "Chặn người này";
+
+                    // Cập nhật giao diện thanh chat
+                    applyBlockState({
+                        blocked: newState,
+                        blockerId: myId,
+                        blockedId: targetUserId
+                    });
+
+                    showTempToast(newState ? "Đã chặn người dùng thành công" : "Đã bỏ chặn người dùng thành công");
+
+                    // Đóng panel thông tin
+                    closeChatInfoPanel();
+                } else {
+                    const errData = await response.json();
+                    showTempToast("Thao tác thất bại: " + (errData.message || "Lỗi không xác định"));
+                }
+            } catch (error) {
+                console.error("Lỗi khi thực hiện thao tác chặn:", error);
+                showTempToast("Lỗi khi kết nối máy chủ.");
+            }
+        });
+    }
+});
+
+// --- THÔNG BÁO TRẠNG THÁI MẠNG (ONLINE/OFFLINE TOAST) ---
+function showNetworkToast(isOnline) {
+    // Xóa các thông báo mạng cũ tránh xếp chồng
+    const oldToasts = document.querySelectorAll(".network-toast");
+    oldToasts.forEach(t => t.remove());
+
+    const toast = document.createElement("div");
+    toast.className = "network-toast";
+
+    const iconHtml = isOnline 
+        ? `<i class="fa-solid fa-wifi icon-online"></i>` 
+        : `<span class="fa-layers fa-fw icon-offline">
+             <i class="fa-solid fa-wifi"></i>
+             <i class="fa-solid fa-slash" style="transform: scale(1.05); text-shadow: 0 0 2px rgba(0,0,0,0.8);"></i>
+           </span>`;
+
+    const message = isOnline ? "Đã khôi phục kết nối Internet." : "Không có mạng, vui lòng kiểm tra lại.";
+
+    toast.innerHTML = `
+        ${iconHtml}
+        <span>${message}</span>
+    `;
+
+    document.body.appendChild(toast);
+
+    // Hiệu ứng hiện ra
+    setTimeout(() => toast.classList.add("show"), 10);
+
+    // Tự động xóa sau 4 giây
+    setTimeout(() => {
+        toast.classList.remove("show");
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
+// Lắng nghe sự kiện kết nối mạng
+window.addEventListener("online", () => showNetworkToast(true));
+window.addEventListener("offline", () => showNetworkToast(false));
+
+// --- TÍNH NĂNG CHAT NHÓM (GROUP CHAT) ---
+
+// Khởi tạo các sự kiện Socket cho Chat Nhóm
+function initGroupSocketListeners(socket) {
+    socket.on("group:created", (data) => {
+        socket.emit("join_conversation", data.conversationId);
+        if (typeof loadConversations === "function") loadConversations();
+        showTempToast(`Bạn đã được thêm vào nhóm mới: ${data.groupName}`);
+    });
+
+    socket.on("group:added_to_group", (data) => {
+        socket.emit("join_conversation", data.conversationId);
+        if (typeof loadConversations === "function") loadConversations();
+    });
+
+    socket.on("group:member_added", (data) => {
+        if (isSameId(data.conversationId, currentConversationId)) {
+            loadGroupMembers(currentConversationId);
+        }
+    });
+
+    socket.on("group:member_kicked", (data) => {
+        if (isSameId(data.conversationId, currentConversationId)) {
+            loadGroupMembers(currentConversationId);
+        }
+    });
+
+    socket.on("group:kicked", (data) => {
+        if (isSameId(data.conversationId, currentConversationId)) {
+            showTempToast("Bạn đã bị quản trị viên xóa khỏi nhóm này.");
+            currentConversationId = null;
+            currentChatPartnerId = null;
+            document.getElementById("chat-header-container").style.display = "none";
+            document.getElementById("input-area").style.display = "none";
+            document.getElementById("messages").innerHTML = `<div style="text-align: center; color: var(--text-light); margin-top: 50px;">Bạn đã bị xóa khỏi nhóm này.</div>`;
+            if (typeof loadConversations === "function") loadConversations();
+        } else {
+            if (typeof loadConversations === "function") loadConversations();
+        }
+    });
+
+    socket.on("group:role_changed", (data) => {
+        if (isSameId(data.conversationId, currentConversationId)) {
+            loadGroupMembers(currentConversationId);
+        }
+    });
+}
+
+let isGroupDirectWithPartner = false; // Trạng thái tạo nhóm trực tiếp 2 người với đối phương
+
+// Mở hộp thoại tạo nhóm mới
+async function openCreateGroupModal(isDirect = false) {
+    isGroupDirectWithPartner = isDirect;
+    const listEl = document.getElementById("create-group-friends-list");
+    const friendsLabel = document.querySelector("#create-group-modal label[style*='color: var(--text-dark)']");
+    const modalTitle = document.querySelector("#create-group-modal .custom-modal-header h3");
+    
+    if (!listEl) return;
+    
+    const modal = document.getElementById("create-group-modal");
+    modal.style.display = "flex";
+    setTimeout(() => {
+        modal.classList.add("show");
+    }, 10);
+    
+    document.getElementById("group-name-input").value = "";
+
+    if (isDirect) {
+        // Tạo nhóm trực tiếp 2 người: Ẩn phần chọn thành viên
+        listEl.style.display = "none";
+        if (friendsLabel) friendsLabel.style.display = "none";
+        const partnerName = document.getElementById("chat-header-name")?.dataset.realName || "đối phương";
+        if (modalTitle) modalTitle.innerText = `Tạo nhóm với ${partnerName}`;
+    } else {
+        // Tạo nhóm thông thường: Hiện phần chọn thành viên
+        listEl.style.display = "flex";
+        if (friendsLabel) friendsLabel.style.display = "block";
+        if (modalTitle) modalTitle.innerText = "Tạo nhóm mới";
+
+        listEl.innerHTML = "<p style='color: var(--text-light); text-align: center;'>Đang tải danh sách bạn bè...</p>";
+        
+        try {
+            const res = await fetch(`${API_URL}/users/friends`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) throw new Error();
+            const data = await res.json();
+            const friends = data.data || [];
+
+            if (friends.length === 0) {
+                listEl.innerHTML = "<p style='color: var(--text-light); text-align: center; padding: 10px;'>Chưa có bạn bè để tạo nhóm.</p>";
+                return;
+            }
+
+            listEl.innerHTML = "";
+            friends.forEach(f => {
+                const avatarUrl = f.avatar 
+                    ? formatUrl(f.avatar) 
+                    : `https://ui-avatars.com/api/?name=${encodeURIComponent(f.fullName)}&background=random`;
+                
+                const item = document.createElement("div");
+                item.className = "group-friends-select-item";
+                item.onclick = () => toggleCheckbox(`cb-create-${f.id}`);
+                item.innerHTML = `
+                    <input type="checkbox" id="cb-create-${f.id}" value="${f.id}" onclick="event.stopPropagation()" />
+                    <img src="${avatarUrl}" alt="Avatar" />
+                    <span>${f.fullName}</span>
+                `;
+                listEl.appendChild(item);
+            });
+        } catch (error) {
+            listEl.innerHTML = "<p style='color: var(--text-light); text-align: center; padding: 10px;'>Không thể tải danh sách bạn bè.</p>";
+        }
+    }
+}
+
+function closeCreateGroupModal() {
+    const modal = document.getElementById("create-group-modal");
+    modal.classList.remove("show");
+    setTimeout(() => {
+        modal.style.display = "none";
+    }, 250);
+}
+
+function toggleCheckbox(checkboxId) {
+    const cb = document.getElementById(checkboxId);
+    if (cb) cb.checked = !cb.checked;
+}
+
+// Thực thi gửi yêu cầu tạo nhóm lên Server
+async function submitCreateGroup() {
+    const nameInput = document.getElementById("group-name-input");
+    const groupName = nameInput ? nameInput.value.trim() : "";
+    if (!groupName) {
+        showTempToast("Vui lòng nhập tên nhóm.");
+        return;
+    }
+
+    let userIds = [];
+    if (isGroupDirectWithPartner) {
+        if (!currentChatPartnerId) {
+            showTempToast("Không xác định được đối phương để tạo nhóm.");
+            return;
+        }
+        userIds = [currentChatPartnerId];
+    } else {
+        const checkboxes = document.querySelectorAll("#create-group-friends-list input[type='checkbox']:checked");
+        userIds = Array.from(checkboxes).map(cb => cb.value);
+        if (userIds.length === 0) {
+            showTempToast("Vui lòng chọn ít nhất 1 thành viên để tạo nhóm.");
+            return;
+        }
+    }
+
+    showLoading();
+    try {
+        const res = await fetch(`${API_URL}/chat/group/create`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ groupName, userIds }),
+        });
+
+        const data = await res.json();
+        hideLoading();
+
+        if (data.success) {
+            closeCreateGroupModal();
+            showTempToast("Tạo nhóm thành công!");
+            
+            // Tải lại danh sách hội thoại
+            await loadConversations();
+
+            // Bắt đầu chat với nhóm mới
+            const groupAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(groupName)}&background=random&color=fff`;
+            startChat(data.conversation.id, groupName, groupAvatar, "group");
+        } else {
+            showTempToast("Lỗi: " + data.message);
+        }
+    } catch (error) {
+        hideLoading();
+        showTempToast("Lỗi hệ thống khi tạo nhóm.");
+    }
+}
+
+// Mở hộp thoại thêm thành viên
+async function openAddMemberModal() {
+    const listEl = document.getElementById("add-member-friends-list");
+    if (!listEl) return;
+    listEl.innerHTML = "<p style='color: var(--text-light); text-align: center;'>Đang tải danh sách bạn bè...</p>";
+    
+    const modal = document.getElementById("add-member-modal");
+    modal.style.display = "flex";
+    setTimeout(() => {
+        modal.classList.add("show");
+    }, 10);
+
+    try {
+        const resFriends = await fetch(`${API_URL}/users/friends`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        const dataFriends = await resFriends.json();
+        const friends = dataFriends.data || [];
+
+        const resMembers = await fetch(`${API_URL}/chat/group/${currentConversationId}/members`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        const dataMembers = await resMembers.json();
+        const currentMemberIds = (dataMembers.members || []).map(m => m.userId);
+
+        const toAddFriends = friends.filter(f => !currentMemberIds.includes(f.id));
+
+        if (toAddFriends.length === 0) {
+            listEl.innerHTML = "<p style='color: var(--text-light); text-align: center; padding: 10px;'>Tất cả bạn bè đã ở trong nhóm.</p>";
+            return;
+        }
+
+        listEl.innerHTML = "";
+        toAddFriends.forEach(f => {
+            const avatarUrl = f.avatar 
+                ? formatUrl(f.avatar) 
+                : `https://ui-avatars.com/api/?name=${encodeURIComponent(f.fullName)}&background=random`;
+            
+            const item = document.createElement("div");
+            item.className = "group-friends-select-item";
+            item.onclick = () => toggleCheckbox(`cb-add-${f.id}`);
+            item.innerHTML = `
+                <input type="checkbox" id="cb-add-${f.id}" value="${f.id}" onclick="event.stopPropagation()" />
+                <img src="${avatarUrl}" alt="Avatar" />
+                <span>${f.fullName}</span>
+            `;
+            listEl.appendChild(item);
+        });
+    } catch (error) {
+        listEl.innerHTML = "<p style='color: var(--text-light); text-align: center; padding: 10px;'>Lỗi tải danh sách.</p>";
+    }
+}
+
+function closeAddMemberModal() {
+    const modal = document.getElementById("add-member-modal");
+    modal.classList.remove("show");
+    setTimeout(() => {
+        modal.style.display = "none";
+    }, 250);
+}
+
+// Thực thi thêm thành viên
+async function submitAddMembers() {
+    const checkboxes = document.querySelectorAll("#add-member-friends-list input[type='checkbox']:checked");
+    const userIds = Array.from(checkboxes).map(cb => cb.value);
+    if (userIds.length === 0) {
+        showTempToast("Vui lòng chọn ít nhất 1 bạn bè để thêm.");
+        return;
+    }
+
+    showLoading();
+    try {
+        const res = await fetch(`${API_URL}/chat/group/add`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ conversationId: currentConversationId, userIds }),
+        });
+
+        const data = await res.json();
+        hideLoading();
+
+        if (data.success) {
+            closeAddMemberModal();
+            showTempToast("Thêm thành viên thành công!");
+            loadGroupMembers(currentConversationId);
+        } else {
+            showTempToast("Lỗi: " + data.message);
+        }
+    } catch (error) {
+        hideLoading();
+        showTempToast("Lỗi hệ thống khi thêm thành viên.");
+    }
+}
+
+// Tải danh sách thành viên nhóm
+async function loadGroupMembers(conversationId) {
+    const listEl = document.getElementById("group-member-list");
+    if (!listEl) return;
+    listEl.innerHTML = "<li style='color: var(--text-light); text-align: center;'>Đang tải...</li>";
+
+    try {
+        const res = await fetch(`${API_URL}/chat/group/${conversationId}/members`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        renderGroupMembers(data.members || [], data.myRole || "member");
+    } catch (error) {
+        listEl.innerHTML = "<li style='color: var(--text-light); text-align: center;'>Không thể tải danh sách thành viên.</li>";
+    }
+}
+
+// Kết xuất UI danh sách thành viên nhóm
+function renderGroupMembers(members, myRole) {
+    const listEl = document.getElementById("group-member-list");
+    const btnAddMember = document.getElementById("btn-add-member");
+    if (!listEl) return;
+
+    listEl.innerHTML = "";
+    
+    if (btnAddMember) {
+        btnAddMember.style.display = "block";
+    }
+
+    members.forEach(member => {
+        const avatarUrl = member.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`;
+        
+        const li = document.createElement("li");
+        li.className = "group-member-item";
+
+        const info = document.createElement("div");
+        info.className = "group-member-info";
+        info.innerHTML = `
+            <img class="group-member-avatar" src="${avatarUrl}" alt="Avatar" />
+            <span class="group-member-name">${member.name}</span>
+            <span class="group-member-role-badge ${member.role === "admin" ? "admin" : ""}">${member.role === "admin" ? "Admin" : "Thành viên"}</span>
+        `;
+        li.appendChild(info);
+
+        if (myRole === "admin" && member.userId !== myId) {
+            const actions = document.createElement("div");
+            actions.className = "group-member-actions";
+
+            const roleBtn = document.createElement("button");
+            roleBtn.className = "btn-role-member";
+            const targetRole = member.role === "admin" ? "member" : "admin";
+            roleBtn.title = member.role === "admin" ? "Hạ cấp thành viên" : "Phong Admin";
+            roleBtn.innerHTML = member.role === "admin" ? `<i class="fas fa-shield-alt"></i>` : `<i class="fas fa-user-shield"></i>`;
+            roleBtn.onclick = () => handleChangeMemberRole(member.userId, targetRole);
+            actions.appendChild(roleBtn);
+
+            const kickBtn = document.createElement("button");
+            kickBtn.className = "btn-kick-member";
+            kickBtn.title = "Kích khỏi nhóm";
+            kickBtn.innerHTML = `<i class="fas fa-trash-alt"></i>`;
+            kickBtn.onclick = () => handleKickMember(member.userId);
+            actions.appendChild(kickBtn);
+
+            li.appendChild(actions);
+        }
+
+        listEl.appendChild(li);
+    });
+}
+
+// Xử lý kích thành viên
+function handleKickMember(targetUserId) {
+    customConfirm("Xác nhận kích thành viên này ra khỏi nhóm?", async (confirmed) => {
+        if (!confirmed) return;
+        
+        showLoading();
+        try {
+            const res = await fetch(`${API_URL}/chat/group/kick`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ conversationId: currentConversationId, targetUserId }),
+            });
+
+            const data = await res.json();
+            hideLoading();
+
+            if (data.success) {
+                showTempToast("Đã kích thành viên khỏi nhóm thành công!");
+                loadGroupMembers(currentConversationId);
+            } else {
+                showTempToast("Lỗi: " + data.message);
+            }
+        } catch (error) {
+            hideLoading();
+            showTempToast("Lỗi hệ thống khi kích thành viên.");
+        }
+    });
+}
+
+// Xử lý đổi quyền thành viên
+function handleChangeMemberRole(targetUserId, newRole) {
+    const actionText = newRole === "admin" ? "phong làm Admin" : "hạ cấp xuống Thành viên";
+    customConfirm(`Bạn có chắc chắn muốn ${actionText} cho người dùng này?`, async (confirmed) => {
+        if (!confirmed) return;
+        
+        showLoading();
+        try {
+            const res = await fetch(`${API_URL}/chat/group/role`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ conversationId: currentConversationId, targetUserId, newRole }),
+            });
+
+            const data = await res.json();
+            hideLoading();
+
+            if (data.success) {
+                showTempToast("Thay đổi chức vụ thành viên thành công!");
+                loadGroupMembers(currentConversationId);
+            } else {
+                showTempToast("Lỗi: " + data.message);
+            }
+        } catch (error) {
+            hideLoading();
+            showTempToast("Lỗi hệ thống khi phân quyền thành viên.");
+        }
+    });
+}
+
+// --- THÀNH PHẦN MENU DẤU CỘNG (+) ---
+function togglePlusMenu(event) {
+    event.stopPropagation();
+    const dropdown = document.getElementById("plus-dropdown-menu");
+    if (dropdown) {
+        const isHidden = dropdown.style.display === "none";
+        dropdown.style.display = isHidden ? "block" : "none";
+    }
+}
+
+function openCreateGroupModalFromPlus() {
+    const dropdown = document.getElementById("plus-dropdown-menu");
+    if (dropdown) dropdown.style.display = "none";
+    openCreateGroupModal(false);
+}
+
+// Lắng nghe sự kiện click toàn cục để tự động ẩn dropdown menu của dấu cộng
+document.addEventListener("click", () => {
+    const dropdown = document.getElementById("plus-dropdown-menu");
+    if (dropdown) dropdown.style.display = "none";
+});
+
+

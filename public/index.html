@@ -235,6 +235,15 @@
                                 <span class="nav-badge" id="notifications-badge"
                                     style="display: none; position: absolute; top: -5px; right: -5px; width: 18px; height: 18px; font-size: 10px; border-radius: 50%; background: #ef4444; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 1.5px solid #fff; pointer-events: none;">0</span>
                             </div>
+                            <!-- Menu Dấu cộng (+) -->
+                            <div class="plus-menu-wrapper" style="position: relative; display: inline-block; cursor: pointer;">
+                                <i class="fas fa-plus icon-btn" id="btn-plus-menu" onclick="togglePlusMenu(event)" title="Thêm" style="font-size: 16px;"></i>
+                                <div id="plus-dropdown-menu" class="plus-dropdown-menu" style="display: none; position: absolute; top: 38px; left: 0; background: var(--chat-bg); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; width: 140px; padding: 4px 0;">
+                                    <div class="plus-menu-item" onclick="openCreateGroupModalFromPlus()" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'" style="padding: 10px 12px; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text-dark); display: flex; align-items: center; gap: 8px; transition: background 0.2s;">
+                                        <i class="fas fa-users" style="color: var(--primary-color);"></i> Tạo nhóm mới
+                                    </div>
+                                </div>
+                            </div>
                             <i class="fas fa-edit icon-btn"></i>
                             <i class="fas fa-cog icon-btn" onclick="openSettingsModal()"></i>
                         </div>
@@ -371,6 +380,11 @@
                             <div id="reply-preview-text" class="reply-preview-text">Nội dung tin nhắn...</div>
                         </div>
                         <i class="fas fa-times reply-preview-close" onclick="cancelReply()"></i>
+                    </div>
+
+                    <!-- Chèn đè lên khu vực chat-input -->
+                    <div id="blocked-banner" style="display: none;">
+                        <i class="fas fa-ban"></i> <span>Bạn không thể trả lời cuộc trò chuyện này.</span>
                     </div>
 
                     <div class="input-area" id="input-area" style="display: none">
@@ -932,6 +946,26 @@
                     <span>Tìm tin nhắn</span>
                 </div>
             </div>
+            <!-- Chèn vào trong info menu panel -->
+            <div class="info-menu-actions" style="margin-top: 15px; width: 100%; display: flex; flex-direction: column; gap: 8px;">
+                <button id="btn-info-create-group" class="custom-btn btn-primary" onclick="closeChatInfoPanel(); openCreateGroupModal();" style="width: 100%; font-size: 13.5px; padding: 10px; margin: 0; min-height: 42px;">
+                    <i class="fas fa-users"></i> Tạo nhóm mới
+                </button>
+                <button id="btn-block-user" class="btn-block-danger" data-blocked="false" style="margin: 0; width: 100%; min-height: 42px;">
+                    <i class="fas fa-ban"></i> <span id="block-text">Chặn người này</span>
+                </button>
+            </div>
+
+            <!-- Quản lý thành viên nhóm -->
+            <div class="group-management-panel" id="group-management-panel" style="display: none; margin-top: 15px; width: 100%; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                <h4 style="margin: 0 0 10px 0; font-size: 14px; font-weight: bold; color: var(--text-dark);">Thành viên nhóm</h4>
+                <button id="btn-add-member" class="custom-btn btn-primary" onclick="openAddMemberModal()" style="width: 100%; margin-bottom: 12px; font-size: 13px; padding: 8px 12px;">
+                    <i class="fas fa-user-plus"></i> Thêm thành viên
+                </button>
+                <ul id="group-member-list" style="list-style: none; padding: 0; margin: 0; max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+                    <!-- Render danh sách thành viên qua JS -->
+                </ul>
+            </div>
         </div>
     </div>
 
@@ -1164,6 +1198,50 @@
             <p style="color: var(--text-light); text-align: center; padding: 20px; font-size: 13.5px;">Chưa có thông báo
                 nào.
             </p>
+        </div>
+    </div>
+
+    <!-- Hộp thoại tạo nhóm (Create Group Modal) -->
+    <div id="create-group-modal" class="custom-modal-overlay" style="display: none;">
+        <div class="custom-modal-card">
+            <div class="custom-modal-header">
+                <h3>Tạo nhóm mới</h3>
+                <i class="fas fa-times close-modal-btn" onclick="closeCreateGroupModal()"></i>
+            </div>
+            <div class="custom-modal-body" style="padding-top: 10px;">
+                <div class="group-name-input-wrapper" style="margin-bottom: 15px;">
+                    <label for="group-name-input" style="font-weight: 600; font-size: 13.5px; display: block; margin-bottom: 6px; color: var(--text-dark);">Tên nhóm:</label>
+                    <input type="text" id="group-name-input" placeholder="Nhập tên nhóm..." style="width: 100%; padding: 10px 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px; background: var(--chat-bg); color: var(--text-dark); box-sizing: border-box;" autocomplete="off" />
+                </div>
+                <label style="font-weight: 600; font-size: 13.5px; display: block; margin-bottom: 6px; color: var(--text-dark);">Chọn thành viên:</label>
+                <div id="create-group-friends-list" class="group-friends-select-list" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; background: var(--chat-bg); display: flex; flex-direction: column; gap: 8px;">
+                    <!-- Render danh sách bạn bè qua JS -->
+                </div>
+            </div>
+            <div class="custom-modal-footer">
+                <button class="custom-btn btn-secondary" onclick="closeCreateGroupModal()">Hủy</button>
+                <button class="custom-btn btn-primary" onclick="submitCreateGroup()">Tạo nhóm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hộp thoại thêm thành viên (Add Member Modal) -->
+    <div id="add-member-modal" class="custom-modal-overlay" style="display: none;">
+        <div class="custom-modal-card">
+            <div class="custom-modal-header">
+                <h3>Thêm thành viên</h3>
+                <i class="fas fa-times close-modal-btn" onclick="closeAddMemberModal()"></i>
+            </div>
+            <div class="custom-modal-body" style="padding-top: 10px;">
+                <label style="font-weight: 600; font-size: 13.5px; display: block; margin-bottom: 6px; color: var(--text-dark);">Chọn bạn bè để thêm:</label>
+                <div id="add-member-friends-list" class="group-friends-select-list" style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; background: var(--chat-bg); display: flex; flex-direction: column; gap: 8px;">
+                    <!-- Render danh sách bạn bè qua JS -->
+                </div>
+            </div>
+            <div class="custom-modal-footer">
+                <button class="custom-btn btn-secondary" onclick="closeAddMemberModal()">Hủy</button>
+                <button class="custom-btn btn-primary" onclick="submitAddMembers()">Thêm vào nhóm</button>
+            </div>
         </div>
     </div>
 
