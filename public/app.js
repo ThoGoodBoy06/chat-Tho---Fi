@@ -2185,10 +2185,12 @@ async function startChat(receiverId, receiverName, receiverAvatar, type = "priva
         const btnBlockUser = document.getElementById("btn-block-user");
         const btnInfoCreateGroup = document.getElementById("btn-info-create-group");
         const groupManagementPanel = document.getElementById("group-management-panel");
+        const actionsGrid = document.querySelector("#chat-info-panel .chat-info-actions-grid");
 
         if (isGroup) {
             if (btnBlockUser) btnBlockUser.style.display = "none";
             if (btnInfoCreateGroup) btnInfoCreateGroup.style.display = "none";
+            if (actionsGrid) actionsGrid.style.display = "none";
             if (groupManagementPanel) groupManagementPanel.style.display = "block";
             updateHeaderStatusUI(false, null, "Nhóm trò chuyện");
             
@@ -2197,6 +2199,7 @@ async function startChat(receiverId, receiverName, receiverAvatar, type = "priva
         } else {
             if (btnBlockUser) btnBlockUser.style.display = "block";
             if (btnInfoCreateGroup) btnInfoCreateGroup.style.display = "block";
+            if (actionsGrid) actionsGrid.style.display = "grid";
             if (groupManagementPanel) groupManagementPanel.style.display = "none";
 
             // Đồng bộ trạng thái online/offline của đối phương lên header
@@ -8189,6 +8192,15 @@ function openChatInfoPanel() {
         }
     }
 
+    const actionsGrid = document.querySelector("#chat-info-panel .chat-info-actions-grid");
+    if (actionsGrid) {
+        if (currentChatPartnerId) {
+            actionsGrid.style.display = "grid";
+        } else {
+            actionsGrid.style.display = "none";
+        }
+    }
+
     const modal = document.getElementById("chat-info-panel");
     modal.style.display = "flex";
     setTimeout(() => {
@@ -10890,10 +10902,28 @@ function openCreateGroupModalFromPlus() {
     openCreateGroupModal(false);
 }
 
+// --- THÀNH PHẦN MENU DẤU CỘNG (+) TRÊN MOBILE ---
+function togglePlusMenuMobile(event) {
+    event.stopPropagation();
+    const dropdown = document.getElementById("plus-dropdown-menu-mobile");
+    if (dropdown) {
+        const isHidden = dropdown.style.display === "none";
+        dropdown.style.display = isHidden ? "block" : "none";
+    }
+}
+
+function openCreateGroupModalFromPlusMobile() {
+    const dropdown = document.getElementById("plus-dropdown-menu-mobile");
+    if (dropdown) dropdown.style.display = "none";
+    openCreateGroupModal(false);
+}
+
 // Lắng nghe sự kiện click toàn cục để tự động ẩn dropdown menu của dấu cộng
 document.addEventListener("click", () => {
     const dropdown = document.getElementById("plus-dropdown-menu");
     if (dropdown) dropdown.style.display = "none";
+    const dropdownMobile = document.getElementById("plus-dropdown-menu-mobile");
+    if (dropdownMobile) dropdownMobile.style.display = "none";
 });
 
 
