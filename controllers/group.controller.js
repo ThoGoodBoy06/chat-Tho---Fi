@@ -8,9 +8,8 @@ exports.createGroup = async (req, res) => {
         const creatorId = req.user.id;
         const { groupName, userIds } = req.body; // userIds: mảng các id thành viên được chọn (không bao gồm creator)
 
-        if (!groupName || !groupName.trim()) {
-            return res.status(400).json({ success: false, message: "Tên nhóm không được để trống." });
-        }
+        // Cho phép tên nhóm rỗng (Nhóm không tên)
+        const finalGroupName = (groupName && groupName.trim()) ? groupName.trim() : null;
 
         if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
             return res.status(400).json({ success: false, message: "Phải chọn ít nhất 1 thành viên để tạo nhóm." });
@@ -32,7 +31,7 @@ exports.createGroup = async (req, res) => {
             data: {
                 id: conversationId,
                 type: "group",
-                name: groupName.trim(),
+                name: finalGroupName,
                 createdBy: creatorId,
                 ConversationMembers: {
                     create: [
@@ -59,7 +58,9 @@ exports.createGroup = async (req, res) => {
         });
 
         // Tạo tin nhắn hệ thống
-        const systemContent = `${creatorName} đã tạo nhóm "${groupName.trim()}".`;
+        const systemContent = finalGroupName
+            ? `${creatorName} đã tạo nhóm "${finalGroupName}".`
+            : `${creatorName} đã tạo nhóm.`;
         const systemMessage = await prisma.messages.create({
             data: {
                 id: uuidv4(),
@@ -79,7 +80,7 @@ exports.createGroup = async (req, res) => {
                 // Gửi sự kiện để tự động load lại danh sách chat bên sidebar
                 io.to(memberId).emit("group:created", {
                     conversationId,
-                    groupName: groupName.trim(),
+                    groupName: finalGroupName,
                     systemMessage
                 });
             });
@@ -218,11 +219,16 @@ exports.kickMember = async (req, res) => {
         const adminId = req.user.id;
         const { conversationId, targetUserId } = req.body;
 
+        console.log("📥 [KICK] Yêu cầu kích thành viên:", { conversationId, targetUserId });
+        console.log("👤 [KICK] Admin ID từ token:", adminId);
+
         if (!conversationId || !targetUserId) {
+            console.log("⚠️ [KICK] Thiếu tham số:", { conversationId, targetUserId });
             return res.status(400).json({ success: false, message: "Thiếu ID cuộc trò chuyện hoặc ID người dùng mục tiêu." });
         }
 
         if (adminId === targetUserId) {
+            console.log("⚠️ [KICK] Admin cố gắng tự kích chính mình:", adminId);
             return res.status(400).json({ success: false, message: "Bạn không thể tự kích chính mình ra khỏi nhóm." });
         }
 
@@ -231,7 +237,10 @@ exports.kickMember = async (req, res) => {
             where: { conversationId, userId: adminId }
         });
 
-        if (!requesterMember || requesterMember.role !== "admin") {
+        console.log("🔎 [KICK] Thành viên yêu cầu trong nhóm:", requesterMember);
+
+        if (!requesterMember || String(requesterMember.role || "").toLowerCase() !== "admin") {
+            console.log("❌ [KICK] Từ chối quyền: Người yêu cầu không phải admin:", requesterMember);
             return res.status(403).json({ success: false, message: "Chỉ quản trị viên mới được quyền kích thành viên." });
         }
 
@@ -341,7 +350,11 @@ exports.dissolveGroup = async (req, res) => {
         const adminId = req.user.id;
         const { conversationId } = req.body;
 
+        console.log("📥 [DISSOLVE] Yêu cầu giải tán nhóm:", { conversationId });
+        console.log("👤 [DISSOLVE] Admin ID từ token:", adminId);
+
         if (!conversationId) {
+            console.log("⚠️ [DISSOLVE] Thiếu ID cuộc trò chuyện.");
             return res.status(400).json({ success: false, message: "Thiếu ID cuộc trò chuyện." });
         }
 
@@ -350,7 +363,10 @@ exports.dissolveGroup = async (req, res) => {
             where: { conversationId, userId: adminId }
         });
 
-        if (!requesterMember || requesterMember.role !== "admin") {
+        console.log("🔎 [DISSOLVE] Thành viên yêu cầu trong nhóm:", requesterMember);
+
+        if (!requesterMember || String(requesterMember.role || "").toLowerCase() !== "admin") {
+            console.log("❌ [DISSOLVE] Từ chối quyền: Người yêu cầu không phải admin:", requesterMember);
             return res.status(403).json({ success: false, message: "Chỉ quản trị viên mới được quyền giải tán nhóm." });
         }
 
@@ -575,8 +591,14 @@ exports.getGroupMembers = async (req, res) => {
             isOnline: m.Users ? m.Users.isOnline : false
         }));
 
+        const conversation = await prisma.conversations.findUnique({
+            where: { id: conversationId },
+            select: { name: true }
+        });
+
         res.status(200).json({
             success: true,
+            groupName: conversation ? conversation.name : null,
             members: mappedMembers,
             myRole: isMember.role
         });

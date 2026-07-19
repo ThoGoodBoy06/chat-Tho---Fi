@@ -575,30 +575,31 @@ exports.createConversation = async(req, res) => {
             .json({ message: "Không thể tự chat với chính mình" });
         }
 
-        // Kiểm tra xem 2 người đã từng chat với nhau chưa
-
-        const existingConversations = await prisma.conversationMembers.findMany({
-            where: { userId },
+        // Kiểm tra xem 2 người đã từng chat với nhau qua kênh 1-1 (private) chưa
+        const existingPrivateMembers = await prisma.conversationMembers.findMany({
+            where: {
+                userId,
+                Conversations: {
+                    type: "private"
+                }
+            },
+            select: { conversationId: true }
         });
 
-        const conversationIds = existingConversations.map((c) => c.conversationId);
+        const privateConversationIds = existingPrivateMembers
+            .map((c) => c.conversationId)
+            .filter((id) => id !== null);
 
         const match = await prisma.conversationMembers.findFirst({
             where: {
-                conversationId: { in: conversationIds },
-
+                conversationId: { in: privateConversationIds },
                 userId: receiverId,
             },
         });
 
         if (match) {
             // Đã từng chat, trả về phòng chat cũ thay vì tạo mới
-
-            return res
-
-                .status(200)
-
-            .json({ success: true, data: { id: match.conversationId } });
+            return res.status(200).json({ success: true, data: { id: match.conversationId } });
         }
 
         // Tạo phòng chat và tự động thêm 2 người vào phòng

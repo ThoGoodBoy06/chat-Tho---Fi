@@ -1926,7 +1926,16 @@ async function loadConversations() {
             let otherMember = null;
 
             if (isGroup) {
-                chatName = conv.name || "Nhóm trò chuyện";
+                let displayGroupName = conv.name;
+                if (!displayGroupName || !displayGroupName.trim()) {
+                    const memberNames = (conv.ConversationMembers || [])
+                        .map(m => m.Users ? m.Users.fullName : "")
+                        .filter(name => name.length > 0);
+                    displayGroupName = memberNames.join(", ");
+                }
+                if (!displayGroupName) displayGroupName = "Nhóm trò chuyện";
+
+                chatName = displayGroupName;
                 avatarUrl = conv.avatar ?
                     formatUrl(conv.avatar) :
                     `https://ui-avatars.com/api/?name=${encodeURIComponent(chatName)}&background=random&color=fff`;
@@ -7142,7 +7151,7 @@ function showToastNotification(notif) {
     toast.innerHTML = `
     <img src="${avatarUrl}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;">
     <div style="flex: 1;">
-      <div style="font-weight: 600; font-size: 14px; color: var(--text-dark);">${sender.fullName}</div>
+      <div style="font-weight: 600; font-size: 14px; color: var(--text-dark);">${(notif.type === "GROUP_KICKED" || notif.type === "GROUP_DISSOLVED") ? "Thông báo nhóm" : sender.fullName}</div>
       <div style="font-size: 12px; color: var(--text-light);">${notif.content}</div>
     </div>
   `;
@@ -10564,8 +10573,7 @@ function initGroupSocketListeners(socket) {
     socket.on("group:dissolved", (data) => {
         if (isSameId(data.conversationId, currentConversationId)) {
             // Đóng info panel nếu đang mở
-            const chatInfoModal = document.getElementById("chat-info-modal");
-            if (chatInfoModal) chatInfoModal.classList.remove("active");
+            if (typeof closeChatInfoPanel === "function") closeChatInfoPanel();
 
             currentConversationId = null;
             currentChatPartnerId = null;
@@ -10662,10 +10670,7 @@ function toggleCheckbox(checkboxId) {
 async function submitCreateGroup() {
     const nameInput = document.getElementById("group-name-input");
     const groupName = nameInput ? nameInput.value.trim() : "";
-    if (!groupName) {
-        showTempToast("Vui lòng nhập tên nhóm.");
-        return;
-    }
+
 
     let userIds = [];
     if (isGroupDirectWithPartner) {
@@ -10825,6 +10830,16 @@ async function loadGroupMembers(conversationId) {
         });
         if (!res.ok) throw new Error();
         const data = await res.json();
+        
+        // Cập nhật tên nhóm ở Header/Info Panel động nếu nhóm không tên
+        if (!data.groupName || !data.groupName.trim()) {
+            const computedName = (data.members || []).map(m => m.name).join(", ");
+            const headerNameEl = document.getElementById("chat-header-name");
+            const infoNameEl = document.getElementById("chat-info-name");
+            if (headerNameEl && computedName) headerNameEl.innerText = computedName;
+            if (infoNameEl && computedName) infoNameEl.innerText = computedName;
+        }
+
         renderGroupMembers(data.members || [], data.myRole || "member");
     } catch (error) {
         listEl.innerHTML = "<li style='color: var(--text-light); text-align: center;'>Không thể tải danh sách thành viên.</li>";
@@ -10891,109 +10906,105 @@ function renderGroupMembers(members, myRole) {
 }
 
 // Xử lý kích thành viên
-function handleKickMember(targetUserId) {
-    customConfirm("Xác nhận kích thành viên này ra khỏi nhóm?", async (confirmed) => {
-        if (!confirmed) return;
-        
-        showLoading();
-        try {
-            const res = await fetch(`${API_URL}/chat/group/kick`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({ conversationId: currentConversationId, targetUserId }),
-            });
+async function handleKickMember(targetUserId) {
+    const confirmed = await customConfirm("Xác nhận", "Xác nhận kích thành viên này ra khỏi nhóm?");
+    if (!confirmed) return;
+    
+    showLoading();
+    try {
+        const res = await fetch(`${API_URL}/chat/group/kick`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ conversationId: currentConversationId, targetUserId }),
+        });
 
-            const data = await res.json();
-            hideLoading();
+        const data = await res.json();
+        hideLoading();
 
-            if (data.success) {
-                showTempToast("Đã kích thành viên khỏi nhóm thành công!");
-                loadGroupMembers(currentConversationId);
-            } else {
-                showTempToast("Lỗi: " + data.message);
-            }
-        } catch (error) {
-            hideLoading();
-            showTempToast("Lỗi hệ thống khi kích thành viên.");
+        if (data.success) {
+            showTempToast("Đã kích thành viên khỏi nhóm thành công!");
+            loadGroupMembers(currentConversationId);
+        } else {
+            showTempToast("Lỗi: " + data.message);
         }
-    });
+    } catch (error) {
+        hideLoading();
+        showTempToast("Lỗi hệ thống khi kích thành viên.");
+    }
 }
 
 // Xử lý đổi quyền thành viên
-function handleChangeMemberRole(targetUserId, newRole) {
+async function handleChangeMemberRole(targetUserId, newRole) {
     const actionText = newRole === "admin" ? "phong làm Admin" : "hạ cấp xuống Thành viên";
-    customConfirm(`Bạn có chắc chắn muốn ${actionText} cho người dùng này?`, async (confirmed) => {
-        if (!confirmed) return;
-        
-        showLoading();
-        try {
-            const res = await fetch(`${API_URL}/chat/group/role`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({ conversationId: currentConversationId, targetUserId, newRole }),
-            });
+    const confirmed = await customConfirm("Xác nhận", `Bạn có chắc chắn muốn ${actionText} cho người dùng này?`);
+    if (!confirmed) return;
+    
+    showLoading();
+    try {
+        const res = await fetch(`${API_URL}/chat/group/role`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ conversationId: currentConversationId, targetUserId, newRole }),
+        });
 
-            const data = await res.json();
-            hideLoading();
+        const data = await res.json();
+        hideLoading();
 
-            if (data.success) {
-                showTempToast("Thay đổi chức vụ thành viên thành công!");
-                loadGroupMembers(currentConversationId);
-            } else {
-                showTempToast("Lỗi: " + data.message);
-            }
-        } catch (error) {
-            hideLoading();
-            showTempToast("Lỗi hệ thống khi phân quyền thành viên.");
+        if (data.success) {
+            showTempToast("Thay đổi chức vụ thành viên thành công!");
+            loadGroupMembers(currentConversationId);
+        } else {
+            showTempToast("Lỗi: " + data.message);
         }
-    });
+    } catch (error) {
+        hideLoading();
+        showTempToast("Lỗi hệ thống khi phân quyền thành viên.");
+    }
 }
 
 // Xử lý giải tán nhóm (chỉ Admin)
-function confirmDissolveGroup() {
-    customConfirm("Bạn có chắc chắn muốn giải tán nhóm này? Tất cả tin nhắn và thành viên sẽ bị xóa vĩnh viễn.", async (confirmed) => {
-        if (!confirmed) return;
+async function confirmDissolveGroup() {
+    const confirmed = await customConfirm("Xác nhận", "Bạn có chắc chắn muốn giải tán nhóm này? Tất cả tin nhắn và thành viên sẽ bị xóa vĩnh viễn.");
+    if (!confirmed) return;
 
-        showLoading();
-        try {
-            const res = await fetch(`${API_URL}/chat/group/dissolve`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({ conversationId: currentConversationId }),
-            });
+    showLoading();
+    try {
+        const res = await fetch(`${API_URL}/chat/group/dissolve`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ conversationId: currentConversationId }),
+        });
 
-            const data = await res.json();
-            hideLoading();
+        const data = await res.json();
+        hideLoading();
 
-            if (data.success) {
-                showTempToast("Đã giải tán nhóm thành công!");
-                // Đóng info panel
-                const chatInfoModal = document.getElementById("chat-info-modal");
-                if (chatInfoModal) chatInfoModal.classList.remove("active");
-                
-                currentConversationId = null;
-                currentChatPartnerId = null;
-                document.getElementById("chat-header-container").style.display = "none";
-                document.getElementById("input-area").style.display = "none";
-                document.getElementById("messages").innerHTML = "";
-                if (typeof loadConversations === "function") loadConversations();
-            } else {
-                showTempToast("Lỗi: " + data.message);
-            }
-        } catch (error) {
-            hideLoading();
-            showTempToast("Lỗi hệ thống khi giải tán nhóm.");
+        if (data.success) {
+            showTempToast("Đã giải tán nhóm thành công!");
+            // Đóng info panel
+            if (typeof closeChatInfoPanel === "function") closeChatInfoPanel();
+            
+            currentConversationId = null;
+            currentChatPartnerId = null;
+            document.getElementById("chat-header-container").style.display = "none";
+            document.getElementById("input-area").style.display = "none";
+            document.getElementById("messages").innerHTML = "";
+            if (typeof loadConversations === "function") loadConversations();
+        } else {
+            showTempToast("Lỗi: " + data.message);
         }
-    });
+    } catch (error) {
+        hideLoading();
+        showTempToast("Lỗi hệ thống khi giải tán nhóm.");
+    }
 }
 
 
@@ -11055,7 +11066,7 @@ async function createGroupDirectlyWithPartner() {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({ groupName: defaultGroupName, userIds: [currentChatPartnerId] }),
+            body: JSON.stringify({ groupName: "", userIds: [currentChatPartnerId] }),
         });
 
         const data = await res.json();
