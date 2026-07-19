@@ -699,9 +699,6 @@ TAB 1: MESSAGE VIEW & SIDE CHAT LIST
     cursor: pointer;
     transition: all var(--transition-normal);
     border-bottom: 1px solid var(--border-color);
-    content-visibility: auto;
-    contain-intrinsic-size: 72px;
-    /* Chiều cao cố định của một phần tử chat */
 }
 
 @media (hover: hover) {
@@ -1321,10 +1318,17 @@ RIGHT WINDOW & CHAT MESSAGES
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 44px;
+    height: 44px;
+    margin-left: auto;
 }
 
 .conv-options-btn {
-    padding: 6px 10px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-size: 16px;
     color: var(--text-light);
     border-radius: 50%;
@@ -1339,7 +1343,9 @@ RIGHT WINDOW & CHAT MESSAGES
 
 .conv-dropdown-menu {
     display: none;
-    position: fixed;
+    position: absolute;
+    top: 100%;
+    right: 0;
     background: var(--msg-receiver-bg);
     border: 1px solid var(--border-color);
     border-radius: 8px;
@@ -9727,74 +9733,351 @@ body[data-theme="dark"] #blocked-banner {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 8px;
-  border-radius: 8px;
-  background: var(--chat-bg);
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--card-bg, #ffffff);
   border: 1px solid var(--border-color);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+  margin-bottom: 8px;
   box-sizing: border-box;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.group-member-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
 }
 .group-member-info {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 .group-member-avatar {
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   object-fit: cover;
+  border: 2px solid var(--card-bg);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 .group-member-name {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 13.5px;
+  font-weight: 600;
   color: var(--text-dark);
 }
 .group-member-role-badge {
   font-size: 10px;
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: 6px;
   font-weight: 600;
-  background: rgba(0, 132, 255, 0.1);
+  background: rgba(0, 132, 255, 0.06);
   color: #0084ff;
+  border: 1px solid rgba(0, 132, 255, 0.1);
 }
 .group-member-role-badge.admin {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(239, 68, 68, 0.06);
   color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.1);
 }
 .group-member-actions {
   display: flex;
   align-items: center;
   gap: 6px;
 }
-.btn-kick-member {
+.btn-kick-member, .btn-role-member {
   border: none;
-  background: transparent;
-  color: #ef4444;
+  background: rgba(0, 0, 0, 0.03);
   cursor: pointer;
-  padding: 6px;
-  font-size: 14px;
-  border-radius: 4px;
-  transition: background 0.2s;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--text-light);
+}
+body[data-theme="dark"] .btn-kick-member, body[data-theme="dark"] .btn-role-member {
+  background: rgba(255, 255, 255, 0.05);
+}
+.btn-kick-member {
+  font-size: 12px;
 }
 .btn-kick-member:hover {
   background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
 }
 .btn-role-member {
-  border: none;
-  background: transparent;
-  color: #0084ff;
-  cursor: pointer;
-  padding: 6px;
-  font-size: 13px;
-  border-radius: 4px;
-  transition: background 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  font-size: 11px;
 }
 .btn-role-member:hover {
   background: rgba(0, 132, 255, 0.1);
+  color: #0084ff;
+}
+
+#btn-add-member:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 132, 255, 0.35) !important;
+}
+
+#btn-dissolve-group:hover {
+  background: rgba(239, 68, 68, 0.12) !important;
+  border-color: rgba(239, 68, 68, 0.2) !important;
+}
+
+/* Giao diện Right Sidebar Drawer mới hoàn toàn */
+.chat-info-drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  justify-content: flex-end;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.chat-info-drawer-overlay.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.chat-info-drawer-card {
+  width: 380px;
+  height: 100%;
+  background: var(--card-bg, #ffffff);
+  box-shadow: -10px 0 40px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-sizing: border-box;
+}
+.chat-info-drawer-overlay.show .chat-info-drawer-card {
+  transform: translateX(0);
+}
+
+/* Header Ngăn kéo */
+.drawer-header {
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-color);
+}
+.drawer-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+.drawer-close-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: var(--text-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+.drawer-close-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-dark);
+}
+body[data-theme="dark"] .drawer-close-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Nội dung cuộn bên trong Ngăn kéo */
+.drawer-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Profile Group Section */
+.drawer-profile-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 28px;
+}
+.drawer-avatar-wrapper {
+  position: relative;
+  margin-bottom: 14px;
+}
+.drawer-avatar {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 3px var(--primary-color), 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+.drawer-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.drawer-avatar-edit-badge {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  background: var(--primary-color);
+  color: white;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 2px solid var(--card-bg);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  transition: transform 0.2s;
+}
+.drawer-avatar-edit-badge:hover {
+  transform: scale(1.1);
+}
+.drawer-name-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.drawer-group-name {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+.drawer-rename-btn {
+  cursor: pointer;
+  color: var(--text-light);
+  font-size: 13px;
+  transition: color 0.2s;
+}
+.drawer-rename-btn:hover {
+  color: var(--primary-color);
+}
+
+/* Quick Actions Grid */
+.drawer-actions-grid {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+.drawer-action-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.02);
+  min-width: 80px;
+  transition: all 0.2s ease;
+}
+body[data-theme="dark"] .drawer-action-item {
+  background: rgba(255, 255, 255, 0.03);
+}
+.drawer-action-item:hover {
+  background: rgba(0, 132, 255, 0.06);
+  transform: translateY(-1px);
+}
+.drawer-action-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--card-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-color);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.drawer-action-item span {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-dark);
+}
+
+/* Section Header for Members List */
+.drawer-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 8px;
+}
+.drawer-section-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-light);
+}
+.drawer-section-action-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--primary-color);
+  font-size: 12.5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+.drawer-section-action-btn:hover {
+  background: rgba(0, 132, 255, 0.06);
+}
+
+/* Group Action Menu ở cuối drawer */
+.drawer-menu-list {
+  margin-top: 24px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.drawer-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+  background: rgba(239, 68, 68, 0.03);
+  color: #ef4444;
+  font-weight: 600;
+  font-size: 13.5px;
+  border: 1px solid rgba(239, 68, 68, 0.08);
+}
+.drawer-menu-item:hover {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.15);
+}
+
+@media (max-width: 576px) {
+  .chat-info-drawer-card {
+    width: 100% !important;
+  }
 }

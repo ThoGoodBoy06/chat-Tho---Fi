@@ -15,6 +15,7 @@ model ConversationMembers {
   role           String?        @default("member")
   nickname       String?
   joinedAt       DateTime?      @default(now())
+  deletedAt      DateTime?
   Conversations  Conversations? @relation(fields: [conversationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   Users          Users?         @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }

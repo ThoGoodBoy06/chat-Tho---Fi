@@ -925,58 +925,82 @@
         </div>
     </div>
     <!-- Panel thông tin cuộc trò chuyện (Chat Info) -->
-    <div id="chat-info-panel" class="custom-modal-overlay" style="display: none;">
-        <div class="custom-modal-card chat-info-card">
-            <div class="chat-info-close">
-                <i class="fas fa-times" onclick="closeChatInfoPanel()"></i>
-            </div>
-            <div class="chat-info-avatar-section">
-                <div class="chat-info-avatar">
-                    <img id="chat-info-avatar-img" src="" alt="Avatar" />
-                </div>
-                <h3 id="chat-info-name" class="chat-info-name">Tên người chat</h3>
-            </div>
-            <div class="chat-info-actions-grid">
-                <div id="btn-info-profile" class="chat-info-action-item"
-                    onclick="if (currentChatPartnerId) openOtherUserProfileModal(currentChatPartnerId); closeChatInfoPanel();">
-                    <div class="chat-info-action-icon"><i class="fas fa-user"></i></div>
-                    <span>Trang cá nhân</span>
-                </div>
-                <div id="btn-info-nickname" class="chat-info-action-item" onclick="closeChatInfoPanel(); openNicknameModal();">
-                    <div class="chat-info-action-icon"><i class="fas fa-pen-fancy"></i></div>
-                    <span>Biệt danh</span>
-                </div>
-                <div class="chat-info-action-item" onclick="closeChatInfoPanel(); openThemeModal();">
-                    <div class="chat-info-action-icon"><i class="fas fa-palette"></i></div>
-                    <span>Đổi chủ đề</span>
-                </div>
-                <div class="chat-info-action-item" onclick="closeChatInfoPanel(); toggleSearchBar();">
-                    <div class="chat-info-action-icon"><i class="fas fa-search"></i></div>
-                    <span>Tìm tin nhắn</span>
-                </div>
-            </div>
-            <!-- Chèn vào trong info menu panel -->
-            <div class="info-menu-actions" style="margin-top: 15px; width: 100%; display: flex; flex-direction: column; gap: 8px;">
-                <button id="btn-info-create-group" class="custom-btn btn-primary" onclick="closeChatInfoPanel(); createGroupDirectlyWithPartner();" style="width: 100%; font-size: 13.5px; padding: 10px; margin: 0; min-height: 42px;">
-                    <i class="fas fa-users"></i> Tạo nhóm mới
-                </button>
-                <button id="btn-block-user" class="btn-block-danger" data-blocked="false" style="margin: 0; width: 100%; min-height: 42px;">
-                    <i class="fas fa-ban"></i> <span id="block-text">Chặn người này</span>
+    <!-- Giao diện Side Drawer Thông tin chat mới hoàn toàn -->
+    <div id="chat-info-panel" class="chat-info-drawer-overlay" style="display: none;" onclick="if(event.target === this) closeChatInfoPanel()">
+        <div class="chat-info-drawer-card">
+            <div class="drawer-header">
+                <h3 class="drawer-title">Thông tin</h3>
+                <button class="drawer-close-btn" onclick="closeChatInfoPanel()">
+                    <i class="fas fa-times"></i>
                 </button>
             </div>
+            
+            <div class="drawer-content">
+                <!-- Avatar & Name section -->
+                <div class="drawer-profile-section">
+                    <div class="drawer-avatar-wrapper">
+                        <div class="drawer-avatar">
+                            <img id="chat-info-avatar-img" src="" alt="Avatar" />
+                        </div>
+                        <div id="group-avatar-edit-badge" class="drawer-avatar-edit-badge" onclick="document.getElementById('group-avatar-file-input').click()">
+                            <i class="fas fa-camera"></i>
+                        </div>
+                    </div>
+                    <input type="file" id="group-avatar-file-input" accept="image/*" style="display: none;" />
+                    <div class="drawer-name-wrapper">
+                        <h3 id="chat-info-name" class="drawer-group-name">Tên người chat</h3>
+                        <i id="btn-rename-group" class="fas fa-pen drawer-rename-btn" onclick="handleRenameGroup()"></i>
+                    </div>
+                </div>
 
-            <!-- Quản lý thành viên nhóm -->
-            <div class="group-management-panel" id="group-management-panel" style="display: none; margin-top: 15px; width: 100%; border-top: 1px solid var(--border-color); padding-top: 15px;">
-                <h4 style="margin: 0 0 10px 0; font-size: 14px; font-weight: bold; color: var(--text-dark);">Thành viên nhóm</h4>
-                <button id="btn-add-member" class="custom-btn btn-primary" onclick="openAddMemberModal()" style="width: 100%; margin-bottom: 12px; font-size: 13px; padding: 8px 12px;">
-                    <i class="fas fa-user-plus"></i> Thêm thành viên
-                </button>
-                <ul id="group-member-list" style="list-style: none; padding: 0; margin: 0; max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
-                    <!-- Render danh sách thành viên qua JS -->
-                </ul>
-                <button id="btn-dissolve-group" class="btn-block-danger" onclick="confirmDissolveGroup()" style="width: 100%; margin-top: 12px; font-size: 13px; padding: 10px 12px; display: none;">
-                    <i class="fas fa-trash-alt"></i> Giải tán nhóm
-                </button>
+                <!-- Actions section (Trang cá nhân, biệt danh, vv...) -->
+                <div class="drawer-actions-grid chat-info-actions-grid">
+                    <div id="btn-info-profile" class="drawer-action-item" onclick="if (currentChatPartnerId) { openOtherUserProfileModal(currentChatPartnerId); closeChatInfoPanel(); }">
+                        <div class="drawer-action-icon"><i class="fas fa-user"></i></div>
+                        <span>Trang cá nhân</span>
+                    </div>
+                    <div id="btn-info-nickname" class="drawer-action-item" onclick="closeChatInfoPanel(); openNicknameModal();">
+                        <div class="drawer-action-icon"><i class="fas fa-pen-fancy"></i></div>
+                        <span>Biệt danh</span>
+                    </div>
+                    <div class="drawer-action-item" onclick="closeChatInfoPanel(); openThemeModal();">
+                        <div class="drawer-action-icon"><i class="fas fa-palette"></i></div>
+                        <span>Đổi chủ đề</span>
+                    </div>
+                    <div class="drawer-action-item" onclick="closeChatInfoPanel(); toggleSearchBar();">
+                        <div class="drawer-action-icon"><i class="fas fa-search"></i></div>
+                        <span>Tìm tin nhắn</span>
+                    </div>
+                </div>
+
+                <div class="info-menu-actions" style="width: 100%; display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px;">
+                    <button id="btn-info-create-group" class="custom-btn btn-primary" onclick="closeChatInfoPanel(); createGroupDirectlyWithPartner();" style="width: 100%; font-size: 13.5px; padding: 10px; margin: 0; min-height: 42px;">
+                        <i class="fas fa-users"></i> Tạo nhóm mới
+                    </button>
+                    <button id="btn-block-user" class="btn-block-danger" data-blocked="false" style="margin: 0; width: 100%; min-height: 42px;">
+                        <i class="fas fa-ban"></i> <span id="block-text">Chặn người này</span>
+                    </button>
+                </div>
+
+                <!-- Quản lý thành viên nhóm -->
+                <div class="group-management-panel" id="group-management-panel" style="display: none; border-top: 1px solid var(--border-color); padding-top: 16px;">
+                    <div class="drawer-section-header">
+                        <h4 class="drawer-section-title">Thành viên nhóm</h4>
+                        <button id="btn-add-member" class="drawer-section-action-btn" onclick="openAddMemberModal()">
+                            <i class="fas fa-plus"></i> Thêm
+                        </button>
+                    </div>
+                    <ul id="group-member-list" style="list-style: none; padding: 0; margin: 0; max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+                        <!-- Render danh sách thành viên qua JS -->
+                    </ul>
+                </div>
+
+                <!-- Menu phụ dưới cùng (Giải tán nhóm...) -->
+                <div class="drawer-menu-list">
+                    <button id="btn-dissolve-group" class="drawer-menu-item" onclick="confirmDissolveGroup()" style="display: none; width: 100%; text-align: left; justify-content: flex-start;">
+                        <i class="fas fa-trash-alt"></i> Giải tán nhóm
+                    </button>
+                </div>
             </div>
         </div>
     </div>

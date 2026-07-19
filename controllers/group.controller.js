@@ -73,6 +73,37 @@ exports.createGroup = async (req, res) => {
 
         // Phát tín hiệu Socket cho tất cả thành viên của nhóm
         const io = req.app.get("io");
+        const notifContent = finalGroupName 
+            ? `${creatorName} đã thêm bạn vào nhóm "${finalGroupName}".` 
+            : `${creatorName} đã thêm bạn vào nhóm.`;
+
+        const notificationPromises = uniqueUserIds.map(async (userId) => {
+            const notif = await prisma.notifications.create({
+                data: {
+                    userId,
+                    senderId: creatorId,
+                    type: "GROUP_ADDED",
+                    content: notifContent,
+                },
+                include: {
+                    Sender: { select: { id: true, fullName: true } }
+                }
+            });
+
+            const mappedNotif = {
+                ...notif,
+                Sender: notif.Sender ? {
+                    ...notif.Sender,
+                    avatar: `/api/users/${notif.Sender.id}/avatar`
+                } : null
+            };
+
+            if (io) {
+                io.to(userId).emit("new_global_notification", mappedNotif);
+            }
+        });
+        await Promise.all(notificationPromises);
+
         if (io) {
             // Cho tất cả thành viên trong nhóm biết họ đã được vào nhóm mới
             const allMemberIds = [creatorId, ...uniqueUserIds];
@@ -190,6 +221,31 @@ exports.addMembers = async (req, res) => {
                 name: m.Users ? m.Users.fullName : "Người dùng",
                 role: m.role
             }));
+
+            const notificationPromises = toAddUserIds.map(async (userId) => {
+                const notif = await prisma.notifications.create({
+                    data: {
+                        userId,
+                        senderId: adminId,
+                        type: "GROUP_ADDED",
+                        content: `${adminName} đã thêm bạn vào nhóm.`,
+                    },
+                    include: {
+                        Sender: { select: { id: true, fullName: true } }
+                    }
+                });
+
+                const mappedNotif = {
+                    ...notif,
+                    Sender: notif.Sender ? {
+                        ...notif.Sender,
+                        avatar: `/api/users/${notif.Sender.id}/avatar`
+                    } : null
+                };
+
+                io.to(userId).emit("new_global_notification", mappedNotif);
+            });
+            await Promise.all(notificationPromises);
 
             // Báo cho các người dùng cũ và người dùng mới
             // Người dùng mới cần join vào room socket
@@ -312,7 +368,12 @@ exports.kickMember = async (req, res) => {
             io.to(targetUserId).emit("new_global_notification", mappedKickNotif);
 
             // Báo cho người dùng bị kích
-            io.to(targetUserId).emit("group:kicked", { conversationId, userId: targetUserId });
+            io.to(targetUserId).emit("group:kicked", {
+                conversationId,
+                userId: targetUserId,
+                adminName,
+                groupName: groupDisplayName
+            });
 
             // Báo cho các thành viên còn lại cập nhật danh sách
             const allMembersLeft = await prisma.conversationMembers.findMany({
@@ -604,6 +665,130 @@ exports.getGroupMembers = async (req, res) => {
         });
     } catch (error) {
         console.error("❌ Lỗi khi lấy danh sách thành viên nhóm:", error);
+        res.status(500).json({ success: false, message: "Lỗi hệ thống.", error: error.message });
+    }
+};
+
+// 6. Đổi tên nhóm
+exports.renameGroup = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { conversationId, groupName } = req.body;
+
+        if (!groupName || !groupName.trim()) {
+            return res.status(400).json({ success: false, message: "Tên nhóm không được để trống." });
+        }
+
+        // Kiểm tra xem người yêu cầu có ở trong nhóm không
+        const isMember = await prisma.conversationMembers.findFirst({
+            where: { conversationId, userId }
+        });
+
+        if (!isMember) {
+            return res.status(403).json({ success: false, message: "Bạn không phải thành viên của nhóm này." });
+        }
+
+        // Lấy thông tin người đổi
+        const user = await prisma.users.findUnique({
+            where: { id: userId },
+            select: { fullName: true }
+        });
+        const changerName = user ? user.fullName : "Thành viên";
+
+        // Cập nhật tên nhóm trong database
+        await prisma.conversations.update({
+            where: { id: conversationId },
+            data: { name: groupName.trim() }
+        });
+
+        // Tạo tin nhắn hệ thống thông báo đổi tên
+        const systemContent = `${changerName} đã đổi tên nhóm thành "${groupName.trim()}".`;
+        const systemMessage = await prisma.messages.create({
+            data: {
+                id: uuidv4(),
+                conversationId,
+                senderId: userId,
+                content: systemContent,
+                type: "system"
+            }
+        });
+
+        // Emit Socket event
+        const io = req.app.get("io");
+        if (io) {
+            io.to(conversationId).emit("group:renamed", {
+                conversationId,
+                groupName: groupName.trim(),
+                systemMessage
+            });
+            io.to(conversationId).emit("receive_message", systemMessage);
+        }
+
+        res.status(200).json({ success: true, message: "Đổi tên nhóm thành công.", groupName: groupName.trim(), systemMessage });
+    } catch (error) {
+        console.error("❌ Lỗi khi đổi tên nhóm:", error);
+        res.status(500).json({ success: false, message: "Lỗi hệ thống.", error: error.message });
+    }
+};
+
+// 7. Thay đổi ảnh đại diện nhóm
+exports.changeGroupAvatar = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { conversationId, avatar } = req.body; // avatar: base64
+
+        if (!avatar) {
+            return res.status(400).json({ success: false, message: "Thiếu dữ liệu ảnh đại diện." });
+        }
+
+        // Kiểm tra xem người yêu cầu có ở trong nhóm không
+        const isMember = await prisma.conversationMembers.findFirst({
+            where: { conversationId, userId }
+        });
+
+        if (!isMember) {
+            return res.status(403).json({ success: false, message: "Bạn không phải thành viên của nhóm này." });
+        }
+
+        // Lấy thông tin người đổi
+        const user = await prisma.users.findUnique({
+            where: { id: userId },
+            select: { fullName: true }
+        });
+        const changerName = user ? user.fullName : "Thành viên";
+
+        // Cập nhật avatar nhóm trong database
+        await prisma.conversations.update({
+            where: { id: conversationId },
+            data: { avatar }
+        });
+
+        // Tạo tin nhắn hệ thống thông báo đổi ảnh
+        const systemContent = `${changerName} đã cập nhật ảnh đại diện nhóm.`;
+        const systemMessage = await prisma.messages.create({
+            data: {
+                id: uuidv4(),
+                conversationId,
+                senderId: userId,
+                content: systemContent,
+                type: "system"
+            }
+        });
+
+        // Emit Socket event
+        const io = req.app.get("io");
+        if (io) {
+            io.to(conversationId).emit("group:avatar_changed", {
+                conversationId,
+                avatar,
+                systemMessage
+            });
+            io.to(conversationId).emit("receive_message", systemMessage);
+        }
+
+        res.status(200).json({ success: true, message: "Thay đổi ảnh đại diện nhóm thành công.", avatar, systemMessage });
+    } catch (error) {
+        console.error("❌ Lỗi khi thay đổi ảnh đại diện nhóm:", error);
         res.status(500).json({ success: false, message: "Lỗi hệ thống.", error: error.message });
     }
 };

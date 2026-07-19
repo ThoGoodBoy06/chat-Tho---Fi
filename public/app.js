@@ -2039,10 +2039,10 @@ async function loadConversations() {
                 </div>
                 <div class="chat-list-msg" style="${msgStyle}">${lastMsg}</div>
               </div>
-              <div class="conv-actions-wrapper" onclick="event.stopPropagation();">
-                <i class="fas fa-ellipsis-v conv-options-btn" onclick="toggleConversationMenu(event, '${conv.id}')"></i>
+              <div class="conv-actions-wrapper" onclick="event.stopPropagation();" ontouchstart="event.stopPropagation();">
+                <i class="fas fa-ellipsis-v conv-options-btn" onclick="toggleConversationMenu(event, '${conv.id}')" ontouchstart="toggleConversationMenu(event, '${conv.id}')"></i>
                 <div class="conv-dropdown-menu" id="conv-menu-${conv.id}">
-                  <div class="conv-menu-item text-danger" onclick="confirmDeleteConversation(event, '${conv.id}')">
+                  <div class="conv-menu-item text-danger" onclick="confirmDeleteConversation(event, '${conv.id}')" ontouchstart="confirmDeleteConversation(event, '${conv.id}')">
                     <i class="fas fa-trash-alt"></i> Xóa cuộc trò chuyện
                   </div>
                 </div>
@@ -7005,6 +7005,22 @@ async function loadNotifications() {
             notificationsList = data.data;
             updateNotificationBadge();
             renderNotifications();
+
+            // Hiển thị Toast thông báo khi vừa vào app (chỉ thông báo 1 lần bằng cách lưu localStorage)
+            const shownNotifIds = JSON.parse(localStorage.getItem("shown_notif_ids") || "[]");
+            const unreadGroupNotifs = data.data.filter(n => !n.isRead && (n.type === "GROUP_KICKED" || n.type === "GROUP_DISSOLVED" || n.type === "GROUP_ADDED"));
+            let newShown = false;
+            unreadGroupNotifs.forEach(n => {
+                if (!shownNotifIds.includes(n.id)) {
+                    showTempToast(n.content);
+                    shownNotifIds.push(n.id);
+                    newShown = true;
+                }
+            });
+            if (newShown) {
+                if (shownNotifIds.length > 100) shownNotifIds.splice(0, shownNotifIds.length - 100);
+                localStorage.setItem("shown_notif_ids", JSON.stringify(shownNotifIds));
+            }
         }
     } catch (e) {
         console.error("Lỗi tải thông báo:", e);
@@ -7096,6 +7112,8 @@ function renderNotifications() {
                 iconClass = "fa-user-slash";
             } else if (notif.type && notif.type === "GROUP_DISSOLVED") {
                 iconClass = "fa-users-slash";
+            } else if (notif.type && notif.type === "GROUP_ADDED") {
+                iconClass = "fa-users";
             } else if (notif.content && (notif.content.includes("kết bạn") || notif.content.includes("lời mời") || notif.content.includes("chấp nhận"))) {
                 iconClass = "fa-user-plus";
             }
@@ -7111,7 +7129,7 @@ function renderNotifications() {
             </div>
           </div>
           <div class="notification-content">
-            <p class="notification-text">${(notif.type === "GROUP_KICKED" || notif.type === "GROUP_DISSOLVED") ? notif.content : `<b>${sender.fullName}</b> ${notif.content}`}</p>
+            <p class="notification-text">${(notif.type === "GROUP_KICKED" || notif.type === "GROUP_DISSOLVED" || notif.type === "GROUP_ADDED") ? notif.content : `<b>${sender.fullName}</b> ${notif.content}`}</p>
             <p class="notification-time">${timeStr}</p>
           </div>
         `;
@@ -8074,7 +8092,10 @@ function startAiQuotaCountdown() {
 
 // --- XOÁ CUỘC TRÒ CHUYỆN (GIAO DIỆN & API) ---
 function toggleConversationMenu(event, conversationId) {
-    event.stopPropagation();
+    if (event) {
+        event.stopPropagation();
+        if (event.cancelable) event.preventDefault();
+    }
     const menuId = `conv-menu-${conversationId}`;
     const menu = document.getElementById(menuId);
     if (!menu) return;
@@ -8088,28 +8109,19 @@ function toggleConversationMenu(event, conversationId) {
     if (isShowing) {
         menu.style.display = "none";
     } else {
-        // Tính toán vị trí dựa trên nút 3 chấm
-        const btn = event.currentTarget || event.target;
-        const rect = btn.getBoundingClientRect();
         menu.style.display = "block";
-        menu.style.top = (rect.bottom + 4) + "px";
-        menu.style.left = "auto";
-        menu.style.right = (window.innerWidth - rect.right) + "px";
-
-        // Đảm bảo không bị tràn ra ngoài viewport phía dưới
-        const menuRect = menu.getBoundingClientRect();
-        if (menuRect.bottom > window.innerHeight) {
-            menu.style.top = (rect.top - menuRect.height - 4) + "px";
-        }
     }
 }
 
 async function confirmDeleteConversation(event, conversationId) {
-    event.stopPropagation();
+    if (event) {
+        event.stopPropagation();
+        if (event.cancelable) event.preventDefault();
+    }
     const menu = document.getElementById(`conv-menu-${conversationId}`);
     if (menu) menu.style.display = "none";
 
-    const isConfirmed = confirm("Bạn có chắc chắn muốn xóa vĩnh viễn toàn bộ cuộc trò chuyện này không? Tất cả tin nhắn sẽ bị xóa sạch.");
+    const isConfirmed = await customConfirm("Xác nhận xóa", "Bạn có chắc chắn muốn xóa vĩnh viễn toàn bộ cuộc trò chuyện này không? Tất cả tin nhắn sẽ bị xóa sạch.");
     if (!isConfirmed) return;
 
     try {
@@ -8122,7 +8134,7 @@ async function confirmDeleteConversation(event, conversationId) {
 
         const data = await res.json();
         if (data.success) {
-            alert("Đã xóa cuộc trò chuyện thành công.");
+            showTempToast("Đã xóa cuộc trò chuyện thành công.");
             if (isSameId(conversationId, currentConversationId)) {
                 currentConversationId = "";
                 currentChatPartnerId = null;
@@ -8133,15 +8145,16 @@ async function confirmDeleteConversation(event, conversationId) {
             }
             loadConversations();
         } else {
-            alert("Lỗi: " + data.message);
+            customAlert("Lỗi", "Lỗi: " + data.message);
         }
     } catch (error) {
-        alert("Lỗi kết nối server: " + error.message);
+        customAlert("Lỗi kết nối", "Lỗi kết nối server: " + error.message);
     }
 }
 
 // Đóng dropdown khi click ra ngoài màn hình
-document.addEventListener("click", () => {
+document.addEventListener("click", (e) => {
+    if (e.target && e.target.closest && e.target.closest(".conv-actions-wrapper")) return;
     document.querySelectorAll(".conv-dropdown-menu").forEach((m) => {
         m.style.display = "none";
     });
@@ -8217,6 +8230,12 @@ function openChatInfoPanel() {
     if (nameEl && infoName) {
         infoName.textContent = nameEl.textContent || "Người dùng";
     }
+
+    const isGroup = !currentChatPartnerId;
+    const btnRenameGroup = document.getElementById("btn-rename-group");
+    const groupAvatarEditBadge = document.getElementById("group-avatar-edit-badge");
+    if (btnRenameGroup) btnRenameGroup.style.display = isGroup ? "inline-block" : "none";
+    if (groupAvatarEditBadge) groupAvatarEditBadge.style.display = isGroup ? "flex" : "none";
 
     const btnBlockUser = document.getElementById("btn-block-user");
     if (btnBlockUser) {
@@ -10535,6 +10554,11 @@ function initGroupSocketListeners(socket) {
     socket.on("group:added_to_group", (data) => {
         socket.emit("join_conversation", data.conversationId);
         if (typeof loadConversations === "function") loadConversations();
+        if (data.systemMessage && data.systemMessage.content) {
+            showTempToast(data.systemMessage.content);
+        } else {
+            showTempToast("Bạn đã được thêm vào nhóm mới.");
+        }
     });
 
     socket.on("group:member_added", (data) => {
@@ -10550,17 +10574,20 @@ function initGroupSocketListeners(socket) {
     });
 
     socket.on("group:kicked", (data) => {
+        const toastMsg = `Bạn đã bị xóa khỏi nhóm bởi ${data.adminName || 'quản trị viên'}.`;
+        showTempToast(toastMsg);
+
         if (isSameId(data.conversationId, currentConversationId)) {
-            showTempToast("Bạn đã bị quản trị viên xóa khỏi nhóm này.");
+            if (typeof closeChatInfoPanel === "function") closeChatInfoPanel();
+            if (typeof closeChatMobile === "function") closeChatMobile();
+
             currentConversationId = null;
             currentChatPartnerId = null;
             document.getElementById("chat-header-container").style.display = "none";
             document.getElementById("input-area").style.display = "none";
-            document.getElementById("messages").innerHTML = `<div style="text-align: center; color: var(--text-light); margin-top: 50px;">Bạn đã bị xóa khỏi nhóm này.</div>`;
-            if (typeof loadConversations === "function") loadConversations();
-        } else {
-            if (typeof loadConversations === "function") loadConversations();
+            document.getElementById("messages").innerHTML = "";
         }
+        if (typeof loadConversations === "function") loadConversations();
     });
 
     socket.on("group:role_changed", (data) => {
@@ -10571,15 +10598,36 @@ function initGroupSocketListeners(socket) {
 
     // Lắng nghe nhóm bị giải tán
     socket.on("group:dissolved", (data) => {
+        showTempToast(`Nhóm "${data.groupName || 'Hội thoại'}" đã được giải tán.`);
+
         if (isSameId(data.conversationId, currentConversationId)) {
-            // Đóng info panel nếu đang mở
             if (typeof closeChatInfoPanel === "function") closeChatInfoPanel();
+            if (typeof closeChatMobile === "function") closeChatMobile();
 
             currentConversationId = null;
             currentChatPartnerId = null;
             document.getElementById("chat-header-container").style.display = "none";
             document.getElementById("input-area").style.display = "none";
-            document.getElementById("messages").innerHTML = `<div style="text-align: center; color: var(--text-light); margin-top: 50px;">Nhóm "${data.groupName}" đã được giải tán.</div>`;
+            document.getElementById("messages").innerHTML = "";
+        }
+        if (typeof loadConversations === "function") loadConversations();
+    });
+
+    socket.on("group:renamed", (data) => {
+        if (isSameId(data.conversationId, currentConversationId)) {
+            document.getElementById("chat-header-name").innerText = data.groupName;
+            const infoName = document.getElementById("chat-info-name");
+            if (infoName) infoName.innerText = data.groupName;
+        }
+        if (typeof loadConversations === "function") loadConversations();
+    });
+
+    socket.on("group:avatar_changed", (data) => {
+        const formattedAvatar = formatUrl(data.avatar);
+        if (isSameId(data.conversationId, currentConversationId)) {
+            document.getElementById("current-chat-avatar").src = formattedAvatar;
+            const infoAvatar = document.getElementById("chat-info-avatar-img");
+            if (infoAvatar) infoAvatar.src = formattedAvatar;
         }
         if (typeof loadConversations === "function") loadConversations();
     });
@@ -11088,6 +11136,84 @@ async function createGroupDirectlyWithPartner() {
         hideLoading();
         showTempToast("Lỗi hệ thống khi tạo nhóm.");
     }
+}
+
+// Đổi tên nhóm
+async function handleRenameGroup() {
+    if (!currentConversationId) return;
+    const currentName = document.getElementById("chat-info-name")?.innerText || "";
+    const newName = prompt("Nhập tên nhóm mới:", currentName);
+    if (newName === null) return;
+    const groupName = newName.trim();
+    if (!groupName) {
+        showTempToast("Tên nhóm không được để trống.");
+        return;
+    }
+
+    showLoading("Đang cập nhật tên nhóm...");
+    try {
+        const res = await fetch(`${API_URL}/chat/group/rename`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({ conversationId: currentConversationId, groupName })
+        });
+        const data = await res.json();
+        hideLoading();
+        if (data.success) {
+            showTempToast("Cập nhật tên nhóm thành công!");
+            document.getElementById("chat-info-name").innerText = groupName;
+            document.getElementById("chat-header-name").innerText = groupName;
+            await loadConversations();
+        } else {
+            showTempToast(data.message);
+        }
+    } catch (e) {
+        hideLoading();
+        showTempToast("Lỗi hệ thống khi cập nhật tên nhóm.");
+    }
+}
+
+// Lắng nghe sự kiện tải lên ảnh đại diện nhóm
+const groupAvatarUploadInput = document.getElementById("group-avatar-file-input");
+if (groupAvatarUploadInput) {
+    groupAvatarUploadInput.addEventListener("change", async function (e) {
+        if (!currentConversationId) return;
+        const file = e.target.files[0];
+        if (!file) return;
+
+        try {
+            showLoading("Đang xử lý và nén ảnh đại diện nhóm...");
+            const compressedBase64 = await compressImage(file, 150, 150, 0.8);
+
+            const res = await fetch(`${API_URL}/chat/group/avatar`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ conversationId: currentConversationId, avatar: compressedBase64 }),
+            });
+
+            const data = await res.json();
+            hideLoading();
+            if (data.success) {
+                document.getElementById("chat-info-avatar-img").src = compressedBase64;
+                document.getElementById("current-chat-avatar").src = compressedBase64;
+                showTempToast("Cập nhật ảnh đại diện nhóm thành công!");
+                await loadConversations();
+            } else {
+                showTempToast("Lỗi tải ảnh: " + data.message);
+            }
+        } catch (error) {
+            hideLoading();
+            showTempToast("Lỗi hệ thống khi tải ảnh nhóm lên!");
+        } finally {
+            groupAvatarUploadInput.value = "";
+        }
+    });
 }
 
 

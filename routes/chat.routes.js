@@ -36,5 +36,7 @@ router.post("/group/kick", groupController.kickMember);
 router.post("/group/dissolve", groupController.dissolveGroup);
 router.post("/group/role", groupController.changeMemberRole);
 router.get("/group/:conversationId/members", groupController.getGroupMembers);
+router.post("/group/rename", groupController.renameGroup);
+router.post("/group/avatar", groupController.changeGroupAvatar);
 
 module.exports = router;

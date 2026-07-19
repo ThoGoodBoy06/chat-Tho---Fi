@@ -84,8 +84,24 @@ exports.getConversations = async(req, res) => {
             },
         });
 
+        // Lọc bỏ các cuộc trò chuyện đã bị xóa ở phía người dùng hiện tại và chưa có tin nhắn mới hơn thời điểm xóa
+        const activeConversations = conversations.filter((item) => {
+            if (!item.Conversations) return false;
+            
+            // Nếu chưa từng xóa, hiển thị bình thường
+            if (!item.deletedAt) return true;
+            
+            // Nếu đã xóa, chỉ hiển thị lại nếu có ít nhất 1 tin nhắn mới được tạo sau thời điểm xóa
+            const latestMsg = item.Conversations.Messages[0];
+            if (latestMsg && new Date(latestMsg.createdAt) > new Date(item.deletedAt)) {
+                return true;
+            }
+            
+            return false;
+        });
+
         // Sắp xếp cuộc trò chuyện có tin nhắn mới nhất lên trên cùng
-        conversations.sort((a, b) => {
+        activeConversations.sort((a, b) => {
             const getLatestTime = (member) => {
                 const conv = member.Conversations;
                 if (!conv) return 0; // Tránh lỗi nếu dữ liệu phòng chat bị rỗng
@@ -106,7 +122,7 @@ exports.getConversations = async(req, res) => {
         });
 
         // Map avatar sang URL tĩnh mà không cần truy vấn DB lại
-        const mappedConversations = conversations.map((item) => {
+        const mappedConversations = activeConversations.map((item) => {
             if (!item.Conversations) return item;
 
             const conv = { ...item.Conversations };
@@ -1052,24 +1068,43 @@ exports.deleteConversation = async(req, res) => {
             });
         }
 
-        // 2. Lấy danh sách thành viên trước khi xoá để báo hiệu qua socket
-        const members = await prisma.conversationMembers.findMany({
-            where: { conversationId },
-            select: { userId: true },
+        // 3. Thực hiện xoá ở phía tôi (soft delete)
+        await prisma.conversationMembers.update({
+            where: { id: membership.id },
+            data: { deletedAt: new Date() }
         });
 
-        // 3. Xoá trong Transaction
-        await prisma.$transaction([
-            prisma.messages.deleteMany({ where: { conversationId } }),
-            prisma.conversationMembers.deleteMany({ where: { conversationId } }),
-            prisma.conversations.delete({ where: { id: conversationId } }),
-        ]);
+        // Thêm userId vào deletedBy của tất cả các tin nhắn hiện có trong phòng chat này để ẩn đi ở phía tôi
+        const messages = await prisma.messages.findMany({
+            where: {
+                conversationId,
+                NOT: {
+                    deletedBy: {
+                        has: userId
+                    }
+                }
+            },
+            select: { id: true, deletedBy: true }
+        });
 
-        // 4. Phát tín hiệu socket tới các thành viên để tự động xoá trên giao diện
+        if (messages.length > 0) {
+            await prisma.$transaction(
+                messages.map(msg => prisma.messages.update({
+                    where: { id: msg.id },
+                    data: {
+                        deletedBy: {
+                            set: [...msg.deletedBy, userId]
+                        }
+                    }
+                }))
+            );
+        }
+
+        // 4. Phát tín hiệu socket tới riêng người dùng này để tự động ẩn trên giao diện của họ
         const io = req.app.get("io");
-        members.forEach((m) => {
-            io.to(m.userId).emit("conversation_deleted", { conversationId });
-        });
+        if (io) {
+            io.to(userId).emit("conversation_deleted", { conversationId });
+        }
 
         res.status(200).json({
             success: true,
