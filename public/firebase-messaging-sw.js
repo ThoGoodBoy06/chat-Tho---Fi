@@ -1,5 +1,5 @@
 // Version tracking - giúp trình duyệt iOS/Android nhận diện cập nhật mới và không dùng bản cache cũ
-const SW_VERSION = "1.1.0";
+const SW_VERSION = "1.2.0";
 console.log("[firebase-messaging-sw.js] Version:", SW_VERSION);
 
 importScripts(
@@ -109,10 +109,33 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
+  // Xóa tất cả cache cũ khi Service Worker mới được kích hoạt
+  event.waitUntil(
+    caches.keys().then((names) => {
+      return Promise.all(names.map((name) => caches.delete(name)));
+    }).then(() => self.clients.claim())
+  );
 });
 
-// Bắt buộc phải có sự kiện fetch để trình duyệt nhận diện ứng dụng có thể cài đặt (PWA)
+// Bắt buộc tải HTML/CSS/JS mới nhất từ mạng (network-first) để tránh cache cũ
 self.addEventListener("fetch", (event) => {
-  // Trình duyệt sẽ xử lý request mạng như bình thường (hoặc bạn có thể cache thêm tài nguyên ở đây nếu cần)
+  const url = new URL(event.request.url);
+  // Chỉ xử lý request cùng origin
+  if (url.origin !== self.location.origin) return;
+  
+  // HTML pages: luôn tải từ mạng, không bao giờ dùng cache
+  if (event.request.mode === "navigate" || url.pathname === "/" || url.pathname.endsWith(".html")) {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(event.request))
+    );
+    return;
+  }
+  
+  // CSS/JS: luôn tải từ mạng (vì đã có version query parameter)
+  if (url.pathname.endsWith(".css") || url.pathname.endsWith(".js")) {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(event.request))
+    );
+    return;
+  }
 });
