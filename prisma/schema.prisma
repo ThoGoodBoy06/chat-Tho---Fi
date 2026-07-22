@@ -18,6 +18,9 @@ model ConversationMembers {
   deletedAt      DateTime?
   Conversations  Conversations? @relation(fields: [conversationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   Users          Users?         @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([userId])
+  @@index([conversationId])
 }
 
 model Conversations {
@@ -72,6 +75,7 @@ model Messages {
 
   @@index([conversationId])
   @@index([createdAt])
+  @@index([senderId])
 }
 
 model Users {
@@ -115,6 +119,9 @@ model FriendRequests {
   receiver     Users    @relation("received_requests", fields: [receiverId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([requesterId, receiverId]) // Đảm bảo mỗi cặp user chỉ có 1 mối quan hệ
+  @@index([requesterId])
+  @@index([receiverId])
+  @@index([status])
 }
 
 model Notifications {
@@ -128,6 +135,10 @@ model Notifications {
 
   User      Users    @relation("UserNotifications", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   Sender    Users    @relation("SenderNotifications", fields: [senderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([isRead])
 }
 
 model News {
@@ -138,6 +149,9 @@ model News {
   link        String?  // Đường dẫn gốc của bài báo
   fullContent String?  // Nội dung chi tiết bài báo (cào từ VNExpress)
   createdAt   DateTime @default(now())
+
+  @@index([category])
+  @@index([createdAt])
 }
 
 model Block {

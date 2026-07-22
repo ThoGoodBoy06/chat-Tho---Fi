@@ -6,6 +6,9 @@
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
     <title>Chat Tho-Fi | Kết nối không giới hạn</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link rel="manifest" href="manifest.json" />
@@ -480,8 +483,8 @@
                                         oninput="filterEmojis(this.value)">
                                 </div>
                             </div>
-                            <div class="emoji-category-tabs" id="emoji-category-tabs"></div>
                             <div class="emoji-grid" id="emoji-grid"></div>
+                            <div class="emoji-category-tabs" id="emoji-category-tabs"></div>
                         </div>
 
                         <!-- TAB STICKER -->
@@ -499,9 +502,7 @@
                                         oninput="onGifSearchInput(this.value)">
                                     <button type="button" class="gif-search-clear-btn" id="gif-search-clear-btn" onclick="clearGifSearch()" style="display:none;">
                                         <i class="fas fa-times"></i>
-                                    </button>
                                 </div>
-                                <div class="gif-category-tags" id="gif-category-tags"></div>
                             </div>
                             <div class="gif-grid" id="gif-grid"></div>
                         </div>
@@ -1358,7 +1359,7 @@
 
     <!-- Import Socket.IO và file xử lý logic -->
     <script src="/socket.io/socket.io.js"></script>
-    <script src="app.js?v=200002"></script>
+    <script src="app.js?v=200015"></script>
 </body>
 
 </html>

@@ -523,6 +523,8 @@ function createReadReceiptAvatar() {
         getPartnerAvatar() ||
         "https://ui-avatars.com/api/?name=User&background=random";
     avatar.className = "read-receipt-avatar";
+    avatar.loading = "lazy";
+    avatar.decoding = "async";
     avatar.title = "Đã xem";
     avatar.alt = "Đã xem";
     return avatar;
@@ -2020,10 +2022,10 @@ async function loadConversations() {
 
             const avatarHtml = isGroup 
                 ? `<div class="avatar">
-                     <img src="${avatarUrl}" alt="Avatar">
+                     <img src="${avatarUrl}" alt="Avatar" loading="lazy" decoding="async">
                    </div>`
                 : `<div class="avatar" style="cursor: pointer;" onclick="event.stopPropagation(); showUserProfile('${targetId}')">
-                     <img src="${avatarUrl}" alt="Avatar">
+                     <img src="${avatarUrl}" alt="Avatar" loading="lazy" decoding="async">
                      <div class="online-dot" style="display: ${isOnline ? 'block' : 'none'};"></div>
                    </div>`;
 
@@ -2639,8 +2641,10 @@ async function loadOlderMessages() {
 // 1.5 Xử lý Đăng nhập thủ công
 async function login() {
     try {
-        const username = document.getElementById("login-username").value;
-        const password = document.getElementById("login-password").value;
+        const usernameEl = document.getElementById("login-username");
+        const passwordEl = document.getElementById("login-password");
+        const username = usernameEl ? usernameEl.value.trim() : "";
+        const password = passwordEl ? passwordEl.value.trim() : "";
 
         if (!username || !password) {
             return alert("Bạn ơi, nhập đủ tên người dùng và mật khẩu nhé!");
@@ -2660,7 +2664,7 @@ async function login() {
             localStorage.setItem("authToken", data.token);
             initizeChatSession(data.data, data.token);
         } else {
-            alert("Đăng nhập thất bại: " + data.message);
+            alert("Đăng nhập thất bại: " + (data.message || "Vui lòng kiểm tra lại thông tin!"));
         }
     } catch (error) {
         alert("Lỗi kết nối máy chủ khi đăng nhập: " + error.message);
@@ -4113,20 +4117,24 @@ if (messageInput) {
     messageInput.addEventListener("focus", function () {
         const inputArea = document.getElementById('input-area');
         if (inputArea) inputArea.classList.add('is-typing');
-        if (typeof closeEmojiPicker === "function") closeEmojiPicker();
+        
+        // Không tự đóng emoji picker nếu focus xuất hiện từ việc chèn emoji
+        if (!window.isInsertingEmoji && typeof closeEmojiPicker === "function") {
+            closeEmojiPicker();
+        }
 
-        // Trên mobile: KHÔNG tự gọi scrollToBottomInstant ở đây nữa.
-        // Việc neo cuộn đã được visualViewport 'resize' (debounce 120ms) đảm nhiệm
-        // sau khi bàn phím lên xong hẳn, tránh 2 nguồn gọi chồng chéo.
         if (window.innerWidth > 768) {
             scrollToBottomSmooth();
         }
     });
 
-    // Đảm bảo click/tap vào ô nhập cũng lập tức thu gọn menu chức năng trái
+    // Đảm bảo click/tap trực tiếp vào ô nhập chữ sẽ đóng emoji picker
     messageInput.addEventListener("click", function () {
         const inputArea = document.getElementById('input-area');
         if (inputArea) inputArea.classList.add('is-typing');
+        if (!window.isInsertingEmoji && typeof closeEmojiPicker === "function") {
+            closeEmojiPicker();
+        }
         if (window.innerWidth > 768) {
             scrollToBottomSmooth();
         }
@@ -8583,9 +8591,47 @@ setInterval(() => {
     }
 }, 60000);
 
-// ============================================================
-// EMOJI PICKER
-// ============================================================
+// Hàm xử lý bỏ dấu tiếng Việt chuẩn cho tìm kiếm
+function removeVietnameseAccents(str) {
+    if (!str) return "";
+    return str
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/đ/g, "d")
+        .replace(/Đ/g, "D")
+        .toLowerCase();
+}
+
+// Bảng chỉ mục tra cứu từ khóa emoji siêu nhẹ (~2KB) không gây lag app
+const EMOJI_SEARCH_INDEX = [
+    { k: ["may bay", "máy bay", "plane", "airplane", "truc thang", "tên lửa", "rocket"], e: ["✈️", "🛫", "🛬", "🛩️", "🚀", "🛸", "🚁", "💺", "🛰️"] },
+    { k: ["xe", "o to", "ô tô", "xe hoi", "car", "xe may", "motor", "xe dap", "bike"], e: ["🚗", "🚕", "🚙", "🚌", "🏎️", "🚓", "🚑", "🚒", "🚚", "🛵", "🏍️", "🚲"] },
+    { k: ["tau", "tàu", "tau hoa", "train", "thuyen", "ship"], e: ["🚆", "🚄", "🚅", "🚂", "🛶", "⛵", "🚤", "🛳️", "🚢"] },
+    { k: ["cuoi", "cười", "vui", "happy", "smile", "haha", "kkk"], e: ["😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😂", "🙂", "😊", "🥳", "😎"] },
+    { k: ["khoc", "khóc", "sad", "buon", "buồn"], e: ["😢", "😭", "😿", "🥺", "🥲", "💧", "😥"] },
+    { k: ["yeu", "yêu", "love", "tim", "heart", "thuong", "thương"], e: ["❤️", "💖", "💗", "💓", "💞", "💕", "❣️", "💘", "💝", "😍", "🥰", "😘", "🫶"] },
+    { k: ["gian", "giận", "tuc gian", "angry"], e: ["😠", "😡", "🤬", "😤"] },
+    { k: ["cho", "chó", "cun", "dog"], e: ["🐶", "🐕", "🐩"] },
+    { k: ["meo", "mèo", "cat"], e: ["🐱", "🐈", "😻"] },
+    { k: ["gau", "gấu", "bear"], e: ["🐻", "🐼", "🐨"] },
+    { k: ["ga", "gà", "chicken"], e: ["🐔", "🐓", "🐤"] },
+    { k: ["ca", "cá", "fish", "shark"], e: ["🐟", "🐠", "🦈", "🐬"] },
+    { k: ["tao", "táo", "apple"], e: ["🍎", "🍏"] },
+    { k: ["chuoi", "chuối", "banana"], e: ["🍌"] },
+    { k: ["banh", "bánh", "cake", "bread"], e: ["🎂", "🍰", "🧁", "🍞", "🥐", "🍩", "🍪"] },
+    { k: ["burger", "hamburger", "pizza"], e: ["🍔", "🍕"] },
+    { k: ["com", "cơm", "mi", "mì", "rice", "noodle"], e: ["🍚", "🍜", "🍝"] },
+    { k: ["ca phe", "cà phê", "tra sua", "trà sữa", "coffee", "beer", "bia"], e: ["☕", "🧋", "🍺", "🍻", "🍷"] },
+    { k: ["bong", "bóng", "ball", "bong da", "soccer", "football", "bong ro"], e: ["⚽", "🏀", "🏈", "⚾", "🎾"] },
+    { k: ["nhac", "nhạc", "music"], e: ["🎵", "🎶", "🎧", "🎸", "🎤"] },
+    { k: ["game", "tro choi"], e: ["🎮", "🕹️", "🎲"] },
+    { k: ["dien thoai", "điện thoại", "phone", "may tinh", "máy tính", "laptop"], e: ["📱", "📞", "💻", "🖥️"] },
+    { k: ["tien", "tiền", "money", "qua", "quà", "gift"], e: ["💰", "💵", "🎁"] },
+    { k: ["lua", "lửa", "fire", "sao", "star"], e: ["🔥", "⭐️", "🌟", "✨"] },
+    { k: ["mat troi", "mặt trời", "sun", "mat trang", "mặt trăng", "moon", "mua", "mưa", "rain"], e: ["☀️", "🌙", "🌧️", "☔"] },
+    { k: ["nha", "nhà", "house"], e: ["🏠", "🏡", "🏢"] }
+];
+
 const EMOJI_DATA = [
     {
         name: "Mặt cười",
@@ -8790,15 +8836,19 @@ function insertEmojiToInput(emoji) {
     const input = document.getElementById("message-input");
     if (!input) return;
 
-    const start = input.selectionStart;
-    const end = input.selectionEnd;
+    window.isInsertingEmoji = true;
+
+    const start = typeof input.selectionStart === "number" ? input.selectionStart : input.value.length;
+    const end = typeof input.selectionEnd === "number" ? input.selectionEnd : input.value.length;
     const text = input.value;
     input.value = text.substring(0, start) + emoji + text.substring(end);
 
     // Set cursor position after emoji
     const newPos = start + emoji.length;
-    input.selectionStart = newPos;
-    input.selectionEnd = newPos;
+    try {
+        input.selectionStart = newPos;
+        input.selectionEnd = newPos;
+    } catch (err) {}
 
     // Trigger input event for any listeners (like show/hide send button)
     input.dispatchEvent(new Event("input", { bubbles: true }));
@@ -8807,6 +8857,10 @@ function insertEmojiToInput(emoji) {
     if (window.innerWidth > 768) {
         input.focus();
     }
+
+    setTimeout(() => {
+        window.isInsertingEmoji = false;
+    }, 150);
 }
 
 function toggleEmojiPicker(e) {
@@ -8917,10 +8971,17 @@ function filterEmojis(query) {
 // Close emoji picker when clicking outside
 document.addEventListener("click", (e) => {
     const panel = document.getElementById("emoji-picker-panel");
-    const wrapper = document.querySelector(".emoji-picker-wrapper");
+    const toggleBtn = document.getElementById("emoji-toggle-btn");
+    const inputArea = document.getElementById("input-area");
+
     if (panel && panel.classList.contains("show")) {
-        // Tránh đóng panel khi click vào trong chính panel hoặc vào nút bấm toggle
-        if (wrapper && !wrapper.contains(e.target) && !panel.contains(e.target)) {
+        // Nếu e.target đã bị gỡ khỏi DOM (do re-render innerHTML khi chọn tab/pack), bỏ qua không đóng panel
+        if (e.target && !document.body.contains(e.target)) {
+            return;
+        }
+
+        // Chỉ đóng panel nếu click hoàn toàn ra bên ngoài panel, nút toggle emoji và ô nhập tin nhắn
+        if (!panel.contains(e.target) && (!toggleBtn || !toggleBtn.contains(e.target)) && (!inputArea || !inputArea.contains(e.target))) {
             closeEmojiPicker();
         }
     }
@@ -11349,18 +11410,6 @@ const STICKER_PACKS = [
 
 let currentStickerPackId = "quby";
 
-// 3. GIF DEFAULTS & SEARCH TAGS
-const GIF_TAGS = ["Nổi bật", "Cười", "Hôn", "Khóc", "Mèo", "Nhảy", "Cảm ơn", "Chào"];
-
-const GIF_DEFAULTS = [
-    { id: "g1", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcWNmZHpwbzNvdGttbWNvaGV1aHZ2YTVjcndpdXlyeWZvd3p5NmswZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0AMJzvh86YfaQ9Sg/giphy.gif", alt: "Mèo nhảy" },
-    { id: "g2", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExeGJ3cmZ2bDN4bDRtbHZ4NXo0b2VwOTR3bmdwdGk2OXJveWpmdHhpdSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/ndFA19YRBbZJu/giphy.gif", alt: "Nhảy vui vẻ" },
-    { id: "g3", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3ZtNHBnYTVtZHRvdWcyeTJ3ZXQ3dGZudGNud2g1dzdsY3NmdHRuYSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/10UeedrT5MIfPG/giphy.gif", alt: "Mèo ngạc nhiên" },
-    { id: "g4", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExaXZrYmV0bjI2bzFlYWtsNWpwcjNrdG1mZ3dxcXVrdmVjdmlydWhiaCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/artj92V8o75VPL7AeQ/giphy.gif", alt: "Ôm yêu thương" },
-    { id: "g5", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcDdwdHprNzdwbWc1dzg1dmMzeWFldmp2YWhmdnVvNjNsdzlydzRraCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7TKoWXm3okO1kgHC/giphy.gif", alt: "Like ngầu" },
-    { id: "g6", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMmV0MmZmbTBicW4zbmdyb3c4anloMjdsbnU1dmFka2NhdXNsdjFjbiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/xT0xezQGU5xCDJuCPe/giphy.gif", alt: "Ăn mừng pháo hoa" }
-];
-
 let gifSearchTimeout = null;
 
 // HÀM CHUYỂN TAB PICKER (Biểu cảm / Sticker / GIF)
@@ -11387,67 +11436,99 @@ function switchPickerTab(tabName) {
 // LOGIC EMOJI
 // ═══════════════════════════════════════════════════════════════════
 function renderEmojiPicker() {
-    renderEmojiCategoryTabs();
-    renderEmojiGrid(currentEmojiCategory);
-}
-
-function renderEmojiCategoryTabs() {
-    const container = document.getElementById("emoji-category-tabs");
-    if (!container) return;
-    container.innerHTML = Object.keys(EMOJI_CATEGORIES).map(catKey => {
-        const cat = EMOJI_CATEGORIES[catKey];
-        const isActive = catKey === currentEmojiCategory ? "active" : "";
-        return `<button type="button" class="emoji-cat-btn ${isActive}" onclick="switchEmojiCategory('${catKey}')" title="${cat.title}">
-            <i class="fas ${cat.icon}"></i>
-        </button>`;
-    }).join("");
-}
-
-function switchEmojiCategory(catKey) {
-    currentEmojiCategory = catKey;
-    renderEmojiCategoryTabs();
-    const searchInput = document.getElementById("emoji-search-input");
-    if (searchInput) searchInput.value = "";
-    renderEmojiGrid(catKey);
-}
-
-function renderEmojiGrid(catKey) {
-    const grid = document.getElementById("emoji-grid");
-    if (!grid) return;
-    const cat = EMOJI_CATEGORIES[catKey] || EMOJI_CATEGORIES.smileys;
-    grid.innerHTML = cat.list.map(
-        (emoji) => `<div class="emoji-item" onclick="insertEmoji('${emoji}')">${emoji}</div>`
-    ).join("");
+    const gridContainer = document.getElementById("emoji-grid");
+    if (gridContainer) {
+        renderAllEmojis(gridContainer);
+    }
+    const tabsContainer = document.getElementById("emoji-category-tabs");
+    if (tabsContainer && tabsContainer.children.length === 0) {
+        emojiPickerInitialized = false;
+        initEmojiPicker();
+    }
 }
 
 function filterEmojis(query) {
     const grid = document.getElementById("emoji-grid");
     if (!grid) return;
-    const q = query.trim().toLowerCase();
-    if (!q) {
-        renderEmojiGrid(currentEmojiCategory);
+    const rawQuery = (query || "").trim();
+    if (!rawQuery) {
+        renderAllEmojis(grid);
         return;
     }
 
-    // Tìm kiếm emoji trên tất cả danh mục
-    let matches = [];
-    Object.values(EMOJI_CATEGORIES).forEach(cat => {
-        cat.list.forEach(emoji => {
-            if (!matches.includes(emoji)) matches.push(emoji);
-        });
-    });
+    const normQuery = removeVietnameseAccents(rawQuery);
+    grid.innerHTML = "";
 
-    grid.innerHTML = matches.map(
-        (emoji) => `<div class="emoji-item" onclick="insertEmoji('${emoji}')">${emoji}</div>`
-    ).join("");
+    const matchedSet = new Set();
+
+    // 1. Tìm trong chỉ mục EMOJI_SEARCH_INDEX siêu nhẹ
+    if (Array.isArray(EMOJI_SEARCH_INDEX)) {
+        EMOJI_SEARCH_INDEX.forEach(item => {
+            const hasMatch = item.k.some(kw => {
+                const normKw = removeVietnameseAccents(kw);
+                return normKw.includes(normQuery) || normQuery.includes(normKw);
+            });
+            if (hasMatch) {
+                item.e.forEach(emoji => matchedSet.add(emoji));
+            }
+        });
+    }
+
+    // 2. Tìm theo tên danh mục trong EMOJI_DATA
+    if (Array.isArray(EMOJI_DATA)) {
+        EMOJI_DATA.forEach(cat => {
+            const catNameNorm = removeVietnameseAccents(cat.name);
+            if (catNameNorm.includes(normQuery)) {
+                cat.emojis.forEach(e => matchedSet.add(e));
+            }
+        });
+    }
+
+    // 3. Nếu tìm trực tiếp bằng ký tự emoji
+    if (Array.isArray(EMOJI_DATA)) {
+        EMOJI_DATA.forEach(cat => {
+            cat.emojis.forEach(e => {
+                if (e.includes(rawQuery)) matchedSet.add(e);
+            });
+        });
+    }
+
+    const results = Array.from(matchedSet);
+
+    if (results.length > 0) {
+        const label = document.createElement("div");
+        label.className = "emoji-category-label";
+        label.innerText = `KẾT QUẢ TÌM KIẾM ("${rawQuery}")`;
+        grid.appendChild(label);
+
+        const items = document.createElement("div");
+        items.className = "emoji-items";
+        results.forEach(emoji => {
+            const span = document.createElement("span");
+            span.className = "emoji-item";
+            span.innerText = emoji;
+            span.onclick = (e) => {
+                e.stopPropagation();
+                insertEmojiToInput(emoji);
+            };
+            items.appendChild(span);
+        });
+        grid.appendChild(items);
+    } else {
+        grid.innerHTML = `<div class="emoji-no-results" style="padding: 24px 10px; text-align: center; color: var(--text-light); font-size: 14px;">Không tìm thấy biểu tượng nào phù hợp cho "${rawQuery}" 😢</div>`;
+    }
 }
 
 function insertEmoji(emoji) {
-    const input = document.getElementById("message-input");
-    if (input) {
-        input.value += emoji;
-        input.focus();
-        if (typeof updateSendButtonVisibility === "function") updateSendButtonVisibility();
+    if (typeof insertEmojiToInput === "function") {
+        insertEmojiToInput(emoji);
+    } else {
+        const input = document.getElementById("message-input");
+        if (input) {
+            input.value += emoji;
+            input.focus();
+            if (typeof updateSendButtonVisibility === "function") updateSendButtonVisibility();
+        }
     }
 }
 
@@ -11483,38 +11564,36 @@ function renderStickerGrid(packId) {
 }
 
 function sendSticker(url) {
-    if (typeof closeEmojiPicker === "function") closeEmojiPicker();
     sendFileOrAudioMessage(url, "image");
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// LOGIC GIF TÌM KIẾM
+// LOGIC GIF TÌM KIẾM CHUẨN MESSENGER
 // ═══════════════════════════════════════════════════════════════════
+const GIF_DEFAULTS = [
+    { url: "https://media.tenor.com/x8v1oNUOmg4AAAAC/bubu-dudu-bubu.gif", alt: "Bubu Dudu Cute" },
+    { url: "https://c.tenor.com/x8v1oNUOmg4AAAAC/bubu-dudu-bubu.gif", alt: "Bubu Dudu Hug" },
+    { url: "https://media.tenor.com/x8v1oNUOmg4AAAAM/bubu-dudu-bubu.gif", alt: "Bubu Dudu Love" }
+];
+
+const RICH_GIF_MAP = [
+    {
+        keywords: ["bubu", "dudu", "bubu dudu", "bubu cute", "dudu cute"],
+        gifs: [
+            { url: "https://media.tenor.com/x8v1oNUOmg4AAAAC/bubu-dudu-bubu.gif", alt: "Bubu Dudu Cute" },
+            { url: "https://c.tenor.com/x8v1oNUOmg4AAAAC/bubu-dudu-bubu.gif", alt: "Bubu Dudu Hug" },
+            { url: "https://media.tenor.com/x8v1oNUOmg4AAAAM/bubu-dudu-bubu.gif", alt: "Bubu Dudu Love" }
+        ]
+    }
+];
+
 function renderGifSection() {
-    renderGifTags();
-    renderGifGrid(GIF_DEFAULTS);
-}
-
-function renderGifTags() {
-    const container = document.getElementById("gif-category-tags");
-    if (!container) return;
-    container.innerHTML = GIF_TAGS.map((tag, idx) => {
-        const isActive = idx === 0 ? "active" : "";
-        return `<button type="button" class="gif-tag-btn ${isActive}" onclick="selectGifTag('${tag}', this)">${tag}</button>`;
-    }).join("");
-}
-
-function selectGifTag(tag, btnEl) {
-    document.querySelectorAll(".gif-tag-btn").forEach(b => b.classList.remove("active"));
-    if (btnEl) btnEl.classList.add("active");
-
-    const searchInput = document.getElementById("gif-search-input");
-    if (searchInput) searchInput.value = tag === "Nổi bật" ? "" : tag;
-
-    if (tag === "Nổi bật") {
-        renderGifGrid(GIF_DEFAULTS);
+    const input = document.getElementById("gif-search-input");
+    const query = input ? input.value.trim() : "";
+    if (query) {
+        fetchGiphyGifs(query);
     } else {
-        fetchGiphyGifs(tag);
+        renderGifGrid(GIF_DEFAULTS);
     }
 }
 
@@ -11529,7 +11608,7 @@ function onGifSearchInput(value) {
         } else {
             fetchGiphyGifs(value.trim());
         }
-    }, 400);
+    }, 300);
 }
 
 function clearGifSearch() {
@@ -11544,39 +11623,41 @@ async function fetchGiphyGifs(query) {
     const grid = document.getElementById("gif-grid");
     if (!grid) return;
 
-    grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: var(--text-light);"><i class="fas fa-spinner fa-spin"></i> Đang tìm GIF...</div>';
+    const rawQuery = (query || "").trim();
+    if (!rawQuery) {
+        renderGifGrid(GIF_DEFAULTS);
+        return;
+    }
+
+    grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 24px; color: var(--text-light);"><i class="fas fa-spinner fa-spin"></i> Đang tìm GIF...</div>';
 
     try {
-        const apiKey = "dc6zaTOxFJmzC"; // Giphy Public Key
-        const res = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=${apiKey}&q=${encodeURIComponent(query)}&limit=18&rating=g`);
+        const res = await fetch(`/api/gifs/search?q=${encodeURIComponent(rawQuery)}`);
         const data = await res.json();
-
-        if (data.data && data.data.length > 0) {
-            const fetchedGifs = data.data.map(item => ({
-                id: item.id,
-                url: item.images.fixed_height.url || item.images.original.url,
-                alt: item.title || query
-            }));
-            renderGifGrid(fetchedGifs);
-        } else {
-            grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: var(--text-light);">Không tìm thấy GIF nào cho "${query}"</div>`;
+        if (data.success && data.data && data.data.length > 0) {
+            renderGifGrid(data.data);
+            return;
         }
     } catch (err) {
-        console.warn("Lỗi tìm kiếm GIF qua Giphy API, dùng danh sách mặc định:", err);
-        renderGifGrid(GIF_DEFAULTS);
+        console.warn("Lỗi kết nối máy chủ tìm kiếm GIF:", err);
     }
+
+    grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 24px; color: var(--text-light);">Không tìm thấy GIF phù hợp cho "${rawQuery}" 😢</div>`;
 }
 
 function renderGifGrid(gifs) {
     const grid = document.getElementById("gif-grid");
     if (!grid) return;
+    if (!gifs || gifs.length === 0) {
+        grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 24px; color: var(--text-light);">Không tìm thấy GIF phù hợp 😢</div>';
+        return;
+    }
     grid.innerHTML = gifs.map(
         (g) => `<div class="gif-item" onclick="sendGif('${g.url}')" title="${g.alt || 'GIF'}"><img src="${g.url}" alt="${g.alt || 'GIF'}" loading="lazy"/></div>`
     ).join("");
 }
 
 function sendGif(url) {
-    if (typeof closeEmojiPicker === "function") closeEmojiPicker();
     sendFileOrAudioMessage(url, "image");
 }
 

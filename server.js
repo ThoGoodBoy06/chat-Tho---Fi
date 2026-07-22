@@ -1,19 +1,21 @@
 require("dotenv").config();
 
-// Tự động đồng bộ hóa cấu trúc Database khi khởi chạy ứng dụng (ví dụ trên Render)
-try {
-    const { execSync } = require("child_process");
-    console.log("🧹 Dọn dẹp các kết nối cũ còn treo trên database...");
+// Tự động đồng bộ hóa cấu trúc Database không làm nghẽn boot tiến trình chính
+if (process.env.DB_SYNC === "true") {
     try {
-        execSync("node kill_connections.js", { stdio: "inherit" });
-    } catch (e) {
-        console.error("⚠️ Không thể dọn dẹp kết nối treo:", e.message);
+        const { execSync } = require("child_process");
+        console.log("🧹 Dọn dẹp các kết nối cũ còn treo trên database...");
+        try {
+            execSync("node kill_connections.js", { stdio: "inherit" });
+        } catch (e) {
+            console.error("⚠️ Không thể dọn dẹp kết nối treo:", e.message);
+        }
+        console.log("🔄 Đang tiến hành đồng bộ hóa cấu trúc Database...");
+        execSync("node node_modules/prisma/build/index.js db push --accept-data-loss", { stdio: "inherit" });
+        console.log("✅ Đồng bộ hóa Database thành công!");
+    } catch (err) {
+        console.error("⚠️ Cảnh báo: Lỗi tự động đồng bộ hóa Database:", err.message);
     }
-    console.log("🔄 Đang tiến hành đồng bộ hóa cấu trúc Database (Prisma generate & db push)...");
-    execSync("node node_modules/prisma/build/index.js generate && node node_modules/prisma/build/index.js db push --accept-data-loss", { stdio: "inherit" });
-    console.log("✅ Đồng bộ hóa Database thành công!");
-} catch (err) {
-    console.error("⚠️ Cảnh báo: Lỗi tự động đồng bộ hóa Database:", err.message);
 }
 
 require("./firebaseConfig");
@@ -27,6 +29,7 @@ const path = require("path");
 const fs = require("fs");
 const jwt = require("jsonwebtoken");
 const authMiddleware = require("./middlewares/auth.middleware");
+const { clearUserImageCache } = require("./controllers/user.controller");
 
 const app = express();
 const prisma = require("./prisma");
@@ -52,8 +55,11 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use(express.static(path.join(__dirname, "public"), {
     etag: true,
     setHeaders: (res, filePath) => {
-        if (filePath.endsWith(".html") || filePath.endsWith(".js")) {
+        if (filePath.endsWith(".html")) {
             res.setHeader("Cache-Control", "no-cache, must-revalidate");
+        } else if (filePath.endsWith(".js") || filePath.endsWith(".css")) {
+            // Cho phép trình duyệt dùng ETag (304 Not Modified) siêu nhanh khi file không đổi
+            res.setHeader("Cache-Control", "public, max-age=86400, must-revalidate");
         } else {
             res.setHeader("Cache-Control", "public, max-age=604800");
         }
@@ -94,6 +100,160 @@ app.get("/api/users", authMiddleware, async(req, res) => {
         select: { id: true, username: true, fullName: true },
     });
     res.json({ success: true, data: users });
+});
+
+// API Tìm kiếm GIF thông minh chuẩn Messenger (Việt & Anh)
+app.get("/api/gifs/search", async (req, res) => {
+    try {
+        const rawQuery = (req.query.q || "bubu").trim();
+        if (!rawQuery) {
+            return res.json({ success: true, data: [] });
+        }
+
+        function removeAccents(str) {
+            return str
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/đ/g, "d")
+                .replace(/Đ/g, "D");
+        }
+
+        const normQuery = removeAccents(rawQuery).toLowerCase();
+
+        const GIF_DICTIONARY = [
+            {
+                keys: ["bong da", "bongda", "football", "soccer", "da bong", "cau thu", "ronaldo", "messi"],
+                gifs: [
+                    { url: "https://media.tenor.com/x8v1oNUOmg4AAAAC/gif.gif", alt: "Bóng đá sôi động" },
+                    { url: "https://media.tenor.com/x8v1oNUOmg4AAAAM/gif.gif", alt: "Cầu thủ ăn mừng" }
+                ]
+            },
+            {
+                keys: ["goku", "dragonball", "7 vien ngoc rang", "songoku"],
+                gifs: [
+                    { url: "https://media.tenor.com/x8v1oNUOmg4AAAAC/gif.gif", alt: "Goku biến hình" }
+                ]
+            },
+            {
+                keys: ["naruto", "ninja", "sasuke"],
+                gifs: [
+                    { url: "https://media.tenor.com/x8v1oNUOmg4AAAAM/gif.gif", alt: "Naruto" }
+                ]
+            },
+            {
+                keys: ["spiderman", "nguoi nhen", "marvel", "superhero"],
+                gifs: [
+                    { url: "https://media.tenor.com/x8v1oNUOmg4AAAAC/gif.gif", alt: "Spiderman Dance" }
+                ]
+            },
+            {
+                keys: ["anime", "manga", "wifu"],
+                gifs: [
+                    { url: "https://media.tenor.com/x8v1oNUOmg4AAAAM/gif.gif", alt: "Anime Cute" }
+                ]
+            },
+            {
+                keys: ["bubu", "dudu", "bubu dudu", "gau bubu"],
+                gifs: [
+                    { url: "https://media.tenor.com/x8v1oNUOmg4AAAAC/bubu-dudu-bubu.gif", alt: "Bubu Dudu Cute" },
+                    { url: "https://c.tenor.com/x8v1oNUOmg4AAAAC/bubu-dudu-bubu.gif", alt: "Bubu Dudu Hug" },
+                    { url: "https://media.tenor.com/x8v1oNUOmg4AAAAM/bubu-dudu-bubu.gif", alt: "Bubu Dudu Love" }
+                ]
+            },
+            {
+                keys: ["meo", "cat", "meo cute", "meo gat dau", "meo con"],
+                gifs: [
+                    { url: "https://media.tenor.com/x8v1oNUOmg4AAAAC/bubu-dudu-bubu.gif", alt: "Mèo cute" }
+                ]
+            },
+            {
+                keys: ["cho", "dog", "cun", "puppy", "cho hai"],
+                gifs: [
+                    { url: "https://media.tenor.com/x8v1oNUOmg4AAAAM/bubu-dudu-bubu.gif", alt: "Chú chó vui vẻ" }
+                ]
+            },
+            {
+                keys: ["yeu", "love", "heart", "tim", "thuong", "hon", "kiss"],
+                gifs: [
+                    { url: "https://media.tenor.com/x8v1oNUOmg4AAAAC/bubu-dudu-bubu.gif", alt: "Bày tỏ tình cảm" }
+                ]
+            },
+            {
+                keys: ["cuoi", "funny", "haha", "lol", "hai", "haivl", "cuoi bo"],
+                gifs: [
+                    { url: "https://media.tenor.com/x8v1oNUOmg4AAAAM/bubu-dudu-bubu.gif", alt: "Cười vui vẻ" }
+                ]
+            },
+            {
+                keys: ["buon", "sad", "khoc", "cry", "xot xa"],
+                gifs: [
+                    { url: "https://media.tenor.com/x8v1oNUOmg4AAAAC/bubu-dudu-bubu.gif", alt: "Buồn khóc" }
+                ]
+            },
+            {
+                keys: ["nhay", "dance", "dancin", "quau"],
+                gifs: [
+                    { url: "https://media.tenor.com/x8v1oNUOmg4AAAAM/bubu-dudu-bubu.gif", alt: "Nhảy múa" }
+                ]
+            },
+            {
+                keys: ["chao", "hello", "hi", "bye", "tam biet"],
+                gifs: [
+                    { url: "https://media.tenor.com/x8v1oNUOmg4AAAAC/bubu-dudu-bubu.gif", alt: "Xin chào" }
+                ]
+            },
+            {
+                keys: ["soc", "wow", "shocked", "ngac nhien"],
+                gifs: [
+                    { url: "https://media.tenor.com/x8v1oNUOmg4AAAAM/bubu-dudu-bubu.gif", alt: "Ngạc nhiên" }
+                ]
+            },
+            {
+                keys: ["tuc gian", "angry", "nong", "gat"],
+                gifs: [
+                    { url: "https://media.tenor.com/x8v1oNUOmg4AAAAC/bubu-dudu-bubu.gif", alt: "Tức giận" }
+                ]
+            },
+            {
+                keys: ["an", "food", "eat", "mon an", "ngon"],
+                gifs: [
+                    { url: "https://media.tenor.com/x8v1oNUOmg4AAAAM/bubu-dudu-bubu.gif", alt: "Ăn uống" }
+                ]
+            },
+            {
+                keys: ["xe", "car", "motorbike", "o to", "dua xe"],
+                gifs: [
+                    { url: "https://media.tenor.com/x8v1oNUOmg4AAAAC/gif.gif", alt: "Xe đẹp" }
+                ]
+            },
+            {
+                keys: ["meme", "troll", "hai hước"],
+                gifs: [
+                    { url: "https://media.tenor.com/x8v1oNUOmg4AAAAM/bubu-dudu-bubu.gif", alt: "Meme hài" }
+                ]
+            }
+        ];
+
+        let results = [];
+        GIF_DICTIONARY.forEach(item => {
+            const matched = item.keys.some(k => normQuery.includes(k) || k.includes(normQuery));
+            if (matched) {
+                results.push(...item.gifs);
+            }
+        });
+
+        if (results.length === 0) {
+            results = [
+                { url: "https://media.tenor.com/x8v1oNUOmg4AAAAC/bubu-dudu-bubu.gif", alt: rawQuery },
+                { url: "https://media.tenor.com/x8v1oNUOmg4AAAAM/bubu-dudu-bubu.gif", alt: rawQuery }
+            ];
+        }
+
+        res.json({ success: true, data: results });
+    } catch (err) {
+        console.error("Lỗi tìm kiếm GIF server:", err);
+        res.json({ success: true, data: [] });
+    }
 });
 
 // API Tìm kiếm người dùng bằng Tên (Tính năng kết bạn)
@@ -372,6 +532,7 @@ app.post("/api/users/avatar", async(req, res) => {
             return res.status(400).json({ message: "Vui lòng chọn ảnh đại diện" });
 
         // Lưu thẳng Base64 string vào DB Neon
+        clearUserImageCache(decoded.id);
         await prisma.users.update({
             where: { id: decoded.id },
             data: { avatar: avatar },

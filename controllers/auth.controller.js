@@ -63,10 +63,21 @@ exports.login = async (req, res) => {
   try {
     const { identifier, password } = req.body; // identifier có thể là email, phone hoặc username
 
-    // 1. Tìm user (bỏ select avatar và coverPhoto để tránh load Base64 lớn vào RAM)
+    if (!identifier || !password) {
+      return res.status(400).json({ message: "Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu!" });
+    }
+
+    const cleanIdentifier = identifier.trim();
+
+    // 1. Tìm user (hỗ trợ tìm kiếm username không phân biệt hoa thường, email hoặc SĐT)
     const user = await prisma.users.findFirst({
-      // Chỉ tìm bằng username vì đã đơn giản hóa form
-      where: { username: identifier },
+      where: {
+        OR: [
+          { username: { equals: cleanIdentifier, mode: "insensitive" } },
+          { email: { equals: cleanIdentifier, mode: "insensitive" } },
+          { phone: { equals: cleanIdentifier } }
+        ]
+      },
       select: {
         id: true,
         username: true,
@@ -81,13 +92,16 @@ exports.login = async (req, res) => {
         updatedAt: true
       }
     });
-    if (!user)
+
+    if (!user) {
       return res.status(404).json({ message: "Tài khoản không tồn tại!" });
+    }
 
     // 2. Kiểm tra mật khẩu
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch)
+    const isMatch = await bcrypt.compare(password.trim(), user.password);
+    if (!isMatch) {
       return res.status(400).json({ message: "Mật khẩu không chính xác!" });
+    }
 
     // 3. Cập nhật trạng thái Online
     await prisma.users.update({
@@ -102,10 +116,11 @@ exports.login = async (req, res) => {
       coverPhoto: `/api/users/${user.id}/cover`,
     };
     delete mappedUser.password;
+
     const token = generateToken(user);
     res.status(200).json({ success: true, data: mappedUser, token });
   } catch (error) {
     console.error("!!! LỖI ĐĂNG NHẬP:", error);
-    res.status(500).json({ message: "Lỗi server", error: error.message });
+    res.status(500).json({ message: "Lỗi máy chủ khi đăng nhập", error: error.message });
   }
 };

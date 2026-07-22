@@ -1,5 +1,18 @@
 const prisma = require("../prisma");
 
+// Bộ nhớ đệm RAM lưu trữ binary avatar và cover photo giúp phản hồi siêu tốc (<1ms) mà không tốn DB Query
+const avatarCache = new Map(); // id -> { buffer, contentType, isRedirect, redirectUrl, timestamp }
+const coverCache = new Map();  // id -> { buffer, contentType, isRedirect, redirectUrl, timestamp }
+
+const CACHE_TTL = 3600 * 1000; // 1 giờ
+
+function clearUserImageCache(userId) {
+  if (!userId) return;
+  avatarCache.delete(userId);
+  coverCache.delete(userId);
+}
+exports.clearUserImageCache = clearUserImageCache;
+
 // Endpoint lấy ảnh đại diện của User dưới dạng file ảnh binary thực tế
 exports.getUserAvatar = async (req, res) => {
   try {
@@ -8,6 +21,21 @@ exports.getUserAvatar = async (req, res) => {
       return res.redirect(`https://ui-avatars.com/api/?name=User&background=random`);
     }
 
+    // 1. Kiểm tra RAM cache
+    const cached = avatarCache.get(id);
+    if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+      if (cached.isRedirect) {
+        return res.redirect(cached.redirectUrl);
+      }
+      res.writeHead(200, {
+        "Content-Type": cached.contentType,
+        "Content-Length": cached.buffer.length,
+        "Cache-Control": "public, max-age=86400, must-revalidate"
+      });
+      return res.end(cached.buffer);
+    }
+
+    // 2. Query DB nếu chưa có trong RAM
     const user = await prisma.users.findUnique({
       where: { id },
       select: { avatar: true, fullName: true }
@@ -15,11 +43,14 @@ exports.getUserAvatar = async (req, res) => {
 
     if (!user || !user.avatar) {
       const name = encodeURIComponent(user ? user.fullName || "User" : "User");
-      return res.redirect(`https://ui-avatars.com/api/?name=${name}&background=random`);
+      const redirectUrl = `https://ui-avatars.com/api/?name=${name}&background=random`;
+      avatarCache.set(id, { isRedirect: true, redirectUrl, timestamp: Date.now() });
+      return res.redirect(redirectUrl);
     }
 
     // Nếu là đường dẫn URL http hoặc file tĩnh
     if (user.avatar.startsWith("http") || user.avatar.startsWith("/")) {
+      avatarCache.set(id, { isRedirect: true, redirectUrl: user.avatar, timestamp: Date.now() });
       return res.redirect(user.avatar);
     }
 
@@ -30,10 +61,11 @@ exports.getUserAvatar = async (req, res) => {
       const base64Data = matches[2];
       const buffer = Buffer.from(base64Data, "base64");
 
+      avatarCache.set(id, { buffer, contentType, timestamp: Date.now() });
       res.writeHead(200, {
         "Content-Type": contentType,
         "Content-Length": buffer.length,
-        "Cache-Control": "public, max-age=86400" // Trình duyệt cache 1 ngày
+        "Cache-Control": "public, max-age=86400, must-revalidate"
       });
       return res.end(buffer);
     }
@@ -41,15 +73,18 @@ exports.getUserAvatar = async (req, res) => {
     // Trả về trực tiếp nếu là Base64 thuần không có tiền tố data:
     try {
       const buffer = Buffer.from(user.avatar, "base64");
+      avatarCache.set(id, { buffer, contentType: "image/jpeg", timestamp: Date.now() });
       res.writeHead(200, {
         "Content-Type": "image/jpeg",
         "Content-Length": buffer.length,
-        "Cache-Control": "public, max-age=86400"
+        "Cache-Control": "public, max-age=86400, must-revalidate"
       });
       return res.end(buffer);
     } catch (e) {
       const name = encodeURIComponent(user.fullName || "User");
-      return res.redirect(`https://ui-avatars.com/api/?name=${name}&background=random`);
+      const redirectUrl = `https://ui-avatars.com/api/?name=${name}&background=random`;
+      avatarCache.set(id, { isRedirect: true, redirectUrl, timestamp: Date.now() });
+      return res.redirect(redirectUrl);
     }
   } catch (error) {
     console.error("Lỗi khi tải avatar:", error.message);
@@ -61,30 +96,45 @@ exports.getUserAvatar = async (req, res) => {
 exports.getUserCover = async (req, res) => {
   try {
     const { id } = req.params;
+    const transparentPixel = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=", "base64");
+
     if (!id || id === "null" || id === "undefined") {
       res.writeHead(200, {
         "Content-Type": "image/png",
         "Cache-Control": "public, max-age=86400"
       });
-      const transparentPixel = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=", "base64");
       return res.end(transparentPixel);
     }
 
+    // 1. Kiểm tra RAM Cache
+    const cached = coverCache.get(id);
+    if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+      if (cached.isRedirect) return res.redirect(cached.redirectUrl);
+      res.writeHead(200, {
+        "Content-Type": cached.contentType,
+        "Content-Length": cached.buffer.length,
+        "Cache-Control": "public, max-age=86400, must-revalidate"
+      });
+      return res.end(cached.buffer);
+    }
+
+    // 2. Query DB
     const user = await prisma.users.findUnique({
       where: { id },
       select: { coverPhoto: true }
     });
 
     if (!user || !user.coverPhoto) {
+      coverCache.set(id, { buffer: transparentPixel, contentType: "image/png", timestamp: Date.now() });
       res.writeHead(200, {
         "Content-Type": "image/png",
         "Cache-Control": "public, max-age=86400"
       });
-      const transparentPixel = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=", "base64");
       return res.end(transparentPixel);
     }
 
     if (user.coverPhoto.startsWith("http") || user.coverPhoto.startsWith("/")) {
+      coverCache.set(id, { isRedirect: true, redirectUrl: user.coverPhoto, timestamp: Date.now() });
       return res.redirect(user.coverPhoto);
     }
 
@@ -94,28 +144,30 @@ exports.getUserCover = async (req, res) => {
       const base64Data = matches[2];
       const buffer = Buffer.from(base64Data, "base64");
 
+      coverCache.set(id, { buffer, contentType, timestamp: Date.now() });
       res.writeHead(200, {
         "Content-Type": contentType,
         "Content-Length": buffer.length,
-        "Cache-Control": "public, max-age=86400"
+        "Cache-Control": "public, max-age=86400, must-revalidate"
       });
       return res.end(buffer);
     }
 
     try {
       const buffer = Buffer.from(user.coverPhoto, "base64");
+      coverCache.set(id, { buffer, contentType: "image/jpeg", timestamp: Date.now() });
       res.writeHead(200, {
         "Content-Type": "image/jpeg",
         "Content-Length": buffer.length,
-        "Cache-Control": "public, max-age=86400"
+        "Cache-Control": "public, max-age=86400, must-revalidate"
       });
       return res.end(buffer);
     } catch (e) {
+      coverCache.set(id, { buffer: transparentPixel, contentType: "image/png", timestamp: Date.now() });
       res.writeHead(200, {
         "Content-Type": "image/png",
         "Cache-Control": "public, max-age=86400"
       });
-      const transparentPixel = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=", "base64");
       return res.end(transparentPixel);
     }
   } catch (error) {
@@ -129,6 +181,8 @@ exports.updateProfile = async (req, res) => {
   try {
     const userId = req.user ? req.user.id : req.userId;
     const { fullName, bio } = req.body;
+
+    clearUserImageCache(userId);
 
     const updatedUser = await prisma.users.update({
       where: { id: userId },
@@ -165,6 +219,8 @@ exports.updateCoverImage = async (req, res) => {
     const { coverPhoto } = req.body; // Base64 string from client
     if (!coverPhoto)
       return res.status(400).json({ message: "Vui lòng chọn ảnh bìa" });
+
+    clearUserImageCache(userId);
 
     await prisma.users.update({
       where: { id: userId },
