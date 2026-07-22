@@ -5,22 +5,20 @@
     <meta charset="UTF-8" />
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
-    <title>Chat Tho-Fi | Kết nối không giới hạn</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    <link rel="manifest" href="manifest.json" />
-    <meta name="theme-color" content="#0068ff" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#090d1a" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Chat Tho-Fi" />
-    <link rel="icon" href="icon.png" type="image/png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
-    <link rel="stylesheet" href="style-v4.css?v=138" />
-    <!-- Inline CSS cho Splash Screen - hiển thị NGAY LẬP TỨC không cần chờ tải file CSS -->
+
+    <!-- DÒNG ĐẦU TIÊN: Đặt màu nền html, body ngay 0ms để TRIỆT TIÊU 100% MÀN HÌNH TRẮNG KHI MỞ APP -->
     <style>
+        html, body {
+            background-color: #090d1a !important;
+            background: #090d1a !important;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
         #splash-screen {
             position: fixed;
             top: 0; left: 0;
@@ -67,7 +65,7 @@
             font-size: 25px;
             font-weight: 800;
             letter-spacing: 2px;
-            font-family: 'Inter', sans-serif;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             opacity: 0;
             transform: translateY(80px);
             background: linear-gradient(135deg, #00ff88, #00ccff, #ff00ff, #00ff88);
@@ -95,6 +93,19 @@
             50% { filter: drop-shadow(0 0 30px rgba(255,0,255,0.5)) drop-shadow(0 0 50px rgba(0,255,136,0.4)); }
         }
     </style>
+
+    <title>Chat Tho-Fi | Kết nối không giới hạn</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="manifest" href="manifest.json" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Chat Tho-Fi" />
+    <link rel="icon" href="icon.png" type="image/png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
+    <link rel="stylesheet" href="style-v4.css?v=139" />
 </head>
 
 <body>
@@ -113,6 +124,10 @@
             var s = document.getElementById("splash-screen");
             if (s) {
                 s.classList.add("fade-out");
+                document.documentElement.style.backgroundColor = "";
+                document.body.style.backgroundColor = "";
+                document.documentElement.style.overflow = "";
+                document.body.style.overflow = "";
                 setTimeout(function() {
                     if (s && s.parentNode) s.parentNode.removeChild(s);
                 }, 800);
