@@ -108,32 +108,16 @@
         </div>
     </div>
     <script>
-        (function() {
-            var splashStart = Date.now();
-            var MIN_SPLASH = 3000; // 3 giây - giống Zalo
-
-            function removeSplash() {
-                var s = document.getElementById("splash-screen");
-                if (!s || s.classList.contains("fade-out")) return;
-                var elapsed = Date.now() - splashStart;
-                if (elapsed < MIN_SPLASH) {
-                    setTimeout(removeSplash, MIN_SPLASH - elapsed);
-                    return;
-                }
+        // Splash Screen: hiển thị ĐÚNG 3 GIÂY rồi mờ dần biến mất
+        setTimeout(function() {
+            var s = document.getElementById("splash-screen");
+            if (s) {
                 s.classList.add("fade-out");
                 setTimeout(function() {
                     if (s && s.parentNode) s.parentNode.removeChild(s);
-                }, 700);
+                }, 800);
             }
-
-            // Chỉ bắt đầu đếm ngược SAU KHI trang tải xong
-            window.addEventListener("load", function() {
-                setTimeout(removeSplash, MIN_SPLASH - (Date.now() - splashStart));
-            });
-
-            // Hard fallback: tối đa 5 giây
-            setTimeout(removeSplash, 5000);
-        })();
+        }, 3000);
     </script>
 
     <!-- Màn hình Loading toàn cục (Chính giữa màn hình) -->
