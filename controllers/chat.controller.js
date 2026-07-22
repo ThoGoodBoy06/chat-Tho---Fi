@@ -7,6 +7,8 @@ const { getMessaging } = require("firebase-admin/messaging");
 const fs = require("fs");
 const path = require("path");
 
+const BASE_HOST_URL = (process.env.RENDER_EXTERNAL_URL || "https://chat-tho-fichat.onrender.com").replace(/\/$/, "");
+
 // Khởi tạo Firebase Admin (Chỉ chạy 1 lần khi server khởi động)
 if (!getApps().length) {
     try {
@@ -474,11 +476,11 @@ exports.sendMessage = async(req, res) => {
                 }
 
                 const senderAvatar = mappedMessage.Users ? mappedMessage.Users.avatar : null;
-                let avatarUrl = "https://chat-tho-fi.onrender.com/icon.png";
+                let avatarUrl = `${BASE_HOST_URL}/icon.png`;
                 if (senderAvatar) {
                     avatarUrl = senderAvatar.startsWith("http") ?
                         senderAvatar :
-                        `https://chat-tho-fi.onrender.com${senderAvatar}`;
+                        `${BASE_HOST_URL}${senderAvatar}`;
                 } else {
                     avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
             newMessage.Users.fullName || "User"
@@ -524,7 +526,7 @@ exports.sendMessage = async(req, res) => {
                         },
                         notification: {
                             icon: avatarUrl,
-                            badge: "https://chat-tho-fi.onrender.com/icon.png",
+                            badge: `${BASE_HOST_URL}/icon.png`,
                             vibrate: [400, 100, 400, 100, 600],
                             tag: String(conversationId),
                             renotify: true,
@@ -920,11 +922,11 @@ exports.sendPushNotification = async(fcmToken, title, body, customData = null, d
         payload.notification = {
             title: title,
             body: body,
-            image: "https://chat-tho-fi.onrender.com/icon.png"
+            image: `${BASE_HOST_URL}/icon.png`
         };
         payload.webpush.notification = {
-            icon: "https://chat-tho-fi.onrender.com/icon.png",
-            badge: "https://chat-tho-fi.onrender.com/icon.png",
+            icon: `${BASE_HOST_URL}/icon.png`,
+            badge: `${BASE_HOST_URL}/icon.png`,
             vibrate: [1000, 500, 1000, 500, 1000],
             requireInteraction: true
         };
