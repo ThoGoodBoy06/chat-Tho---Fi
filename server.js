@@ -48,8 +48,8 @@ app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-// Mở thư mục 'public' để chứa file giao diện web (HTML/CSS/JS)
-app.use(express.static(path.join(__dirname, "public")));
+// Mở thư mục 'public' để chứa file giao diện web (HTML/CSS/JS) với bộ nhớ đệm cache 7 ngày giúp tiết kiệm băng thông Render
+app.use(express.static(path.join(__dirname, "public"), { maxAge: "7d", etag: true }));
 
 // Import Routes
 const authRoutes = require("./routes/auth.routes");
