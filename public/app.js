@@ -11286,7 +11286,7 @@ const EMOJI_CATEGORIES = {
     }
 };
 
-let currentEmojiCategory = "smileys";
+currentEmojiCategory = "smileys";
 
 // 2. DANH SÁCH STICKER PACKS
 const STICKER_PACKS = [
