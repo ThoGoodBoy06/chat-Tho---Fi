@@ -18,7 +18,7 @@
     <meta name="apple-mobile-web-app-title" content="Chat Tho-Fi" />
     <link rel="icon" href="icon.png" type="image/png" />
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
-    <link rel="stylesheet" href="style-v4.css?v=135" />
+    <link rel="stylesheet" href="style-v4.css?v=136" />
 </head>
 
 <body>
@@ -37,24 +37,34 @@
                 var s = document.getElementById("splash-screen");
                 if (s && !s.classList.contains("fade-out")) {
                     s.classList.add("fade-out");
+                    s.style.transition = "opacity 0.5s ease";
                     s.style.opacity = "0";
                     s.style.pointerEvents = "none";
                     setTimeout(function() {
                         if (s && s.parentNode) {
                             s.parentNode.removeChild(s);
                         }
-                    }, 400);
+                    }, 500);
                 }
             }
-            if (document.readyState === "complete" || document.readyState === "interactive") {
-                setTimeout(removeSplash, 300);
-            } else {
-                document.addEventListener("DOMContentLoaded", function() { setTimeout(removeSplash, 300); });
-                window.addEventListener("load", removeSplash);
+
+            var MIN_SPLASH_TIME = 2000; // Hiển thị 2.0 giây để xem trọn hoạt ảnh Zalo
+            var startTime = Date.now();
+
+            function scheduleRemove() {
+                var elapsed = Date.now() - startTime;
+                var remaining = Math.max(0, MIN_SPLASH_TIME - elapsed);
+                setTimeout(removeSplash, remaining);
             }
-            // Hard fallback: Max 800ms timeout
-            setTimeout(removeSplash, 800);
-            // Click/touch fallback: Tap to dismiss
+
+            if (document.readyState === "complete" || document.readyState === "interactive") {
+                scheduleRemove();
+            } else {
+                document.addEventListener("DOMContentLoaded", scheduleRemove);
+                window.addEventListener("load", scheduleRemove);
+            }
+            setTimeout(removeSplash, 2500);
+
             document.addEventListener("click", function(e) {
                 var s = document.getElementById("splash-screen");
                 if (s && s.contains(e.target)) removeSplash();
