@@ -4230,7 +4230,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         min-width: unset !important;
         flex-shrink: 0;
         margin: 0 !important;
-        height: calc(60px + env(safe-area-inset-bottom, 0px)) !important;
+        height: calc(52px + env(safe-area-inset-bottom, 0px)) !important;
         border-radius: 0 !important;
         /* Loại bỏ góc bo capsule để làm tab bar tràn viền ngang */
         border-left: none !important;
@@ -4243,16 +4243,16 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         z-index: 99999 !important;
         /* Đẩy z-index cao hẳn lên để luôn nằm trên cùng */
         box-sizing: border-box;
-        box-shadow: 0 -3px 12px rgba(0, 0, 0, 0.05) !important;
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.04) !important;
         flex-direction: row;
         justify-content: space-around !important;
-        align-items: flex-start !important;
-        padding: 4px 12px calc(4px + env(safe-area-inset-bottom, 0px)) 12px !important;
+        align-items: center !important;
+        padding: 2px 8px calc(2px + env(safe-area-inset-bottom, 0px)) 8px !important;
         gap: 0 !important;
     }
 
     body[data-theme="dark"] .sidebar {
-        background: rgba(18, 18, 18, 0.85) !important;
+        background: rgba(18, 18, 18, 0.95) !important;
         border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
         border-left: none !important;
         border-right: none !important;
@@ -4263,9 +4263,9 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
     /* ── SLIDING PILL INDICATOR ── */
     .nav-slider-pill {
         position: absolute;
-        height: 54px;
-        top: 4px;
-        border-radius: 28px;
+        height: 46px;
+        top: 3px;
+        border-radius: 23px;
         background: linear-gradient(135deg, var(--primary-color) 0%, #2563eb 100%);
         box-shadow: 0 4px 16px rgba(0, 104, 255, 0.35), 0 1px 0 rgba(255, 255, 255, 0.25) inset;
         transition: left 0.2s cubic-bezier(0.25, 1, 0.5, 1), width 0.2s cubic-bezier(0.25, 1, 0.5, 1);
@@ -4273,8 +4273,8 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         z-index: 0;
         will-change: left, width;
         /* Vị trí mặc định ban đầu cho tab Tin nhắn */
-        left: 12px;
-        width: calc((100% - 24px) / 5);
+        left: 8px;
+        width: calc((100% - 16px) / 5);
     }
 
     body[data-theme="dark"] .nav-slider-pill {
@@ -4284,10 +4284,13 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
 
     /* ── NAV ITEM ── */
     .nav-item {
-        width: calc((100% - 24px) / 5) !important;
+        width: calc((100% - 16px) / 5) !important;
         flex: none !important;
-        height: 54px;
+        height: 46px;
         flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        border-radius: 23px;
         gap: 2px;
         display: flex;
         align-items: center;
@@ -4621,6 +4624,10 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         display: flex !important;
         flex-direction: column !important;
         overflow: hidden !important;
+    }
+
+    .chat-list-container {
+        padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px)) !important;
     }
 
     #chat-screen.mobile-chat-active .chat-list {
