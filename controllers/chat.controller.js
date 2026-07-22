@@ -474,11 +474,11 @@ exports.sendMessage = async(req, res) => {
                 }
 
                 const senderAvatar = mappedMessage.Users ? mappedMessage.Users.avatar : null;
-                let avatarUrl = "https://chat-tho-fi.onrender.com/icon.png";
+                let avatarUrl = "https://chat-tho-fi-bi5i.onrender.com/icon.png";
                 if (senderAvatar) {
                     avatarUrl = senderAvatar.startsWith("http") ?
                         senderAvatar :
-                        `https://chat-tho-fi.onrender.com${senderAvatar}`;
+                        `https://chat-tho-fi-bi5i.onrender.com${senderAvatar}`;
                 } else {
                     avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
             newMessage.Users.fullName || "User"
@@ -524,7 +524,7 @@ exports.sendMessage = async(req, res) => {
                         },
                         notification: {
                             icon: avatarUrl,
-                            badge: "https://chat-tho-fi.onrender.com/icon.png",
+                            badge: "https://chat-tho-fi-bi5i.onrender.com/icon.png",
                             vibrate: [400, 100, 400, 100, 600],
                             tag: String(conversationId),
                             renotify: true,
@@ -920,11 +920,11 @@ exports.sendPushNotification = async(fcmToken, title, body, customData = null, d
         payload.notification = {
             title: title,
             body: body,
-            image: "https://chat-tho-fi.onrender.com/icon.png"
+            image: "https://chat-tho-fi-bi5i.onrender.com/icon.png"
         };
         payload.webpush.notification = {
-            icon: "https://chat-tho-fi.onrender.com/icon.png",
-            badge: "https://chat-tho-fi.onrender.com/icon.png",
+            icon: "https://chat-tho-fi-bi5i.onrender.com/icon.png",
+            badge: "https://chat-tho-fi-bi5i.onrender.com/icon.png",
             vibrate: [1000, 500, 1000, 500, 1000],
             requireInteraction: true
         };
