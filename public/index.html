@@ -26,8 +26,16 @@
                 <img src="tho_fi_logo.png" alt="Logo Tho-Fi" class="splash-logo" />
             </div>
             <h1 class="splash-title">Chat Tho-Fi</h1>
-        </div>
     </div>
+    <script>
+        setTimeout(function() {
+            var s = document.getElementById("splash-screen");
+            if (s) {
+                s.classList.add("fade-out");
+                setTimeout(function() { if (s && s.parentNode) s.parentNode.removeChild(s); }, 500);
+            }
+        }, 1800);
+    </script>
 
     <!-- Màn hình Loading toàn cục (Chính giữa màn hình) -->
     <div id="global-loading" style="
