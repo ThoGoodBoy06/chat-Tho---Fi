@@ -11421,7 +11421,7 @@ function switchPickerTab(tabName) {
     const activeSec = document.getElementById(`picker-section-${tabName}`);
 
     if (activeBtn) activeBtn.classList.add("active");
-    if (activeSec) activeSec.style.display = "block";
+    if (activeSec) activeSec.style.display = "flex";
 
     if (tabName === "emoji") {
         renderEmojiPicker();

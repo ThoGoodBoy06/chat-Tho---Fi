@@ -18,7 +18,83 @@
     <meta name="apple-mobile-web-app-title" content="Chat Tho-Fi" />
     <link rel="icon" href="icon.png" type="image/png" />
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
-    <link rel="stylesheet" href="style-v4.css?v=137" />
+    <link rel="stylesheet" href="style-v4.css?v=138" />
+    <!-- Inline CSS cho Splash Screen - hiển thị NGAY LẬP TỨC không cần chờ tải file CSS -->
+    <style>
+        #splash-screen {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: linear-gradient(135deg, #090d1a 0%, #004ecc 100%);
+            z-index: 9999999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 1;
+            visibility: visible;
+        }
+        #splash-screen.fade-out {
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+            transition: opacity 0.6s ease, visibility 0.6s ease;
+        }
+        .splash-content {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .splash-logo-container {
+            width: 120px; height: 120px;
+            background: #ffffff;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.35);
+            margin-bottom: 24px;
+            transform: translateY(-250px);
+            opacity: 0;
+            animation: logoFallDown 0.9s cubic-bezier(0.25,1,0.5,1) 0.1s forwards;
+            padding: 12px;
+        }
+        .splash-logo {
+            width: 100%; height: 100%;
+            object-fit: contain;
+        }
+        .splash-title {
+            font-size: 25px;
+            font-weight: 800;
+            letter-spacing: 2px;
+            font-family: 'Inter', sans-serif;
+            opacity: 0;
+            transform: translateY(80px);
+            background: linear-gradient(135deg, #00ff88, #00ccff, #ff00ff, #00ff88);
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            filter: drop-shadow(0 0 20px rgba(0,255,136,0.6)) drop-shadow(0 0 40px rgba(0,204,255,0.3));
+            margin-bottom: 20px;
+            position: relative;
+            animation: titleSlideUpFade 0.8s cubic-bezier(0.25,1,0.5,1) 0.7s forwards, titleGlow 3s ease-in-out 1.5s infinite;
+        }
+        @keyframes logoFallDown {
+            0% { transform: translateY(-250px); opacity: 0; }
+            60% { transform: translateY(20px); opacity: 1; }
+            80% { transform: translateY(-10px); }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes titleSlideUpFade {
+            0% { opacity: 0; transform: translateY(80px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes titleGlow {
+            0%, 100% { filter: drop-shadow(0 0 20px rgba(0,255,136,0.6)) drop-shadow(0 0 40px rgba(0,204,255,0.3)); }
+            50% { filter: drop-shadow(0 0 30px rgba(255,0,255,0.5)) drop-shadow(0 0 50px rgba(0,255,136,0.4)); }
+        }
+    </style>
 </head>
 
 <body>
@@ -33,46 +109,30 @@
     </div>
     <script>
         (function() {
+            var splashStart = Date.now();
+            var MIN_SPLASH = 3000; // 3 giây - giống Zalo
+
             function removeSplash() {
                 var s = document.getElementById("splash-screen");
-                if (s && !s.classList.contains("fade-out")) {
-                    s.classList.add("fade-out");
-                    s.style.transition = "opacity 0.5s ease";
-                    s.style.opacity = "0";
-                    s.style.pointerEvents = "none";
-                    setTimeout(function() {
-                        if (s && s.parentNode) {
-                            s.parentNode.removeChild(s);
-                        }
-                    }, 500);
+                if (!s || s.classList.contains("fade-out")) return;
+                var elapsed = Date.now() - splashStart;
+                if (elapsed < MIN_SPLASH) {
+                    setTimeout(removeSplash, MIN_SPLASH - elapsed);
+                    return;
                 }
+                s.classList.add("fade-out");
+                setTimeout(function() {
+                    if (s && s.parentNode) s.parentNode.removeChild(s);
+                }, 700);
             }
 
-            var MIN_SPLASH_TIME = 2000; // Hiển thị 2.0 giây để xem trọn hoạt ảnh Zalo
-            var startTime = Date.now();
-
-            function scheduleRemove() {
-                var elapsed = Date.now() - startTime;
-                var remaining = Math.max(0, MIN_SPLASH_TIME - elapsed);
-                setTimeout(removeSplash, remaining);
-            }
-
-            if (document.readyState === "complete" || document.readyState === "interactive") {
-                scheduleRemove();
-            } else {
-                document.addEventListener("DOMContentLoaded", scheduleRemove);
-                window.addEventListener("load", scheduleRemove);
-            }
-            setTimeout(removeSplash, 2500);
-
-            document.addEventListener("click", function(e) {
-                var s = document.getElementById("splash-screen");
-                if (s && s.contains(e.target)) removeSplash();
+            // Chỉ bắt đầu đếm ngược SAU KHI trang tải xong
+            window.addEventListener("load", function() {
+                setTimeout(removeSplash, MIN_SPLASH - (Date.now() - splashStart));
             });
-            document.addEventListener("touchstart", function(e) {
-                var s = document.getElementById("splash-screen");
-                if (s && s.contains(e.target)) removeSplash();
-            }, { passive: true });
+
+            // Hard fallback: tối đa 5 giây
+            setTimeout(removeSplash, 5000);
         })();
     </script>
 
@@ -1369,7 +1429,7 @@
 
     <!-- Import Socket.IO và file xử lý logic -->
     <script src="/socket.io/socket.io.js"></script>
-    <script src="app.js?v=200015"></script>
+    <script src="app.js?v=200016"></script>
 </body>
 
 </html>
