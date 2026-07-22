@@ -4230,14 +4230,14 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         min-width: unset !important;
         flex-shrink: 0;
         margin: 0 !important;
-        height: 60px !important;
+        height: calc(60px + env(safe-area-inset-bottom, 0px)) !important;
         border-radius: 0 !important;
         /* Loại bỏ góc bo capsule để làm tab bar tràn viền ngang */
         border-left: none !important;
         border-right: none !important;
         border-bottom: none !important;
         border-top: 1px solid var(--border-color) !important;
-        background: rgba(255, 255, 255, 0.85) !important;
+        background: #ffffff !important;
         backdrop-filter: blur(28px) saturate(180%) !important;
         -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
         z-index: 99999 !important;
@@ -4247,7 +4247,7 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         flex-direction: row;
         justify-content: space-around !important;
         align-items: flex-start !important;
-        padding: 4px 12px 2px 12px !important;
+        padding: 4px 12px calc(4px + env(safe-area-inset-bottom, 0px)) 12px !important;
         gap: 0 !important;
     }
 
