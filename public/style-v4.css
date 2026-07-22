@@ -9452,8 +9452,9 @@ body[data-theme="dark"] .scroll-to-bottom-btn:hover {
 }
 
 #splash-screen.fade-out {
-    opacity: 0;
-    visibility: hidden;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
 }
 
 .splash-content {

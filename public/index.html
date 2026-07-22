@@ -15,7 +15,7 @@
     <meta name="apple-mobile-web-app-title" content="Chat Tho-Fi" />
     <link rel="icon" href="icon.png" type="image/png" />
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
-    <link rel="stylesheet" href="style-v4.css?v=131" />
+    <link rel="stylesheet" href="style-v4.css?v=132" />
 </head>
 
 <body>
@@ -29,13 +29,38 @@
         </div>
     </div>
     <script>
-        setTimeout(function() {
-            var s = document.getElementById("splash-screen");
-            if (s) {
-                s.classList.add("fade-out");
-                setTimeout(function() { if (s && s.parentNode) s.parentNode.removeChild(s); }, 500);
+        (function() {
+            function removeSplash() {
+                var s = document.getElementById("splash-screen");
+                if (s && !s.classList.contains("fade-out")) {
+                    s.classList.add("fade-out");
+                    s.style.opacity = "0";
+                    s.style.pointerEvents = "none";
+                    setTimeout(function() {
+                        if (s && s.parentNode) {
+                            s.parentNode.removeChild(s);
+                        }
+                    }, 400);
+                }
             }
-        }, 1800);
+            if (document.readyState === "complete" || document.readyState === "interactive") {
+                setTimeout(removeSplash, 300);
+            } else {
+                document.addEventListener("DOMContentLoaded", function() { setTimeout(removeSplash, 300); });
+                window.addEventListener("load", removeSplash);
+            }
+            // Hard fallback: Max 800ms timeout
+            setTimeout(removeSplash, 800);
+            // Click/touch fallback: Tap to dismiss
+            document.addEventListener("click", function(e) {
+                var s = document.getElementById("splash-screen");
+                if (s && s.contains(e.target)) removeSplash();
+            });
+            document.addEventListener("touchstart", function(e) {
+                var s = document.getElementById("splash-screen");
+                if (s && s.contains(e.target)) removeSplash();
+            }, { passive: true });
+        })();
     </script>
 
     <!-- Màn hình Loading toàn cục (Chính giữa màn hình) -->
@@ -1333,7 +1358,7 @@
 
     <!-- Import Socket.IO và file xử lý logic -->
     <script src="/socket.io/socket.io.js"></script>
-    <script src="app.js?v=200000"></script>
+    <script src="app.js?v=200001"></script>
 </body>
 
 </html>
