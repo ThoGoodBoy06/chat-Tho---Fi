@@ -10393,9 +10393,9 @@ body[data-theme="dark"] .drawer-action-item {
   align-items: center;
   gap: 4px;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--primary-color, #0068ff);
   margin-top: 2px;
-  font-weight: 500;
+  font-weight: 600;
   transition: opacity 0.3s ease;
 }
 .message-bubble.incoming .sending-status-badge {
@@ -10404,8 +10404,8 @@ body[data-theme="dark"] .drawer-action-item {
 .sending-spinner {
   width: 11px;
   height: 11px;
-  border: 1.5px solid rgba(255, 255, 255, 0.4);
-  border-top-color: #ffffff;
+  border: 1.5px solid rgba(0, 104, 255, 0.25);
+  border-top-color: var(--primary-color, #0068ff);
   border-radius: 50%;
   animation: spinSending 0.75s linear infinite;
   display: inline-block;
@@ -10422,5 +10422,6 @@ body[data-theme="dark"] .drawer-action-item {
 .sent-status-icon {
   font-size: 10.5px;
   margin-left: 3px;
+  color: var(--text-light, #65676b);
   opacity: 0.85;
 }
