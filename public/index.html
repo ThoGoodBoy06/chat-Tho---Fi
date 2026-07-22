@@ -277,7 +277,7 @@
                                 <div class="online-dot" id="chat-header-status-dot" style="display: none;"></div>
                             </div>
                             <div class="chat-header-text">
-                                <h3 id="chat-header-name">Tên người chat</h3>
+                                <h3 id="chat-header-name" style="cursor: pointer;" onclick="if (typeof openNicknameModal === 'function') openNicknameModal();" title="Nhấp để đổi biệt danh trong cuộc trò chuyện">Tên người chat</h3>
                                 <p class="status" id="chat-header-status">Đang hoạt động</p>
                             </div>
                         </div>
@@ -423,17 +423,36 @@
                         </div>
                     </div>
 
-                    <!-- Khung chọn Emoji dạng bàn phím Messenger (bên dưới input-area) -->
+                    <!-- Khung chọn Emoji / Sticker / GIF dạng bàn phím Messenger (bên dưới input-area) -->
                     <div class="emoji-picker-panel" id="emoji-picker-panel">
-                        <div class="emoji-picker-header">
-                            <div class="emoji-search-box">
-                                <i class="fas fa-search"></i>
-                                <input type="text" id="emoji-search-input" placeholder="Tìm kiếm biểu tượng"
-                                    oninput="filterEmojis(this.value)">
-                            </div>
+                        <div class="picker-main-nav">
+                            <button type="button" class="picker-nav-btn active" id="picker-tab-emoji" onclick="switchPickerTab('emoji')">
+                                <i class="far fa-smile"></i> <span>Biểu cảm</span>
+                            </button>
+                            <button type="button" class="picker-nav-btn" id="picker-tab-sticker" onclick="switchPickerTab('sticker')">
+                                <i class="fas fa-icons"></i> <span>Sticker</span>
+                            </button>
+                            <button type="button" class="picker-nav-btn" id="picker-tab-gif" onclick="switchPickerTab('gif')">
+                                <i class="fas fa-photo-video"></i> <span>GIF</span>
+                            </button>
                         </div>
-                        <div class="emoji-grid" id="emoji-grid"></div>
-                        <div class="emoji-category-tabs" id="emoji-category-tabs"></div>
+                        <div class="picker-content-section" id="picker-section-emoji">
+                            <div class="emoji-picker-header">
+                                <div class="emoji-search-box">
+                                    <i class="fas fa-search"></i>
+                                    <input type="text" id="emoji-search-input" placeholder="Tìm kiếm biểu tượng"
+                                        oninput="filterEmojis(this.value)">
+                                </div>
+                            </div>
+                            <div class="emoji-grid" id="emoji-grid"></div>
+                            <div class="emoji-category-tabs" id="emoji-category-tabs"></div>
+                        </div>
+                        <div class="picker-content-section" id="picker-section-sticker" style="display: none;">
+                            <div class="sticker-grid" id="sticker-grid"></div>
+                        </div>
+                        <div class="picker-content-section" id="picker-section-gif" style="display: none;">
+                            <div class="gif-grid" id="gif-grid"></div>
+                        </div>
                     </div>
                 </main>
             </div>

@@ -4338,26 +4338,41 @@ async function recallMessage(messageId) {
 // Biến lưu ID tin nhắn đang thực hiện xóa
 let messageIdToDelete = null;
 
-// Mở modal xác nhận xóa ở phía tôi
-function openDeleteMessageMeModal(messageId) {
-    messageIdToDelete = messageId;
-    const modal = document.getElementById("delete-message-me-modal");
+// Chuẩn hóa quy trình Mở & Đóng Modal / Popup có animation mượt mà
+// Khi mở modal: display: flex -> đợi 10ms -> add class .show
+// Khi đóng modal: remove class .show -> đợi 250ms -> display: none
+function openModalAnimated(modalInput) {
+    const modal = typeof modalInput === "string" ? document.getElementById(modalInput) : modalInput;
     if (!modal) return;
     modal.style.display = "flex";
     setTimeout(() => {
         modal.classList.add("show");
+        modal.classList.add("active");
     }, 10);
+}
+
+function closeModalAnimated(modalInput, callback = null) {
+    const modal = typeof modalInput === "string" ? document.getElementById(modalInput) : modalInput;
+    if (!modal) return;
+    modal.classList.remove("show");
+    modal.classList.remove("active");
+    setTimeout(() => {
+        modal.style.display = "none";
+        if (typeof callback === "function") callback();
+    }, 250);
+}
+
+// Mở modal xác nhận xóa ở phía tôi
+function openDeleteMessageMeModal(messageId) {
+    messageIdToDelete = messageId;
+    openModalAnimated("delete-message-me-modal");
 }
 
 // Đóng modal xác nhận xóa ở phía tôi
 function closeDeleteMessageMeModal() {
-    const modal = document.getElementById("delete-message-me-modal");
-    if (!modal) return;
-    modal.classList.remove("show");
-    setTimeout(() => {
-        modal.style.display = "none";
+    closeModalAnimated("delete-message-me-modal", () => {
         messageIdToDelete = null;
-    }, 250);
+    });
 }
 
 // Gọi API và cập nhật DOM, bộ nhớ tạm
@@ -4918,33 +4933,21 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function openMyProfileModal() {
-    const modal = document.getElementById("my-profile-modal");
-    if (modal) {
-        modal.classList.add("active");
-    }
+    openModalAnimated("my-profile-modal");
 }
 
 function closeMyProfileModal() {
-    const modal = document.getElementById("my-profile-modal");
-    if (modal) {
-        modal.classList.remove("active");
-    }
+    closeModalAnimated("my-profile-modal");
 }
 
 function openSettingsModal() {
-    const modal = document.getElementById("tab-settings-modal");
-    if (modal) {
-        modal.classList.add("active");
-        updateMediaDevicesList();
-        updateNotificationPermissionUI();
-    }
+    openModalAnimated("tab-settings-modal");
+    updateMediaDevicesList();
+    updateNotificationPermissionUI();
 }
 
 function closeSettingsModal() {
-    const modal = document.getElementById("tab-settings-modal");
-    if (modal) {
-        modal.classList.remove("active");
-    }
+    closeModalAnimated("tab-settings-modal");
 }
 
 function toggleNotificationsDropdown(event) {
@@ -5154,7 +5157,8 @@ async function openOtherUserProfileModal(userId) {
             };
         }
 
-        modal.classList.add("active");
+        openModalAnimated(modal);
+    } catch (error) {
         showTempToast("Không thể tải hồ sơ người dùng lúc này.");
         console.error("Lỗi tải hồ sơ người dùng:", error);
     } finally {
@@ -5163,17 +5167,11 @@ async function openOtherUserProfileModal(userId) {
 }
 
 function closeOtherUserProfileModal() {
-    const modal = document.getElementById("other-user-profile-modal");
-    if (modal) {
-        modal.classList.remove("active");
-    }
+    closeModalAnimated("other-user-profile-modal");
 }
 
 function closeUserProfile() {
-    const modal = document.getElementById("user-profile-modal");
-    if (modal) {
-        modal.classList.remove("active");
-    }
+    closeModalAnimated("user-profile-modal");
 }
 
 
@@ -9948,17 +9946,16 @@ let selectedForwardConversations = [];
 function openForwardModal(messageId) {
     forwardMessageId = messageId;
     selectedForwardConversations = [];
-    const overlay = document.getElementById("forward-modal-overlay");
-    if (overlay) overlay.style.display = "flex";
+    openModalAnimated("forward-modal-overlay");
     renderForwardList();
     updateForwardSendBtn();
 }
 
 function closeForwardModal() {
-    const overlay = document.getElementById("forward-modal-overlay");
-    if (overlay) overlay.style.display = "none";
-    forwardMessageId = null;
-    selectedForwardConversations = [];
+    closeModalAnimated("forward-modal-overlay", () => {
+        forwardMessageId = null;
+        selectedForwardConversations = [];
+    });
 }
 
 function renderForwardList() {
@@ -11214,6 +11211,76 @@ if (groupAvatarUploadInput) {
             groupAvatarUploadInput.value = "";
         }
     });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TÍNH NĂNG MỚI: BẢNG CHỌN STICKER & GIF TRONG EMOJI PICKER
+// ═══════════════════════════════════════════════════════════════════
+const STICKER_LIST = [
+    { id: "s1", url: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f60d.png", alt: "Mê mẩn" },
+    { id: "s2", url: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f970.png", alt: "Thương thương" },
+    { id: "s3", url: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f602.png", alt: "Cười ra nước mắt" },
+    { id: "s4", url: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f618.png", alt: "Hôn gió" },
+    { id: "s5", url: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f973.png", alt: "Tiệc tùng" },
+    { id: "s6", url: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f60e.png", alt: "Ngầu" },
+    { id: "s7", url: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f929.png", alt: "Mắt ngôi sao" },
+    { id: "s8", url: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f44d.png", alt: "Thích" },
+    { id: "s9", url: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f496.png", alt: "Trái tim" },
+    { id: "s10", url: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f525.png", alt: "Lửa" },
+    { id: "s11", url: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f389.png", alt: "Pháo hoa" },
+    { id: "s12", url: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4af.png", alt: "100 điểm" }
+];
+
+const GIF_LIST = [
+    { id: "g1", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcWNmZHpwbzNvdGttbWNvaGV1aHZ2YTVjcndpdXlyeWZvd3p5NmswZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0AMJzvh86YfaQ9Sg/giphy.gif", alt: "Mèo nhảy" },
+    { id: "g2", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExeGJ3cmZ2bDN4bDRtbHZ4NXo0b2VwOTR3bmdwdGk2OXJveWpmdHhpdSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/ndFA19YRBbZJu/giphy.gif", alt: "Nhảy vui vẻ" },
+    { id: "g3", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3ZtNHBnYTVtZHRvdWcyeTJ3ZXQ3dGZudGNud2g1dzdsY3NmdHRuYSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/10UeedrT5MIfPG/giphy.gif", alt: "Mèo ngạc nhiên" },
+    { id: "g4", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExaXZrYmV0bjI2bzFlYWtsNWpwcjNrdG1mZ3dxcXVrdmVjdmlydWhiaCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/artj92V8o75VPL7AeQ/giphy.gif", alt: "Ôm yêu thương" },
+    { id: "g5", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcDdwdHprNzdwbWc1dzg1dmMzeWFldmp2YWhmdnVvNjNsdzlydzRraCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7TKoWXm3okO1kgHC/giphy.gif", alt: "Like ngầu" },
+    { id: "g6", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMmV0MmZmbTBicW4zbmdyb3c4anloMjdsbnU1dmFka2NhdXNsdjFjbiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/xT0xezQGU5xCDJuCPe/giphy.gif", alt: "Ăn mừng pháo hoa" }
+];
+
+function switchPickerTab(tabName) {
+    document.querySelectorAll(".picker-nav-btn").forEach((btn) => btn.classList.remove("active"));
+    document.querySelectorAll(".picker-content-section").forEach((sec) => (sec.style.display = "none"));
+
+    const activeBtn = document.getElementById(`picker-tab-${tabName}`);
+    const activeSec = document.getElementById(`picker-section-${tabName}`);
+
+    if (activeBtn) activeBtn.classList.add("active");
+    if (activeSec) activeSec.style.display = "block";
+
+    if (tabName === "sticker" && document.getElementById("sticker-grid").children.length === 0) {
+        renderStickers();
+    } else if (tabName === "gif" && document.getElementById("gif-grid").children.length === 0) {
+        renderGifs();
+    }
+}
+
+function renderStickers() {
+    const grid = document.getElementById("sticker-grid");
+    if (!grid) return;
+    grid.innerHTML = STICKER_LIST.map(
+        (s) => `<div class="sticker-item" onclick="sendSticker('${s.url}')" title="${s.alt}"><img src="${s.url}" alt="${s.alt}" loading="lazy"/></div>`
+    ).join("");
+}
+
+function renderGifs() {
+    const grid = document.getElementById("gif-grid");
+    if (!grid) return;
+    grid.innerHTML = GIF_LIST.map(
+        (g) => `<div class="gif-item" onclick="sendGif('${g.url}')" title="${g.alt}"><img src="${g.url}" alt="${g.alt}" loading="lazy"/></div>`
+    ).join("");
+}
+
+function sendSticker(url) {
+    if (typeof closeEmojiPicker === "function") closeEmojiPicker();
+    sendFileOrAudioMessage(url, "image");
+}
+
+function sendGif(url) {
+    if (typeof closeEmojiPicker === "function") closeEmojiPicker();
+    sendFileOrAudioMessage(url, "image");
 }
 
 

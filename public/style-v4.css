@@ -1715,6 +1715,110 @@ body[data-theme="dark"] .skeleton-friend-item {
     display: flex;
 }
 
+/* Picker Main Nav Tabs (Emoji / Sticker / GIF) */
+.picker-main-nav {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--msg-receiver-bg);
+    padding: 4px 8px;
+    gap: 4px;
+}
+
+.picker-nav-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border: none;
+    background: transparent;
+    color: var(--text-light);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.picker-nav-btn.active {
+    background: var(--hover-bg);
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.picker-nav-btn:hover:not(.active) {
+    background: var(--hover-bg);
+}
+
+.picker-content-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Sticker & GIF Grids */
+.sticker-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    padding: 16px;
+    max-height: 230px;
+    overflow-y: auto;
+}
+
+.sticker-item {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 8px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.sticker-item:hover {
+    background: var(--hover-bg);
+    transform: scale(1.15);
+}
+
+.sticker-item img {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+}
+
+.gif-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    padding: 12px;
+    max-height: 230px;
+    overflow-y: auto;
+}
+
+.gif-item {
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.gif-item:hover {
+    transform: scale(1.03);
+    opacity: 0.9;
+}
+
+.gif-item img {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
+    display: block;
+}
+
 @keyframes emojiPickerSlideUp {
     from {
         opacity: 0;
@@ -5501,7 +5605,8 @@ OTHER USER PROFILE FLOATING MODAL (DESKTOP & MOBILE CENTERED)
     transition: opacity 0.3s ease;
 }
 
-#other-user-profile-modal.active {
+#other-user-profile-modal.active,
+#other-user-profile-modal.show {
     display: flex;
     opacity: 1;
 }
@@ -5558,7 +5663,8 @@ OTHER USER PROFILE FLOATING MODAL (DESKTOP & MOBILE CENTERED)
     }
 }
 
-#other-user-profile-modal.active .floating-profile-card {
+#other-user-profile-modal.active .floating-profile-card,
+#other-user-profile-modal.show .floating-profile-card {
     transform: scale(1) translateY(0);
 }
 
@@ -6929,13 +7035,17 @@ PERSONAL PROFILE MODAL & SETTINGS MODAL (ZALO STYLE)
 }
 
 #my-profile-modal.active,
-#tab-settings-modal.active {
+#my-profile-modal.show,
+#tab-settings-modal.active,
+#tab-settings-modal.show {
     display: flex;
     opacity: 1;
 }
 
 #my-profile-modal.active .profile-modal-card,
-#tab-settings-modal.active .profile-modal-card {
+#my-profile-modal.show .profile-modal-card,
+#tab-settings-modal.active .profile-modal-card,
+#tab-settings-modal.show .profile-modal-card {
     transform: scale(1) translateY(0);
 }
 
