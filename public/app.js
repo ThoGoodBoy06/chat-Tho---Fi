@@ -7443,6 +7443,27 @@ function sendFileOrAudioMessage(content, type) {
     }
 
     try {
+        // ✨ OPTIMISTIC UI: Hiển thị 0ms ngay lập tức không phải chờ mạng
+        const optimisticId = `optimistic-${Date.now()}`;
+        const optimisticMsg = {
+            id: optimisticId,
+            conversationId: currentConversationId,
+            senderId: myId,
+            content: content,
+            type: type || "image",
+            isRecalled: false,
+            status: "sending",
+            createdAt: new Date().toISOString(),
+            replyMessageId: replyingToMessage ? replyingToMessage.id : null,
+            Users: { id: myId, fullName: myName, avatar: null },
+        };
+
+        currentChatMessages.push(optimisticMsg);
+        displayMessage(optimisticMsg);
+        triggerWordEffects(content);
+        ChatSounds.playSend();
+        updateChatListUI(optimisticMsg, true);
+
         const payload = {
             content,
             type
@@ -7451,18 +7472,16 @@ function sendFileOrAudioMessage(content, type) {
             payload.replyMessageId = replyingToMessage.id;
         }
 
-        const res = fetch(`${API_URL}/chat/${currentConversationId}/messages`, {
+        cancelReply();
+
+        fetch(`${API_URL}/chat/${currentConversationId}/messages`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify(payload),
-        });
-
-        cancelReply();
-
-        res
+        })
             .then((response) => response.json())
             .then((data) => {
                 if (data.success) {
@@ -7470,11 +7489,20 @@ function sendFileOrAudioMessage(content, type) {
                     // Cập nhật sidebar nhẹ hơn, không reload toàn bộ danh sách
                     updateChatListUI(data.data, true);
                 } else {
-                    alert("Gửi thất bại: " + data.message);
+                    const optEl = document.getElementById(`msg-${optimisticId}`);
+                    if (optEl) {
+                        optEl.style.opacity = "0.6";
+                        const statusEl = optEl.querySelector(".message-status");
+                        if (statusEl) statusEl.innerHTML = '<span style="color:#ef4444; font-size:10px;">Lỗi gửi</span>';
+                    }
+                    showTempToast("Gửi thất bại: " + data.message);
                 }
+            })
+            .catch((err) => {
+                showTempToast("Lỗi mạng: " + err.message);
             });
     } catch (err) {
-        alert("Lỗi mạng: " + err.message);
+        showTempToast("Lỗi mạng: " + err.message);
     }
 }
 
@@ -10464,36 +10492,40 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
+            const newState = !isBlocked;
+            btnBlockUser.setAttribute('data-blocked', newState ? 'true' : 'false');
+            if (blockText) blockText.textContent = newState ? "Bỏ chặn người này" : "Chặn người này";
+
+            // ✨ Cập nhật giao diện thanh chat 0ms lập tức
+            applyBlockState({
+                blocked: newState,
+                blockerId: myId,
+                blockedId: targetUserId
+            });
+
+            showTempToast(newState ? "Đã chặn người dùng thành công" : "Đã bỏ chặn người dùng thành công");
+            closeChatInfoPanel();
+
             try {
-                const response = await fetch('/api/chat/block', {
+                fetch('/api/chat/block', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
                     },
                     body: JSON.stringify({ targetUserId, action: isBlocked ? 'unblock' : 'block' })
+                }).then(res => {
+                    if (!res.ok) {
+                        btnBlockUser.setAttribute('data-blocked', isBlocked ? 'true' : 'false');
+                        if (blockText) blockText.textContent = isBlocked ? "Bỏ chặn người này" : "Chặn người này";
+                        applyBlockState({
+                            blocked: isBlocked,
+                            blockerId: myId,
+                            blockedId: targetUserId
+                        });
+                        showTempToast("Thao tác thất bại");
+                    }
                 });
-
-                if (response.ok) {
-                    const newState = !isBlocked;
-                    btnBlockUser.setAttribute('data-blocked', newState ? 'true' : 'false');
-                    if (blockText) blockText.textContent = newState ? "Bỏ chặn người này" : "Chặn người này";
-
-                    // Cập nhật giao diện thanh chat
-                    applyBlockState({
-                        blocked: newState,
-                        blockerId: myId,
-                        blockedId: targetUserId
-                    });
-
-                    showTempToast(newState ? "Đã chặn người dùng thành công" : "Đã bỏ chặn người dùng thành công");
-
-                    // Đóng panel thông tin
-                    closeChatInfoPanel();
-                } else {
-                    const errData = await response.json();
-                    showTempToast("Thao tác thất bại: " + (errData.message || "Lỗi không xác định"));
-                }
             } catch (error) {
                 console.error("Lỗi khi thực hiện thao tác chặn:", error);
                 showTempToast("Lỗi khi kết nối máy chủ.");
