@@ -10191,3 +10191,235 @@ body[data-theme="dark"] .drawer-action-item {
     width: 100% !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   NÂNG CẤP EMOJI, STICKER, GIF & TRẠNG THÁI "ĐANG GỬI..." (MESSENGER)
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Emoji Category Tabs Bar */
+.emoji-category-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--bg-secondary, rgba(0,0,0,0.03));
+  border-bottom: 1px solid var(--border-color, rgba(0,0,0,0.06));
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.emoji-category-tabs::-webkit-scrollbar {
+  display: none;
+}
+.emoji-cat-btn {
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-light, #65676b);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.emoji-cat-btn:hover {
+  background: rgba(0, 104, 255, 0.08);
+}
+.emoji-cat-btn.active {
+  background: rgba(0, 104, 255, 0.15);
+  color: #0068ff;
+  transform: scale(1.1);
+}
+
+/* Sticker Pack Navigation Bar */
+.sticker-pack-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color, rgba(0,0,0,0.06));
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.sticker-pack-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: var(--bg-secondary, rgba(0,0,0,0.04));
+  border: 1px solid transparent;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-color, #1c1e21);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+.sticker-pack-tab img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+.sticker-pack-tab:hover {
+  background: rgba(0, 104, 255, 0.08);
+}
+.sticker-pack-tab.active {
+  background: #0068ff;
+  color: #ffffff;
+  border-color: #0068ff;
+  box-shadow: 0 2px 8px rgba(0, 104, 255, 0.3);
+}
+
+/* GIF Picker Header & Search Box */
+.gif-picker-header {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--bg-color, #ffffff);
+  border-bottom: 1px solid var(--border-color, rgba(0,0,0,0.06));
+}
+.gif-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: var(--bg-secondary, #f0f2f5);
+  border-radius: 20px;
+  padding: 6px 14px;
+  border: 1px solid transparent;
+  transition: border-color 0.2s;
+}
+.gif-search-box:focus-within {
+  border-color: #0068ff;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(0, 104, 255, 0.1);
+}
+.gif-search-box i.fa-search {
+  color: #8a8d91;
+  font-size: 13px;
+  margin-right: 8px;
+}
+.gif-search-box input {
+  border: none;
+  background: transparent;
+  outline: none;
+  width: 100%;
+  font-size: 13.5px;
+  color: var(--text-color, #1c1e21);
+}
+.gif-search-clear-btn {
+  background: transparent;
+  border: none;
+  color: #8a8d91;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 6px;
+  border-radius: 50%;
+}
+.gif-search-clear-btn:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* GIF Category Tags */
+.gif-category-tags {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+.gif-category-tags::-webkit-scrollbar {
+  display: none;
+}
+.gif-tag-btn {
+  background: var(--bg-secondary, rgba(0,0,0,0.04));
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 14px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-color, #4b4f56);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+.gif-tag-btn:hover {
+  background: rgba(0, 104, 255, 0.1);
+  color: #0068ff;
+}
+.gif-tag-btn.active {
+  background: #0068ff;
+  color: #ffffff;
+  border-color: #0068ff;
+}
+
+/* GIF Grid Layout */
+.gif-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+  padding: 12px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.gif-item {
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  position: relative;
+  background: #f0f2f5;
+  aspect-ratio: 4 / 3;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.gif-item:hover {
+  transform: scale(1.03);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 2;
+}
+.gif-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Message Sending Status Indicator ("Đang gửi...") */
+.sending-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.85);
+  margin-top: 2px;
+  font-weight: 500;
+  transition: opacity 0.3s ease;
+}
+.message-bubble.incoming .sending-status-badge {
+  color: var(--text-light, #65676b);
+}
+.sending-spinner {
+  width: 11px;
+  height: 11px;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spinSending 0.75s linear infinite;
+  display: inline-block;
+}
+.message-bubble.incoming .sending-spinner {
+  border-color: rgba(0, 104, 255, 0.3);
+  border-top-color: #0068ff;
+}
+@keyframes spinSending {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.sent-status-icon {
+  font-size: 10.5px;
+  margin-left: 3px;
+  opacity: 0.85;
+}

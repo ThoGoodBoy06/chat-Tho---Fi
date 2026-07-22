@@ -436,21 +436,39 @@
                                 <i class="fas fa-photo-video"></i> <span>GIF</span>
                             </button>
                         </div>
+                        
+                        <!-- TAB EMOJI -->
                         <div class="picker-content-section" id="picker-section-emoji">
                             <div class="emoji-picker-header">
                                 <div class="emoji-search-box">
                                     <i class="fas fa-search"></i>
-                                    <input type="text" id="emoji-search-input" placeholder="Tìm kiếm biểu tượng"
+                                    <input type="text" id="emoji-search-input" placeholder="Tìm kiếm biểu tượng..."
                                         oninput="filterEmojis(this.value)">
                                 </div>
                             </div>
-                            <div class="emoji-grid" id="emoji-grid"></div>
                             <div class="emoji-category-tabs" id="emoji-category-tabs"></div>
+                            <div class="emoji-grid" id="emoji-grid"></div>
                         </div>
+
+                        <!-- TAB STICKER -->
                         <div class="picker-content-section" id="picker-section-sticker" style="display: none;">
+                            <div class="sticker-pack-bar" id="sticker-pack-bar"></div>
                             <div class="sticker-grid" id="sticker-grid"></div>
                         </div>
+
+                        <!-- TAB GIF -->
                         <div class="picker-content-section" id="picker-section-gif" style="display: none;">
+                            <div class="gif-picker-header">
+                                <div class="gif-search-box">
+                                    <i class="fas fa-search"></i>
+                                    <input type="text" id="gif-search-input" placeholder="Tìm kiếm GIF trên Giphy..."
+                                        oninput="onGifSearchInput(this.value)">
+                                    <button type="button" class="gif-search-clear-btn" id="gif-search-clear-btn" onclick="clearGifSearch()" style="display:none;">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                <div class="gif-category-tags" id="gif-category-tags"></div>
+                            </div>
                             <div class="gif-grid" id="gif-grid"></div>
                         </div>
                     </div>
