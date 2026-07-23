@@ -4883,10 +4883,8 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         touch-action: pan-y !important;
         transition: bottom 0.1s ease-out !important;
         box-sizing: border-box !important;
-    }
         backface-visibility: hidden !important;
         -webkit-backface-visibility: hidden !important;
-        /* bảo vệ cuộn tin nhắn trên thiết bị cảm ứng */
     }
 
     .zalo-profile-layout {
