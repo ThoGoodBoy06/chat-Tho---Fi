@@ -11750,7 +11750,7 @@ window.scrollToBottomInstant = function () {
     if (messagesDiv) messagesDiv.scrollTop = messagesDiv.scrollHeight;
 };
 
-// 2. XỬ LÝ BÀN PHÍM MOBILE CỐ ĐỊNH LAYOUT 3 PHẦN (VISUALVIEWPORT API)
+// 2. XỬ LÝ BÀN PHÍM MOBILE CỐ ĐỊNH LAYOUT (IOS SAFARI + ANDROID CHROME)
 function initVisualViewportKeyboardHandler() {
     if (!window.visualViewport) return;
 
@@ -11760,26 +11760,16 @@ function initVisualViewportKeyboardHandler() {
 
         if (!messagesDiv || !inputArea) return;
 
-        const isMobile = window.innerWidth <= 768 || document.body.classList.contains("mobile-chat-active");
-        if (!isMobile) {
-            inputArea.style.bottom = "0px";
-            messagesDiv.style.bottom = "60px";
-            return;
-        }
+        // Luôn giữ inputArea ở bottom 0 (iOS Safari và Android Chrome tự neo fixed element ở mép trên bàn phím)
+        inputArea.style.bottom = "0px";
+        messagesDiv.style.bottom = "60px";
 
         const layoutHeight = window.innerHeight;
         const viewportHeight = window.visualViewport.height;
         const keyboardHeight = Math.max(0, Math.round(layoutHeight - viewportHeight));
 
         if (keyboardHeight > 50) {
-            // Đẩy input-area lên sát trên bàn phím, co nhỏ khung tin nhắn #messages
-            inputArea.style.bottom = `${keyboardHeight}px`;
-            messagesDiv.style.bottom = `${60 + keyboardHeight}px`;
             scrollToBottomIfNeeded(true);
-        } else {
-            // Khi bàn phím đóng: trả về bottom mặc định
-            inputArea.style.bottom = "0px";
-            messagesDiv.style.bottom = "60px";
         }
     }
 
@@ -11793,10 +11783,44 @@ if (document.readyState === "loading") {
     initVisualViewportKeyboardHandler();
 }
 
-// Lắng nghe phím Enter gửi tin nhắn trong textarea
+// 🌟 HÀM BẬT/TẮT BÀN PHÍM EMOJI / STICKER / GIF (MESSENGER STYLE)
+function toggleEmojiPicker(e) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    const panel = document.getElementById("emoji-picker-panel");
+    if (!panel) return;
+
+    const isShowing = panel.classList.contains("show");
+    if (isShowing) {
+        panel.classList.remove("show");
+        document.body.classList.remove("emoji-panel-open");
+    } else {
+        panel.classList.add("show");
+        document.body.classList.add("emoji-panel-open");
+        if (typeof switchPickerTab === "function") {
+            switchPickerTab("emoji");
+        }
+        if (typeof scrollToBottomIfNeeded === "function") {
+            scrollToBottomIfNeeded(true);
+        }
+    }
+}
+window.toggleEmojiPicker = toggleEmojiPicker;
+
+// Lắng nghe phím Enter và tự động đóng Emoji panel khi focus ô input
 document.addEventListener("DOMContentLoaded", function () {
     const messageInput = document.getElementById("message-input");
     if (messageInput) {
+        messageInput.addEventListener("focus", function () {
+            const panel = document.getElementById("emoji-picker-panel");
+            if (panel && panel.classList.contains("show")) {
+                panel.classList.remove("show");
+                document.body.classList.remove("emoji-panel-open");
+            }
+        });
+
         messageInput.addEventListener("keydown", function (e) {
             if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();

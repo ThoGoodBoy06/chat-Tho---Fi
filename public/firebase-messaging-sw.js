@@ -1,5 +1,5 @@
 // Version tracking - giúp trình duyệt iOS/Android nhận diện cập nhật mới và không dùng bản cache cũ
-const SW_VERSION = "1.2.1";
+const SW_VERSION = "1.2.2";
 console.log("[firebase-messaging-sw.js] Version:", SW_VERSION);
 
 importScripts(
@@ -25,21 +25,21 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log("[firebase-messaging-sw.js] Đã nhận tin nhắn chạy ngầm", payload);
 
-  const isCall = payload.data?.type === "incoming_call";
+  const isCall = payload.data?.type === "incoming_call" || payload.data?.type === "INCOMING_CALL";
 
-  const title = payload.notification?.title || payload.data?.title || "Tin nhắn mới";
-  const body = payload.notification?.body || payload.data?.body || "Bạn có thông báo mới";
+  const title = payload.notification?.title || (payload.data?.callerName ? `${payload.data.callerName} đang gọi cho bạn` : (payload.data?.title || "Tin nhắn mới"));
+  const body = payload.notification?.body || payload.data?.body || (isCall ? `Cuộc gọi ${payload.data?.callType === 'video' ? 'Video' : 'Thoại'} đến` : "Bạn có thông báo mới");
 
   const options = {
     body: body,
     icon: payload.data?.callerAvatar || payload.data?.image || payload.notification?.image || "/icon.png",
     badge: "/icon.png",
     data: payload.data,
-    // Rung liên tục (Rung 3s, nghỉ 0.5s, lặp lại 8 lần) cho cuộc gọi, hoặc nhịp mặc định cho tin nhắn
-    vibrate: isCall ? [3000, 500, 3000, 500, 3000, 500, 3000, 500, 3000, 500, 3000, 500, 3000, 500, 3000, 500] : [400, 100, 400, 100, 600],
-    tag: isCall ? "incoming-call-notification" : (payload.data?.conversationId || "tho-fi-chat-notification"),
+    // Rung liên tục (Rung 1s, nghỉ 0.5s, lặp lại) cho cuộc gọi
+    vibrate: isCall ? [1000, 500, 1000, 500, 1000, 500, 1000, 500] : [400, 100, 400, 100, 600],
+    tag: isCall ? "incoming-call" : (payload.data?.conversationId || "tho-fi-chat-notification"),
     renotify: true,
-    requireInteraction: isCall ? true : false, // Cuộc gọi thì giữ thông báo trên màn hình không tự biến mất
+    requireInteraction: isCall ? true : false,
   };
 
   if (isCall) {
@@ -49,8 +49,44 @@ messaging.onBackgroundMessage((payload) => {
     ];
   }
 
-  // LUÔN LUÔN gọi showNotification đồng bộ để đảm bảo iOS/Android hiển thị thông báo tin nhắn khi bị xóa đa nhiệm
   return self.registration.showNotification(title, options);
+});
+
+// Bắt sự kiện Push thô (dành cho Data-Only Push Payload từ Firebase Admin)
+self.addEventListener("push", function (event) {
+  if (!event.data) return;
+  try {
+    const payload = event.data.json();
+    const data = payload.data || payload;
+
+    const isCall = data.type === "INCOMING_CALL" || data.type === "incoming_call";
+    if (isCall) {
+      const callerName = data.callerName || data.title || "Cuộc gọi đến";
+      const callType = data.callType === "video" ? "Video" : "Thoại";
+      const title = `${callerName} đang gọi cho bạn...`;
+
+      const options = {
+        body: `Cuộc gọi ${callType} đến. Nhấn để trả lời.`,
+        icon: data.callerAvatar || "/icon.png",
+        badge: "/icon.png",
+        data: data,
+        vibrate: [1000, 500, 1000, 500, 1000, 500, 1000],
+        tag: "incoming-call",
+        renotify: true,
+        requireInteraction: true,
+        actions: [
+          { action: "accept", title: "Trả lời" },
+          { action: "decline", title: "Từ chối" }
+        ]
+      };
+
+      event.waitUntil(
+        self.registration.showNotification(title, options)
+      );
+    }
+  } catch (err) {
+    console.error("[firebase-messaging-sw.js] Lỗi parse push event:", err);
+  }
 });
 
 // Xử lý khi click vào banner thông báo chạy ngầm trên điện thoại
@@ -59,9 +95,9 @@ self.addEventListener("notificationclick", function(event) {
   const action = event.action; // "accept" hoặc "decline" hoặc undefined
   const notificationData = event.notification.data;
 
-  if (notificationData && notificationData.type === "incoming_call") {
+  if (notificationData && (notificationData.type === "incoming_call" || notificationData.type === "INCOMING_CALL")) {
     // Tạo URL chứa query parameters cuộc gọi để trang web nhận diện và mở giao diện cuộc gọi
-    let url = `/?action=incoming_call&callerId=${notificationData.callerId}&callerName=${encodeURIComponent(notificationData.callerName)}&callType=${notificationData.callType}&callerAvatar=${encodeURIComponent(notificationData.callerAvatar || "")}&t=${Date.now()}`;
+    let url = `/?action=incoming_call&callerId=${notificationData.callerId}&callerName=${encodeURIComponent(notificationData.callerName || "")}&callType=${notificationData.callType || "voice"}&callerAvatar=${encodeURIComponent(notificationData.callerAvatar || "")}&t=${Date.now()}`;
     
     if (action === "accept") {
       url += "&autoAccept=true";
