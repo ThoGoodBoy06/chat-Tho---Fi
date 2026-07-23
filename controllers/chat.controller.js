@@ -52,6 +52,7 @@ exports.getConversations = async(req, res) => {
                                     select: {
                                         id: true,
                                         fullName: true,
+                                        avatar: true,
                                         isOnline: true,
                                         lastActive: true,
                                     },

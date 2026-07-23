@@ -1957,7 +1957,7 @@ async function loadConversations() {
                 chatName = displayGroupName;
                 avatarUrl = conv.avatar ?
                     formatUrl(conv.avatar) :
-                    `https://ui-avatars.com/api/?name=${encodeURIComponent(chatName)}&background=random&color=fff`;
+                    `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="%230084ff"/><text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" fill="white" font-size="16" font-weight="bold" font-family="sans-serif">${encodeURIComponent((chatName || 'G').charAt(0).toUpperCase())}</text></svg>`;
                 targetId = conv.id;
             } else {
                 otherMember = conv.ConversationMembers.find(
@@ -1968,7 +1968,7 @@ async function loadConversations() {
                 chatName = otherMember.nickname || user.fullName || "Người dùng";
                 avatarUrl = user.avatar ?
                     formatUrl(user.avatar) :
-                    `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName || "User")}&background=random`;
+                    `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="%230084ff"/><text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" fill="white" font-size="16" font-weight="bold" font-family="sans-serif">${encodeURIComponent((user.fullName || 'U').charAt(0).toUpperCase())}</text></svg>`;
                 isOnline = user.isOnline || false;
                 lastActive = user.lastActive || "";
                 targetId = user.id;
@@ -11785,14 +11785,15 @@ function initVisualViewportKeyboardHandler() {
 
         const layoutHeight = window.innerHeight;
         const viewportHeight = window.visualViewport ? window.visualViewport.height : layoutHeight;
-        const offsetTop = window.visualViewport ? (window.visualViewport.offsetTop || 0) : 0;
-        const keyboardHeight = Math.max(0, Math.round(layoutHeight - viewportHeight - offsetTop));
+        const keyboardHeight = Math.max(0, Math.round(layoutHeight - viewportHeight));
 
         if (keyboardHeight > 50) {
-            inputArea.style.transform = `translateY(-${keyboardHeight}px)`;
+            inputArea.style.bottom = `${keyboardHeight}px`;
+            inputArea.style.transform = "none";
             messagesDiv.style.bottom = `${60 + keyboardHeight}px`;
             scrollToBottomIfNeeded(true);
         } else {
+            inputArea.style.bottom = "0px";
             inputArea.style.transform = "none";
             messagesDiv.style.bottom = "60px";
         }

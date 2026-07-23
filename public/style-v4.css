@@ -4840,8 +4840,8 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         border-top: 1px solid var(--border-color) !important;
         margin-bottom: 0 !important;
         box-sizing: border-box !important;
-        transition: transform 0.1s cubic-bezier(0.25, 1, 0.5, 1) !important;
-        will-change: transform !important;
+        transition: bottom 0.1s ease-out, transform 0.1s ease-out !important;
+        will-change: bottom, transform !important;
     }
 
     body[data-theme="dark"] .input-area {
