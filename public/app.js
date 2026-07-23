@@ -1416,7 +1416,9 @@ function initizeChatSession(userData, userToken) {
     const msgInput = document.getElementById("message-input");
     if (msgInput) {
         msgInput.addEventListener("focus", () => {
-            emitMarkMessagesRead();
+            requestAnimationFrame(() => {
+                if (typeof emitMarkMessagesRead === "function") emitMarkMessagesRead();
+            });
         });
     }
 
@@ -11778,8 +11780,9 @@ function initVisualViewportKeyboardHandler() {
 
         const isMobile = window.innerWidth <= 768 || document.body.classList.contains("mobile-chat-active");
         if (!isMobile) {
+            inputArea.style.setProperty("bottom", "0px", "important");
             inputArea.style.transform = "none";
-            messagesDiv.style.bottom = "60px";
+            messagesDiv.style.setProperty("bottom", "60px", "important");
             return;
         }
 
@@ -11788,14 +11791,15 @@ function initVisualViewportKeyboardHandler() {
         const keyboardHeight = Math.max(0, Math.round(layoutHeight - viewportHeight));
 
         if (keyboardHeight > 50) {
-            inputArea.style.bottom = `${keyboardHeight}px`;
+            inputArea.style.setProperty("bottom", `${keyboardHeight}px`, "important");
             inputArea.style.transform = "none";
-            messagesDiv.style.bottom = `${60 + keyboardHeight}px`;
-            scrollToBottomIfNeeded(true);
+            messagesDiv.style.setProperty("bottom", `${60 + keyboardHeight}px`, "important");
+            // Cuộn tức thì 0ms (instant) để không làm hoãn luồng bật bàn phím của iOS
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
         } else {
-            inputArea.style.bottom = "0px";
+            inputArea.style.setProperty("bottom", "0px", "important");
             inputArea.style.transform = "none";
-            messagesDiv.style.bottom = "60px";
+            messagesDiv.style.setProperty("bottom", "60px", "important");
         }
     }
 
@@ -11808,13 +11812,12 @@ function initVisualViewportKeyboardHandler() {
     const messageInput = document.getElementById("message-input");
     if (messageInput) {
         messageInput.addEventListener("focus", function () {
-            setTimeout(handleViewportResize, 50);
-            setTimeout(handleViewportResize, 150);
+            requestAnimationFrame(handleViewportResize);
+            setTimeout(handleViewportResize, 100);
             setTimeout(handleViewportResize, 300);
         });
         messageInput.addEventListener("blur", function () {
-            setTimeout(handleViewportResize, 50);
-            setTimeout(handleViewportResize, 150);
+            requestAnimationFrame(handleViewportResize);
         });
     }
 }
