@@ -11,8 +11,10 @@
     <style>
         #splash-screen {
             position: fixed;
-            top: 0; left: 0;
-            width: 100vw; height: 100vh;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
             background: linear-gradient(135deg, #090d1a 0%, #004ecc 100%);
             z-index: 9999999;
             display: flex;
@@ -21,36 +23,43 @@
             opacity: 1;
             visibility: visible;
         }
+
         #splash-screen.fade-out {
             opacity: 0 !important;
             visibility: hidden !important;
             pointer-events: none !important;
             transition: opacity 0.6s ease, visibility 0.6s ease;
         }
+
         .splash-content {
             text-align: center;
             display: flex;
             flex-direction: column;
             align-items: center;
         }
+
         .splash-logo-container {
-            width: 120px; height: 120px;
+            width: 120px;
+            height: 120px;
             background: #ffffff;
             border-radius: 30px;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.35);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.35);
             margin-bottom: 24px;
             transform: translateY(-250px);
             opacity: 0;
-            animation: logoFallDown 0.9s cubic-bezier(0.25,1,0.5,1) 0.1s forwards;
+            animation: logoFallDown 0.9s cubic-bezier(0.25, 1, 0.5, 1) 0.1s forwards;
             padding: 12px;
         }
+
         .splash-logo {
-            width: 100%; height: 100%;
+            width: 100%;
+            height: 100%;
             object-fit: contain;
         }
+
         .splash-title {
             font-size: 25px;
             font-weight: 800;
@@ -63,24 +72,55 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            filter: drop-shadow(0 0 20px rgba(0,255,136,0.6)) drop-shadow(0 0 40px rgba(0,204,255,0.3));
+            filter: drop-shadow(0 0 20px rgba(0, 255, 136, 0.6)) drop-shadow(0 0 40px rgba(0, 204, 255, 0.3));
             margin-bottom: 20px;
             position: relative;
-            animation: titleSlideUpFade 0.8s cubic-bezier(0.25,1,0.5,1) 0.7s forwards, titleGlow 3s ease-in-out 1.5s infinite;
+            animation: titleSlideUpFade 0.8s cubic-bezier(0.25, 1, 0.5, 1) 0.7s forwards, titleGlow 3s ease-in-out 1.5s infinite;
         }
+
         @keyframes logoFallDown {
-            0% { transform: translateY(-250px); opacity: 0; }
-            60% { transform: translateY(20px); opacity: 1; }
-            80% { transform: translateY(-10px); }
-            100% { transform: translateY(0); opacity: 1; }
+            0% {
+                transform: translateY(-250px);
+                opacity: 0;
+            }
+
+            60% {
+                transform: translateY(20px);
+                opacity: 1;
+            }
+
+            80% {
+                transform: translateY(-10px);
+            }
+
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
         }
+
         @keyframes titleSlideUpFade {
-            0% { opacity: 0; transform: translateY(80px); }
-            100% { opacity: 1; transform: translateY(0); }
+            0% {
+                opacity: 0;
+                transform: translateY(80px);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
+
         @keyframes titleGlow {
-            0%, 100% { filter: drop-shadow(0 0 20px rgba(0,255,136,0.6)) drop-shadow(0 0 40px rgba(0,204,255,0.3)); }
-            50% { filter: drop-shadow(0 0 30px rgba(255,0,255,0.5)) drop-shadow(0 0 50px rgba(0,255,136,0.4)); }
+
+            0%,
+            100% {
+                filter: drop-shadow(0 0 20px rgba(0, 255, 136, 0.6)) drop-shadow(0 0 40px rgba(0, 204, 255, 0.3));
+            }
+
+            50% {
+                filter: drop-shadow(0 0 30px rgba(255, 0, 255, 0.5)) drop-shadow(0 0 50px rgba(0, 255, 136, 0.4));
+            }
         }
     </style>
 
@@ -110,7 +150,7 @@
     </div>
     <script>
         // Splash Screen: hiển thị ĐÚNG 3 GIÂY rồi mờ dần biến mất
-        setTimeout(function() {
+        setTimeout(function () {
             var s = document.getElementById("splash-screen");
             if (s) {
                 s.classList.add("fade-out");
@@ -118,11 +158,11 @@
                 document.body.style.backgroundColor = "";
                 document.documentElement.style.overflow = "";
                 document.body.style.overflow = "";
-                setTimeout(function() {
+                setTimeout(function () {
                     if (s && s.parentNode) s.parentNode.removeChild(s);
                 }, 800);
             }
-        }, 3000);
+        }, 3500);
     </script>
 
     <!-- Màn hình Loading toàn cục (Chính giữa màn hình) -->
@@ -166,15 +206,40 @@
         opacity: 0;
         transition: opacity 0.3s ease;
       ">
-        <i class="fas fa-times" style="
-          position: absolute;
-          top: 20px;
-          right: 20px;
-          color: white;
-          font-size: 30px;
-          cursor: pointer;
-          padding: 10px;
-        " onclick="closeLightbox()"></i>
+        <div style="
+            position: absolute;
+            top: calc(16px + env(safe-area-inset-top, 0px));
+            right: 16px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            z-index: 10;
+        ">
+            <button type="button" id="lightbox-download-btn" onclick="downloadCurrentLightboxImage(event)" title="Lưu ảnh về máy" style="
+                background: rgba(255, 255, 255, 0.25);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                color: white;
+                font-size: 14px;
+                padding: 8px 16px;
+                border-radius: 20px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                font-weight: 600;
+                transition: background 0.2s ease;
+            ">
+                <i class="fas fa-download"></i> Lưu về máy
+            </button>
+            <i class="fas fa-times" style="
+              color: white;
+              font-size: 28px;
+              cursor: pointer;
+              padding: 8px;
+            " onclick="closeLightbox()"></i>
+        </div>
         <img id="lightbox-img" src="" style="
           width: 100%;
           max-width: 100%;
@@ -332,10 +397,16 @@
                                     style="display: none; position: absolute; top: -5px; right: -5px; width: 18px; height: 18px; font-size: 10px; border-radius: 50%; background: #ef4444; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 1.5px solid #fff; pointer-events: none;">0</span>
                             </div>
                             <!-- Menu Dấu cộng (+) -->
-                            <div class="plus-menu-wrapper" style="position: relative; display: inline-block; cursor: pointer;">
-                                <i class="fas fa-plus icon-btn" id="btn-plus-menu" onclick="togglePlusMenu(event)" title="Thêm" style="font-size: 16px;"></i>
-                                <div id="plus-dropdown-menu" class="plus-dropdown-menu" style="display: none; position: absolute; top: 38px; left: 0; background: var(--chat-bg); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; width: 140px; padding: 4px 0;">
-                                    <div class="plus-menu-item" onclick="openCreateGroupModalFromPlus()" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'" style="padding: 10px 12px; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text-dark); display: flex; align-items: center; gap: 8px; transition: background 0.2s;">
+                            <div class="plus-menu-wrapper"
+                                style="position: relative; display: inline-block; cursor: pointer;">
+                                <i class="fas fa-plus icon-btn" id="btn-plus-menu" onclick="togglePlusMenu(event)"
+                                    title="Thêm" style="font-size: 16px;"></i>
+                                <div id="plus-dropdown-menu" class="plus-dropdown-menu"
+                                    style="display: none; position: absolute; top: 38px; left: 0; background: var(--chat-bg); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; width: 140px; padding: 4px 0;">
+                                    <div class="plus-menu-item" onclick="openCreateGroupModalFromPlus()"
+                                        onmouseover="this.style.background='var(--bg-hover)'"
+                                        onmouseout="this.style.background='transparent'"
+                                        style="padding: 10px 12px; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text-dark); display: flex; align-items: center; gap: 8px; transition: background 0.2s;">
                                         <i class="fas fa-users" style="color: var(--primary-color);"></i> Tạo nhóm mới
                                     </div>
                                 </div>
@@ -373,7 +444,9 @@
                                 <div class="online-dot" id="chat-header-status-dot" style="display: none;"></div>
                             </div>
                             <div class="chat-header-text">
-                                <h3 id="chat-header-name" style="cursor: pointer;" onclick="if (typeof openNicknameModal === 'function') openNicknameModal();" title="Nhấp để đổi biệt danh trong cuộc trò chuyện">Tên người chat</h3>
+                                <h3 id="chat-header-name" style="cursor: pointer;"
+                                    onclick="if (typeof openNicknameModal === 'function') openNicknameModal();"
+                                    title="Nhấp để đổi biệt danh trong cuộc trò chuyện">Tên người chat</h3>
                                 <p class="status" id="chat-header-status">Đang hoạt động</p>
                             </div>
                         </div>
@@ -392,7 +465,8 @@
                             <div class="pinned-bar-text" id="pinned-bar-text">Tin nhắn đã ghim</div>
                         </div>
                         <div class="pinned-bar-nav">
-                            <i class="fas fa-trash-alt pinned-unpin-btn" id="pinned-unpin-btn" title="Bỏ ghim tin nhắn này"></i>
+                            <i class="fas fa-trash-alt pinned-unpin-btn" id="pinned-unpin-btn"
+                                title="Bỏ ghim tin nhắn này"></i>
                         </div>
                     </div>
 
@@ -400,7 +474,8 @@
                     <div id="search-bar" class="search-bar" style="display: none;">
                         <div class="search-bar-content">
                             <i class="fas fa-search search-bar-icon"></i>
-                            <input type="text" id="search-input" class="search-input" placeholder="Tìm kiếm tin nhắn..." autocomplete="off" />
+                            <input type="text" id="search-input" class="search-input" placeholder="Tìm kiếm tin nhắn..."
+                                autocomplete="off" />
                         </div>
                         <div class="search-bar-nav">
                             <span id="search-result-count" class="search-result-count"></span>
@@ -411,20 +486,23 @@
                     </div>
 
                     <!-- Modal Chuyển Tiếp Tin Nhắn (Forward Modal) -->
-                    <div id="forward-modal-overlay" class="forward-modal-overlay" style="display: none;" onclick="closeForwardModal()">
+                    <div id="forward-modal-overlay" class="forward-modal-overlay" style="display: none;"
+                        onclick="closeForwardModal()">
                         <div class="forward-modal" onclick="event.stopPropagation()">
                             <div class="forward-modal-header">
                                 <h3>Chuyển tiếp tin nhắn</h3>
                                 <i class="fas fa-times forward-modal-close" onclick="closeForwardModal()"></i>
                             </div>
                             <div class="forward-modal-search">
-                                <input type="text" id="forward-search-input" placeholder="Tìm cuộc trò chuyện..." oninput="filterForwardList()" />
+                                <input type="text" id="forward-search-input" placeholder="Tìm cuộc trò chuyện..."
+                                    oninput="filterForwardList()" />
                             </div>
                             <div class="forward-modal-list" id="forward-conversation-list">
                                 <!-- Danh sách cuộc hội thoại sẽ được render bằng JS -->
                             </div>
                             <div class="forward-modal-footer">
-                                <button class="forward-send-btn" id="forward-send-btn" onclick="executeForward()" disabled>Gửi</button>
+                                <button class="forward-send-btn" id="forward-send-btn" onclick="executeForward()"
+                                    disabled>Gửi</button>
                             </div>
                         </div>
                     </div>
@@ -522,17 +600,20 @@
                     <!-- Khung chọn Emoji / Sticker / GIF dạng bàn phím Messenger (bên dưới input-area) -->
                     <div class="emoji-picker-panel" id="emoji-picker-panel">
                         <div class="picker-main-nav">
-                            <button type="button" class="picker-nav-btn active" id="picker-tab-emoji" onclick="switchPickerTab('emoji')">
+                            <button type="button" class="picker-nav-btn active" id="picker-tab-emoji"
+                                onclick="switchPickerTab('emoji')">
                                 <i class="far fa-smile"></i> <span>Biểu cảm</span>
                             </button>
-                            <button type="button" class="picker-nav-btn" id="picker-tab-sticker" onclick="switchPickerTab('sticker')">
+                            <button type="button" class="picker-nav-btn" id="picker-tab-sticker"
+                                onclick="switchPickerTab('sticker')">
                                 <i class="fas fa-icons"></i> <span>Sticker</span>
                             </button>
-                            <button type="button" class="picker-nav-btn" id="picker-tab-gif" onclick="switchPickerTab('gif')">
+                            <button type="button" class="picker-nav-btn" id="picker-tab-gif"
+                                onclick="switchPickerTab('gif')">
                                 <i class="fas fa-photo-video"></i> <span>GIF</span>
                             </button>
                         </div>
-                        
+
                         <!-- TAB EMOJI -->
                         <div class="picker-content-section" id="picker-section-emoji">
                             <div class="emoji-picker-header">
@@ -559,7 +640,8 @@
                                     <i class="fas fa-search"></i>
                                     <input type="text" id="gif-search-input" placeholder="Tìm kiếm GIF trên Giphy..."
                                         oninput="onGifSearchInput(this.value)">
-                                    <button type="button" class="gif-search-clear-btn" id="gif-search-clear-btn" onclick="clearGifSearch()" style="display:none;">
+                                    <button type="button" class="gif-search-clear-btn" id="gif-search-clear-btn"
+                                        onclick="clearGifSearch()" style="display:none;">
                                         <i class="fas fa-times"></i>
                                 </div>
                             </div>
@@ -784,15 +866,22 @@
                 </div>
                 <div class="mobile-header-actions" style="display: flex; align-items: center; gap: 12px;">
                     <!-- Thay thế dấu cộng bằng Chuông thông báo trên mobile -->
-                    <div class="notification-bell-wrapper mobile-bell-wrapper" onclick="toggleNotificationsDropdown(event)" style="cursor: pointer;">
+                    <div class="notification-bell-wrapper mobile-bell-wrapper"
+                        onclick="toggleNotificationsDropdown(event)" style="cursor: pointer;">
                         <i class="fas fa-bell" id="mobile-bell-btn" title="Thông báo"></i>
                         <span class="nav-badge" id="mobile-notifications-badge" style="display: none;">0</span>
                     </div>
                     <!-- Menu Dấu cộng (+) trên Mobile -->
-                    <div class="plus-menu-wrapper mobile-plus-wrapper" onclick="togglePlusMenuMobile(event)" style="position: relative; display: flex; align-items: center; justify-content: center; cursor: pointer; width: 36px; height: 36px; background: rgba(255, 255, 255, 0.15); border-radius: 50%; box-sizing: border-box; transition: background var(--transition-fast, 0.15s);">
-                        <i class="fas fa-plus" id="btn-mobile-plus-menu" style="font-size: 18px; color: white; display: flex; align-items: center; justify-content: center;"></i>
-                        <div id="plus-dropdown-menu-mobile" class="plus-dropdown-menu" style="display: none; position: absolute; top: 40px; right: 0; background: var(--chat-bg); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; width: 140px; padding: 4px 0;">
-                            <div class="plus-menu-item" onclick="openCreateGroupModalFromPlusMobile()" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'" style="padding: 10px 12px; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text-dark); display: flex; align-items: center; gap: 8px; transition: background 0.2s;">
+                    <div class="plus-menu-wrapper mobile-plus-wrapper" onclick="togglePlusMenuMobile(event)"
+                        style="position: relative; display: flex; align-items: center; justify-content: center; cursor: pointer; width: 36px; height: 36px; background: rgba(255, 255, 255, 0.15); border-radius: 50%; box-sizing: border-box; transition: background var(--transition-fast, 0.15s);">
+                        <i class="fas fa-plus" id="btn-mobile-plus-menu"
+                            style="font-size: 18px; color: white; display: flex; align-items: center; justify-content: center;"></i>
+                        <div id="plus-dropdown-menu-mobile" class="plus-dropdown-menu"
+                            style="display: none; position: absolute; top: 40px; right: 0; background: var(--chat-bg); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; width: 140px; padding: 4px 0;">
+                            <div class="plus-menu-item" onclick="openCreateGroupModalFromPlusMobile()"
+                                onmouseover="this.style.background='var(--bg-hover)'"
+                                onmouseout="this.style.background='transparent'"
+                                style="padding: 10px 12px; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text-dark); display: flex; align-items: center; gap: 8px; transition: background 0.2s;">
                                 <i class="fas fa-users" style="color: var(--primary-color);"></i> Tạo nhóm mới
                             </div>
                         </div>
@@ -1057,7 +1146,8 @@
     </div>
     <!-- Panel thông tin cuộc trò chuyện (Chat Info) -->
     <!-- Giao diện Side Drawer Thông tin chat mới hoàn toàn -->
-    <div id="chat-info-panel" class="chat-info-drawer-overlay" style="display: none;" onclick="if(event.target === this) closeChatInfoPanel()">
+    <div id="chat-info-panel" class="chat-info-drawer-overlay" style="display: none;"
+        onclick="if(event.target === this) closeChatInfoPanel()">
         <div class="chat-info-drawer-card">
             <div class="drawer-header">
                 <h3 class="drawer-title">Thông tin</h3>
@@ -1065,7 +1155,7 @@
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            
+
             <div class="drawer-content">
                 <!-- Avatar & Name section -->
                 <div class="drawer-profile-section">
@@ -1073,7 +1163,8 @@
                         <div class="drawer-avatar">
                             <img id="chat-info-avatar-img" src="" alt="Avatar" />
                         </div>
-                        <div id="group-avatar-edit-badge" class="drawer-avatar-edit-badge" onclick="document.getElementById('group-avatar-file-input').click()">
+                        <div id="group-avatar-edit-badge" class="drawer-avatar-edit-badge"
+                            onclick="document.getElementById('group-avatar-file-input').click()">
                             <i class="fas fa-camera"></i>
                         </div>
                     </div>
@@ -1086,11 +1177,13 @@
 
                 <!-- Actions section (Trang cá nhân, biệt danh, vv...) -->
                 <div class="drawer-actions-grid chat-info-actions-grid">
-                    <div id="btn-info-profile" class="drawer-action-item" onclick="if (currentChatPartnerId) { openOtherUserProfileModal(currentChatPartnerId); closeChatInfoPanel(); }">
+                    <div id="btn-info-profile" class="drawer-action-item"
+                        onclick="if (currentChatPartnerId) { openOtherUserProfileModal(currentChatPartnerId); closeChatInfoPanel(); }">
                         <div class="drawer-action-icon"><i class="fas fa-user"></i></div>
                         <span>Trang cá nhân</span>
                     </div>
-                    <div id="btn-info-nickname" class="drawer-action-item" onclick="closeChatInfoPanel(); openNicknameModal();">
+                    <div id="btn-info-nickname" class="drawer-action-item"
+                        onclick="closeChatInfoPanel(); openNicknameModal();">
                         <div class="drawer-action-icon"><i class="fas fa-pen-fancy"></i></div>
                         <span>Biệt danh</span>
                     </div>
@@ -1104,31 +1197,38 @@
                     </div>
                 </div>
 
-                <div class="info-menu-actions" style="width: 100%; display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px;">
-                    <button id="btn-info-create-group" class="custom-btn btn-primary" onclick="closeChatInfoPanel(); createGroupDirectlyWithPartner();" style="width: 100%; font-size: 13.5px; padding: 10px; margin: 0; min-height: 42px;">
+                <div class="info-menu-actions"
+                    style="width: 100%; display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px;">
+                    <button id="btn-info-create-group" class="custom-btn btn-primary"
+                        onclick="closeChatInfoPanel(); createGroupDirectlyWithPartner();"
+                        style="width: 100%; font-size: 13.5px; padding: 10px; margin: 0; min-height: 42px;">
                         <i class="fas fa-users"></i> Tạo nhóm mới
                     </button>
-                    <button id="btn-block-user" class="btn-block-danger" data-blocked="false" style="margin: 0; width: 100%; min-height: 42px;">
+                    <button id="btn-block-user" class="btn-block-danger" data-blocked="false"
+                        style="margin: 0; width: 100%; min-height: 42px;">
                         <i class="fas fa-ban"></i> <span id="block-text">Chặn người này</span>
                     </button>
                 </div>
 
                 <!-- Quản lý thành viên nhóm -->
-                <div class="group-management-panel" id="group-management-panel" style="display: none; border-top: 1px solid var(--border-color); padding-top: 16px;">
+                <div class="group-management-panel" id="group-management-panel"
+                    style="display: none; border-top: 1px solid var(--border-color); padding-top: 16px;">
                     <div class="drawer-section-header">
                         <h4 class="drawer-section-title">Thành viên nhóm</h4>
                         <button id="btn-add-member" class="drawer-section-action-btn" onclick="openAddMemberModal()">
                             <i class="fas fa-plus"></i> Thêm
                         </button>
                     </div>
-                    <ul id="group-member-list" style="list-style: none; padding: 0; margin: 0; max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+                    <ul id="group-member-list"
+                        style="list-style: none; padding: 0; margin: 0; max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
                         <!-- Render danh sách thành viên qua JS -->
                     </ul>
                 </div>
 
                 <!-- Menu phụ dưới cùng (Giải tán nhóm...) -->
                 <div class="drawer-menu-list">
-                    <button id="btn-dissolve-group" class="drawer-menu-item" onclick="confirmDissolveGroup()" style="display: none; width: 100%; text-align: left; justify-content: flex-start;">
+                    <button id="btn-dissolve-group" class="drawer-menu-item" onclick="confirmDissolveGroup()"
+                        style="display: none; width: 100%; text-align: left; justify-content: flex-start;">
                         <i class="fas fa-trash-alt"></i> Giải tán nhóm
                     </button>
                 </div>
@@ -1377,11 +1477,18 @@
             </div>
             <div class="custom-modal-body" style="padding-top: 10px;">
                 <div class="group-name-input-wrapper" style="margin-bottom: 15px;">
-                    <label for="group-name-input" style="font-weight: 600; font-size: 13.5px; display: block; margin-bottom: 6px; color: var(--text-dark);">Tên nhóm:</label>
-                    <input type="text" id="group-name-input" placeholder="Nhập tên nhóm..." style="width: 100%; padding: 10px 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px; background: var(--chat-bg); color: var(--text-dark); box-sizing: border-box;" autocomplete="off" />
+                    <label for="group-name-input"
+                        style="font-weight: 600; font-size: 13.5px; display: block; margin-bottom: 6px; color: var(--text-dark);">Tên
+                        nhóm:</label>
+                    <input type="text" id="group-name-input" placeholder="Nhập tên nhóm..."
+                        style="width: 100%; padding: 10px 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px; background: var(--chat-bg); color: var(--text-dark); box-sizing: border-box;"
+                        autocomplete="off" />
                 </div>
-                <label style="font-weight: 600; font-size: 13.5px; display: block; margin-bottom: 6px; color: var(--text-dark);">Chọn thành viên:</label>
-                <div id="create-group-friends-list" class="group-friends-select-list" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; background: var(--chat-bg); display: flex; flex-direction: column; gap: 8px;">
+                <label
+                    style="font-weight: 600; font-size: 13.5px; display: block; margin-bottom: 6px; color: var(--text-dark);">Chọn
+                    thành viên:</label>
+                <div id="create-group-friends-list" class="group-friends-select-list"
+                    style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; background: var(--chat-bg); display: flex; flex-direction: column; gap: 8px;">
                     <!-- Render danh sách bạn bè qua JS -->
                 </div>
             </div>
@@ -1400,8 +1507,11 @@
                 <i class="fas fa-times close-modal-btn" onclick="closeAddMemberModal()"></i>
             </div>
             <div class="custom-modal-body" style="padding-top: 10px;">
-                <label style="font-weight: 600; font-size: 13.5px; display: block; margin-bottom: 6px; color: var(--text-dark);">Chọn bạn bè để thêm:</label>
-                <div id="add-member-friends-list" class="group-friends-select-list" style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; background: var(--chat-bg); display: flex; flex-direction: column; gap: 8px;">
+                <label
+                    style="font-weight: 600; font-size: 13.5px; display: block; margin-bottom: 6px; color: var(--text-dark);">Chọn
+                    bạn bè để thêm:</label>
+                <div id="add-member-friends-list" class="group-friends-select-list"
+                    style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; background: var(--chat-bg); display: flex; flex-direction: column; gap: 8px;">
                     <!-- Render danh sách bạn bè qua JS -->
                 </div>
             </div>

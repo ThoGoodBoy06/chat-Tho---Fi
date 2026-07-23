@@ -3433,37 +3433,8 @@ function displayMessage(msg, targetContainer = null) {
                     e.stopPropagation();
                     moreMenu.classList.remove("show");
                     hideMobileOverlay();
-
-                    try {
-                        let imageUrl = msg.content;
-                        if (imageUrl.startsWith("data:image/")) {
-                            const a = document.createElement('a');
-                            a.style.display = 'none';
-                            a.href = imageUrl;
-                            a.download = `tho-fi-image-${Date.now()}.png`;
-                            document.body.appendChild(a);
-                            a.click();
-                            document.body.removeChild(a);
-                        } else {
-                            const response = await fetch(imageUrl);
-                            const blob = await response.blob();
-                            const blobUrl = window.URL.createObjectURL(blob);
-
-                            const a = document.createElement('a');
-                            a.style.display = 'none';
-                            a.href = blobUrl;
-                            a.download = `tho-fi-image-${Date.now()}.jpg`;
-                            document.body.appendChild(a);
-                            a.click();
-
-                            window.URL.revokeObjectURL(blobUrl);
-                            document.body.removeChild(a);
-                        }
-                        showToast("Đã lưu ảnh");
-                    } catch (error) {
-                        console.error('Lỗi khi tải ảnh:', error);
-                        // Fallback: Mở ảnh trong tab mới nếu bị CORS chặn
-                        window.open(imageUrl, '_blank');
+                    if (msg && msg.content) {
+                        await saveImageToDevice(msg.content);
                     }
                 };
                 moreMenu.appendChild(saveOption);
@@ -5096,6 +5067,96 @@ function closeLightbox() {
             const inputArea = document.getElementById("input-area");
             if (inputArea) inputArea.style.visibility = "";
         }, 300);
+    }
+}
+
+// 🌟 Hàm lưu ảnh trực tiếp vào điện thoại (Thư viện Photos / Gallery) hoặc Máy tính
+async function saveImageToDevice(imageUrl) {
+    if (!imageUrl) return;
+    try {
+        if (typeof showToast === "function") showToast("Đang tải ảnh...");
+
+        let blob;
+        let fileName = `tho-fi-image-${Date.now()}`;
+        let mimeType = "image/jpeg";
+
+        if (imageUrl.startsWith("data:image/")) {
+            const parts = imageUrl.split(",");
+            const match = parts[0].match(/:(.*?);/);
+            if (match) mimeType = match[1];
+            const ext = mimeType.split("/")[1] || "png";
+            fileName += `.${ext}`;
+
+            const byteString = atob(parts[1]);
+            const ab = new ArrayBuffer(byteString.length);
+            const ia = new Uint8Array(ab);
+            for (let i = 0; i < byteString.length; i++) {
+                ia[i] = byteString.charCodeAt(i);
+            }
+            blob = new Blob([ab], { type: mimeType });
+        } else {
+            const response = await fetch(imageUrl, { mode: 'cors' }).catch(() => null);
+            if (response && response.ok) {
+                blob = await response.blob();
+                if (blob.type) mimeType = blob.type;
+                const ext = mimeType.split("/")[1] || "jpg";
+                fileName += `.${ext}`;
+            }
+        }
+
+        if (blob) {
+            const file = new File([blob], fileName, { type: mimeType });
+
+            // 1. Dành cho điện thoại di động (iOS Safari / Android): Dùng Web Share API để lưu thẳng vào Ảnh (Photos / Gallery)
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: 'Lưu ảnh',
+                    text: 'Lưu ảnh về thiết bị'
+                });
+                if (typeof showToast === "function") showToast("Đã mở tùy chọn lưu ảnh!");
+                return;
+            }
+
+            // 2. Dành cho Máy tính / Trình duyệt không hỗ trợ Share API: Tải trực tiếp qua Blob URL
+            const blobUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.style.display = "none";
+            a.href = blobUrl;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                window.URL.revokeObjectURL(blobUrl);
+                document.body.removeChild(a);
+            }, 1000);
+            if (typeof showToast === "function") showToast("Đã tải ảnh về thiết bị!");
+            return;
+        }
+
+        // 3. Fallback nếu URL từ server khác không cho fetch (CORS)
+        const a = document.createElement("a");
+        a.style.display = "none";
+        a.href = imageUrl;
+        a.target = "_blank";
+        a.download = fileName + ".jpg";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        if (typeof showToast === "function") showToast("Đã tải ảnh");
+    } catch (err) {
+        console.error("Lỗi khi lưu ảnh:", err);
+        if (err.name !== 'AbortError') {
+            window.open(imageUrl, '_blank');
+        }
+    }
+}
+
+async function downloadCurrentLightboxImage(e) {
+    if (e) e.stopPropagation();
+    const img = document.getElementById("lightbox-img");
+    if (img && img.src) {
+        await saveImageToDevice(img.src);
     }
 }
 

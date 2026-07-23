@@ -4244,11 +4244,10 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.04) !important;
         flex-direction: row;
         justify-content: space-around !important;
-        /* QUAN TRỌNG: align-items flex-END để icon nằm SÁT ĐÁY phần 50px, 
-           vùng safe-area bên dưới chỉ là nền trắng */
+        /* QUAN TRỌNG: align-items flex-end kết hợp padding-bottom có env(safe-area-inset-bottom) 
+           để icon và nav-slider-pill đồng bộ vị trí trên thiết bị iOS (iPhone/iPad) có notch/gesture bar */
         align-items: flex-end !important;
-        /* padding-bottom KHÔNG dùng safe-area → icon sát mép dưới phần nội dung */
-        padding: 0 8px 3px 8px !important;
+        padding: 0 8px calc(3px + env(safe-area-inset-bottom, 0px)) 8px !important;
         gap: 0 !important;
     }
 
