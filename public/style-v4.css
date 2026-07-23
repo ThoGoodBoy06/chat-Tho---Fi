@@ -4840,7 +4840,8 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         border-top: 1px solid var(--border-color) !important;
         margin-bottom: 0 !important;
         box-sizing: border-box !important;
-        transition: bottom 0.1s ease-out !important;
+        transition: transform 0.1s cubic-bezier(0.25, 1, 0.5, 1) !important;
+        will-change: transform !important;
     }
 
     body[data-theme="dark"] .input-area {
@@ -4885,6 +4886,13 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         box-sizing: border-box !important;
         backface-visibility: hidden !important;
         -webkit-backface-visibility: hidden !important;
+        will-change: scroll-position !important;
+        transform: translateZ(0) !important;
+        -webkit-transform: translateZ(0) !important;
+    }
+
+    .message {
+        contain: content !important;
     }
 
     .zalo-profile-layout {

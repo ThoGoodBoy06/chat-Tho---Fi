@@ -62,6 +62,23 @@ function formatUrl(url) {
     return SERVER_URL + url;
 }
 
+// 🌟 HÀM TẠO LỜI CHÀO NGẪU NHIÊN LUÂN PHIÊN DÀNH CHO TRỢ LÝ AI (GLOBAL SCOPE)
+function getRandomAiGreeting(name) {
+    const userDisplayName = name || "bạn";
+    const greetings = [
+        `Hôm nay bạn thế nào, ${userDisplayName}?`,
+        `Chào ${userDisplayName}, tôi có thể giúp gì cho bạn hôm nay?`,
+        `Chúc ${userDisplayName} một ngày tràn đầy năng lượng!`,
+        `Hôm nay ${userDisplayName} muốn khám phá điều gì cùng AI?`,
+        `Chào ${userDisplayName}, hãy chia sẻ điều bạn đang nghĩ nhé!`,
+        `Rất vui được gặp lại ${userDisplayName}! Bạn cần hỗ trợ gì?`,
+        `Hôm nay ${userDisplayName} có kế hoạch gì thú vị không?`,
+        `${userDisplayName} ơi, tôi đã sẵn sàng hỗ trợ bạn rồi đây!`
+    ];
+    return greetings[Math.floor(Math.random() * greetings.length)];
+}
+window.getRandomAiGreeting = getRandomAiGreeting;
+
 // TỰ ĐỘNG THAY THẾ ẢNH LỖI (404) BẰNG ẢNH MẶC ĐỊNH
 document.addEventListener(
     "error",
@@ -1188,10 +1205,10 @@ function initizeChatSession(userData, userToken) {
         window.cachedFlutterFcmToken = null;
     }
 
-    // Cập nhật lời chào Trợ lý AI khi khởi tạo session
+    // Cập nhật lời chào ngẫu nhiên cho Trợ lý AI khi khởi tạo session
     const welcomeTitle = document.getElementById("ai-welcome-title");
     if (welcomeTitle) {
-        welcomeTitle.innerText = `Hôm nay bạn thế nào, ${myUsername || "bạn"}?`;
+        welcomeTitle.innerText = getRandomAiGreeting(myName);
     }
 
     document.getElementById("my-name").innerText = myName;
@@ -5313,11 +5330,12 @@ function switchTab(tabId, navElement) {
     ripple.style.marginLeft = ripple.style.marginTop = -(size / 2) + 'px';
     navElement.appendChild(ripple);
     setTimeout(() => ripple.remove(), 500);
+
     // Khởi tạo/cập nhật thông tin chào mừng của tab AI
     if (tabId === "tab-ai") {
         const welcomeTitle = document.getElementById("ai-welcome-title");
         if (welcomeTitle) {
-            welcomeTitle.innerText = `Hôm nay bạn thế nào, ${myUsername || "bạn"}?`;
+            welcomeTitle.innerText = getRandomAiGreeting(myName);
         }
         loadAiChatHistory();
         updateAiQuotaBar(); // Cập nhật thanh hạn ngạch AI
@@ -11750,31 +11768,54 @@ window.scrollToBottomInstant = function () {
     if (messagesDiv) messagesDiv.scrollTop = messagesDiv.scrollHeight;
 };
 
-// 2. XỬ LÝ BÀN PHÍM MOBILE CỐ ĐỊNH LAYOUT (IOS SAFARI + ANDROID CHROME)
+// 2. XỬ LÝ BÀN PHÍM MOBILE CỐ ĐỊNH LAYOUT CHUẨN (IOS SAFARI + ANDROID CHROME)
 function initVisualViewportKeyboardHandler() {
-    if (!window.visualViewport) return;
-
     function handleViewportResize() {
         const messagesDiv = document.getElementById("messages");
         const inputArea = document.getElementById("input-area");
 
         if (!messagesDiv || !inputArea) return;
 
-        // Luôn giữ inputArea ở bottom 0 (iOS Safari và Android Chrome tự neo fixed element ở mép trên bàn phím)
-        inputArea.style.bottom = "0px";
-        messagesDiv.style.bottom = "60px";
+        const isMobile = window.innerWidth <= 768 || document.body.classList.contains("mobile-chat-active");
+        if (!isMobile) {
+            inputArea.style.transform = "none";
+            messagesDiv.style.bottom = "60px";
+            return;
+        }
 
         const layoutHeight = window.innerHeight;
-        const viewportHeight = window.visualViewport.height;
-        const keyboardHeight = Math.max(0, Math.round(layoutHeight - viewportHeight));
+        const viewportHeight = window.visualViewport ? window.visualViewport.height : layoutHeight;
+        const offsetTop = window.visualViewport ? (window.visualViewport.offsetTop || 0) : 0;
+        const keyboardHeight = Math.max(0, Math.round(layoutHeight - viewportHeight - offsetTop));
 
         if (keyboardHeight > 50) {
+            inputArea.style.transform = `translateY(-${keyboardHeight}px)`;
+            messagesDiv.style.bottom = `${60 + keyboardHeight}px`;
             scrollToBottomIfNeeded(true);
+        } else {
+            inputArea.style.transform = "none";
+            messagesDiv.style.bottom = "60px";
         }
     }
 
-    window.visualViewport.addEventListener("resize", handleViewportResize);
-    window.visualViewport.addEventListener("scroll", handleViewportResize);
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener("resize", handleViewportResize);
+        window.visualViewport.addEventListener("scroll", handleViewportResize);
+    }
+    window.addEventListener("resize", handleViewportResize);
+
+    const messageInput = document.getElementById("message-input");
+    if (messageInput) {
+        messageInput.addEventListener("focus", function () {
+            setTimeout(handleViewportResize, 50);
+            setTimeout(handleViewportResize, 150);
+            setTimeout(handleViewportResize, 300);
+        });
+        messageInput.addEventListener("blur", function () {
+            setTimeout(handleViewportResize, 50);
+            setTimeout(handleViewportResize, 150);
+        });
+    }
 }
 
 if (document.readyState === "loading") {

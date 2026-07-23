@@ -135,7 +135,7 @@
     <meta name="apple-mobile-web-app-title" content="Chat Tho-Fi" />
     <link rel="icon" href="icon.png" type="image/png" />
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
-    <link rel="stylesheet" href="style-v4.css?v=148" />
+    <link rel="stylesheet" href="style-v4.css?v=150" />
 </head>
 
 <body>
@@ -149,7 +149,7 @@
         </div>
     </div>
     <script>
-        // Splash Screen: hiển thị ĐÚNG 3 GIÂY rồi mờ dần biến mất
+        // Splash Screen: hiển thị 3.5 giây để ứng dụng mở tức thì
         setTimeout(function () {
             var s = document.getElementById("splash-screen");
             if (s) {
@@ -215,7 +215,8 @@
             align-items: center;
             z-index: 10;
         ">
-            <button type="button" id="lightbox-download-btn" onclick="downloadCurrentLightboxImage(event)" title="Lưu ảnh về máy" style="
+            <button type="button" id="lightbox-download-btn" onclick="downloadCurrentLightboxImage(event)"
+                title="Lưu ảnh về máy" style="
                 background: rgba(255, 255, 255, 0.25);
                 border: 1px solid rgba(255, 255, 255, 0.3);
                 color: white;
@@ -1531,8 +1532,12 @@
             </div>
             <div class="custom-modal-body" style="padding-top: 10px;">
                 <div class="group-name-input-wrapper" style="margin-bottom: 15px;">
-                    <label for="nickname-input" style="font-weight: 600; font-size: 13.5px; display: block; margin-bottom: 6px; color: var(--text-dark);">Biệt danh mới trong cuộc trò chuyện:</label>
-                    <input type="text" id="nickname-input" placeholder="Nhập biệt danh..." style="width: 100%; padding: 10px 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px; background: var(--chat-bg); color: var(--text-dark); box-sizing: border-box;" autocomplete="off" onkeyup="if (event.key === 'Enter') submitChangeNickname();" />
+                    <label for="nickname-input"
+                        style="font-weight: 600; font-size: 13.5px; display: block; margin-bottom: 6px; color: var(--text-dark);">Biệt
+                        danh mới trong cuộc trò chuyện:</label>
+                    <input type="text" id="nickname-input" placeholder="Nhập biệt danh..."
+                        style="width: 100%; padding: 10px 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px; background: var(--chat-bg); color: var(--text-dark); box-sizing: border-box;"
+                        autocomplete="off" onkeyup="if (event.key === 'Enter') submitChangeNickname();" />
                 </div>
             </div>
             <div class="custom-modal-footer">
@@ -1548,7 +1553,7 @@
 
     <!-- Import Socket.IO và file xử lý logic -->
     <script src="/socket.io/socket.io.js"></script>
-    <script src="app.js?v=200019"></script>
+    <script src="app.js?v=200025"></script>
 </body>
 
 </html>
