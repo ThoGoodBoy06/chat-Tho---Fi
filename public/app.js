@@ -11794,8 +11794,12 @@ function initVisualViewportKeyboardHandler() {
             inputArea.style.setProperty("bottom", `${keyboardHeight}px`, "important");
             inputArea.style.transform = "none";
             messagesDiv.style.setProperty("bottom", `${60 + keyboardHeight}px`, "important");
-            // Cuộn tức thì 0ms (instant) để không làm hoãn luồng bật bàn phím của iOS
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            
+            // Cuộn vừa vừa: Chỉ cuộn vừa đủ hiển thị tin nhắn cuối (block: nearest) mà không đẩy vọt lên quá cao
+            const lastMsg = messagesDiv.lastElementChild;
+            if (lastMsg && typeof lastMsg.scrollIntoView === "function") {
+                lastMsg.scrollIntoView({ block: "nearest", behavior: "auto" });
+            }
         } else {
             inputArea.style.setProperty("bottom", "0px", "important");
             inputArea.style.transform = "none";
