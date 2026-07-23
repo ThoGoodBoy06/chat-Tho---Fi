@@ -4904,6 +4904,14 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         will-change: scroll-position !important;
         transform: translateZ(0) !important;
         -webkit-transform: translateZ(0) !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    #messages > .message:first-child,
+    #messages > .message-date-divider:first-child,
+    #messages > div:first-child {
+        margin-top: auto !important;
     }
 
     .message {
