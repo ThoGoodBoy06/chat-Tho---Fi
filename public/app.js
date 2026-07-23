@@ -2018,7 +2018,7 @@ async function loadConversations() {
                 li.classList.add("active");
             }
             
-            li.onclick = () => startChat(targetId, chatName, avatarUrl, isGroup ? "group" : "private");
+            li.onclick = () => startChat(targetId, chatName, avatarUrl, isGroup ? "group" : "private", conv.id);
 
             const avatarHtml = isGroup 
                 ? `<div class="avatar">
@@ -2120,7 +2120,7 @@ async function searchUser() {
 }
 
 // 3. Bắt đầu trò chuyện với ai đó
-async function startChat(receiverId, receiverName, receiverAvatar, type = "private") {
+async function startChat(receiverId, receiverName, receiverAvatar, type = "private", knownConvId = null) {
     if (!receiverId) {
         return alert("Lỗi: Không tìm thấy ID người nhận hoặc phòng chat.");
     }
@@ -2279,7 +2279,9 @@ async function startChat(receiverId, receiverName, receiverAvatar, type = "priva
         if (likeBtn) likeBtn.style.display = 'flex';
         if (sendBtn) sendBtn.style.display = 'none';
 
-        if (!isGroup) {
+        if (knownConvId) {
+            currentConversationId = knownConvId;
+        } else if (!isGroup) {
             const res = await fetch(`${API_URL}/chat/conversations`, {
                 method: "POST",
                 headers: {
@@ -11721,5 +11723,230 @@ function renderGifGrid(gifs) {
 function sendGif(url) {
     sendFileOrAudioMessage(url, "image");
 }
+
+/* ==========================================================================
+   BỔ SUNG VÀ NÂNG CẤP CHUẨN MESSENGER MOBILE (VISUALVIEWPORT, SCROLL & NICKNAME)
+   ========================================================================== */
+
+// 1. SCROLL THÔNG MINH (SMART SCROLL TO BOTTOM)
+function scrollToBottomIfNeeded(force = false) {
+    const messagesDiv = document.getElementById("messages");
+    if (!messagesDiv) return;
+
+    const distanceFromBottom = messagesDiv.scrollHeight - messagesDiv.scrollTop - messagesDiv.clientHeight;
+    // Chỉ tự động cuộn nếu đang ở gần đáy (< 150px) hoặc yêu cầu cưỡng chế force
+    if (force || distanceFromBottom < 150) {
+        messagesDiv.scrollTo({
+            top: messagesDiv.scrollHeight,
+            behavior: "smooth"
+        });
+    }
+}
+window.scrollToBottomIfNeeded = scrollToBottomIfNeeded;
+window.smartScrollToBottom = scrollToBottomIfNeeded;
+window.scrollToBottomSmooth = function () { scrollToBottomIfNeeded(true); };
+window.scrollToBottomInstant = function () {
+    const messagesDiv = document.getElementById("messages");
+    if (messagesDiv) messagesDiv.scrollTop = messagesDiv.scrollHeight;
+};
+
+// 2. XỬ LÝ BÀN PHÍM MOBILE CỐ ĐỊNH LAYOUT 3 PHẦN (VISUALVIEWPORT API)
+function initVisualViewportKeyboardHandler() {
+    if (!window.visualViewport) return;
+
+    function handleViewportResize() {
+        const messagesDiv = document.getElementById("messages");
+        const inputArea = document.getElementById("input-area");
+
+        if (!messagesDiv || !inputArea) return;
+
+        const isMobile = window.innerWidth <= 768 || document.body.classList.contains("mobile-chat-active");
+        if (!isMobile) {
+            inputArea.style.bottom = "0px";
+            messagesDiv.style.bottom = "60px";
+            return;
+        }
+
+        const layoutHeight = window.innerHeight;
+        const viewportHeight = window.visualViewport.height;
+        const keyboardHeight = Math.max(0, Math.round(layoutHeight - viewportHeight));
+
+        if (keyboardHeight > 50) {
+            // Đẩy input-area lên sát trên bàn phím, co nhỏ khung tin nhắn #messages
+            inputArea.style.bottom = `${keyboardHeight}px`;
+            messagesDiv.style.bottom = `${60 + keyboardHeight}px`;
+            scrollToBottomIfNeeded(true);
+        } else {
+            // Khi bàn phím đóng: trả về bottom mặc định
+            inputArea.style.bottom = "0px";
+            messagesDiv.style.bottom = "60px";
+        }
+    }
+
+    window.visualViewport.addEventListener("resize", handleViewportResize);
+    window.visualViewport.addEventListener("scroll", handleViewportResize);
+}
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initVisualViewportKeyboardHandler);
+} else {
+    initVisualViewportKeyboardHandler();
+}
+
+// Lắng nghe phím Enter gửi tin nhắn trong textarea
+document.addEventListener("DOMContentLoaded", function () {
+    const messageInput = document.getElementById("message-input");
+    if (messageInput) {
+        messageInput.addEventListener("keydown", function (e) {
+            if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+    }
+});
+
+// 3. QUẢN LÝ VÀ ĐỔI BIỆT DANH (NICKNAME MODAL & REAL-TIME SOCKET)
+function openNicknameModal() {
+    if (!currentConversationId) return;
+    const modal = document.getElementById("nickname-modal");
+    const input = document.getElementById("nickname-input");
+    const headerName = document.getElementById("chat-header-name");
+    if (modal && input) {
+        input.value = headerName ? headerName.innerText : "";
+        modal.style.display = "flex";
+        setTimeout(() => input.focus(), 100);
+    }
+}
+window.openNicknameModal = openNicknameModal;
+
+function closeNicknameModal() {
+    const modal = document.getElementById("nickname-modal");
+    if (modal) modal.style.display = "none";
+}
+window.closeNicknameModal = closeNicknameModal;
+
+async function submitChangeNickname() {
+    const input = document.getElementById("nickname-input");
+    if (!input || !currentConversationId) return;
+
+    const newNickname = input.value.trim();
+    closeNicknameModal();
+
+    if (!newNickname) return;
+
+    try {
+        const headerName = document.getElementById("chat-header-name");
+        if (headerName) headerName.innerText = newNickname;
+
+        fetch(`${API_URL}/chat/${currentConversationId}/nickname`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                targetUserId: currentChatPartnerId || myId,
+                nickname: newNickname
+            })
+        }).catch(() => null);
+
+        if (typeof socket !== "undefined" && socket) {
+            socket.emit("update_nickname", {
+                conversationId: currentConversationId,
+                targetUserId: currentChatPartnerId || myId,
+                nickname: newNickname,
+                senderName: typeof myName !== "undefined" ? myName : "Người dùng"
+            });
+        }
+
+        const sysMsg = {
+            id: "system-" + Date.now(),
+            type: "system",
+            content: `Bạn đã đặt biệt danh cho cuộc trò chuyện là "${newNickname}"`,
+            createdAt: new Date().toISOString()
+        };
+        renderMessage(sysMsg);
+
+        if (typeof showToast === "function") showToast("Đã cập nhật biệt danh!");
+    } catch (err) {
+        console.error("Lỗi đổi biệt danh:", err);
+    }
+}
+window.submitChangeNickname = submitChangeNickname;
+
+// Lắng nghe sự kiện socket đổi biệt danh từ đối phương
+if (typeof socket !== "undefined" && socket) {
+    socket.on("nickname_updated", function (data) {
+        if (data && data.conversationId === currentConversationId) {
+            const headerName = document.getElementById("chat-header-name");
+            if (headerName && data.nickname) {
+                headerName.innerText = data.nickname;
+            }
+            const sysMsg = {
+                id: "system-" + Date.now(),
+                type: "system",
+                content: `${data.senderName || "Đối phương"} đã đặt biệt danh cho cuộc trò chuyện là "${data.nickname}"`,
+                createdAt: new Date().toISOString()
+            };
+            renderMessage(sysMsg);
+        }
+    });
+}
+
+// 4. TEST SCROLL & BÀN PHÍM VỚI 30 TIN NHẮN GIẢ
+function create30DummyMessages() {
+    const messagesDiv = document.getElementById("messages");
+    if (!messagesDiv) return alert("Không tìm thấy khung chứa tin nhắn!");
+
+    const dummyTexts = [
+        "Chào bạn! Đây là tin nhắn giả 1.",
+        "Tin nhắn số 2 từ đối phương.",
+        "Đây là tin nhắn của tôi nè (số 3).",
+        "Bạn có khỏe không?",
+        "Mình vẫn khỏe, cảm ơn bạn nhiều nhé!",
+        "Cuối tuần này bạn có rảnh đi cà phê không?",
+        "Rảnh chứ, hẹn mấy giờ vậy?",
+        "Tầm 9h sáng nhé ở quán cũ.",
+        "Okie chốt nha!",
+        "Tin nhắn mẫu số 10 để test scroll.",
+        "Kiểm tra xem hiệu ứng cuộn mượt không.",
+        "Bàn phím trượt lên mượt mà chưa?",
+        "Tin nhắn số 13 nè.",
+        "Test cuộn xuống khi có tin nhắn mới.",
+        "Cuộn lên để đọc tin cũ xem có bị tự động cuộn xuống không nha.",
+        "Nếu kéo lên > 150px thì KHÔNG tự cuộn xuống.",
+        "Tin nhắn giả số 17.",
+        "Tin nhắn giả số 18.",
+        "Tin nhắn giả số 19.",
+        "Tin nhắn giả số 20.",
+        "Tin nhắn giả số 21.",
+        "Tin nhắn giả số 22.",
+        "Tin nhắn giả số 23.",
+        "Tin nhắn giả số 24.",
+        "Tin nhắn giả số 25.",
+        "Tin nhắn giả số 26.",
+        "Tin nhắn giả số 27.",
+        "Tin nhắn giả số 28.",
+        "Tin nhắn giả số 29.",
+        "🎉 Hoàn tất 30 tin nhắn giả! Bạn hãy thử cuộn và mở bàn phím."
+    ];
+
+    dummyTexts.forEach((text, idx) => {
+        const isMe = idx % 2 === 0;
+        const msg = {
+            id: `dummy-${Date.now()}-${idx}`,
+            senderId: isMe ? (window.myId || "me") : "partner",
+            content: text,
+            type: "text",
+            createdAt: new Date(Date.now() - (30 - idx) * 60000).toISOString()
+        };
+        renderMessage(msg);
+    });
+
+    scrollToBottomIfNeeded(true);
+    alert("🚀 Đã tạo 30 tin nhắn giả thành công! Bạn hãy thử cuộn và mở bàn phím di động.");
+}
+window.create30DummyMessages = create30DummyMessages;
 
 
