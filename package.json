@@ -2,7 +2,8 @@
     "name": "du-an-nhantin-goidien",
     "private": true,
     "scripts": {
-        "start": "npm --prefix backend start"
+        "build": "cd backend && npm install --ignore-scripts && npx prisma generate",
+        "start": "cd backend && node server.js"
     },
     "dependencies": {
         "@google/genai": "^2.9.0"

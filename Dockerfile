@@ -5,12 +5,12 @@ RUN apt-get update -y && apt-get install -y openssl
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy backend package files
+COPY backend/package*.json ./
 RUN npm install --ignore-scripts
 
-# Copy source code
-COPY . .
+# Copy backend source code
+COPY backend/ ./
 
 # Generate Prisma client
 RUN npx prisma generate
