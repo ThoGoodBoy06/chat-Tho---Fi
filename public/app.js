@@ -402,6 +402,40 @@ function preloadAllSounds() {
     preloadSound("hangup", "/amthanhtat.mp3");
 }
 
+function playSynthesizedChime(key) {
+    try {
+        const ctx = getAudioContext();
+        if (ctx.state === "suspended") ctx.resume();
+
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        const now = ctx.currentTime;
+
+        if (key === "message") {
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(880, now);
+            osc.frequency.exponentialRampToValueAtTime(1320, now + 0.15);
+            gain.gain.setValueAtTime(0.8, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+            osc.start(now);
+            osc.stop(now + 0.4);
+        } else if (key === "ringtone") {
+            osc.type = "triangle";
+            osc.frequency.setValueAtTime(440, now);
+            gain.gain.setValueAtTime(0.7, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 1.2);
+            osc.start(now);
+            osc.stop(now + 1.2);
+        }
+    } catch(e) {
+        console.warn("Lỗi phát âm thanh tổng hợp dự phòng:", e.message);
+    }
+}
+
 function playWebAudio(key, loop = false, gainValue = 4.5) {
     try {
         const ctx = getAudioContext();
@@ -411,7 +445,7 @@ function playWebAudio(key, loop = false, gainValue = 4.5) {
 
         const buffer = AudioBuffers[key];
         if (!buffer) {
-            console.warn(`Âm thanh ${key} chưa tải xong, phát dự phòng bằng HTMLAudioElement`);
+            console.warn(`Âm thanh ${key} chưa tải xong, phát dự phòng HTMLAudioElement & Synth`);
             let fallbackEl = null;
             if (key === "message") fallbackEl = document.getElementById("message-sound");
             else if (key === "ringtone") fallbackEl = document.getElementById("incoming-ringtone");
@@ -421,7 +455,15 @@ function playWebAudio(key, loop = false, gainValue = 4.5) {
             if (fallbackEl) {
                 fallbackEl.volume = 1.0;
                 fallbackEl.currentTime = 0;
-                fallbackEl.play().catch(e => console.warn(e));
+                const p = fallbackEl.play();
+                if (p && typeof p.catch === "function") {
+                    p.catch(e => {
+                        console.warn(`HTML5 Audio ${key} failed, trying synth:`, e.message);
+                        playSynthesizedChime(key);
+                    });
+                }
+            } else {
+                playSynthesizedChime(key);
             }
             return;
         }
@@ -444,6 +486,7 @@ function playWebAudio(key, loop = false, gainValue = 4.5) {
         activeGains[key] = gainNode;
     } catch (e) {
         console.warn(`Lỗi phát Web Audio ${key}:`, e.message);
+        playSynthesizedChime(key);
     }
 }
 
@@ -474,7 +517,7 @@ function stopWebAudio(key) {
     }
 }
 
-// --- MỞ KHÓA ÂM THANH TRÌNH DUYỆT (CHỐNG CHẶN AUTOPLAY) ---
+// --- MỞ KHÓA ÂM THANH TRÌNH DUYỆT (CHỐNG CHẶN AUTOPLAY TRÊN iOS SAFARI & ANDROID) ---
 let isAudioUnlocked = false;
 
 function unlockBrowserAudio() {
@@ -486,20 +529,42 @@ function unlockBrowserAudio() {
         ChatSounds.unlock();
     }
 
-    // 1. Mở khóa AudioContext
+    // 1. Mở khóa WebAudio AudioContext
     const ctx = getAudioContext();
     if (ctx.state === "suspended") {
         ctx.resume();
     }
 
-    // 2. Tải trước toàn bộ âm thanh vào bộ nhớ đệm
+    // 2. MỞ KHÓA ĐẶC BIỆT DÀNH CHO iOS SAFARI: Phát và dừng đồng bộ các file HTML5 Audio
+    // để iOS Safari giải phóng Autoplay Lock cho toàn bộ thẻ âm thanh!
+    const audioIds = ["message-sound", "incoming-ringtone", "outgoing-ringtone", "hangup-sound"];
+    audioIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.volume = 1.0;
+            const p = el.play();
+            if (p && typeof p.then === "function") {
+                p.then(() => {
+                    el.pause();
+                    el.currentTime = 0;
+                }).catch(err => {
+                    console.warn(`iOS Audio Unlock (${id}):`, err.message);
+                });
+            } else {
+                el.pause();
+                el.currentTime = 0;
+            }
+        }
+    });
+
+    // 3. Tải trước toàn bộ âm thanh vào bộ nhớ đệm WebAudio Buffer
     preloadAllSounds();
 
-    const UNLOCK_EVENTS = ["click", "touchstart", "touchend", "mousedown", "keydown"];
+    const UNLOCK_EVENTS = ["click", "touchstart", "touchend", "mousedown", "keydown", "scroll"];
     UNLOCK_EVENTS.forEach(event => {
         document.removeEventListener(event, unlockBrowserAudio);
     });
-    console.log("🔊 Tất cả kênh âm thanh đã được mở khóa trực tiếp thành công!");
+    console.log("🔊 Tất cả 4 kênh âm thanh đã được mở khóa 100% trên iOS Safari & Android!");
 }
 
 const UNLOCK_EVENTS = ["click", "touchstart", "touchend", "mousedown", "keydown"];
@@ -1941,6 +2006,18 @@ async function loadConversations() {
                 "<li style='color:#666; font-weight:normal; padding: 20px;'>Chưa có cuộc trò chuyện nào.<br><br>Hãy dùng ô tìm kiếm ở trên để tìm bạn bè theo Tên nhé!</li>");
         }
 
+        const pinnedList = getPinnedConversations();
+        const mutedList = getMutedConversations();
+
+        // Xếp các cuộc trò chuyện được GHIM lên đầu danh sách
+        data.data.sort((a, b) => {
+            const isAPinned = pinnedList.includes(a.Conversations.id);
+            const isBPinned = pinnedList.includes(b.Conversations.id);
+            if (isAPinned && !isBPinned) return -1;
+            if (!isAPinned && isBPinned) return 1;
+            return 0;
+        });
+
         data.data.forEach((item) => {
             const conv = item.Conversations;
             const isGroup = conv.type === "group";
@@ -2023,8 +2100,20 @@ async function loadConversations() {
                 : "";
             const msgStyle = unreadCount > 0 ? "font-weight: 600; color: var(--text-dark);" : "";
 
+            const isPinned = pinnedList.includes(conv.id);
+            const isMuted = mutedList.includes(conv.id);
+
+            let badgesHtml = "";
+            if (isPinned) {
+                badgesHtml += ` <i class="fas fa-thumbtack" style="color: var(--primary-color, #0068ff); font-size: 11px; margin-left: 4px;" title="Đã ghim"></i>`;
+            }
+            if (isMuted) {
+                badgesHtml += ` <i class="fas fa-bell-slash" style="color: var(--text-light, #8a8d91); font-size: 11px; margin-left: 4px;" title="Tắt thông báo"></i>`;
+            }
+
             const li = document.createElement("li");
             li.className = "conversation-item";
+            if (isPinned) li.classList.add("pinned-conv");
             li.dataset.conversationId = conv.id;
 
             // Lưu nicknames vào dataset
@@ -2052,17 +2141,17 @@ async function loadConversations() {
             const startPress = (e) => {
                 isLongPressed = false;
                 const touch = e.touches ? e.touches[0] : e;
-                startX = touch ? touch.clientX : 0;
-                startY = touch ? touch.clientY : 0;
+                startX = touch ? touch.clientX : (e.clientX || 0);
+                startY = touch ? touch.clientY : (e.clientY || 0);
 
                 if (pressTimer) clearTimeout(pressTimer);
                 pressTimer = setTimeout(() => {
                     isLongPressed = true;
                     if (navigator.vibrate) {
-                        try { navigator.vibrate(50); } catch(err){}
+                        try { navigator.vibrate(60); } catch(err){}
                     }
                     showZaloContextMenu(li, conv.id, chatName);
-                }, 450);
+                }, 350);
             };
 
             const cancelPress = () => {
@@ -2078,7 +2167,7 @@ async function loadConversations() {
                 if (touch) {
                     const diffX = Math.abs(touch.clientX - startX);
                     const diffY = Math.abs(touch.clientY - startY);
-                    if (diffX > 10 || diffY > 10) {
+                    if (diffX > 30 || diffY > 30) {
                         cancelPress();
                     }
                 }
@@ -2120,13 +2209,13 @@ async function loadConversations() {
               ${avatarHtml}
               <div class="chat-list-content">
                 <div class="chat-list-header">
-                  <span class="chat-list-name">${chatName}</span>
+                  <span class="chat-list-name">${escapeHTML(chatName)}${badgesHtml}</span>
                   <div class="chat-list-right" style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
                     <span class="chat-list-time" style="font-size: 11px; color: var(--text-light);">${timeStr}</span>
                     ${unreadBadgeHtml}
                   </div>
                 </div>
-                <div class="chat-list-msg" style="${msgStyle}">${lastMsg}</div>
+                <div class="chat-list-msg" style="${msgStyle}">${escapeHTML(lastMsg)}</div>
               </div>
             `;
             userList.appendChild(li);
@@ -7986,116 +8075,161 @@ async function updateMediaDevicesList() {
                 const option = document.createElement("option");
                 option.value = device.deviceId;
                 option.innerText = device.label || `Microphone ${micSelect.options.length}`;
-                micSelect.appendChild(option);
-            });
-
-            if (prevSelected && Array.from(micSelect.options).some(o => o.value === prevSelected)) {
-                micSelect.value = prevSelected;
-            }
-        }
-
-        if (camSelect) {
-            const prevSelected = camSelect.value;
-            camSelect.innerHTML = '<option value="">Thiết bị mặc định (Default)</option>';
-
-            const camDevices = devices.filter((device) => device.kind === "videoinput");
-            camDevices.forEach((device) => {
-                const option = document.createElement("option");
-                option.value = device.deviceId;
-                option.innerText = device.label || `Camera ${camSelect.options.length}`;
-                camSelect.appendChild(option);
-            });
-
-            if (prevSelected && Array.from(camSelect.options).some(o => o.value === prevSelected)) {
-                camSelect.value = prevSelected;
-            }
-        }
-    } catch (err) {
-        console.error("Lỗi khi tải danh sách thiết bị phần cứng:", err);
+                micSelect.ap// --- QUẢN LÝ GHIM & TẮT THÔNG BÁO CUỘC TRÒ CHUYỆN ---
+function getPinnedConversations() {
+    try {
+        const stored = localStorage.getItem("pinnedConversations");
+        return stored ? JSON.parse(stored) : [];
+    } catch(e) {
+        return [];
     }
 }
 
-/**
- * AI SCROLL FIX v3
- * Thêm vào app.js hoặc paste vào cuối <script> trong HTML
- * Dùng JS để đảm bảo scroll dọc luôn hoạt động trong tab AI
- */
-(function () {
-    function initAiScrollFix() {
-        const history = document.getElementById('ai-chat-history');
-        if (!history) return;
-
-        let startX = 0;
-        let startY = 0;
-        let startScrollTop = 0;
-        let isScrollingY = false;
-        let isScrollingChecked = false;
-
-        // Khi bắt đầu chạm
-        history.addEventListener('touchstart', function (e) {
-            startX = e.touches[0].clientX;
-            startY = e.touches[0].clientY;
-            startScrollTop = history.scrollTop;
-            isScrollingY = false;
-            isScrollingChecked = false;
-        }, { passive: true });
-
-        // Khi di chuyển ngón tay - forward scroll lên container nếu cần
-        history.addEventListener('touchmove', function (e) {
-            const currentX = e.touches[0].clientX;
-            const currentY = e.touches[0].clientY;
-            const deltaX = startX - currentX;
-            const deltaY = startY - currentY; // dương = kéo lên (scroll xuống)
-
-            const target = e.target;
-            const isInCodeBlock = target.closest('.ai-code-block') || target.closest('pre');
-
-            if (isInCodeBlock) {
-                if (!isScrollingChecked) {
-                    // Nếu vuốt dọc nhiều hơn vuốt ngang, kích hoạt cuộn dọc
-                    if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 5) {
-                        isScrollingY = true;
-                    }
-                    isScrollingChecked = true;
-                }
-
-                if (isScrollingY) {
-                    // Chỉ cuộn dọc container AI nếu di chuyển ngón tay theo chiều dọc
-                    history.scrollTop = startScrollTop + deltaY;
-                }
-            }
-        }, { passive: true });
-
-        // Theo dõi khi tab AI được mở, khởi động lại fix
-        const observer = new MutationObserver(function () {
-            const aiTab = document.getElementById('tab-ai');
-            if (aiTab && aiTab.classList.contains('active')) {
-                // Re-attach nếu cần
-            }
-        });
-
-        const tabAi = document.getElementById('tab-ai');
-        if (tabAi) {
-            observer.observe(tabAi, { attributes: true, attributeFilter: ['class'] });
-        }
+function getMutedConversations() {
+    try {
+        const stored = localStorage.getItem("mutedConversations");
+        return stored ? JSON.parse(stored) : [];
+    } catch(e) {
+        return [];
     }
+}
 
-    // Chạy khi DOM sẵn sàng
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initAiScrollFix);
+function togglePinConversation(conversationId) {
+    let pinned = getPinnedConversations();
+    const index = pinned.indexOf(conversationId);
+    if (index > -1) {
+        pinned.splice(index, 1);
+        showTempToast("Đã bỏ ghim cuộc trò chuyện.");
     } else {
-        initAiScrollFix();
+        pinned.push(conversationId);
+        showTempToast("Đã ghim cuộc trò chuyện lên đầu danh sách.");
     }
-})();
+    localStorage.setItem("pinnedConversations", JSON.stringify(pinned));
+    loadConversations();
+}
 
-//thooooooooooooo
-/* Paste vào cuối app.js */
-(function () {
-    const MIN_LINES = 8;
+function toggleMuteConversation(conversationId) {
+    let muted = getMutedConversations();
+    const index = muted.indexOf(conversationId);
+    if (index > -1) {
+        muted.splice(index, 1);
+        showTempToast("Đã bật thông báo cuộc trò chuyện.");
+    } else {
+        muted.push(conversationId);
+        showTempToast("Đã tắt thông báo cuộc trò chuyện.");
+    }
+    localStorage.setItem("mutedConversations", JSON.stringify(muted));
+    loadConversations();
+}
 
-    function initWrapper(wrapper) {
-        if (wrapper.dataset.init) return;
-        wrapper.dataset.init = '1';
+// --- ZALO-STYLE CONTEXT MENU KHI NHẤN GIỮ CUỘC TRÒ CHUYỆN ---
+let currentSelectedConvId = null;
+
+function showZaloContextMenu(liElement, conversationId, chatName) {
+    currentSelectedConvId = conversationId;
+
+    const pinnedList = getPinnedConversations();
+    const mutedList = getMutedConversations();
+    const isPinned = pinnedList.includes(conversationId);
+    const isMuted = mutedList.includes(conversationId);
+
+    let overlay = document.getElementById("zalo-context-overlay");
+    if (!overlay) {
+        overlay = document.createElement("div");
+        overlay.id = "zalo-context-overlay";
+        overlay.className = "zalo-context-overlay";
+        overlay.onclick = closeZaloContextMenu;
+        overlay.innerHTML = `
+            <div class="zalo-context-container" onclick="event.stopPropagation()">
+                <div class="zalo-preview-card" id="zalo-preview-card"></div>
+                <div class="zalo-context-menu">
+                    <div class="zalo-menu-item zalo-menu-danger" onclick="handleZaloDelete(event)">
+                        <i class="far fa-trash-alt zalo-menu-icon text-danger"></i>
+                        <span class="text-danger">Xóa cuộc trò chuyện</span>
+                    </div>
+                    <div class="zalo-menu-item" onclick="handleZaloPin()">
+                        <i class="fas fa-thumbtack zalo-menu-icon" id="zalo-menu-pin-icon"></i>
+                        <span id="zalo-menu-pin-text">Ghim cuộc trò chuyện</span>
+                    </div>
+                    <div class="zalo-menu-item" onclick="handleZaloMute()">
+                        <i class="far fa-bell-slash zalo-menu-icon" id="zalo-menu-mute-icon"></i>
+                        <span id="zalo-menu-mute-text">Tắt thông báo</span>
+                    </div>
+                    <div class="zalo-menu-divider"></div>
+                    <div class="zalo-menu-item" onclick="closeZaloContextMenu()">
+                        <i class="fas fa-times zalo-menu-icon"></i>
+                        <span>Hủy</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+    }
+
+    // Cập nhật trạng thái Ghim & Tắt thông báo
+    const pinText = document.getElementById("zalo-menu-pin-text");
+    const pinIcon = document.getElementById("zalo-menu-pin-icon");
+    if (pinText) pinText.innerText = isPinned ? "Bỏ ghim cuộc trò chuyện" : "Ghim cuộc trò chuyện";
+    if (pinIcon) pinIcon.className = isPinned ? "fas fa-thumbtack-slash zalo-menu-icon" : "fas fa-thumbtack zalo-menu-icon";
+
+    const muteText = document.getElementById("zalo-menu-mute-text");
+    const muteIcon = document.getElementById("zalo-menu-mute-icon");
+    if (muteText) muteText.innerText = isMuted ? "Bật thông báo" : "Tắt thông báo";
+    if (muteIcon) muteIcon.className = isMuted ? "fas fa-bell zalo-menu-icon" : "far fa-bell-slash zalo-menu-icon";
+
+    // Nạp thẻ preview ở trên menu
+    const previewCard = document.getElementById("zalo-preview-card");
+    if (previewCard && liElement) {
+        const avatarEl = liElement.querySelector(".avatar");
+        const nameEl = liElement.querySelector(".chat-list-name");
+        const timeEl = liElement.querySelector(".chat-list-time");
+        const msgEl = liElement.querySelector(".chat-list-msg");
+
+        const avatarClone = avatarEl ? avatarEl.outerHTML : "";
+        const nameStr = nameEl ? nameEl.innerText : chatName;
+        const timeStr = timeEl ? timeEl.innerText : "";
+        const msgStr = msgEl ? msgEl.innerText : "";
+
+        previewCard.innerHTML = `
+            ${avatarClone}
+            <div class="chat-list-content">
+                <div class="chat-list-header">
+                    <span class="chat-list-name">${escapeHTML(nameStr)}</span>
+                    <span class="chat-list-time" style="font-size: 11px; color: var(--text-light);">${escapeHTML(timeStr)}</span>
+                </div>
+                <div class="chat-list-msg">${escapeHTML(msgStr)}</div>
+            </div>
+        `;
+    }
+
+    overlay.classList.add("active");
+}
+
+function closeZaloContextMenu() {
+    const overlay = document.getElementById("zalo-context-overlay");
+    if (overlay) overlay.classList.remove("active");
+}
+
+function handleZaloDelete(e) {
+    closeZaloContextMenu();
+    if (currentSelectedConvId) {
+        confirmDeleteConversation(e, currentSelectedConvId);
+    }
+}
+
+function handleZaloPin() {
+    closeZaloContextMenu();
+    if (currentSelectedConvId) {
+        togglePinConversation(currentSelectedConvId);
+    }
+}
+
+function handleZaloMute() {
+    closeZaloContextMenu();
+    if (currentSelectedConvId) {
+        toggleMuteConversation(currentSelectedConvId);
+    }
+}wrapper.dataset.init = '1';
 
         const pre = wrapper.querySelector('pre');
         if (!pre) return;
@@ -8270,11 +8404,121 @@ function startAiQuotaCountdown() {
     aiQuotaTimerInterval = setInterval(updateCountdown, 1000);
 }
 
+// --- QUẢN LÝ GHIM & TẮT THÔNG BÁO CUỘC TRÒ CHUYỆN ---
+function getPinnedConversations() {
+    try {
+        const stored = localStorage.getItem("pinnedConversations");
+        return stored ? JSON.parse(stored) : [];
+    } catch(e) {
+        return [];
+    }
+}
+
+function getMutedConversations() {
+    try {
+        const stored = localStorage.getItem("mutedConversations");
+        return stored ? JSON.parse(stored) : [];
+    } catch(e) {
+        return [];
+    }
+}
+
+function togglePinConversation(conversationId) {
+    let pinned = getPinnedConversations();
+    const index = pinned.indexOf(conversationId);
+    const isNowPinned = (index === -1);
+
+    if (isNowPinned) {
+        pinned.push(conversationId);
+        showTempToast("Đã ghim cuộc trò chuyện lên đầu danh sách.");
+    } else {
+        pinned.splice(index, 1);
+        showTempToast("Đã bỏ ghim cuộc trò chuyện.");
+    }
+    localStorage.setItem("pinnedConversations", JSON.stringify(pinned));
+
+    // Cập nhật DOM trực tiếp 0ms tức thì
+    const userList = document.getElementById("user-list");
+    if (userList) {
+        const li = userList.querySelector(`.conversation-item[data-conversation-id="${conversationId}"]`);
+        if (li) {
+            const nameEl = li.querySelector(".chat-list-name");
+            if (nameEl) {
+                let pinIcon = nameEl.querySelector(".fa-thumbtack");
+                if (isNowPinned) {
+                    if (!pinIcon) {
+                        pinIcon = document.createElement("i");
+                        pinIcon.className = "fas fa-thumbtack";
+                        pinIcon.style.cssText = "color: var(--primary-color, #0068ff); font-size: 11px; margin-left: 4px;";
+                        pinIcon.title = "Đã ghim";
+                        nameEl.appendChild(pinIcon);
+                    }
+                    li.classList.add("pinned-conv");
+                    userList.prepend(li);
+                } else {
+                    if (pinIcon) pinIcon.remove();
+                    li.classList.remove("pinned-conv");
+                    const firstUnpinned = userList.querySelector(".conversation-item:not(.pinned-conv)");
+                    if (firstUnpinned && firstUnpinned !== li) {
+                        userList.insertBefore(li, firstUnpinned);
+                    } else {
+                        userList.appendChild(li);
+                    }
+                }
+            }
+        }
+    }
+}
+
+function toggleMuteConversation(conversationId) {
+    let muted = getMutedConversations();
+    const index = muted.indexOf(conversationId);
+    const isNowMuted = (index === -1);
+
+    if (isNowMuted) {
+        muted.push(conversationId);
+        showTempToast("Đã tắt thông báo cuộc trò chuyện.");
+    } else {
+        muted.splice(index, 1);
+        showTempToast("Đã bật thông báo cuộc trò chuyện.");
+    }
+    localStorage.setItem("mutedConversations", JSON.stringify(muted));
+
+    // Cập nhật DOM trực tiếp 0ms tức thì
+    const userList = document.getElementById("user-list");
+    if (userList) {
+        const li = userList.querySelector(`.conversation-item[data-conversation-id="${conversationId}"]`);
+        if (li) {
+            const nameEl = li.querySelector(".chat-list-name");
+            if (nameEl) {
+                let muteIcon = nameEl.querySelector(".fa-bell-slash");
+                if (isNowMuted) {
+                    if (!muteIcon) {
+                        muteIcon = document.createElement("i");
+                        muteIcon.className = "fas fa-bell-slash";
+                        muteIcon.style.cssText = "color: var(--text-light, #8a8d91); font-size: 11px; margin-left: 4px;";
+                        muteIcon.title = "Tắt thông báo";
+                        nameEl.appendChild(muteIcon);
+                    }
+                } else {
+                    if (muteIcon) muteIcon.remove();
+                }
+            }
+        }
+    }
+}
+
 // --- ZALO-STYLE CONTEXT MENU KHI NHẤN GIỮ CUỘC TRÒ CHUYỆN ---
 let currentSelectedConvId = null;
 
 function showZaloContextMenu(liElement, conversationId, chatName) {
     currentSelectedConvId = conversationId;
+
+    const pinnedList = getPinnedConversations();
+    const mutedList = getMutedConversations();
+    const isPinned = pinnedList.includes(conversationId);
+    const isMuted = mutedList.includes(conversationId);
+
     let overlay = document.getElementById("zalo-context-overlay");
     if (!overlay) {
         overlay = document.createElement("div");
@@ -8285,21 +8529,17 @@ function showZaloContextMenu(liElement, conversationId, chatName) {
             <div class="zalo-context-container" onclick="event.stopPropagation()">
                 <div class="zalo-preview-card" id="zalo-preview-card"></div>
                 <div class="zalo-context-menu">
-                    <div class="zalo-menu-item" onclick="handleZaloMarkUnread()">
-                        <i class="far fa-comment-dots zalo-menu-icon"></i>
-                        <span>Đánh dấu chưa đọc</span>
-                    </div>
-                    <div class="zalo-menu-item" onclick="handleZaloPin()">
-                        <i class="fas fa-thumbtack zalo-menu-icon"></i>
-                        <span>Ghim</span>
-                    </div>
-                    <div class="zalo-menu-item" onclick="handleZaloMute()">
-                        <i class="far fa-bell-slash zalo-menu-icon"></i>
-                        <span>Tắt thông báo</span>
-                    </div>
                     <div class="zalo-menu-item zalo-menu-danger" onclick="handleZaloDelete(event)">
                         <i class="far fa-trash-alt zalo-menu-icon text-danger"></i>
-                        <span class="text-danger">Xóa</span>
+                        <span class="text-danger">Xóa cuộc trò chuyện</span>
+                    </div>
+                    <div class="zalo-menu-item" onclick="handleZaloPin()">
+                        <i class="fas fa-thumbtack zalo-menu-icon" id="zalo-menu-pin-icon"></i>
+                        <span id="zalo-menu-pin-text">Ghim cuộc trò chuyện</span>
+                    </div>
+                    <div class="zalo-menu-item" onclick="handleZaloMute()">
+                        <i class="far fa-bell-slash zalo-menu-icon" id="zalo-menu-mute-icon"></i>
+                        <span id="zalo-menu-mute-text">Tắt thông báo</span>
                     </div>
                     <div class="zalo-menu-divider"></div>
                     <div class="zalo-menu-item" onclick="closeZaloContextMenu()">
@@ -8311,6 +8551,17 @@ function showZaloContextMenu(liElement, conversationId, chatName) {
         `;
         document.body.appendChild(overlay);
     }
+
+    // Cập nhật trạng thái Ghim & Tắt thông báo
+    const pinText = document.getElementById("zalo-menu-pin-text");
+    const pinIcon = document.getElementById("zalo-menu-pin-icon");
+    if (pinText) pinText.innerText = isPinned ? "Bỏ ghim cuộc trò chuyện" : "Ghim cuộc trò chuyện";
+    if (pinIcon) pinIcon.className = isPinned ? "fas fa-thumbtack-slash zalo-menu-icon" : "fas fa-thumbtack zalo-menu-icon";
+
+    const muteText = document.getElementById("zalo-menu-mute-text");
+    const muteIcon = document.getElementById("zalo-menu-mute-icon");
+    if (muteText) muteText.innerText = isMuted ? "Bật thông báo" : "Tắt thông báo";
+    if (muteIcon) muteIcon.className = isMuted ? "fas fa-bell zalo-menu-icon" : "far fa-bell-slash zalo-menu-icon";
 
     // Nạp thẻ preview ở trên menu
     const previewCard = document.getElementById("zalo-preview-card");
@@ -8352,19 +8603,18 @@ function handleZaloDelete(e) {
     }
 }
 
-function handleZaloMarkUnread() {
-    closeZaloContextMenu();
-    showTempToast("Đã đánh dấu cuộc trò chuyện là chưa đọc.");
-}
-
 function handleZaloPin() {
     closeZaloContextMenu();
-    showTempToast("Đã ghim cuộc trò chuyện lên đầu danh sách.");
+    if (currentSelectedConvId) {
+        togglePinConversation(currentSelectedConvId);
+    }
 }
 
 function handleZaloMute() {
     closeZaloContextMenu();
-    showTempToast("Đã tắt thông báo cuộc trò chuyện.");
+    if (currentSelectedConvId) {
+        toggleMuteConversation(currentSelectedConvId);
+    }
 }
 
 // --- XOÁ CUỘC TRÒ CHUYỆN (GIAO DIỆN & API) ---

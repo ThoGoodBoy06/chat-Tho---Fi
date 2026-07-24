@@ -10746,7 +10746,7 @@ body.emoji-panel-open #messages {
 }
 
 /* --- Zalo-style Long-Press Context Menu --- */
-.conversation-item, #user-list li {
+.conversation-item, .conversation-item *, #user-list li, #user-list li * {
     -webkit-touch-callout: none !important;
     -webkit-user-select: none !important;
     user-select: none !important;
