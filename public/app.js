@@ -2105,11 +2105,13 @@ async function loadConversations() {
 
             let badgesHtml = "";
             if (isPinned) {
-                badgesHtml += ` <i class="fas fa-thumbtack" style="color: var(--primary-color, #0068ff); font-size: 11px; margin-left: 4px;" title="Đã ghim"></i>`;
+                badgesHtml += `<i class="fas fa-thumbtack pin-badge-icon" style="color: var(--primary-color, #0068ff); font-size: 14px; margin-right: 4px;" title="Đã ghim"></i>`;
             }
             if (isMuted) {
-                badgesHtml += ` <i class="fas fa-bell-slash" style="color: var(--text-light, #8a8d91); font-size: 11px; margin-left: 4px;" title="Tắt thông báo"></i>`;
+                badgesHtml += `<i class="fas fa-bell-slash mute-badge-icon" style="color: var(--text-light, #8a8d91); font-size: 14px;" title="Tắt thông báo"></i>`;
             }
+
+            const badgesContainerHtml = `<div class="chat-badges-wrap" style="display: inline-flex; align-items: center; gap: 4px;">${badgesHtml}</div>`;
 
             const li = document.createElement("li");
             li.className = "conversation-item";
@@ -2209,9 +2211,12 @@ async function loadConversations() {
               ${avatarHtml}
               <div class="chat-list-content">
                 <div class="chat-list-header">
-                  <span class="chat-list-name">${escapeHTML(chatName)}${badgesHtml}</span>
+                  <span class="chat-list-name">${escapeHTML(chatName)}</span>
                   <div class="chat-list-right" style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
-                    <span class="chat-list-time" style="font-size: 11px; color: var(--text-light);">${timeStr}</span>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      ${badgesContainerHtml}
+                      <span class="chat-list-time" style="font-size: 11px; color: var(--text-light);">${timeStr}</span>
+                    </div>
                     ${unreadBadgeHtml}
                   </div>
                 </div>
@@ -8437,21 +8442,30 @@ function togglePinConversation(conversationId) {
     }
     localStorage.setItem("pinnedConversations", JSON.stringify(pinned));
 
-    // Cập nhật DOM trực tiếp 0ms tức thì
+    // Cập nhật DOM trực tiếp 0ms tức thì sang BÊN PHẢI
     const userList = document.getElementById("user-list");
     if (userList) {
         const li = userList.querySelector(`.conversation-item[data-conversation-id="${conversationId}"]`);
         if (li) {
-            const nameEl = li.querySelector(".chat-list-name");
-            if (nameEl) {
-                let pinIcon = nameEl.querySelector(".fa-thumbtack");
+            let badgesWrap = li.querySelector(".chat-badges-wrap");
+            if (!badgesWrap) {
+                const rightEl = li.querySelector(".chat-list-right > div");
+                if (rightEl) {
+                    badgesWrap = document.createElement("div");
+                    badgesWrap.className = "chat-badges-wrap";
+                    badgesWrap.style.cssText = "display: inline-flex; align-items: center; gap: 4px;";
+                    rightEl.insertBefore(badgesWrap, rightEl.firstChild);
+                }
+            }
+            if (badgesWrap) {
+                let pinIcon = badgesWrap.querySelector(".pin-badge-icon");
                 if (isNowPinned) {
                     if (!pinIcon) {
                         pinIcon = document.createElement("i");
-                        pinIcon.className = "fas fa-thumbtack";
-                        pinIcon.style.cssText = "color: var(--primary-color, #0068ff); font-size: 11px; margin-left: 4px;";
+                        pinIcon.className = "fas fa-thumbtack pin-badge-icon";
+                        pinIcon.style.cssText = "color: var(--primary-color, #0068ff); font-size: 14px; margin-right: 4px;";
                         pinIcon.title = "Đã ghim";
-                        nameEl.appendChild(pinIcon);
+                        badgesWrap.insertBefore(pinIcon, badgesWrap.firstChild);
                     }
                     li.classList.add("pinned-conv");
                     userList.prepend(li);
@@ -8484,21 +8498,30 @@ function toggleMuteConversation(conversationId) {
     }
     localStorage.setItem("mutedConversations", JSON.stringify(muted));
 
-    // Cập nhật DOM trực tiếp 0ms tức thì
+    // Cập nhật DOM trực tiếp 0ms tức thì sang BÊN PHẢI
     const userList = document.getElementById("user-list");
     if (userList) {
         const li = userList.querySelector(`.conversation-item[data-conversation-id="${conversationId}"]`);
         if (li) {
-            const nameEl = li.querySelector(".chat-list-name");
-            if (nameEl) {
-                let muteIcon = nameEl.querySelector(".fa-bell-slash");
+            let badgesWrap = li.querySelector(".chat-badges-wrap");
+            if (!badgesWrap) {
+                const rightEl = li.querySelector(".chat-list-right > div");
+                if (rightEl) {
+                    badgesWrap = document.createElement("div");
+                    badgesWrap.className = "chat-badges-wrap";
+                    badgesWrap.style.cssText = "display: inline-flex; align-items: center; gap: 4px;";
+                    rightEl.insertBefore(badgesWrap, rightEl.firstChild);
+                }
+            }
+            if (badgesWrap) {
+                let muteIcon = badgesWrap.querySelector(".mute-badge-icon");
                 if (isNowMuted) {
                     if (!muteIcon) {
                         muteIcon = document.createElement("i");
-                        muteIcon.className = "fas fa-bell-slash";
-                        muteIcon.style.cssText = "color: var(--text-light, #8a8d91); font-size: 11px; margin-left: 4px;";
+                        muteIcon.className = "fas fa-bell-slash mute-badge-icon";
+                        muteIcon.style.cssText = "color: var(--text-light, #8a8d91); font-size: 14px;";
                         muteIcon.title = "Tắt thông báo";
-                        nameEl.appendChild(muteIcon);
+                        badgesWrap.appendChild(muteIcon);
                     }
                 } else {
                     if (muteIcon) muteIcon.remove();
