@@ -2061,7 +2061,7 @@ async function loadConversations() {
                     if (navigator.vibrate) {
                         try { navigator.vibrate(50); } catch(err){}
                     }
-                    confirmDeleteConversation(e, conv.id);
+                    showZaloContextMenu(li, conv.id, chatName);
                 }, 450);
             };
 
@@ -2093,7 +2093,7 @@ async function loadConversations() {
                 e.preventDefault();
                 e.stopPropagation();
                 cancelPress();
-                confirmDeleteConversation(e, conv.id);
+                showZaloContextMenu(li, conv.id, chatName);
             });
 
             li.onclick = (e) => {
@@ -8268,6 +8268,103 @@ function startAiQuotaCountdown() {
 
     updateCountdown();
     aiQuotaTimerInterval = setInterval(updateCountdown, 1000);
+}
+
+// --- ZALO-STYLE CONTEXT MENU KHI NHẤN GIỮ CUỘC TRÒ CHUYỆN ---
+let currentSelectedConvId = null;
+
+function showZaloContextMenu(liElement, conversationId, chatName) {
+    currentSelectedConvId = conversationId;
+    let overlay = document.getElementById("zalo-context-overlay");
+    if (!overlay) {
+        overlay = document.createElement("div");
+        overlay.id = "zalo-context-overlay";
+        overlay.className = "zalo-context-overlay";
+        overlay.onclick = closeZaloContextMenu;
+        overlay.innerHTML = `
+            <div class="zalo-context-container" onclick="event.stopPropagation()">
+                <div class="zalo-preview-card" id="zalo-preview-card"></div>
+                <div class="zalo-context-menu">
+                    <div class="zalo-menu-item" onclick="handleZaloMarkUnread()">
+                        <i class="far fa-comment-dots zalo-menu-icon"></i>
+                        <span>Đánh dấu chưa đọc</span>
+                    </div>
+                    <div class="zalo-menu-item" onclick="handleZaloPin()">
+                        <i class="fas fa-thumbtack zalo-menu-icon"></i>
+                        <span>Ghim</span>
+                    </div>
+                    <div class="zalo-menu-item" onclick="handleZaloMute()">
+                        <i class="far fa-bell-slash zalo-menu-icon"></i>
+                        <span>Tắt thông báo</span>
+                    </div>
+                    <div class="zalo-menu-item zalo-menu-danger" onclick="handleZaloDelete(event)">
+                        <i class="far fa-trash-alt zalo-menu-icon text-danger"></i>
+                        <span class="text-danger">Xóa</span>
+                    </div>
+                    <div class="zalo-menu-divider"></div>
+                    <div class="zalo-menu-item" onclick="closeZaloContextMenu()">
+                        <i class="fas fa-times zalo-menu-icon"></i>
+                        <span>Hủy</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+    }
+
+    // Nạp thẻ preview ở trên menu
+    const previewCard = document.getElementById("zalo-preview-card");
+    if (previewCard && liElement) {
+        const avatarEl = liElement.querySelector(".avatar");
+        const nameEl = liElement.querySelector(".chat-list-name");
+        const timeEl = liElement.querySelector(".chat-list-time");
+        const msgEl = liElement.querySelector(".chat-list-msg");
+
+        const avatarClone = avatarEl ? avatarEl.outerHTML : "";
+        const nameStr = nameEl ? nameEl.innerText : chatName;
+        const timeStr = timeEl ? timeEl.innerText : "";
+        const msgStr = msgEl ? msgEl.innerText : "";
+
+        previewCard.innerHTML = `
+            ${avatarClone}
+            <div class="chat-list-content">
+                <div class="chat-list-header">
+                    <span class="chat-list-name">${escapeHTML(nameStr)}</span>
+                    <span class="chat-list-time" style="font-size: 11px; color: var(--text-light);">${escapeHTML(timeStr)}</span>
+                </div>
+                <div class="chat-list-msg">${escapeHTML(msgStr)}</div>
+            </div>
+        `;
+    }
+
+    overlay.classList.add("active");
+}
+
+function closeZaloContextMenu() {
+    const overlay = document.getElementById("zalo-context-overlay");
+    if (overlay) overlay.classList.remove("active");
+}
+
+function handleZaloDelete(e) {
+    closeZaloContextMenu();
+    if (currentSelectedConvId) {
+        confirmDeleteConversation(e, currentSelectedConvId);
+    }
+}
+
+function handleZaloMarkUnread() {
+    closeZaloContextMenu();
+    showTempToast("Đã đánh dấu cuộc trò chuyện là chưa đọc.");
+}
+
+function handleZaloPin() {
+    closeZaloContextMenu();
+    showTempToast("Đã ghim cuộc trò chuyện lên đầu danh sách.");
+}
+
+function handleZaloMute() {
+    closeZaloContextMenu();
+    showTempToast("Đã tắt thông báo cuộc trò chuyện.");
 }
 
 // --- XOÁ CUỘC TRÒ CHUYỆN (GIAO DIỆN & API) ---

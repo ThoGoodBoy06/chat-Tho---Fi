@@ -10744,3 +10744,141 @@ body.emoji-panel-open #messages {
   color: var(--text-light, #65676b);
   opacity: 0.85;
 }
+
+/* --- Zalo-style Long-Press Context Menu --- */
+.conversation-item, #user-list li {
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+}
+
+.zalo-context-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(10px) brightness(0.7);
+    -webkit-backdrop-filter: blur(10px) brightness(0.7);
+    z-index: 9999999;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    box-sizing: border-box;
+    animation: zaloFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.zalo-context-overlay.active {
+    display: flex !important;
+}
+
+@keyframes zaloFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.zalo-context-container {
+    width: 100%;
+    max-width: 330px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    animation: zaloPopScale 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    box-sizing: border-box;
+}
+
+@keyframes zaloPopScale {
+    from { transform: scale(0.92); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+/* Floating Preview Card */
+.zalo-preview-card {
+    background: var(--msg-receiver-bg, #ffffff);
+    border-radius: 16px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));
+    pointer-events: none;
+}
+
+body[data-theme="dark"] .zalo-preview-card {
+    background: #242526 !important;
+}
+
+.zalo-preview-card .avatar {
+    width: 46px;
+    height: 46px;
+    flex-shrink: 0;
+}
+
+.zalo-preview-card .chat-list-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.zalo-preview-card .chat-list-name {
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.zalo-preview-card .chat-list-msg {
+    font-size: 13px;
+    color: var(--text-light, #8a8d91);
+}
+
+/* Menu Box */
+.zalo-context-menu {
+    background: var(--msg-receiver-bg, #ffffff);
+    border-radius: 18px;
+    padding: 6px;
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));
+    display: flex;
+    flex-direction: column;
+}
+
+body[data-theme="dark"] .zalo-context-menu {
+    background: #242526 !important;
+}
+
+.zalo-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 11px 14px;
+    border-radius: 12px;
+    font-size: 14.5px;
+    font-weight: 500;
+    color: var(--text-dark, #e4e6eb);
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.05s ease;
+}
+
+.zalo-menu-item:hover, .zalo-menu-item:active {
+    background: var(--hover-bg, rgba(255, 255, 255, 0.08));
+}
+
+.zalo-menu-icon {
+    font-size: 17px;
+    width: 20px;
+    text-anchor: middle;
+    text-align: center;
+    color: var(--text-dark, #e4e6eb);
+}
+
+.zalo-menu-item.zalo-menu-danger .zalo-menu-icon,
+.zalo-menu-item.zalo-menu-danger .text-danger {
+    color: #ef4444 !important;
+}
+
+.zalo-menu-divider {
+    height: 1px;
+    background: var(--border-color, rgba(255, 255, 255, 0.1));
+    margin: 4px 6px;
+}

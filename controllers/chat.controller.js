@@ -16,9 +16,15 @@ if (!getApps().length) {
         const keyPathTxt = path.join(__dirname, "../firebase-key");
         let serviceAccount;
 
-        if (fs.existsSync(keyPathJson)) {
+        if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+            try {
+                serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+            } catch(e) {}
+        }
+
+        if (!serviceAccount && fs.existsSync(keyPathJson)) {
             serviceAccount = require(keyPathJson);
-        } else if (fs.existsSync(keyPathTxt)) {
+        } else if (!serviceAccount && fs.existsSync(keyPathTxt)) {
             serviceAccount = JSON.parse(fs.readFileSync(keyPathTxt, "utf8"));
         }
 
@@ -28,7 +34,7 @@ if (!getApps().length) {
             });
             console.log("🔥 Firebase Admin khởi tạo thành công!");
         } else {
-            console.warn("⚠️ Cảnh báo: Không tìm thấy file firebase-key. Thông báo đẩy sẽ bị tắt.");
+            console.warn("⚠️ Cảnh báo: Không tìm thấy file firebase-key hoặc biến FIREBASE_SERVICE_ACCOUNT. Thông báo đẩy sẽ bị tắt.");
         }
     } catch (error) {
         console.error("❌ Lỗi khởi tạo Firebase Admin:", error.message);

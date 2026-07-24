@@ -8,13 +8,23 @@ try {
   const keyPathJson = path.join(__dirname, "firebase-key.json");
   const keyPathNoExt = path.join(__dirname, "firebase-key");
 
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    try {
+      serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    } catch (e) {
+      console.error("Lỗi parse FIREBASE_SERVICE_ACCOUNT từ env:", e.message);
+    }
+  }
+
   // Kiểm tra cả 2 trường hợp tên file (có đuôi .json và không có đuôi)
-  if (fs.existsSync(keyPathJson)) {
+  if (!serviceAccount && fs.existsSync(keyPathJson)) {
     serviceAccount = require(keyPathJson);
-  } else if (fs.existsSync(keyPathNoExt)) {
+  } else if (!serviceAccount && fs.existsSync(keyPathNoExt)) {
     serviceAccount = JSON.parse(fs.readFileSync(keyPathNoExt, "utf8"));
-  } else {
-    throw new Error("Không tìm thấy file firebase-key hoặc firebase-key.json");
+  }
+
+  if (!serviceAccount) {
+    throw new Error("Không tìm thấy file firebase-key hoặc biến FIREBASE_SERVICE_ACCOUNT");
   }
 
   initializeApp({
@@ -23,10 +33,7 @@ try {
 
   console.log("🔥 Đã kết nối thành công tới Google Firebase Admin!");
 } catch (error) {
-  console.error(
-    "❌ Lỗi khởi tạo Firebase. Vui lòng kiểm tra lại file firebase-key.json",
-  );
-  console.error(error.message);
+  console.warn("⚠️ Cảnh báo: " + error.message + ". Thông báo đẩy (Push Notifications) sẽ bị tắt.");
 }
 
 module.exports = admin;
