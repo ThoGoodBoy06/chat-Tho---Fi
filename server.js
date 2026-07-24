@@ -73,6 +73,24 @@ const userRoutes = require("./routes/user.routes");
 const aiRoutes = require("./routes/ai.routes");
 const newsRoutes = require("./routes/news.routes");
 
+// API Health check cho kiểm tra trạng thái & Render keep-alive ping
+app.get("/api/health", (req, res) => {
+    res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+// Tự động Self-Ping Render mỗi 10 phút để phòng chống Cold Start (ngủ ngầm trên Render free tier)
+const RENDER_PING_URL = (process.env.RENDER_EXTERNAL_URL || "https://chat-tho-fi-vn.onrender.com").replace(/\/$/, "");
+if (RENDER_PING_URL) {
+    setInterval(() => {
+        try {
+            const httpLib = RENDER_PING_URL.startsWith("https") ? require("https") : require("http");
+            httpLib.get(`${RENDER_PING_URL}/api/health`, (response) => {
+                // Heartbeat success
+            }).on("error", () => {});
+        } catch (e) {}
+    }, 10 * 60 * 1000); // 10 phút / lần
+}
+
 // Tạo một API test thử xem server chạy chưa (nếu từ trình duyệt thì trả về file index.html giao diện)
 app.get("/", async(req, res) => {
     if (req.headers.accept && req.headers.accept.includes("text/html")) {

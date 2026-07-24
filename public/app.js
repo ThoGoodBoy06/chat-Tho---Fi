@@ -62,6 +62,12 @@ function formatUrl(url) {
     return SERVER_URL + url;
 }
 
+function getInitialsAvatar(name, bg = "0084ff") {
+    const initial = (name || "?").trim().charAt(0).toUpperCase();
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44"><circle cx="22" cy="22" r="22" fill="#${bg}"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" fill="white" font-size="18" font-weight="600" font-family="-apple-system, BlinkMacSystemFont, sans-serif">${initial}</text></svg>`;
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
 // 🌟 HÀM TẠO LỜI CHÀO NGẪU NHIÊN LUÂN PHIÊN DÀNH CHO TRỢ LÝ AI (GLOBAL SCOPE)
 function getRandomAiGreeting(name) {
     const userDisplayName = name || "bạn";
@@ -1959,7 +1965,7 @@ async function loadConversations() {
                 chatName = displayGroupName;
                 avatarUrl = conv.avatar ?
                     formatUrl(conv.avatar) :
-                    `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="%230084ff"/><text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" fill="white" font-size="16" font-weight="bold" font-family="sans-serif">${encodeURIComponent((chatName || 'G').charAt(0).toUpperCase())}</text></svg>`;
+                    getInitialsAvatar(chatName, "0084ff");
                 targetId = conv.id;
             } else {
                 otherMember = conv.ConversationMembers.find(
@@ -1970,7 +1976,7 @@ async function loadConversations() {
                 chatName = otherMember.nickname || user.fullName || "Người dùng";
                 avatarUrl = user.avatar ?
                     formatUrl(user.avatar) :
-                    `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="%230084ff"/><text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" fill="white" font-size="16" font-weight="bold" font-family="sans-serif">${encodeURIComponent((user.fullName || 'U').charAt(0).toUpperCase())}</text></svg>`;
+                    getInitialsAvatar(chatName, "0084ff");
                 isOnline = user.isOnline || false;
                 lastActive = user.lastActive || "";
                 targetId = user.id;
@@ -2036,15 +2042,59 @@ async function loadConversations() {
             if (isSameId(conv.id, currentConversationId)) {
                 li.classList.add("active");
             }
-            
-            li.onclick = () => startChat(targetId, chatName, avatarUrl, isGroup ? "group" : "private", conv.id);
 
+            // Long Press (Nhấn giữ trên mobile) và Chuột phải (trên PC) để Xóa cuộc trò chuyện
+            let pressTimer = null;
+            let isLongPressed = false;
+
+            const startPress = (e) => {
+                isLongPressed = false;
+                if (pressTimer) clearTimeout(pressTimer);
+                pressTimer = setTimeout(() => {
+                    isLongPressed = true;
+                    if (navigator.vibrate) {
+                        try { navigator.vibrate(50); } catch(err){}
+                    }
+                    confirmDeleteConversation(e, conv.id);
+                }, 550);
+            };
+
+            const cancelPress = () => {
+                if (pressTimer) {
+                    clearTimeout(pressTimer);
+                    pressTimer = null;
+                }
+            };
+
+            li.addEventListener("touchstart", startPress, { passive: true });
+            li.addEventListener("touchend", cancelPress, { passive: true });
+            li.addEventListener("touchmove", cancelPress, { passive: true });
+            li.addEventListener("touchcancel", cancelPress, { passive: true });
+
+            li.addEventListener("contextmenu", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                cancelPress();
+                confirmDeleteConversation(e, conv.id);
+            });
+
+            li.onclick = (e) => {
+                if (isLongPressed) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    isLongPressed = false;
+                    return;
+                }
+                startChat(targetId, chatName, avatarUrl, isGroup ? "group" : "private", conv.id);
+            };
+
+            const fallbackSvg = getInitialsAvatar(chatName, "0084ff");
             const avatarHtml = isGroup 
                 ? `<div class="avatar">
-                     <img src="${avatarUrl}" alt="Avatar" loading="lazy" decoding="async">
+                     <img src="${avatarUrl}" alt="Avatar" loading="lazy" decoding="async" onerror="this.onerror=null; this.src='${fallbackSvg}';">
                    </div>`
                 : `<div class="avatar" style="cursor: pointer;" onclick="event.stopPropagation(); showUserProfile('${targetId}')">
-                     <img src="${avatarUrl}" alt="Avatar" loading="lazy" decoding="async">
+                     <img src="${avatarUrl}" alt="Avatar" loading="lazy" decoding="async" onerror="this.onerror=null; this.src='${fallbackSvg}';">
                      <div class="online-dot" style="display: ${isOnline ? 'block' : 'none'};"></div>
                    </div>`;
 
@@ -2059,14 +2109,6 @@ async function loadConversations() {
                   </div>
                 </div>
                 <div class="chat-list-msg" style="${msgStyle}">${lastMsg}</div>
-              </div>
-              <div class="conv-actions-wrapper" onclick="event.stopPropagation();" ontouchstart="event.stopPropagation();">
-                <i class="fas fa-ellipsis-v conv-options-btn" onclick="toggleConversationMenu(event, '${conv.id}')" ontouchstart="toggleConversationMenu(event, '${conv.id}')"></i>
-                <div class="conv-dropdown-menu" id="conv-menu-${conv.id}">
-                  <div class="conv-menu-item text-danger" onclick="confirmDeleteConversation(event, '${conv.id}')" ontouchstart="confirmDeleteConversation(event, '${conv.id}')">
-                    <i class="fas fa-trash-alt"></i> Xóa cuộc trò chuyện
-                  </div>
-                </div>
               </div>
             `;
             userList.appendChild(li);
@@ -8222,14 +8264,36 @@ function toggleConversationMenu(event, conversationId) {
 
     // Đóng toàn bộ dropdown khác
     document.querySelectorAll(".conv-dropdown-menu").forEach((m) => {
-        if (m.id !== menuId) m.style.display = "none";
+        if (m.id !== menuId) {
+            m.style.display = "none";
+            const parentLi = m.closest("li");
+            if (parentLi) parentLi.style.zIndex = "";
+        }
     });
 
     const isShowing = menu.style.display === "block";
+    const parentLi = menu.closest("li");
+
     if (isShowing) {
         menu.style.display = "none";
+        if (parentLi) parentLi.style.zIndex = "";
     } else {
+        const wrapper = menu.parentElement;
+        const rect = wrapper ? wrapper.getBoundingClientRect() : null;
+        const windowHeight = window.innerHeight;
+
+        if (rect && windowHeight - rect.bottom < 150) {
+            menu.style.top = "auto";
+            menu.style.bottom = "100%";
+            menu.style.marginBottom = "4px";
+        } else {
+            menu.style.top = "36px";
+            menu.style.bottom = "auto";
+            menu.style.marginBottom = "0";
+        }
+
         menu.style.display = "block";
+        if (parentLi) parentLi.style.zIndex = "999999";
     }
 }
 
@@ -8239,7 +8303,11 @@ async function confirmDeleteConversation(event, conversationId) {
         if (event.cancelable) event.preventDefault();
     }
     const menu = document.getElementById(`conv-menu-${conversationId}`);
-    if (menu) menu.style.display = "none";
+    if (menu) {
+        menu.style.display = "none";
+        const parentLi = menu.closest("li");
+        if (parentLi) parentLi.style.zIndex = "";
+    }
 
     const isConfirmed = await customConfirm("Xác nhận xóa", "Bạn có chắc chắn muốn xóa vĩnh viễn toàn bộ cuộc trò chuyện này không? Tất cả tin nhắn sẽ bị xóa sạch.");
     if (!isConfirmed) return;
@@ -8277,6 +8345,8 @@ document.addEventListener("click", (e) => {
     if (e.target && e.target.closest && e.target.closest(".conv-actions-wrapper")) return;
     document.querySelectorAll(".conv-dropdown-menu").forEach((m) => {
         m.style.display = "none";
+        const parentLi = m.closest("li");
+        if (parentLi) parentLi.style.zIndex = "";
     });
 });
 

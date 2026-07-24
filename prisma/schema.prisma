@@ -76,6 +76,8 @@ model Messages {
   @@index([conversationId])
   @@index([createdAt])
   @@index([senderId])
+  @@index([conversationId, createdAt(sort: Desc)])
+  @@index([conversationId, senderId, isRead])
 }
 
 model Users {

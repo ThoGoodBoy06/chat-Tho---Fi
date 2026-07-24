@@ -699,8 +699,8 @@ TAB 1: MESSAGE VIEW & SIDE CHAT LIST
     cursor: pointer;
     transition: background 0.15s ease, transform 0.1s ease;
     border-bottom: 1px solid var(--border-color);
-    content-visibility: auto;
-    contain-intrinsic-size: 0 68px;
+    position: relative;
+    overflow: visible;
 }
 
 @media (hover: hover) {
@@ -721,6 +721,7 @@ TAB 1: MESSAGE VIEW & SIDE CHAT LIST
 .chat-list-content {
     flex: 1;
     overflow: hidden;
+    min-width: 0;
 }
 
 .chat-list-header {
@@ -764,6 +765,87 @@ TAB 1: MESSAGE VIEW & SIDE CHAT LIST
     justify-content: center;
     min-width: 20px;
     height: 20px;
+}
+
+/* Custom Conversation Dropdown Menu & 3-Dots Button */
+.conv-actions-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;
+    flex-shrink: 0;
+    z-index: 10;
+}
+
+.conv-options-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-light);
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.conv-options-btn:hover {
+    background: var(--hover-bg);
+    color: var(--text-dark);
+}
+
+.conv-dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 36px;
+    right: 0;
+    z-index: 99999 !important;
+    min-width: 180px;
+    background: var(--msg-receiver-bg, #ffffff);
+    border: 1px solid var(--border-color, rgba(0, 0, 0, 0.12));
+    border-radius: 12px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+    padding: 6px;
+    animation: convMenuFadeIn 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes convMenuFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-6px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.conv-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text-dark);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+    white-space: nowrap;
+}
+
+.conv-menu-item:hover {
+    background: var(--hover-bg, rgba(0, 0, 0, 0.05));
+}
+
+.conv-menu-item.text-danger {
+    color: #EF4444 !important;
+}
+
+.conv-menu-item.text-danger:hover {
+    background: rgba(239, 68, 68, 0.1) !important;
 }
 
 
@@ -1371,15 +1453,15 @@ body[data-theme="dark"] .message-reactions {
 .conv-dropdown-menu {
     display: none;
     position: absolute;
-    top: 100%;
+    top: 36px;
     right: 0;
-    background: var(--msg-receiver-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    box-shadow: var(--shadow-lg);
-    z-index: 9999;
-    min-width: 170px;
-    padding: 4px 0;
+    background: var(--msg-receiver-bg, #ffffff);
+    border: 1px solid var(--border-color, rgba(0, 0, 0, 0.12));
+    border-radius: 12px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+    z-index: 999999 !important;
+    min-width: 180px;
+    padding: 6px;
     white-space: nowrap;
 }
 

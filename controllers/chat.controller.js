@@ -43,11 +43,30 @@ exports.getConversations = async(req, res) => {
 
         const conversations = await prisma.conversationMembers.findMany({
             where: { userId },
-            include: {
+            select: {
+                id: true,
+                conversationId: true,
+                userId: true,
+                role: true,
+                nickname: true,
+                joinedAt: true,
+                deletedAt: true,
                 Conversations: {
-                    include: {
+                    select: {
+                        id: true,
+                        type: true,
+                        name: true,
+                        avatar: true,
+                        createdBy: true,
+                        theme: true,
+                        createdAt: true,
                         ConversationMembers: {
-                            include: {
+                            select: {
+                                id: true,
+                                conversationId: true,
+                                userId: true,
+                                role: true,
+                                nickname: true,
                                 Users: {
                                     select: {
                                         id: true,
@@ -59,7 +78,6 @@ exports.getConversations = async(req, res) => {
                                 },
                             },
                         },
-                        // Lấy 1 tin nhắn mới nhất để hiển thị ở danh sách (giống Zalo)
                         Messages: {
                             where: {
                                 NOT: {
@@ -68,10 +86,23 @@ exports.getConversations = async(req, res) => {
                                     },
                                 },
                             },
+                            select: {
+                                id: true,
+                                conversationId: true,
+                                senderId: true,
+                                type: true,
+                                content: true,
+                                imageUrl: true,
+                                videoUrl: true,
+                                audioUrl: true,
+                                fileUrl: true,
+                                isRecalled: true,
+                                isDeleted: true,
+                                createdAt: true,
+                            },
                             orderBy: { createdAt: "desc" },
                             take: 1,
                         },
-                        // Đếm số tin nhắn chưa đọc của người khác gửi bằng tính năng Relation Count của Prisma
                         _count: {
                             select: {
                                 Messages: {
