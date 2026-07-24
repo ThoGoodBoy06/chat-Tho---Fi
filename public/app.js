@@ -2046,9 +2046,15 @@ async function loadConversations() {
             // Long Press (Nhấn giữ trên mobile) và Chuột phải (trên PC) để Xóa cuộc trò chuyện
             let pressTimer = null;
             let isLongPressed = false;
+            let startX = 0;
+            let startY = 0;
 
             const startPress = (e) => {
                 isLongPressed = false;
+                const touch = e.touches ? e.touches[0] : e;
+                startX = touch ? touch.clientX : 0;
+                startY = touch ? touch.clientY : 0;
+
                 if (pressTimer) clearTimeout(pressTimer);
                 pressTimer = setTimeout(() => {
                     isLongPressed = true;
@@ -2056,7 +2062,7 @@ async function loadConversations() {
                         try { navigator.vibrate(50); } catch(err){}
                     }
                     confirmDeleteConversation(e, conv.id);
-                }, 550);
+                }, 450);
             };
 
             const cancelPress = () => {
@@ -2066,9 +2072,21 @@ async function loadConversations() {
                 }
             };
 
+            const handleTouchMove = (e) => {
+                if (!pressTimer) return;
+                const touch = e.touches ? e.touches[0] : e;
+                if (touch) {
+                    const diffX = Math.abs(touch.clientX - startX);
+                    const diffY = Math.abs(touch.clientY - startY);
+                    if (diffX > 10 || diffY > 10) {
+                        cancelPress();
+                    }
+                }
+            };
+
             li.addEventListener("touchstart", startPress, { passive: true });
             li.addEventListener("touchend", cancelPress, { passive: true });
-            li.addEventListener("touchmove", cancelPress, { passive: true });
+            li.addEventListener("touchmove", handleTouchMove, { passive: true });
             li.addEventListener("touchcancel", cancelPress, { passive: true });
 
             li.addEventListener("contextmenu", (e) => {
