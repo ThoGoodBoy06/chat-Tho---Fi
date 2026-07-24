@@ -517,42 +517,58 @@ function stopWebAudio(key) {
     }
 }
 
-// --- MỞ KHÓA ÂM THANH TRÌNH DUYỆT (CHỐNG CHẶN AUTOPLAY TRÊN iOS SAFARI & ANDROID) ---
+// --- MỞ KHÓA ÂM THANH TRÌNH DUYỆT (CHỐNG CHẶN AUTOPLAY TRÊN iOS SAFARI & ANDROID - IM LẶNG 100%) ---
 let isAudioUnlocked = false;
 
 function unlockBrowserAudio() {
     if (isAudioUnlocked) return;
     isAudioUnlocked = true;
 
-    // FIX iOS #9: Unlock ChatSounds AudioContext cùng lúc
+    // FIX iOS: Unlock ChatSounds AudioContext cùng lúc
     if (typeof ChatSounds !== 'undefined' && ChatSounds.unlock) {
         ChatSounds.unlock();
     }
 
-    // 1. Mở khóa WebAudio AudioContext
-    const ctx = getAudioContext();
-    if (ctx.state === "suspended") {
-        ctx.resume();
+    // 1. Mở khóa WebAudio AudioContext IM LẶNG bằng silent buffer
+    try {
+        const ctx = getAudioContext();
+        if (ctx.state === "suspended") {
+            ctx.resume();
+        }
+        const silentBuffer = ctx.createBuffer(1, 1, 22050);
+        const source = ctx.createBufferSource();
+        source.buffer = silentBuffer;
+        source.connect(ctx.destination);
+        source.start(0);
+    } catch (e) {
+        console.warn("Lỗi mở khóa WebAudio im lặng:", e.message);
     }
 
-    // 2. MỞ KHÓA ĐẶC BIỆT DÀNH CHO iOS SAFARI: Phát và dừng đồng bộ các file HTML5 Audio
-    // để iOS Safari giải phóng Autoplay Lock cho toàn bộ thẻ âm thanh!
+    // 2. MỞ KHÓA ĐẶC BIỆT DÀNH CHO iOS SAFARI (IM LẶNG 100%):
+    // Đặt muted = true & volume = 0 trước khi play/pause để tuyệt đối KHÔNG phát ra bất kỳ tiếng nào khi vào app!
     const audioIds = ["message-sound", "incoming-ringtone", "outgoing-ringtone", "hangup-sound"];
     audioIds.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
-            el.volume = 1.0;
+            el.muted = true;
+            el.volume = 0;
             const p = el.play();
             if (p && typeof p.then === "function") {
                 p.then(() => {
                     el.pause();
                     el.currentTime = 0;
+                    el.volume = 1.0;
+                    el.muted = false;
                 }).catch(err => {
-                    console.warn(`iOS Audio Unlock (${id}):`, err.message);
+                    el.volume = 1.0;
+                    el.muted = false;
+                    console.warn(`iOS Silent Audio Unlock (${id}):`, err.message);
                 });
             } else {
                 el.pause();
                 el.currentTime = 0;
+                el.volume = 1.0;
+                el.muted = false;
             }
         }
     });
@@ -564,7 +580,7 @@ function unlockBrowserAudio() {
     UNLOCK_EVENTS.forEach(event => {
         document.removeEventListener(event, unlockBrowserAudio);
     });
-    console.log("🔊 Tất cả 4 kênh âm thanh đã được mở khóa 100% trên iOS Safari & Android!");
+    console.log("🔊 Mở khóa âm thanh IM LẶNG thành công trên iOS Safari & Android!");
 }
 
 const UNLOCK_EVENTS = ["click", "touchstart", "touchend", "mousedown", "keydown"];
@@ -1206,6 +1222,7 @@ function toggleAuth(type) {
         document.getElementById("register-form").style.display = "none";
     }
 }
+window.toggleAuth = toggleAuth;
 
 // 0.6 Ẩn/hiển thị mật khẩu
 function togglePassword(inputId, icon) {
@@ -1220,6 +1237,17 @@ function togglePassword(inputId, icon) {
         icon.classList.add("fa-eye-slash");
     }
 }
+window.togglePassword = togglePassword;
+
+// Tự động kiểm tra đăng nhập khi mở trang (gọi tryAutoLogin sau khi script parse xong)
+document.addEventListener("DOMContentLoaded", () => {
+    // Dùng setTimeout(0) để đảm bảo toàn bộ file app.js đã parse xong (tryAutoLogin ở cuối file)
+    setTimeout(() => {
+        if (typeof tryAutoLogin === "function") {
+            tryAutoLogin();
+        }
+    }, 0);
+});
 
 // 0.5 Xử lý đăng ký
 async function register() {
@@ -1252,6 +1280,7 @@ async function register() {
         hideLoading();
     }
 }
+window.register = register;
 
 // 1. Khởi tạo phiên làm việc (sau khi đăng nhập hoặc tự động đăng nhập thành công)
 function initizeChatSession(userData, userToken) {
@@ -2837,16 +2866,19 @@ async function login() {
 
         if (data.success) {
             localStorage.setItem("authToken", data.token);
+            localStorage.setItem("userData", JSON.stringify(data.data));
             initizeChatSession(data.data, data.token);
         } else {
             alert("Đăng nhập thất bại: " + (data.message || "Vui lòng kiểm tra lại thông tin!"));
         }
     } catch (error) {
+        console.error("Lỗi kết nối máy chủ khi đăng nhập:", error);
         alert("Lỗi kết nối máy chủ khi đăng nhập: " + error.message);
     } finally {
         hideLoading();
     }
 }
+window.login = login;
 
 // --- HỆ THỐNG BADGE TIN NHẮN CHƯA ĐỌC ---
 function updateTotalMessagesBadge() {
@@ -8080,161 +8112,116 @@ async function updateMediaDevicesList() {
                 const option = document.createElement("option");
                 option.value = device.deviceId;
                 option.innerText = device.label || `Microphone ${micSelect.options.length}`;
-                micSelect.ap// --- QUẢN LÝ GHIM & TẮT THÔNG BÁO CUỘC TRÒ CHUYỆN ---
-function getPinnedConversations() {
-    try {
-        const stored = localStorage.getItem("pinnedConversations");
-        return stored ? JSON.parse(stored) : [];
-    } catch(e) {
-        return [];
+                micSelect.appendChild(option);
+            });
+
+            if (prevSelected && Array.from(micSelect.options).some(o => o.value === prevSelected)) {
+                micSelect.value = prevSelected;
+            }
+        }
+
+        if (camSelect) {
+            const prevSelected = camSelect.value;
+            camSelect.innerHTML = '<option value="">Thiết bị mặc định (Default)</option>';
+
+            const camDevices = devices.filter((device) => device.kind === "videoinput");
+            camDevices.forEach((device) => {
+                const option = document.createElement("option");
+                option.value = device.deviceId;
+                option.innerText = device.label || `Camera ${camSelect.options.length}`;
+                camSelect.appendChild(option);
+            });
+
+            if (prevSelected && Array.from(camSelect.options).some(o => o.value === prevSelected)) {
+                camSelect.value = prevSelected;
+            }
+        }
+    } catch (err) {
+        console.error("Lỗi khi tải danh sách thiết bị phần cứng:", err);
     }
 }
 
-function getMutedConversations() {
-    try {
-        const stored = localStorage.getItem("mutedConversations");
-        return stored ? JSON.parse(stored) : [];
-    } catch(e) {
-        return [];
-    }
-}
+/**
+ * AI SCROLL FIX v3
+ * Thêm vào app.js hoặc paste vào cuối <script> trong HTML
+ * Dùng JS để đảm bảo scroll dọc luôn hoạt động trong tab AI
+ */
+(function () {
+    function initAiScrollFix() {
+        const history = document.getElementById('ai-chat-history');
+        if (!history) return;
 
-function togglePinConversation(conversationId) {
-    let pinned = getPinnedConversations();
-    const index = pinned.indexOf(conversationId);
-    if (index > -1) {
-        pinned.splice(index, 1);
-        showTempToast("Đã bỏ ghim cuộc trò chuyện.");
+        let startX = 0;
+        let startY = 0;
+        let startScrollTop = 0;
+        let isScrollingY = false;
+        let isScrollingChecked = false;
+
+        // Khi bắt đầu chạm
+        history.addEventListener('touchstart', function (e) {
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+            startScrollTop = history.scrollTop;
+            isScrollingY = false;
+            isScrollingChecked = false;
+        }, { passive: true });
+
+        // Khi di chuyển ngón tay - forward scroll lên container nếu cần
+        history.addEventListener('touchmove', function (e) {
+            const currentX = e.touches[0].clientX;
+            const currentY = e.touches[0].clientY;
+            const deltaX = startX - currentX;
+            const deltaY = startY - currentY; // dương = kéo lên (scroll xuống)
+
+            const target = e.target;
+            const isInCodeBlock = target.closest('.ai-code-block') || target.closest('pre');
+
+            if (isInCodeBlock) {
+                if (!isScrollingChecked) {
+                    // Nếu vuốt dọc nhiều hơn vuốt ngang, kích hoạt cuộn dọc
+                    if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 5) {
+                        isScrollingY = true;
+                    }
+                    isScrollingChecked = true;
+                }
+
+                if (isScrollingY) {
+                    // Chỉ cuộn dọc container AI nếu di chuyển ngón tay theo chiều dọc
+                    history.scrollTop = startScrollTop + deltaY;
+                }
+            }
+        }, { passive: true });
+
+        // Theo dõi khi tab AI được mở, khởi động lại fix
+        const observer = new MutationObserver(function () {
+            const aiTab = document.getElementById('tab-ai');
+            if (aiTab && aiTab.classList.contains('active')) {
+                // Re-attach nếu cần
+            }
+        });
+
+        const tabAi = document.getElementById('tab-ai');
+        if (tabAi) {
+            observer.observe(tabAi, { attributes: true, attributeFilter: ['class'] });
+        }
+    }
+
+    // Chạy khi DOM sẵn sàng
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initAiScrollFix);
     } else {
-        pinned.push(conversationId);
-        showTempToast("Đã ghim cuộc trò chuyện lên đầu danh sách.");
+        initAiScrollFix();
     }
-    localStorage.setItem("pinnedConversations", JSON.stringify(pinned));
-    loadConversations();
-}
+})();
 
-function toggleMuteConversation(conversationId) {
-    let muted = getMutedConversations();
-    const index = muted.indexOf(conversationId);
-    if (index > -1) {
-        muted.splice(index, 1);
-        showTempToast("Đã bật thông báo cuộc trò chuyện.");
-    } else {
-        muted.push(conversationId);
-        showTempToast("Đã tắt thông báo cuộc trò chuyện.");
-    }
-    localStorage.setItem("mutedConversations", JSON.stringify(muted));
-    loadConversations();
-}
+//thooooooooooooo
+/* Paste vào cuối app.js */
+(function () {
+    const MIN_LINES = 8;
 
-// --- ZALO-STYLE CONTEXT MENU KHI NHẤN GIỮ CUỘC TRÒ CHUYỆN ---
-let currentSelectedConvId = null;
-
-function showZaloContextMenu(liElement, conversationId, chatName) {
-    currentSelectedConvId = conversationId;
-
-    const pinnedList = getPinnedConversations();
-    const mutedList = getMutedConversations();
-    const isPinned = pinnedList.includes(conversationId);
-    const isMuted = mutedList.includes(conversationId);
-
-    let overlay = document.getElementById("zalo-context-overlay");
-    if (!overlay) {
-        overlay = document.createElement("div");
-        overlay.id = "zalo-context-overlay";
-        overlay.className = "zalo-context-overlay";
-        overlay.onclick = closeZaloContextMenu;
-        overlay.innerHTML = `
-            <div class="zalo-context-container" onclick="event.stopPropagation()">
-                <div class="zalo-preview-card" id="zalo-preview-card"></div>
-                <div class="zalo-context-menu">
-                    <div class="zalo-menu-item zalo-menu-danger" onclick="handleZaloDelete(event)">
-                        <i class="far fa-trash-alt zalo-menu-icon text-danger"></i>
-                        <span class="text-danger">Xóa cuộc trò chuyện</span>
-                    </div>
-                    <div class="zalo-menu-item" onclick="handleZaloPin()">
-                        <i class="fas fa-thumbtack zalo-menu-icon" id="zalo-menu-pin-icon"></i>
-                        <span id="zalo-menu-pin-text">Ghim cuộc trò chuyện</span>
-                    </div>
-                    <div class="zalo-menu-item" onclick="handleZaloMute()">
-                        <i class="far fa-bell-slash zalo-menu-icon" id="zalo-menu-mute-icon"></i>
-                        <span id="zalo-menu-mute-text">Tắt thông báo</span>
-                    </div>
-                    <div class="zalo-menu-divider"></div>
-                    <div class="zalo-menu-item" onclick="closeZaloContextMenu()">
-                        <i class="fas fa-times zalo-menu-icon"></i>
-                        <span>Hủy</span>
-                    </div>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(overlay);
-    }
-
-    // Cập nhật trạng thái Ghim & Tắt thông báo
-    const pinText = document.getElementById("zalo-menu-pin-text");
-    const pinIcon = document.getElementById("zalo-menu-pin-icon");
-    if (pinText) pinText.innerText = isPinned ? "Bỏ ghim cuộc trò chuyện" : "Ghim cuộc trò chuyện";
-    if (pinIcon) pinIcon.className = isPinned ? "fas fa-thumbtack-slash zalo-menu-icon" : "fas fa-thumbtack zalo-menu-icon";
-
-    const muteText = document.getElementById("zalo-menu-mute-text");
-    const muteIcon = document.getElementById("zalo-menu-mute-icon");
-    if (muteText) muteText.innerText = isMuted ? "Bật thông báo" : "Tắt thông báo";
-    if (muteIcon) muteIcon.className = isMuted ? "fas fa-bell zalo-menu-icon" : "far fa-bell-slash zalo-menu-icon";
-
-    // Nạp thẻ preview ở trên menu
-    const previewCard = document.getElementById("zalo-preview-card");
-    if (previewCard && liElement) {
-        const avatarEl = liElement.querySelector(".avatar");
-        const nameEl = liElement.querySelector(".chat-list-name");
-        const timeEl = liElement.querySelector(".chat-list-time");
-        const msgEl = liElement.querySelector(".chat-list-msg");
-
-        const avatarClone = avatarEl ? avatarEl.outerHTML : "";
-        const nameStr = nameEl ? nameEl.innerText : chatName;
-        const timeStr = timeEl ? timeEl.innerText : "";
-        const msgStr = msgEl ? msgEl.innerText : "";
-
-        previewCard.innerHTML = `
-            ${avatarClone}
-            <div class="chat-list-content">
-                <div class="chat-list-header">
-                    <span class="chat-list-name">${escapeHTML(nameStr)}</span>
-                    <span class="chat-list-time" style="font-size: 11px; color: var(--text-light);">${escapeHTML(timeStr)}</span>
-                </div>
-                <div class="chat-list-msg">${escapeHTML(msgStr)}</div>
-            </div>
-        `;
-    }
-
-    overlay.classList.add("active");
-}
-
-function closeZaloContextMenu() {
-    const overlay = document.getElementById("zalo-context-overlay");
-    if (overlay) overlay.classList.remove("active");
-}
-
-function handleZaloDelete(e) {
-    closeZaloContextMenu();
-    if (currentSelectedConvId) {
-        confirmDeleteConversation(e, currentSelectedConvId);
-    }
-}
-
-function handleZaloPin() {
-    closeZaloContextMenu();
-    if (currentSelectedConvId) {
-        togglePinConversation(currentSelectedConvId);
-    }
-}
-
-function handleZaloMute() {
-    closeZaloContextMenu();
-    if (currentSelectedConvId) {
-        toggleMuteConversation(currentSelectedConvId);
-    }
-}wrapper.dataset.init = '1';
+    function initWrapper(wrapper) {
+        if (wrapper.dataset.init) return;
+        wrapper.dataset.init = '1';
 
         const pre = wrapper.querySelector('pre');
         if (!pre) return;
@@ -10172,53 +10159,8 @@ if (window.visualViewport) {
 
     handleViewportChange();
 }
-// --- ÂM THANH CHÀO MỪNG NHẸ NHÀNG (Splash Screen Sound) ---
-let splashSoundPlayed = false;
-
-function playSingleSound(src, delay, volume) {
-    setTimeout(() => {
-        try {
-            const audio = new Audio(src);
-            audio.volume = volume;
-            audio.play().catch(err => {
-                console.log("Hệ thống chặn tự phát âm thanh " + src + ":", err);
-            });
-        } catch (e) {
-            console.error("Lỗi âm thanh:", e);
-        }
-    }, delay);
-}
-
-function playSplashSound() {
-    if (splashSoundPlayed) return;
-
-    // Âm thanh 1: Khi logo bắt đầu rơi từ trên xuống (t = 100ms)
-    playSingleSound("amthanhtinnhan.mp3", 100, 0.12);
-
-    // Âm thanh 2: Khi chữ Chat Tho-Fi bắt đầu đẩy từ dưới lên (t = 700ms)
-    playSingleSound("amthanhtinnhan.mp3", 700, 0.15);
-
-    splashSoundPlayed = true;
-
-    // Gỡ bỏ các trình lắng nghe chạm khi đã phát thành công
-    document.removeEventListener("click", playSplashSoundFallback);
-    document.removeEventListener("touchstart", playSplashSoundFallback);
-}
-
-function playSplashSoundFallback() {
-    playSplashSound();
-}
-
-// Cơ chế fallback khi WebView di động chặn tự động phát âm thanh (autoplay policy)
-// Nhạc sẽ phát ngay khi người dùng chạm ngón tay vào màn hình lần đầu tiên
-document.addEventListener("click", playSplashSoundFallback, { once: true });
-document.addEventListener("touchstart", playSplashSoundFallback, { once: true });
-
 // --- ĐÓNG MÀN HÌNH CHÀO SPLASH SCREEN ---
 function hideSplashScreen() {
-    // Cố gắng phát âm thanh chào mừng ngay khi khởi động
-    playSplashSound();
-
     setTimeout(() => {
         const splash = document.getElementById("splash-screen");
         if (splash) {
