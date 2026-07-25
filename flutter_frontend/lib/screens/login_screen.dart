@@ -48,7 +48,8 @@ class _LoginScreenState extends State<LoginScreen> {
           await ApiService.saveToken(res['token']);
           if (mounted) {
             final provider = Provider.of<ChatProvider>(context, listen: false);
-            if (res['user'] != null) provider.setCurrentUser(res['user']);
+            final userObj = res['data'] ?? res['user'];
+            if (userObj is Map<String, dynamic>) provider.setCurrentUser(userObj);
             await SocketService.connect();
             widget.onLoginSuccess();
           }
@@ -61,7 +62,8 @@ class _LoginScreenState extends State<LoginScreen> {
           await ApiService.saveToken(res['token']);
           if (mounted) {
             final provider = Provider.of<ChatProvider>(context, listen: false);
-            if (res['user'] != null) provider.setCurrentUser(res['user']);
+            final userObj = res['data'] ?? res['user'];
+            if (userObj is Map<String, dynamic>) provider.setCurrentUser(userObj);
             await SocketService.connect();
             widget.onLoginSuccess();
           }
