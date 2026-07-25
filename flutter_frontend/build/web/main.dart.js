@@ -82578,31 +82578,33 @@ au(){var s=$.as()
 return new A.DS(new A.iO(B.cT,s),new A.iO(B.cT,s),new A.iO(B.cT,s),new A.iO(B.cT,s))},
 Vs(){return this.c.$0()}}
 A.DS.prototype={
-jT(){var s=0,r=A.R(t.H),q,p=2,o=[],n=[],m=this,l,k,j,i,h,g,f,e,d,c
-var $async$jT=A.S(function(a,b){if(a===1){o.push(b)
-s=p}for(;;)switch(s){case 0:e=B.c.ej(m.d.a.a)
-d=B.c.ej(m.e.a.a)
-if(J.cG(d)!==0)g=!m.f&&J.cG(e)===0
-else g=!0
-if(g){m.ar(new A.anc(m))
+jT(){var s=0,r=A.R(t.H),q,p=2,o=[],n=[],m=this,l,k,j,i,h,g,f,e,d,c,b,a
+var $async$jT=A.S(function(a0,a1){if(a0===1){o.push(a1)
+s=p}for(;;)switch(s){case 0:c=B.c.ej(m.d.a.a)
+b=B.c.ej(m.e.a.a)
+if(J.cG(b)!==0)e=!m.f&&J.cG(c)===0
+else e=!0
+if(e){m.ar(new A.anc(m))
 s=1
 break}m.ar(new A.and(m))
 p=4
 s=m.f?7:9
 break
-case 7:g=t.N
+case 7:e=t.N
 s=10
-return A.N(A.ZV(A.a6(["username",B.c.ej(m.w.a.a),"fullName",B.c.ej(m.r.a.a),"password",d],g,g)),$async$jT)
-case 10:l=b
+return A.N(A.ZV(A.a6(["username",B.c.ej(m.w.a.a),"fullName",B.c.ej(m.r.a.a),"password",b],e,e)),$async$jT)
+case 10:l=a1
 s=J.au(l,"token")!=null?11:13
 break
 case 11:s=14
 return A.N(A.wH(J.au(l,"token")),$async$jT)
-case 14:g=m.c
-s=g!=null?15:16
+case 14:e=m.c
+s=e!=null?15:16
 break
-case 15:k=A.abt(g,!1,t.xT)
-if(J.au(l,"user")!=null)k.v0(J.au(l,"user"))
+case 15:k=A.abt(e,!1,t.xT)
+g=J.au(l,"data")
+j=g==null?J.au(l,"user"):g
+if(t.a.b(j))k.v0(j)
 s=17
 return A.N(A.Bm(),$async$jT)
 case 17:m.a.Vs()
@@ -82612,30 +82614,32 @@ case 13:m.ar(new A.ane(m,l))
 case 12:s=8
 break
 case 9:s=18
-return A.N(A.ZU(e,d),$async$jT)
-case 18:j=b
-s=J.au(j,"token")!=null?19:21
+return A.N(A.ZU(c,b),$async$jT)
+case 18:i=a1
+s=J.au(i,"token")!=null?19:21
 break
 case 19:s=22
-return A.N(A.wH(J.au(j,"token")),$async$jT)
-case 22:g=m.c
-s=g!=null?23:24
+return A.N(A.wH(J.au(i,"token")),$async$jT)
+case 22:e=m.c
+s=e!=null?23:24
 break
-case 23:i=A.abt(g,!1,t.xT)
-if(J.au(j,"user")!=null)i.v0(J.au(j,"user"))
+case 23:h=A.abt(e,!1,t.xT)
+j=J.au(i,"data")
+g=j==null?J.au(i,"user"):j
+if(t.a.b(g))h.v0(g)
 s=25
 return A.N(A.Bm(),$async$jT)
 case 25:m.a.Vs()
 case 24:s=20
 break
-case 21:m.ar(new A.anf(m,j))
+case 21:m.ar(new A.anf(m,i))
 case 20:case 8:n.push(6)
 s=5
 break
 case 4:p=3
-c=o.pop()
-h=A.ad(c)
-m.ar(new A.ang(m,h))
+a=o.pop()
+f=A.ad(a)
+m.ar(new A.ang(m,f))
 n.push(6)
 s=5
 break
