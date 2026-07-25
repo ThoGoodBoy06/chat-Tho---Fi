@@ -56,7 +56,12 @@ class ApiService {
       headers: headers,
     );
     if (response.statusCode == 200) {
-      return jsonDecode(response.body) as List<dynamic>;
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic> && decoded['data'] is List) {
+        return decoded['data'] as List<dynamic>;
+      } else if (decoded is List) {
+        return decoded as List<dynamic>;
+      }
     }
     return [];
   }

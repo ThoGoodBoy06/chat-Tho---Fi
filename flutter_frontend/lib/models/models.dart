@@ -91,20 +91,42 @@ class ConversationModel {
     this.members = const [],
   });
 
-  factory ConversationModel.fromJson(Map<String, dynamic> json) {
-    List<UserModel> parsedMembers = [];
-    if (json['members'] != null && json['members'] is List) {
-      parsedMembers = (json['members'] as List).map((m) => UserModel.fromJson(m)).toList();
+  factory ConversationModel.fromJson(Map<String, dynamic> rawJson) {
+    final json = (rawJson['Conversations'] is Map<String, dynamic>)
+        ? rawJson['Conversations'] as Map<String, dynamic>
+        : rawJson;
+
+    String? lastMsgText;
+    if (json['Messages'] is List && (json['Messages'] as List).isNotEmpty) {
+      final firstMsg = (json['Messages'] as List)[0];
+      if (firstMsg is Map) lastMsgText = firstMsg['content']?.toString();
     }
+
+    String convName = json['name']?.toString() ?? '';
+    String? convAvatar = json['avatar']?.toString();
+
+    if (rawJson['nickname'] != null && rawJson['nickname'].toString().isNotEmpty) {
+      convName = rawJson['nickname'].toString();
+    } else if (json['ConversationMembers'] is List) {
+      for (var member in (json['ConversationMembers'] as List)) {
+        if (member is Map && member['Users'] != null) {
+          final user = member['Users'];
+          if (convName.isEmpty) convName = user['fullName']?.toString() ?? user['username']?.toString() ?? '';
+          if (convAvatar == null) convAvatar = user['avatar']?.toString();
+        }
+      }
+    }
+
+    if (convName.isEmpty) convName = 'Cuộc trò chuyện';
+
     return ConversationModel(
-      id: json['id']?.toString() ?? '',
-      name: json['name']?.toString() ?? 'Cuộc trò chuyện',
-      avatar: json['avatar']?.toString(),
+      id: json['id']?.toString() ?? rawJson['conversationId']?.toString() ?? '',
+      name: convName,
+      avatar: convAvatar,
       type: json['type']?.toString() ?? 'private',
-      lastMessage: json['lastMessage']?.toString(),
-      unreadCount: json['unreadCount'] is int ? json['unreadCount'] : 0,
-      updatedAt: json['updatedAt'] != null ? DateTime.tryParse(json['updatedAt'].toString()) : null,
-      members: parsedMembers,
+      lastMessage: lastMsgText ?? json['lastMessage']?.toString(),
+      unreadCount: json['_count']?['Messages'] is int ? json['_count']['Messages'] : 0,
+      updatedAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt'].toString()) : null,
     );
   }
 }
