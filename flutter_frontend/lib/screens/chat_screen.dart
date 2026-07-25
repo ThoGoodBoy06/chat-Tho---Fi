@@ -27,6 +27,8 @@ class _ChatScreenState extends State<ChatScreen> {
   ];
   final _aiTextController = TextEditingController();
 
+  bool _showScrollToBottomButton = false;
+
   @override
   void initState() {
     super.initState();
@@ -34,6 +36,17 @@ class _ChatScreenState extends State<ChatScreen> {
       Provider.of<ChatProvider>(context, listen: false).fetchConversations();
     });
     _textController.addListener(_onTextChanged);
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.offset;
+    final show = (maxScroll - currentScroll) > 150;
+    if (show != _showScrollToBottomButton) {
+      setState(() => _showScrollToBottomButton = show);
+    }
   }
 
   void _onTextChanged() {
@@ -45,6 +58,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _textController.removeListener(_onTextChanged);
+    _scrollController.removeListener(_onScroll);
     _textController.dispose();
     _aiTextController.dispose();
     _scrollController.dispose();
@@ -121,7 +136,9 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: isMobile ? _buildMobileBottomBar() : null,
+      bottomNavigationBar: (isMobile && !(_currentTabIndex == 0 && provider.selectedConversation != null))
+          ? _buildMobileBottomBar()
+          : null,
     );
   }
 
@@ -451,98 +468,124 @@ class _ChatScreenState extends State<ChatScreen> {
         Expanded(
           child: provider.isLoadingMessages
               ? const Center(child: CircularProgressIndicator(color: Color(0xFF0068FF)))
-              : ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                  itemCount: provider.messages.length,
-                  itemBuilder: (context, index) {
-                    final msg = provider.messages[index];
-                    final isMe = msg.senderId == provider.currentUser?.id;
+              : Stack(
+                  children: [
+                    ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      itemCount: provider.messages.length,
+                      itemBuilder: (context, index) {
+                        final msg = provider.messages[index];
+                        final isMe = msg.senderId == provider.currentUser?.id;
 
-                    if (msg.type == 'system') {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Center(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.04),
-                              borderRadius: BorderRadius.circular(12),
+                        if (msg.type == 'system') {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Center(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.04),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  msg.content,
+                                  style: const TextStyle(color: Color(0xFF64748B), fontSize: 12, fontStyle: FontStyle.italic),
+                                ),
+                              ),
                             ),
-                            child: Text(
-                              msg.content,
-                              style: const TextStyle(color: Color(0xFF64748B), fontSize: 12, fontStyle: FontStyle.italic),
+                          );
+                        }
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Row(
+                            mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              if (!isMe) ...[
+                                CircleAvatar(
+                                  radius: 14,
+                                  backgroundColor: const Color(0xFF0068FF),
+                                  child: Text(conv.name.isNotEmpty ? conv.name[0].toUpperCase() : 'U', style: const TextStyle(fontSize: 10, color: Colors.white)),
+                                ),
+                                const SizedBox(width: 8),
+                              ],
+                              Flexible(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                                  decoration: BoxDecoration(
+                                    color: isMe ? const Color(0xFF0068FF) : Colors.white,
+                                    borderRadius: BorderRadius.only(
+                                      topLeft: const Radius.circular(18),
+                                      topRight: const Radius.circular(18),
+                                      bottomLeft: Radius.circular(isMe ? 18 : 4),
+                                      bottomRight: Radius.circular(isMe ? 4 : 18),
+                                    ),
+                                    border: isMe ? null : Border.all(color: const Color(0xFFE2E8F0)),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.04),
+                                        blurRadius: 6,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      _buildMessageBubbleContent(msg, isMe),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            _formatTime(msg.createdAt),
+                                            style: TextStyle(color: isMe ? Colors.white70 : const Color(0xFF94A3B8), fontSize: 10),
+                                          ),
+                                          if (isMe) ...[
+                                            const SizedBox(width: 4),
+                                            Icon(
+                                              msg.isRead ? Icons.done_all_rounded : Icons.done_rounded,
+                                              size: 14,
+                                              color: msg.isRead ? Colors.cyanAccent : Colors.white60,
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                    if (_showScrollToBottomButton)
+                      Positioned(
+                        right: 16,
+                        bottom: 16,
+                        child: Material(
+                          color: Colors.white,
+                          elevation: 6,
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: _scrollToBottom,
+                            child: Container(
+                              padding: const EdgeInsets.all(10),
+                              child: const Icon(
+                                Icons.arrow_downward_rounded,
+                                color: Color(0xFF0068FF),
+                                size: 22,
+                              ),
                             ),
                           ),
                         ),
-                      );
-                    }
-
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Row(
-                        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          if (!isMe) ...[
-                            CircleAvatar(
-                              radius: 14,
-                              backgroundColor: const Color(0xFF0068FF),
-                              child: Text(conv.name.isNotEmpty ? conv.name[0].toUpperCase() : 'U', style: const TextStyle(fontSize: 10, color: Colors.white)),
-                            ),
-                            const SizedBox(width: 8),
-                          ],
-                          Flexible(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-                              decoration: BoxDecoration(
-                                color: isMe ? const Color(0xFF0068FF) : Colors.white,
-                                borderRadius: BorderRadius.only(
-                                  topLeft: const Radius.circular(18),
-                                  topRight: const Radius.circular(18),
-                                  bottomLeft: Radius.circular(isMe ? 18 : 4),
-                                  bottomRight: Radius.circular(isMe ? 4 : 18),
-                                ),
-                                border: isMe ? null : Border.all(color: const Color(0xFFE2E8F0)),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.04),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  _buildMessageBubbleContent(msg, isMe),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        _formatTime(msg.createdAt),
-                                        style: TextStyle(color: isMe ? Colors.white70 : const Color(0xFF94A3B8), fontSize: 10),
-                                      ),
-                                      if (isMe) ...[
-                                        const SizedBox(width: 4),
-                                        Icon(
-                                          msg.isRead ? Icons.done_all_rounded : Icons.done_rounded,
-                                          size: 14,
-                                          color: msg.isRead ? Colors.cyanAccent : Colors.white60,
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
                       ),
-                    );
-                  },
+                  ],
                 ),
         ),
 
