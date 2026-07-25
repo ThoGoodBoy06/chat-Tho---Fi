@@ -1,0 +1,110 @@
+class UserModel {
+  final String id;
+  final String username;
+  final String fullName;
+  final String? email;
+  final String? phone;
+  final String? avatar;
+  final bool isOnline;
+  final DateTime? lastActive;
+
+  UserModel({
+    required this.id,
+    required this.username,
+    required this.fullName,
+    this.email,
+    this.phone,
+    this.avatar,
+    this.isOnline = false,
+    this.lastActive,
+  });
+
+  factory UserModel.fromJson(Map<String, dynamic> json) {
+    return UserModel(
+      id: json['id']?.toString() ?? '',
+      username: json['username']?.toString() ?? '',
+      fullName: json['fullName']?.toString() ?? json['username']?.toString() ?? 'Người dùng',
+      email: json['email']?.toString(),
+      phone: json['phone']?.toString(),
+      avatar: json['avatar']?.toString(),
+      isOnline: json['isOnline'] == true,
+      lastActive: json['lastActive'] != null ? DateTime.tryParse(json['lastActive'].toString()) : null,
+    );
+  }
+}
+
+class MessageModel {
+  final String id;
+  final String? conversationId;
+  final String? senderId;
+  final String? type;
+  final String content;
+  final String? imageUrl;
+  final bool isRead;
+  final DateTime createdAt;
+
+  MessageModel({
+    required this.id,
+    this.conversationId,
+    this.senderId,
+    this.type = 'text',
+    required this.content,
+    this.imageUrl,
+    this.isRead = false,
+    required this.createdAt,
+  });
+
+  factory MessageModel.fromJson(Map<String, dynamic> json) {
+    return MessageModel(
+      id: json['id']?.toString() ?? '',
+      conversationId: json['conversationId']?.toString(),
+      senderId: json['senderId']?.toString(),
+      type: json['type']?.toString() ?? 'text',
+      content: json['content']?.toString() ?? '',
+      imageUrl: json['imageUrl']?.toString(),
+      isRead: json['isRead'] == true,
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
+          : DateTime.now(),
+    );
+  }
+}
+
+class ConversationModel {
+  final String id;
+  final String name;
+  final String? avatar;
+  final String type;
+  final String? lastMessage;
+  final int unreadCount;
+  final DateTime? updatedAt;
+  final List<UserModel> members;
+
+  ConversationModel({
+    required this.id,
+    required this.name,
+    this.avatar,
+    this.type = 'private',
+    this.lastMessage,
+    this.unreadCount = 0,
+    this.updatedAt,
+    this.members = const [],
+  });
+
+  factory ConversationModel.fromJson(Map<String, dynamic> json) {
+    List<UserModel> parsedMembers = [];
+    if (json['members'] != null && json['members'] is List) {
+      parsedMembers = (json['members'] as List).map((m) => UserModel.fromJson(m)).toList();
+    }
+    return ConversationModel(
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? 'Cuộc trò chuyện',
+      avatar: json['avatar']?.toString(),
+      type: json['type']?.toString() ?? 'private',
+      lastMessage: json['lastMessage']?.toString(),
+      unreadCount: json['unreadCount'] is int ? json['unreadCount'] : 0,
+      updatedAt: json['updatedAt'] != null ? DateTime.tryParse(json['updatedAt'].toString()) : null,
+      members: parsedMembers,
+    );
+  }
+}

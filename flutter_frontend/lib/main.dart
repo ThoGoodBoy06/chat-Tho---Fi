@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'providers/chat_provider.dart';
 import 'services/api_service.dart';
 import 'services/socket_service.dart';
 import 'screens/login_screen.dart';
@@ -6,7 +8,12 @@ import 'screens/chat_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const ChatThoFiApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => ChatProvider(),
+      child: const ChatThoFiApp(),
+    ),
+  );
 }
 
 class ChatThoFiApp extends StatefulWidget {
