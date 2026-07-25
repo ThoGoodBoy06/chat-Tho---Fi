@@ -78,6 +78,7 @@ class ConversationModel {
   final String? lastMessage;
   final int unreadCount;
   final DateTime? updatedAt;
+  final String? targetUserId;
   final List<UserModel> members;
 
   ConversationModel({
@@ -88,6 +89,7 @@ class ConversationModel {
     this.lastMessage,
     this.unreadCount = 0,
     this.updatedAt,
+    this.targetUserId,
     this.members = const [],
   });
 
@@ -104,6 +106,7 @@ class ConversationModel {
 
     String convName = json['name']?.toString() ?? '';
     String? convAvatar = json['avatar']?.toString();
+    String? partnerUserId;
     final isGroup = json['type'] == 'group';
 
     final membersList = json['ConversationMembers'] ?? rawJson['ConversationMembers'];
@@ -126,6 +129,7 @@ class ConversationModel {
             final userObj = member['Users'];
             
             if (currentUserId != null && memberUserId != null && memberUserId != currentUserId) {
+              partnerUserId = memberUserId;
               final nickname = member['nickname']?.toString();
               if (nickname != null && nickname.isNotEmpty) {
                 convName = nickname;
@@ -136,6 +140,8 @@ class ConversationModel {
                 convAvatar = userObj['avatar']?.toString();
               }
               break;
+            } else if (memberUserId != null && memberUserId != currentUserId) {
+              partnerUserId = memberUserId;
             }
           }
         }
@@ -152,6 +158,7 @@ class ConversationModel {
       lastMessage: lastMsgText ?? json['lastMessage']?.toString(),
       unreadCount: json['_count']?['Messages'] is int ? json['_count']['Messages'] : 0,
       updatedAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt'].toString()) : null,
+      targetUserId: partnerUserId,
     );
   }
 }

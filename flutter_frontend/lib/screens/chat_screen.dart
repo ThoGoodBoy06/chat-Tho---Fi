@@ -1,8 +1,11 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../models/models.dart';
 import '../providers/chat_provider.dart';
+import '../services/socket_service.dart';
 
 class ChatScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -426,8 +429,14 @@ class _ChatScreenState extends State<ChatScreen> {
                   ],
                 ),
               ),
-              IconButton(icon: const Icon(Icons.phone_rounded, color: Color(0xFF0068FF)), onPressed: () {}),
-              IconButton(icon: const Icon(Icons.videocam_rounded, color: Color(0xFF0068FF)), onPressed: () {}),
+              IconButton(
+                icon: const Icon(Icons.phone_rounded, color: Color(0xFF0068FF)),
+                onPressed: () => _startCall(context, provider, isVideo: false),
+              ),
+              IconButton(
+                icon: const Icon(Icons.videocam_rounded, color: Color(0xFF0068FF)),
+                onPressed: () => _startCall(context, provider, isVideo: true),
+              ),
               IconButton(icon: const Icon(Icons.info_outline_rounded, color: Color(0xFF0068FF)), onPressed: () {}),
             ],
           ),
@@ -502,10 +511,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                 crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text(
-                                    msg.content,
-                                    style: TextStyle(color: isMe ? Colors.white : const Color(0xFF0F172A), fontSize: 15, height: 1.3),
-                                  ),
+                                  _buildMessageBubbleContent(msg, isMe),
                                   const SizedBox(height: 4),
                                   Row(
                                     mainAxisSize: MainAxisSize.min,
@@ -909,6 +915,311 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildMessageBubbleContent(MessageModel msg, bool isMe) {
+    final content = msg.content;
+    final isImage = msg.type == 'image' || content.startsWith('data:image') || (msg.imageUrl != null && msg.imageUrl!.isNotEmpty);
+    final isAudio = msg.type == 'audio' || content.startsWith('data:audio');
+    final isFile = msg.type == 'file';
+    final isMissedCall = msg.type == 'missed_call' || msg.type == 'call';
+
+    if (isImage) {
+      String? imageUrl = msg.imageUrl;
+      Uint8List? imageBytes;
+
+      if (content.startsWith('data:image')) {
+        try {
+          final base64Str = content.split(',').last;
+          imageBytes = base64Decode(base64Str);
+        } catch (e) {
+          debugPrint('Base64 decode error: $e');
+        }
+      } else if (content.startsWith('http') || content.startsWith('/')) {
+        imageUrl = content;
+      }
+
+      Widget imgWidget;
+      if (imageBytes != null) {
+        imgWidget = Image.memory(
+          imageBytes,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => Container(
+            padding: const EdgeInsets.all(12),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.broken_image, color: Colors.grey),
+                SizedBox(width: 6),
+                Text('Ảnh lỗi'),
+              ],
+            ),
+          ),
+        );
+      } else if (imageUrl != null && imageUrl.isNotEmpty) {
+        imgWidget = Image.network(
+          imageUrl,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => Container(
+            padding: const EdgeInsets.all(12),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.broken_image, color: Colors.grey),
+                SizedBox(width: 6),
+                Text('Ảnh lỗi'),
+              ],
+            ),
+          ),
+        );
+      } else {
+        imgWidget = const Padding(
+          padding: EdgeInsets.all(8.0),
+          child: Text('[Hình ảnh]'),
+        );
+      }
+
+      return GestureDetector(
+        onTap: () {
+          showDialog(
+            context: context,
+            builder: (_) => Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.all(12),
+              child: Stack(
+                alignment: Alignment.topRight,
+                children: [
+                  InteractiveViewer(child: imgWidget),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 240, maxHeight: 300),
+            child: imgWidget,
+          ),
+        ),
+      );
+    }
+
+    if (isAudio) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: isMe ? Colors.white.withOpacity(0.2) : const Color(0xFF0068FF).withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.play_arrow_rounded, color: isMe ? Colors.white : const Color(0xFF0068FF), size: 22),
+            ),
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Tin nhắn thoại',
+                  style: TextStyle(
+                    color: isMe ? Colors.white : const Color(0xFF0F172A),
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Bấm để nghe',
+                  style: TextStyle(
+                    color: isMe ? Colors.white70 : const Color(0xFF64748B),
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (isFile) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.insert_drive_file_rounded, color: isMe ? Colors.white : const Color(0xFF0068FF)),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              content.isNotEmpty ? content : 'Tệp đính kèm',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: isMe ? Colors.white : const Color(0xFF0F172A), fontSize: 14, fontWeight: FontWeight.w500),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (isMissedCall) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.phone_missed_rounded, color: isMe ? Colors.white70 : const Color(0xFFEF4444), size: 18),
+          const SizedBox(width: 6),
+          Text(
+            content.isNotEmpty ? content : 'Cuộc gọi nhỡ',
+            style: TextStyle(color: isMe ? Colors.white : const Color(0xFF0F172A), fontSize: 13.5, fontWeight: FontWeight.w500),
+          ),
+        ],
+      );
+    }
+
+    return Text(
+      content,
+      style: TextStyle(color: isMe ? Colors.white : const Color(0xFF0F172A), fontSize: 15, height: 1.3),
+    );
+  }
+
+  void _startCall(BuildContext context, ChatProvider provider, {required bool isVideo}) {
+    final conv = provider.selectedConversation;
+    if (conv == null) return;
+
+    final targetUserId = conv.targetUserId;
+    final callerId = provider.currentUser?.id;
+    final callerName = provider.currentUser?.fullName ?? provider.currentUser?.username ?? 'Tôi';
+    final callerAvatar = provider.currentUser?.avatar ?? '';
+
+    if (targetUserId == null || targetUserId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không tìm thấy thông tin người dùng để gọi')),
+      );
+      return;
+    }
+
+    SocketService.socket?.emit('request_call', {
+      'callerId': callerId,
+      'callerName': callerName,
+      'callerAvatar': callerAvatar,
+      'calleeId': targetUserId,
+      'callType': isVideo ? 'video' : 'audio',
+    });
+
+    _showCallDialog(
+      context: context,
+      partnerName: conv.name,
+      isVideo: isVideo,
+      targetUserId: targetUserId,
+      isCaller: true,
+    );
+  }
+
+  void _showCallDialog({
+    required BuildContext context,
+    required String partnerName,
+    required bool isVideo,
+    required String targetUserId,
+    required bool isCaller,
+  }) {
+    bool isMuted = false;
+    bool isSpeakerOn = true;
+    String callStatus = isCaller ? 'Đang gọi...' : 'Đang đàm thoại';
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              backgroundColor: const Color(0xFF0F172A),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircleAvatar(
+                      radius: 48,
+                      backgroundColor: const Color(0xFF0068FF),
+                      child: Text(
+                        partnerName.isNotEmpty ? partnerName[0].toUpperCase() : 'U',
+                        style: const TextStyle(fontSize: 36, color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      partnerName,
+                      style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          isVideo ? Icons.videocam_rounded : Icons.phone_rounded,
+                          color: const Color(0xFF0068FF),
+                          size: 18,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          callStatus,
+                          style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 40),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        IconButton(
+                          iconSize: 28,
+                          style: IconButton.styleFrom(
+                            backgroundColor: isMuted ? Colors.white24 : const Color(0xFF1E293B),
+                            padding: const EdgeInsets.all(14),
+                          ),
+                          icon: Icon(isMuted ? Icons.mic_off_rounded : Icons.mic_rounded, color: Colors.white),
+                          onPressed: () => setDialogState(() => isMuted = !isMuted),
+                        ),
+                        IconButton(
+                          iconSize: 28,
+                          style: IconButton.styleFrom(
+                            backgroundColor: const Color(0xFFEF4444),
+                            padding: const EdgeInsets.all(18),
+                          ),
+                          icon: const Icon(Icons.call_end_rounded, color: Colors.white),
+                          onPressed: () {
+                            SocketService.socket?.emit('end_call', {'connectedUserId': targetUserId});
+                            Navigator.of(dialogContext).pop();
+                          },
+                        ),
+                        IconButton(
+                          iconSize: 28,
+                          style: IconButton.styleFrom(
+                            backgroundColor: isSpeakerOn ? const Color(0xFF0068FF).withOpacity(0.3) : const Color(0xFF1E293B),
+                            padding: const EdgeInsets.all(14),
+                          ),
+                          icon: Icon(isSpeakerOn ? Icons.volume_up_rounded : Icons.volume_off_rounded, color: Colors.white),
+                          onPressed: () => setDialogState(() => isSpeakerOn = !isSpeakerOn),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
