@@ -431,7 +431,7 @@ function playSynthesizedChime(key) {
             osc.start(now);
             osc.stop(now + 1.2);
         }
-    } catch(e) {
+    } catch (e) {
         console.warn("Lỗi phát âm thanh tổng hợp dự phòng:", e.message);
     }
 }
@@ -2095,7 +2095,7 @@ async function loadConversations() {
                 const firstMsg = conv.Messages[0];
                 const msgDate = firstMsg.createdAt ? new Date(firstMsg.createdAt) : new Date();
                 timeStr = `${msgDate.getHours().toString().padStart(2, "0")}:${msgDate.getMinutes().toString().padStart(2, "0")}`;
-                
+
                 let senderPrefix = "";
                 if (isGroup && firstMsg.senderId && firstMsg.type !== "system") {
                     senderPrefix = firstMsg.senderId === myId ? "Bạn: " : (firstMsg.Users ? `${firstMsg.Users.fullName}: ` : "");
@@ -2124,8 +2124,8 @@ async function loadConversations() {
             }
 
             const unreadCount = conv._count && conv._count.Messages ? conv._count.Messages : 0;
-            const unreadBadgeHtml = unreadCount > 0 
-                ? `<span class="unread-badge">${unreadCount > 99 ? "99+" : unreadCount}</span>` 
+            const unreadBadgeHtml = unreadCount > 0
+                ? `<span class="unread-badge">${unreadCount > 99 ? "99+" : unreadCount}</span>`
                 : "";
             const msgStyle = unreadCount > 0 ? "font-weight: 600; color: var(--text-dark);" : "";
 
@@ -2179,7 +2179,7 @@ async function loadConversations() {
                 pressTimer = setTimeout(() => {
                     isLongPressed = true;
                     if (navigator.vibrate) {
-                        try { navigator.vibrate(60); } catch(err){}
+                        try { navigator.vibrate(60); } catch (err) { }
                     }
                     showZaloContextMenu(li, conv.id, chatName);
                 }, 350);
@@ -2227,7 +2227,7 @@ async function loadConversations() {
             };
 
             const fallbackSvg = getInitialsAvatar(chatName, "0084ff");
-            const avatarHtml = isGroup 
+            const avatarHtml = isGroup
                 ? `<div class="avatar">
                      <img src="${avatarUrl}" alt="Avatar" loading="lazy" decoding="async" onerror="this.onerror=null; this.src='${fallbackSvg}';">
                    </div>`
@@ -2354,7 +2354,7 @@ async function startChat(receiverId, receiverName, receiverAvatar, type = "priva
         // Không di chuyển ra body để tránh bị trôi lệch hoặc bị che khuất bởi trình duyệt khi cuộn/keyboard hiển thị
         const mobileHeader = document.getElementById("chat-header-container");
         document.getElementById("chat-header-placeholder").style.display = "none";
-        
+
         if (isGroup) {
             currentChatPartnerId = null;
             window.currentChatUserId = null;
@@ -2403,29 +2403,29 @@ async function startChat(receiverId, receiverName, receiverAvatar, type = "priva
         if (isGroup) {
             if (btnBlockUser) btnBlockUser.style.display = "none";
             if (btnInfoCreateGroup) btnInfoCreateGroup.style.display = "none";
-            
+
             // Ẩn trang cá nhân và biệt danh trong nhóm chat
             const btnInfoProfile = document.getElementById("btn-info-profile");
             const btnInfoNickname = document.getElementById("btn-info-nickname");
             if (btnInfoProfile) btnInfoProfile.style.display = "none";
             if (btnInfoNickname) btnInfoNickname.style.display = "none";
-            
+
             if (actionsGrid) actionsGrid.style.display = "flex";
             if (groupManagementPanel) groupManagementPanel.style.display = "block";
             updateHeaderStatusUI(false, null, "Nhóm trò chuyện");
-            
+
             // Tải danh sách thành viên nhóm
             loadGroupMembers(currentConversationId);
         } else {
             if (btnBlockUser) btnBlockUser.style.display = "block";
             if (btnInfoCreateGroup) btnInfoCreateGroup.style.display = "block";
-            
+
             // Hiện lại trang cá nhân và biệt danh ngoài nhóm chat
             const btnInfoProfile = document.getElementById("btn-info-profile");
             const btnInfoNickname = document.getElementById("btn-info-nickname");
             if (btnInfoProfile) btnInfoProfile.style.display = "flex";
             if (btnInfoNickname) btnInfoNickname.style.display = "flex";
-            
+
             if (actionsGrid) actionsGrid.style.display = "flex";
             if (groupManagementPanel) groupManagementPanel.style.display = "none";
 
@@ -4295,7 +4295,7 @@ if (messageInput) {
     messageInput.addEventListener("focus", function () {
         const inputArea = document.getElementById('input-area');
         if (inputArea) inputArea.classList.add('is-typing');
-        
+
         // Không tự đóng emoji picker nếu focus xuất hiện từ việc chèn emoji
         if (!window.isInsertingEmoji && typeof closeEmojiPicker === "function") {
             closeEmojiPicker();
@@ -8401,7 +8401,7 @@ function getPinnedConversations() {
     try {
         const stored = localStorage.getItem("pinnedConversations");
         return stored ? JSON.parse(stored) : [];
-    } catch(e) {
+    } catch (e) {
         return [];
     }
 }
@@ -8410,7 +8410,7 @@ function getMutedConversations() {
     try {
         const stored = localStorage.getItem("mutedConversations");
         return stored ? JSON.parse(stored) : [];
-    } catch(e) {
+    } catch (e) {
         return [];
     }
 }
@@ -9376,7 +9376,7 @@ function insertEmojiToInput(emoji) {
     try {
         input.selectionStart = newPos;
         input.selectionEnd = newPos;
-    } catch (err) {}
+    } catch (err) { }
 
     // Trigger input event for any listeners (like show/hide send button)
     input.dispatchEvent(new Event("input", { bubbles: true }));
@@ -11091,8 +11091,8 @@ function showNetworkToast(isOnline) {
     const toast = document.createElement("div");
     toast.className = "network-toast";
 
-    const iconHtml = isOnline 
-        ? `<i class="fa-solid fa-wifi icon-online"></i>` 
+    const iconHtml = isOnline
+        ? `<i class="fa-solid fa-wifi icon-online"></i>`
         : `<span class="fa-layers fa-fw icon-offline">
              <i class="fa-solid fa-wifi"></i>
              <i class="fa-solid fa-slash" style="transform: scale(1.05); text-shadow: 0 0 2px rgba(0,0,0,0.8);"></i>
@@ -11221,15 +11221,15 @@ async function openCreateGroupModal(isDirect = false) {
     const listEl = document.getElementById("create-group-friends-list");
     const friendsLabel = document.querySelector("#create-group-modal label[style*='color: var(--text-dark)']");
     const modalTitle = document.querySelector("#create-group-modal .custom-modal-header h3");
-    
+
     if (!listEl) return;
-    
+
     const modal = document.getElementById("create-group-modal");
     modal.style.display = "flex";
     setTimeout(() => {
         modal.classList.add("show");
     }, 10);
-    
+
     document.getElementById("group-name-input").value = "";
 
     if (isDirect) {
@@ -11245,7 +11245,7 @@ async function openCreateGroupModal(isDirect = false) {
         if (modalTitle) modalTitle.innerText = "Tạo nhóm mới";
 
         listEl.innerHTML = "<p style='color: var(--text-light); text-align: center;'>Đang tải danh sách bạn bè...</p>";
-        
+
         try {
             const res = await fetch(`${API_URL}/users/friends`, {
                 headers: { Authorization: `Bearer ${token}` },
@@ -11261,10 +11261,10 @@ async function openCreateGroupModal(isDirect = false) {
 
             listEl.innerHTML = "";
             friends.forEach(f => {
-                const avatarUrl = f.avatar 
-                    ? formatUrl(f.avatar) 
+                const avatarUrl = f.avatar
+                    ? formatUrl(f.avatar)
                     : `https://ui-avatars.com/api/?name=${encodeURIComponent(f.fullName)}&background=random`;
-                
+
                 const item = document.createElement("div");
                 item.className = "group-friends-select-item";
                 item.onclick = () => toggleCheckbox(`cb-create-${f.id}`);
@@ -11333,7 +11333,7 @@ async function submitCreateGroup() {
         if (data.success) {
             closeCreateGroupModal();
             showTempToast("Tạo nhóm thành công!");
-            
+
             // Tải lại danh sách hội thoại
             await loadConversations();
 
@@ -11354,7 +11354,7 @@ async function openAddMemberModal() {
     const listEl = document.getElementById("add-member-friends-list");
     if (!listEl) return;
     listEl.innerHTML = "<p style='color: var(--text-light); text-align: center;'>Đang tải danh sách bạn bè...</p>";
-    
+
     const modal = document.getElementById("add-member-modal");
     modal.style.display = "flex";
     setTimeout(() => {
@@ -11383,10 +11383,10 @@ async function openAddMemberModal() {
 
         listEl.innerHTML = "";
         toAddFriends.forEach(f => {
-            const avatarUrl = f.avatar 
-                ? formatUrl(f.avatar) 
+            const avatarUrl = f.avatar
+                ? formatUrl(f.avatar)
                 : `https://ui-avatars.com/api/?name=${encodeURIComponent(f.fullName)}&background=random`;
-            
+
             const item = document.createElement("div");
             item.className = "group-friends-select-item";
             item.onclick = () => toggleCheckbox(`cb-add-${f.id}`);
@@ -11458,7 +11458,7 @@ async function loadGroupMembers(conversationId) {
         });
         if (!res.ok) throw new Error();
         const data = await res.json();
-        
+
         // Cập nhật tên nhóm ở Header/Info Panel động nếu nhóm không tên
         if (!data.groupName || !data.groupName.trim()) {
             const computedName = (data.members || []).map(m => m.name).join(", ");
@@ -11481,7 +11481,7 @@ function renderGroupMembers(members, myRole) {
     if (!listEl) return;
 
     listEl.innerHTML = "";
-    
+
     if (btnAddMember) {
         btnAddMember.style.display = "block";
     }
@@ -11494,7 +11494,7 @@ function renderGroupMembers(members, myRole) {
 
     members.forEach(member => {
         const avatarUrl = member.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`;
-        
+
         const li = document.createElement("li");
         li.className = "group-member-item";
 
@@ -11537,7 +11537,7 @@ function renderGroupMembers(members, myRole) {
 async function handleKickMember(targetUserId) {
     const confirmed = await customConfirm("Xác nhận", "Xác nhận kích thành viên này ra khỏi nhóm?");
     if (!confirmed) return;
-    
+
     showLoading();
     try {
         const res = await fetch(`${API_URL}/chat/group/kick`, {
@@ -11569,7 +11569,7 @@ async function handleChangeMemberRole(targetUserId, newRole) {
     const actionText = newRole === "admin" ? "phong làm Admin" : "hạ cấp xuống Thành viên";
     const confirmed = await customConfirm("Xác nhận", `Bạn có chắc chắn muốn ${actionText} cho người dùng này?`);
     if (!confirmed) return;
-    
+
     showLoading();
     try {
         const res = await fetch(`${API_URL}/chat/group/role`, {
@@ -11619,7 +11619,7 @@ async function confirmDissolveGroup() {
             showTempToast("Đã giải tán nhóm thành công!");
             // Đóng info panel
             if (typeof closeChatInfoPanel === "function") closeChatInfoPanel();
-            
+
             currentConversationId = null;
             currentChatPartnerId = null;
             document.getElementById("chat-header-container").style.display = "none";
@@ -11702,7 +11702,7 @@ async function createGroupDirectlyWithPartner() {
 
         if (data.success) {
             showTempToast("Tạo nhóm thành công!");
-            
+
             // Tải lại danh sách hội thoại
             await loadConversations();
 
@@ -11898,32 +11898,32 @@ const EMOJI_CATEGORIES = {
     smileys: {
         title: "Mặt cười & Cảm xúc",
         icon: "fa-smile",
-        list: ["😀","😃","😄","😁","😆","🥹","😅","😂","🤣","🥲","☺️","😊","😇","🙂","🙃","😉","😌","😍","🥰","😘","😗","😙","😚","😋","😛","😝","😜","🤪","🤨","🧐","🤓","😎","🥸","🥳","😏","😒","😞","😔","😟","😕","🙁","☹️","😣","😖","😫","😩","🥺","😢","😭","😮‍💨","😤","😠","😡","🤬","🤯","😳","🥵","🥶","😱","😨","😰","😥","😓","🫣","🤗","🫡","🤔","🤫","🫠","😴","🤤","😷","🤒","🤕","🤢","🤮","🤧","😵","😵‍💫","🤯","🤠","🥳","🥸"]
+        list: ["😀", "😃", "😄", "😁", "😆", "🥹", "😅", "😂", "🤣", "🥲", "☺️", "😊", "😇", "🙂", "🙃", "😉", "😌", "😍", "🥰", "😘", "😗", "😙", "😚", "😋", "😛", "😝", "😜", "🤪", "🤨", "🧐", "🤓", "😎", "🥸", "🥳", "😏", "😒", "😞", "😔", "😟", "😕", "🙁", "☹️", "😣", "😖", "😫", "😩", "🥺", "😢", "😭", "😮‍💨", "😤", "😠", "😡", "🤬", "🤯", "😳", "🥵", "🥶", "😱", "😨", "😰", "😥", "😓", "🫣", "🤗", "🫡", "🤔", "🤫", "🫠", "😴", "🤤", "😷", "🤒", "🤕", "🤢", "🤮", "🤧", "😵", "😵‍💫", "🤯", "🤠", "🥳", "🥸"]
     },
     animals: {
         title: "Động vật & Thiên nhiên",
         icon: "fa-dog",
-        list: ["🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐻‍❄️","🐨","🐯","🦁","🐮","🐷","🐽","🐸","🐵","🙈","🙉","🙊","🐒","🐔","🐧","🐦","🐤","🐣","🐥","🦆","🦅","🦉","🦇","🐺","🐗","🐴","🦄","🐝","🪲","🐛","🦋","🐌","🐞","🐜","🪰","🐙","🦑","🦐","🦞","crab","🐡","🐠","🐟","🐬","🐳","🐋","🐅","🐆","🦓","🦍","🦧","🐘","🦛","🦏","🐪","🐫","🦒","🦘","🦬","🐃","🐂","🐄","🐖","🐏","🐑","🐐","deer","🐕","🐩","🐈","🐓","🦃","🦚","🦜","🕊️","🐇","🦝","🦨","🦡","🦦","🦥","🦔"]
+        list: ["🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐻‍❄️", "🐨", "🐯", "🦁", "🐮", "🐷", "🐽", "🐸", "🐵", "🙈", "🙉", "🙊", "🐒", "🐔", "🐧", "🐦", "🐤", "🐣", "🐥", "🦆", "🦅", "🦉", "🦇", "🐺", "🐗", "🐴", "🦄", "🐝", "🪲", "🐛", "🦋", "🐌", "🐞", "🐜", "🪰", "🐙", "🦑", "🦐", "🦞", "crab", "🐡", "🐠", "🐟", "🐬", "🐳", "🐋", "🐅", "🐆", "🦓", "🦍", "🦧", "🐘", "🦛", "🦏", "🐪", "🐫", "🦒", "🦘", "🦬", "🐃", "🐂", "🐄", "🐖", "🐏", "🐑", "🐐", "deer", "🐕", "🐩", "🐈", "🐓", "🦃", "🦚", "🦜", "🕊️", "🐇", "🦝", "🦨", "🦡", "🦦", "🦥", "🦔"]
     },
     food: {
         title: "Đồ ăn & Thức uống",
         icon: "fa-hamburger",
-        list: ["🍎","🍐","🍊","🍋","🍌","🍉","🍇","🍓","🫐","🍈","🍒","🍑","🥭","🍍","🥥","🥝","🍅","🥑","🥦","🥬","🥒","🌶️","🫑","🌽","🥕","🫒","🥔","🍠","🥐","🥯","🍞","🥖","🥨","🧀","🥚","🍳","🥞","🧇","🥓","🥩","🍗","🍖","🦴","🌭","🍔","🍟","🍕","🫓","🥪","🌮","🌯","🫔","🥙","🧆","🍲","🥣","🥗","🍿","バター","🍱","🍘","🍙","🍚","🍛","🍜","🍝","🍠","🍢","🍣","🍤","🍥","🥮","🍡","🥟","🥠","🥡","🍦","🍧","🍨","🍩","🍪","🎂","🍰","🧁","🥧","🍫","🍬","🍭","🍮","🍯","🍼","🥛","☕️","🫖","🍵","🍶","🍾","🍷","🍸","🍹","🍺","🍻","🥂"]
+        list: ["🍎", "🍐", "🍊", "🍋", "🍌", "🍉", "🍇", "🍓", "🫐", "🍈", "🍒", "🍑", "🥭", "🍍", "🥥", "🥝", "🍅", "🥑", "🥦", "🥬", "🥒", "🌶️", "🫑", "🌽", "🥕", "🫒", "🥔", "🍠", "🥐", "🥯", "🍞", "🥖", "🥨", "🧀", "🥚", "🍳", "🥞", "🧇", "🥓", "🥩", "🍗", "🍖", "🦴", "🌭", "🍔", "🍟", "🍕", "🫓", "🥪", "🌮", "🌯", "🫔", "🥙", "🧆", "🍲", "🥣", "🥗", "🍿", "バター", "🍱", "🍘", "🍙", "🍚", "🍛", "🍜", "🍝", "🍠", "🍢", "🍣", "🍤", "🍥", "🥮", "🍡", "🥟", "🥠", "🥡", "🍦", "🍧", "🍨", "🍩", "🍪", "🎂", "🍰", "🧁", "🥧", "🍫", "🍬", "🍭", "🍮", "🍯", "🍼", "🥛", "☕️", "🫖", "🍵", "🍶", "🍾", "🍷", "🍸", "🍹", "🍺", "🍻", "🥂"]
     },
     activities: {
         title: "Hoạt động & Thể thao",
         icon: "fa-basketball-ball",
-        list: ["⚽️","🏀","🏈","⚾️","🥎","🎾","🏐","🏉","🥏","🎱","🪀","🏓","🏸","🏒","🏑","🥍","🏏","🪃","🥅","⛳️","🪁","🏹","🎣","🤿","🥊","🥋","🎽","skateboard","🛼","🛷","⛸️","🥌","🎿","⛷️","🏂","🪂","🏋️‍♀️","🏋️‍♂️","🤼‍♀️","🤼‍♂️","🤸‍♀️","🤸‍♂️","⛹️‍♀️","⛹️‍♂️","🤺","🤾‍♀️","🤾‍♂️","🏌️‍♀️","🏌️‍♂️","🏇","🧘‍♀️","🧘‍♂️","🏄‍♀️","🏄‍♂️","🏊‍♀️","🏊‍♂️","🤽‍♀️","🤽‍♂️","🚣‍♀️","🚣‍♂️","🧗‍♀️","🧗‍♂️","🚵‍♀️","🚵‍♂️","🚴‍♀️","🚴‍♂️","🏆","🥇","🥈","🥉","🏅","🎖️","🎗️","🎟️","🎫","🎪","🎭","🎨","🎬","🎤","🎧","🎼","🎹","🥁","🎷","🎺","🎸","🪕","🎻","🎲","🎯","🎳","🎮","🎰","🧩"]
+        list: ["⚽️", "🏀", "🏈", "⚾️", "🥎", "🎾", "🏐", "🏉", "🥏", "🎱", "🪀", "🏓", "🏸", "🏒", "🏑", "🥍", "🏏", "🪃", "🥅", "⛳️", "🪁", "🏹", "🎣", "🤿", "🥊", "🥋", "🎽", "skateboard", "🛼", "🛷", "⛸️", "🥌", "🎿", "⛷️", "🏂", "🪂", "🏋️‍♀️", "🏋️‍♂️", "🤼‍♀️", "🤼‍♂️", "🤸‍♀️", "🤸‍♂️", "⛹️‍♀️", "⛹️‍♂️", "🤺", "🤾‍♀️", "🤾‍♂️", "🏌️‍♀️", "🏌️‍♂️", "🏇", "🧘‍♀️", "🧘‍♂️", "🏄‍♀️", "🏄‍♂️", "🏊‍♀️", "🏊‍♂️", "🤽‍♀️", "🤽‍♂️", "🚣‍♀️", "🚣‍♂️", "🧗‍♀️", "🧗‍♂️", "🚵‍♀️", "🚵‍♂️", "🚴‍♀️", "🚴‍♂️", "🏆", "🥇", "🥈", "🥉", "🏅", "🎖️", "🎗️", "🎟️", "🎫", "🎪", "🎭", "🎨", "🎬", "🎤", "🎧", "🎼", "🎹", "🥁", "🎷", "🎺", "🎸", "🪕", "🎻", "🎲", "🎯", "🎳", "🎮", "🎰", "🧩"]
     },
     travel: {
         title: "Du lịch & Biểu tượng",
         icon: "fa-car",
-        list: ["🚗","🚕","🚙","🚌","🏣","🏬","🏢","🏨","🏦","🏥","🏫","🏛️","⛪️","🕌","🛕","🕍","⛩️","🏎️","🚓","🚒","🚑","🚐","🛻","🚚","🚛","🚜","🛵","🏍️","🛺","🚨","🚔","🚍","🚘","🚖","🚡","🚠","🚟","🚃","🚋","🚝","🚅","🚈","🚂","🚆","🚇","🚊","✈️","🛫","🛬","🛩️","🚀","🛰️","🛸","🚁","🛶","⛵️","🚤","🛥️","🛳️","⚓️","🛟","🧳","⛽️","🚧","🚥","🚦","🎡","🎢","🎠","🗺️","🗿","🗽","🗼","🏰","🏯","🏟️","🏖️","🏝️","🏜️","🌋","⛰️","🏔️","🗻","🏕️","⛺️","🏠","🏡"]
+        list: ["🚗", "🚕", "🚙", "🚌", "🏣", "🏬", "🏢", "🏨", "🏦", "🏥", "🏫", "🏛️", "⛪️", "🕌", "🛕", "🕍", "⛩️", "🏎️", "🚓", "🚒", "🚑", "🚐", "🛻", "🚚", "🚛", "🚜", "🛵", "🏍️", "🛺", "🚨", "🚔", "🚍", "🚘", "🚖", "🚡", "🚠", "🚟", "🚃", "🚋", "🚝", "🚅", "🚈", "🚂", "🚆", "🚇", "🚊", "✈️", "🛫", "🛬", "🛩️", "🚀", "🛰️", "🛸", "🚁", "🛶", "⛵️", "🚤", "🛥️", "🛳️", "⚓️", "🛟", "🧳", "⛽️", "🚧", "🚥", "🚦", "🎡", "🎢", "🎠", "🗺️", "🗿", "🗽", "🗼", "🏰", "🏯", "🏟️", "🏖️", "🏝️", "🏜️", "🌋", "⛰️", "🏔️", "🗻", "🏕️", "⛺️", "🏠", "🏡"]
     },
     symbols: {
         title: "Trái tim & Biểu tượng",
         icon: "fa-heart",
-        list: ["❤️","🧡","💛","💚","💙","💜","🤎","🖤","🤍","💔","❣️","💕","💞","💓","💗","💖","💘","💝","❤️‍🔥","❤️‍🩹","💯","💢","💥","💫","💦","💨","🕳️","💬","👁️‍🗨️","🗯️","💭","💤","🎵","🎶","🔥","✨","🌟","⭐️","⚡️","☀️","🌤️","⛅️","🌥️","☁️","🌦️","🌧️","⛈️","🌩️","❄️","☃️","⛄️","🌪️","🌈","☂️","☔️","🔮","🔔","🔕","🎉","🎊","🎁","🎈","🪅","🔑","🗝️","🔒","🔓","🔍","🔎","💡","🕯️","✏️","✒️","🖊️","📝","📍","📌","❌","⭕️","⛔️","🚫","✅","☑️","✔️","‼️","⁉️","❗️","❓"]
+        list: ["❤️", "🧡", "💛", "💚", "💙", "💜", "🤎", "🖤", "🤍", "💔", "❣️", "💕", "💞", "💓", "💗", "💖", "💘", "💝", "❤️‍🔥", "❤️‍🩹", "💯", "💢", "💥", "💫", "💦", "💨", "🕳️", "💬", "👁️‍🗨️", "🗯️", "💭", "💤", "🎵", "🎶", "🔥", "✨", "🌟", "⭐️", "⚡️", "☀️", "🌤️", "⛅️", "🌥️", "☁️", "🌦️", "🌧️", "⛈️", "🌩️", "❄️", "☃️", "⛄️", "🌪️", "🌈", "☂️", "☔️", "🔮", "🔔", "🔕", "🎉", "🎊", "🎁", "🎈", "🪅", "🔑", "🗝️", "🔒", "🔓", "🔍", "🔎", "💡", "🕯️", "✏️", "✒️", "🖊️", "📝", "📍", "📌", "❌", "⭕️", "⛔️", "🚫", "✅", "☑️", "✔️", "‼️", "⁉️", "❗️", "❓"]
     }
 };
 
@@ -12246,6 +12246,11 @@ function scrollToBottomIfNeeded(force = false) {
     const messagesDiv = document.getElementById("messages");
     if (!messagesDiv) return;
 
+    if (messagesDiv.scrollHeight <= messagesDiv.clientHeight + 10) {
+        messagesDiv.scrollTop = 0;
+        return;
+    }
+
     const distanceFromBottom = messagesDiv.scrollHeight - messagesDiv.scrollTop - messagesDiv.clientHeight;
     // Chỉ tự động cuộn nếu đang ở gần đáy (< 150px) hoặc yêu cầu cưỡng chế force
     if (force || distanceFromBottom < 150) {
@@ -12260,7 +12265,12 @@ window.smartScrollToBottom = scrollToBottomIfNeeded;
 window.scrollToBottomSmooth = function () { scrollToBottomIfNeeded(true); };
 window.scrollToBottomInstant = function () {
     const messagesDiv = document.getElementById("messages");
-    if (messagesDiv) messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    if (!messagesDiv) return;
+    if (messagesDiv.scrollHeight <= messagesDiv.clientHeight + 10) {
+        messagesDiv.scrollTop = 0;
+    } else {
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
 };
 
 // 2. XỬ LÝ BÀN PHÍM MOBILE CỐ ĐỊNH LAYOUT CHUẨN (IOS SAFARI + ANDROID CHROME)
@@ -12279,6 +12289,23 @@ function initVisualViewportKeyboardHandler() {
             return;
         }
 
+        const isIOSDevice = document.body.classList.contains('is-ios') ||
+            /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+        if (isIOSDevice) {
+            inputArea.style.setProperty("bottom", "0px", "important");
+            inputArea.style.transform = "none";
+            messagesDiv.style.setProperty("bottom", "60px", "important");
+
+            if (messagesDiv.scrollHeight > messagesDiv.clientHeight + 10) {
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            } else {
+                messagesDiv.scrollTop = 0;
+            }
+            return;
+        }
+
         const layoutHeight = window.innerHeight;
         const viewportHeight = window.visualViewport ? window.visualViewport.height : layoutHeight;
         const keyboardHeight = Math.max(0, Math.round(layoutHeight - viewportHeight));
@@ -12287,11 +12314,12 @@ function initVisualViewportKeyboardHandler() {
             inputArea.style.setProperty("bottom", `${keyboardHeight}px`, "important");
             inputArea.style.transform = "none";
             messagesDiv.style.setProperty("bottom", `${60 + keyboardHeight}px`, "important");
-            
-            // Cuộn vừa vừa: Chỉ cuộn vừa đủ hiển thị tin nhắn cuối (block: nearest) mà không đẩy vọt lên quá cao
-            const lastMsg = messagesDiv.lastElementChild;
-            if (lastMsg && typeof lastMsg.scrollIntoView === "function") {
-                lastMsg.scrollIntoView({ block: "nearest", behavior: "auto" });
+
+            // Chỉ cuộn nếu danh sách tin nhắn vượt quá chiều cao khung chứa
+            if (messagesDiv.scrollHeight > messagesDiv.clientHeight + 10) {
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            } else {
+                messagesDiv.scrollTop = 0;
             }
         } else {
             inputArea.style.setProperty("bottom", "0px", "important");
@@ -12459,60 +12487,4 @@ if (typeof socket !== "undefined" && socket) {
         }
     });
 }
-
-// 4. TEST SCROLL & BÀN PHÍM VỚI 30 TIN NHẮN GIẢ
-function create30DummyMessages() {
-    const messagesDiv = document.getElementById("messages");
-    if (!messagesDiv) return alert("Không tìm thấy khung chứa tin nhắn!");
-
-    const dummyTexts = [
-        "Chào bạn! Đây là tin nhắn giả 1.",
-        "Tin nhắn số 2 từ đối phương.",
-        "Đây là tin nhắn của tôi nè (số 3).",
-        "Bạn có khỏe không?",
-        "Mình vẫn khỏe, cảm ơn bạn nhiều nhé!",
-        "Cuối tuần này bạn có rảnh đi cà phê không?",
-        "Rảnh chứ, hẹn mấy giờ vậy?",
-        "Tầm 9h sáng nhé ở quán cũ.",
-        "Okie chốt nha!",
-        "Tin nhắn mẫu số 10 để test scroll.",
-        "Kiểm tra xem hiệu ứng cuộn mượt không.",
-        "Bàn phím trượt lên mượt mà chưa?",
-        "Tin nhắn số 13 nè.",
-        "Test cuộn xuống khi có tin nhắn mới.",
-        "Cuộn lên để đọc tin cũ xem có bị tự động cuộn xuống không nha.",
-        "Nếu kéo lên > 150px thì KHÔNG tự cuộn xuống.",
-        "Tin nhắn giả số 17.",
-        "Tin nhắn giả số 18.",
-        "Tin nhắn giả số 19.",
-        "Tin nhắn giả số 20.",
-        "Tin nhắn giả số 21.",
-        "Tin nhắn giả số 22.",
-        "Tin nhắn giả số 23.",
-        "Tin nhắn giả số 24.",
-        "Tin nhắn giả số 25.",
-        "Tin nhắn giả số 26.",
-        "Tin nhắn giả số 27.",
-        "Tin nhắn giả số 28.",
-        "Tin nhắn giả số 29.",
-        "🎉 Hoàn tất 30 tin nhắn giả! Bạn hãy thử cuộn và mở bàn phím."
-    ];
-
-    dummyTexts.forEach((text, idx) => {
-        const isMe = idx % 2 === 0;
-        const msg = {
-            id: `dummy-${Date.now()}-${idx}`,
-            senderId: isMe ? (window.myId || "me") : "partner",
-            content: text,
-            type: "text",
-            createdAt: new Date(Date.now() - (30 - idx) * 60000).toISOString()
-        };
-        renderMessage(msg);
-    });
-
-    scrollToBottomIfNeeded(true);
-    alert("🚀 Đã tạo 30 tin nhắn giả thành công! Bạn hãy thử cuộn và mở bàn phím di động.");
-}
-window.create30DummyMessages = create30DummyMessages;
-
 
