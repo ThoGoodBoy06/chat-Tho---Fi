@@ -492,17 +492,12 @@ exports.sendMessage = async(req, res) => {
         });
 
         // 3. Lấy Socket.IO instance và phát tin nhắn Real-time đến phòng của từng thành viên
-
         const io = req.app.get("io");
 
-        if (io) {
-            members.forEach((member) => {
-                if (member.userId) {
-                    io.to(member.userId).emit("receive_message", mappedMessage);
-                }
-            });
-            io.to(conversationId).emit("receive_message", mappedMessage);
-        }
+        members.forEach((member) => {
+            if (io && member.userId) {
+                io.to(member.userId).emit("receive_message", mappedMessage);
+            }
 
             // --- BẮN PUSH NOTIFICATION ---
             // Chỉ gửi cho người nhận (đối phương) và khi họ đã có FCM Token
@@ -529,12 +524,12 @@ exports.sendMessage = async(req, res) => {
                         `${BASE_HOST_URL}${senderAvatar}`;
                 } else {
                     avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-            newMessage.Users.fullName || "User"
+            (newMessage.Users && newMessage.Users.fullName) || "User"
           )}&background=random`;
                 }
 
                 const senderMember = members.find((m) => m.userId === senderId);
-                const senderDisplayName = (senderMember && senderMember.nickname) || newMessage.Users.fullName || "Tin nhắn mới";
+                const senderDisplayName = (senderMember && senderMember.nickname) || (newMessage.Users && newMessage.Users.fullName) || "Tin nhắn mới";
 
                 const payload = {
                     token: member.Users.fcmToken,
@@ -593,6 +588,10 @@ exports.sendMessage = async(req, res) => {
                 }
             }
         });
+
+        if (io) {
+            io.to(conversationId).emit("receive_message", mappedMessage);
+        }
 
         console.log("✅ LƯU TIN NHẮN VÀO DATABASE THÀNH CÔNG!");
 
