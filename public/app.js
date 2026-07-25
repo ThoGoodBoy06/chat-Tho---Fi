@@ -11756,6 +11756,99 @@ async function handleRenameGroup() {
     }
 }
 
+// 1. SCROLL THÔNG MINH (SMART SCROLL TO BOTTOM)
+function scrollToBottomIfNeeded(force = false) {
+    const messagesDiv = document.getElementById("messages");
+    if (!messagesDiv) return;
+
+    if (messagesDiv.scrollHeight <= messagesDiv.clientHeight + 10) {
+        messagesDiv.scrollTop = 0;
+        return;
+    }
+
+    const distanceFromBottom = messagesDiv.scrollHeight - messagesDiv.scrollTop - messagesDiv.clientHeight;
+    // Chỉ tự động cuộn nếu đang ở gần đáy (< 150px) hoặc yêu cầu cưỡng chế force
+    if (force || distanceFromBottom < 150) {
+        messagesDiv.scrollTo({
+            top: messagesDiv.scrollHeight,
+            behavior: "smooth"
+        });
+    }
+}
+window.scrollToBottomIfNeeded = scrollToBottomIfNeeded;
+window.smartScrollToBottom = scrollToBottomIfNeeded;
+window.scrollToBottomSmooth = function () { scrollToBottomIfNeeded(true); };
+window.scrollToBottomInstant = function () {
+    const messagesDiv = document.getElementById("messages");
+    if (!messagesDiv) return;
+    if (messagesDiv.scrollHeight <= messagesDiv.clientHeight + 10) {
+        messagesDiv.scrollTop = 0;
+    } else {
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+};
+
+// 2. XỬ LÝ BÀN PHÍM MOBILE CỐ ĐỊNH LAYOUT CHUẨN (IOS SAFARI + ANDROID CHROME)
+function initVisualViewportKeyboardHandler() {
+    function handleViewportResize() {
+        const messagesDiv = document.getElementById("messages");
+        const inputArea = document.getElementById("input-area");
+
+        if (!messagesDiv || !inputArea) return;
+
+        const isMobile = window.innerWidth <= 768 || document.body.classList.contains("mobile-chat-active");
+        if (!isMobile) {
+            inputArea.style.setProperty("bottom", "0px", "important");
+            inputArea.style.transform = "none";
+            messagesDiv.style.setProperty("bottom", "60px", "important");
+            return;
+        }
+
+        const isIOSDevice = document.body.classList.contains('is-ios') ||
+            /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+        if (isIOSDevice) {
+            inputArea.style.setProperty("bottom", "0px", "important");
+            inputArea.style.transform = "none";
+            messagesDiv.style.setProperty("bottom", "60px", "important");
+
+            if (messagesDiv.scrollHeight > messagesDiv.clientHeight + 10) {
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            } else {
+                messagesDiv.scrollTop = 0;
+            }
+            return;
+        }
+
+        const layoutHeight = window.innerHeight;
+        const viewportHeight = window.visualViewport ? window.visualViewport.height : layoutHeight;
+        const keyboardHeight = Math.max(0, Math.round(layoutHeight - viewportHeight));
+
+        if (keyboardHeight > 50) {
+            inputArea.style.setProperty("bottom", `${keyboardHeight}px`, "important");
+            inputArea.style.transform = "none";
+            messagesDiv.style.setProperty("bottom", `${60 + keyboardHeight}px`, "important");
+
+            // Chỉ cuộn nếu danh sách tin nhắn vượt quá chiều cao khung chứa
+            if (messagesDiv.scrollHeight > messagesDiv.clientHeight + 10) {
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            } else {
+                messagesDiv.scrollTop = 0;
+            }
+        } else {
+            inputArea.style.setProperty("bottom", "0px", "important");
+            inputArea.style.transform = "none";
+            messagesDiv.style.setProperty("bottom", "60px", "important");
+        }
+    }
+    
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener("resize", handleViewportResize);
+        window.visualViewport.addEventListener("scroll", handleViewportResize);
+    }
+}
+
 // Lắng nghe sự kiện tải lên ảnh đại diện nhóm
 const groupAvatarUploadInput = document.getElementById("group-avatar-file-input");
 if (groupAvatarUploadInput) {

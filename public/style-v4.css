@@ -936,6 +936,18 @@ RIGHT WINDOW & CHAT MESSAGES
     overflow-anchor: auto !important;
 }
 
+#messages::before {
+    content: "" !important;
+    margin-top: auto !important;
+    display: block !important;
+    height: 0 !important;
+    visibility: hidden !important;
+}
+
+#messages > *:first-child {
+    margin-top: auto !important;
+}
+
 
 /* Chat bubble styling with soft shadows and offset curves */
 
@@ -954,7 +966,8 @@ RIGHT WINDOW & CHAT MESSAGES
 
 .message.show-mobile-actions,
 .message.system-message,
-.message.pinned-message {
+.message.pinned-message,
+.message:first-child {
     content-visibility: visible !important;
     contain: none !important;
 }
@@ -4990,9 +5003,18 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         flex-direction: column !important;
     }
 
+    #messages::before {
+        content: "" !important;
+        margin-top: auto !important;
+        display: block !important;
+        height: 0 !important;
+        visibility: hidden !important;
+    }
+
     #messages > .message:first-child,
     #messages > .message-date-divider:first-child,
-    #messages > div:first-child {
+    #messages > div:first-child,
+    #messages > *:first-child {
         margin-top: auto !important;
     }
 
