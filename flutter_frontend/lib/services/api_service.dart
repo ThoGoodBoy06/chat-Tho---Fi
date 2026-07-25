@@ -92,6 +92,17 @@ class ApiService {
     return {'data': []};
   }
 
+  // Create or get 1-on-1 private conversation
+  static Future<Map<String, dynamic>> createConversation(String receiverId) async {
+    final headers = await _getHeaders();
+    final response = await http.post(
+      Uri.parse('$baseUrl/chat/conversations'),
+      headers: headers,
+      body: jsonEncode({'receiverId': receiverId}),
+    );
+    return jsonDecode(response.body);
+  }
+
   // Send Message
   static Future<Map<String, dynamic>> sendMessage(String conversationId, String content, {String type = 'text'}) async {
     final headers = await _getHeaders();

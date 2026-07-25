@@ -93,6 +93,26 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> startPrivateChat(String receiverId) async {
+    try {
+      final res = await ApiService.createConversation(receiverId);
+      final convData = res['data'];
+      if (convData is Map<String, dynamic>) {
+        final convId = convData['id']?.toString() ?? convData['conversationId']?.toString();
+        await fetchConversations();
+        if (convId != null) {
+          final found = conversations.firstWhere(
+            (c) => c.id == convId,
+            orElse: () => ConversationModel.fromJson(convData, currentUserId: currentUser?.id),
+          );
+          selectConversation(found);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error starting private chat: $e');
+    }
+  }
+
   Future<void> sendMessage(String text, {String type = 'text'}) async {
     if (selectedConversation == null || text.trim().isEmpty) return;
 

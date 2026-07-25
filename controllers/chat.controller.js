@@ -495,8 +495,14 @@ exports.sendMessage = async(req, res) => {
 
         const io = req.app.get("io");
 
-        members.forEach((member) => {
-            io.to(member.userId).emit("receive_message", mappedMessage);
+        if (io) {
+            members.forEach((member) => {
+                if (member.userId) {
+                    io.to(member.userId).emit("receive_message", mappedMessage);
+                }
+            });
+            io.to(conversationId).emit("receive_message", mappedMessage);
+        }
 
             // --- BẮN PUSH NOTIFICATION ---
             // Chỉ gửi cho người nhận (đối phương) và khi họ đã có FCM Token
