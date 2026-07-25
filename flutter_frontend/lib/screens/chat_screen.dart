@@ -913,20 +913,46 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildMobileBottomBar() {
-    return BottomNavigationBar(
-      currentIndex: _currentTabIndex,
-      onTap: (index) => setState(() => _currentTabIndex = index),
-      backgroundColor: Colors.white,
-      selectedItemColor: const Color(0xFF0068FF),
-      unselectedItemColor: const Color(0xFF64748B),
-      type: BottomNavigationBarType.fixed,
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_rounded), label: 'Tin nhắn'),
-        BottomNavigationBarItem(icon: Icon(Icons.people_alt_rounded), label: 'Danh bạ'),
-        BottomNavigationBarItem(icon: Icon(Icons.newspaper_rounded), label: 'Tin tức'),
-        BottomNavigationBarItem(icon: Icon(Icons.smart_toy_rounded), label: 'Trợ lý AI'),
-        BottomNavigationBarItem(icon: Icon(Icons.account_circle_rounded), label: 'Cá nhân'),
-      ],
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.only(
+            top: 6,
+            bottom: bottomPadding > 0 ? 0 : 8,
+          ),
+          child: BottomNavigationBar(
+            currentIndex: _currentTabIndex,
+            onTap: (index) => setState(() => _currentTabIndex = index),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            selectedItemColor: const Color(0xFF0068FF),
+            unselectedItemColor: const Color(0xFF64748B),
+            selectedFontSize: 11,
+            unselectedFontSize: 11,
+            iconSize: 24,
+            type: BottomNavigationBarType.fixed,
+            items: const [
+              BottomNavigationBarItem(icon: Padding(padding: EdgeInsets.only(bottom: 3), child: Icon(Icons.chat_bubble_rounded)), label: 'Tin nhắn'),
+              BottomNavigationBarItem(icon: Padding(padding: EdgeInsets.only(bottom: 3), child: Icon(Icons.people_alt_rounded)), label: 'Danh bạ'),
+              BottomNavigationBarItem(icon: Padding(padding: EdgeInsets.only(bottom: 3), child: Icon(Icons.newspaper_rounded)), label: 'Tin tức'),
+              BottomNavigationBarItem(icon: Padding(padding: EdgeInsets.only(bottom: 3), child: Icon(Icons.smart_toy_rounded)), label: 'Trợ lý AI'),
+              BottomNavigationBarItem(icon: Padding(padding: EdgeInsets.only(bottom: 3), child: Icon(Icons.account_circle_rounded)), label: 'Cá nhân'),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
