@@ -19,12 +19,15 @@ class SocketService {
       return;
     }
 
+    final String serverUrl = Uri.base.origin;
+
     socket = IO.io(
-      '/',
+      serverUrl,
       IO.OptionBuilder()
           .setTransports(['websocket', 'polling'])
           .setAuth({'token': token})
           .enableAutoConnect()
+          .enableReconnection()
           .build(),
     );
 

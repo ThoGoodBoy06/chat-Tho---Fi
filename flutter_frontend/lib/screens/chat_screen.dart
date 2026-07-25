@@ -80,12 +80,11 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  void _handleSend(ChatProvider provider) async {
+  void _handleSend(ChatProvider provider) {
     final text = _textController.text.trim();
     final sendText = text.isEmpty ? '👍' : text;
     _textController.clear();
-    _scrollToBottom();
-    await provider.sendMessage(sendText);
+    provider.sendMessage(sendText);
     _scrollToBottom();
   }
 
