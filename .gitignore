@@ -11,4 +11,3 @@ firebase-key.json
 # Bỏ qua bộ cài SDK và build tạm Flutter
 flutter.zip
 .flutter_sdk
-flutter_frontend/build/
