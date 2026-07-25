@@ -51,14 +51,16 @@ app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-// Mở thư mục 'public' để chứa file giao diện web (HTML/CSS/JS) với Cache-Control linh hoạt
-app.use(express.static(path.join(__dirname, "public"), {
+// Mở thư mục web static (Hỗ trợ cả Flutter Web và Web HTML mặc định)
+const flutterWebPath = path.join(__dirname, "flutter_frontend", "build", "web");
+const staticPath = fs.existsSync(flutterWebPath) ? flutterWebPath : path.join(__dirname, "public");
+
+app.use(express.static(staticPath, {
     etag: true,
     setHeaders: (res, filePath) => {
         if (filePath.endsWith(".html")) {
             res.setHeader("Cache-Control", "no-cache, must-revalidate");
         } else if (filePath.endsWith(".js") || filePath.endsWith(".css")) {
-            // Cho phép trình duyệt dùng ETag (304 Not Modified) siêu nhanh khi file không đổi
             res.setHeader("Cache-Control", "public, max-age=86400, must-revalidate");
         } else {
             res.setHeader("Cache-Control", "public, max-age=604800");
