@@ -2018,7 +2018,7 @@ async function loadConversations() {
         if (data.data) {
             data.data.forEach((item) => {
                 const conv = item.Conversations;
-                const otherMember = conv.ConversationMembers.find(m => m.userId !== myId);
+                const otherMember = conv.ConversationMembers.find(m => String(m.userId) !== String(myId));
                 if (otherMember) {
                     const user = otherMember.Users;
                     allConversations.push({
@@ -2076,8 +2076,9 @@ async function loadConversations() {
                 targetId = conv.id;
             } else {
                 otherMember = conv.ConversationMembers.find(
-                    (m) => m.userId !== myId,
+                    (m) => String(m.userId) !== String(myId),
                 );
+                if (!otherMember) otherMember = conv.ConversationMembers[0];
                 if (!otherMember) return;
                 const user = otherMember.Users;
                 chatName = otherMember.nickname || user.fullName || "Người dùng";
@@ -5003,12 +5004,10 @@ document.addEventListener("click", () => {
 // ===========================================
 
 document.addEventListener("DOMContentLoaded", () => {
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme === "dark") {
-        document.body.setAttribute("data-theme", "dark");
-        const toggle = document.getElementById("dark-mode-toggle");
-        if (toggle) toggle.checked = true;
-    }
+    localStorage.setItem("theme", "light");
+    document.body.removeAttribute("data-theme");
+    const toggle = document.getElementById("dark-mode-toggle");
+    if (toggle) toggle.checked = false;
 
     tryAutoLogin();
 
@@ -5461,9 +5460,9 @@ let isSwitchingTab = false;
 // Chuyển đổi giữa các Tab
 function switchTab(tabId, navElement) {
     if (typeof hideMobileOverlay === "function") hideMobileOverlay(); // 🌟 Giải phóng các lớp phủ khoá click khi chuyển tab
-    // Nếu tab đã hiển thị sẵn rồi thì không làm gì (Tránh render lại dư thừa)
-    const targetTab = document.getElementById(tabId);
-    if (targetTab && targetTab.classList.contains("active")) return;
+    document.body.classList.remove("mobile-chat-active");
+    const chatScreen = document.getElementById("chat-screen");
+    if (chatScreen) chatScreen.classList.remove("mobile-chat-view");
 
     // Phát âm thanh click ngắn khi chuyển tab thành công
     if (typeof tabClickSound !== "undefined" && tabClickSound) {

@@ -3,32 +3,30 @@ SYSTEM DESIGN SYSTEM & CUSTOM UTILITIES (LIGHT & DARK THEMES)
 ========================================================================== */
 
 :root {
-    /* Variables cho Chat Themes (Đổi màu bong bóng & Accent giống Messenger) */
-    --theme-primary-start: #0084ff;
-    --theme-primary-end: #006eeb;
-    --theme-accent: #0084ff;
-    --theme-bg-color: var(--chat-bg);
-    --primary-color: #0084ff;
-    /* Emerald Green */
-    --primary-hover: #006eeb;
+    /* Variables cho Chat Themes (Bản Giao diện Trắng Zalo Chuẩn) */
+    --theme-primary-start: #0068ff;
+    --theme-primary-end: #0091ff;
+    --theme-accent: #0068ff;
+    --theme-bg-color: #f0f2f5;
+    --primary-color: #0068ff;
+    --primary-hover: #0052d4;
     --bg-color: #f0f2f5;
-    /* Ivory Off-White */
-    --sidebar-bg: rgba(255, 255, 255, 0.85);
+    --sidebar-bg: #ffffff;
     --chat-bg: #f0f2f5;
     --msg-receiver-bg: #ffffff;
-    --msg-sender-bg: var(--primary-color);
-    --text-dark: #1F2937;
-    --text-light: #6B7280;
-    --border-color: rgba(0, 0, 0, 0.08);
-    --hover-bg: rgba(0, 0, 0, 0.03);
-    --active-bg: rgba(0, 132, 255, 0.1);
-    --online-color: #10B981;
-    --header-bg-glass: rgba(255, 255, 255, 0.85);
-    --zalo-bg-gray: #FAF9F6;
-    --zalo-header-bg: #2164c8;
-    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.02);
-    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.05);
-    --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.08);
+    --msg-sender-bg: #0068ff;
+    --text-dark: #0f172a;
+    --text-light: #64748b;
+    --border-color: #e2e8f0;
+    --hover-bg: #f1f5f9;
+    --active-bg: #ebf3ff;
+    --online-color: #10b981;
+    --header-bg-glass: rgba(255, 255, 255, 0.9);
+    --zalo-bg-gray: #f0f2f5;
+    --zalo-header-bg: #0068ff;
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 12px 30px rgba(0, 0, 0, 0.08);
     --transition-fast: 0.15s ease;
     --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
@@ -4427,11 +4425,13 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         transform: translateY(-1px);
     }
 
-    /* ── NAV ICON WRAP (for glow effect) ── */
+    /* ── NAV ICON WRAP ── */
     .nav-icon-wrap {
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        min-width: 24px !important;
+        min-height: 24px !important;
         transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
@@ -4441,8 +4441,11 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
 
     /* ── ICON ── */
     .nav-item i {
-        font-size: 21px;
-        color: var(--text-light);
+        font-size: 20px !important;
+        color: #64748b !important;
+        display: inline-block !important;
+        opacity: 1 !important;
+        visibility: visible !important;
         transition: color 0.25s ease, filter 0.25s ease;
     }
 

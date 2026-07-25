@@ -48,6 +48,19 @@ class ApiService {
     return jsonDecode(response.body);
   }
 
+  // Auth: Get Current User Profile
+  static Future<Map<String, dynamic>> getMe() async {
+    final headers = await _getHeaders();
+    final response = await http.get(
+      Uri.parse('$baseUrl/auth/me'),
+      headers: headers,
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    return {};
+  }
+
   // Fetch Conversations
   static Future<List<dynamic>> getConversations() async {
     final headers = await _getHeaders();

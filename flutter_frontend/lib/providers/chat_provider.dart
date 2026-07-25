@@ -39,6 +39,13 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      if (currentUser == null) {
+        final meRes = await ApiService.getMe();
+        final userObj = meRes['data'] ?? meRes['user'];
+        if (userObj is Map<String, dynamic>) {
+          currentUser = UserModel.fromJson(userObj);
+        }
+      }
       final rawList = await ApiService.getConversations();
       conversations = rawList
           .map((c) => ConversationModel.fromJson(c, currentUserId: currentUser?.id))
@@ -67,6 +74,12 @@ class ChatProvider extends ChangeNotifier {
       isLoadingMessages = false;
       notifyListeners();
     }
+  }
+
+  void deselectConversation() {
+    selectedConversation = null;
+    messages = [];
+    notifyListeners();
   }
 
   Future<void> sendMessage(String text, {String type = 'text'}) async {
