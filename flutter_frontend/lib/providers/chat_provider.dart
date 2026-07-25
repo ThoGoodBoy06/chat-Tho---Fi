@@ -22,7 +22,12 @@ class ChatProvider extends ChangeNotifier {
     _socketSubscription = SocketService.onMessageReceived.listen((data) {
       final newMsg = MessageModel.fromJson(data);
       if (selectedConversation != null && newMsg.conversationId == selectedConversation!.id) {
-        messages.add(newMsg);
+        final existingIdx = messages.indexWhere((m) => m.id == newMsg.id);
+        if (existingIdx == -1) {
+          messages.add(newMsg);
+        } else {
+          messages[existingIdx] = newMsg;
+        }
         notifyListeners();
       }
       fetchConversations();
@@ -31,6 +36,9 @@ class ChatProvider extends ChangeNotifier {
 
   Future<void> setCurrentUser(Map<String, dynamic> userJson) async {
     currentUser = UserModel.fromJson(userJson);
+    if (currentUser != null && currentUser!.id.isNotEmpty) {
+      SocketService.connect(userId: currentUser!.id);
+    }
     notifyListeners();
   }
 
@@ -45,6 +53,9 @@ class ChatProvider extends ChangeNotifier {
         if (userObj is Map<String, dynamic>) {
           currentUser = UserModel.fromJson(userObj);
         }
+      }
+      if (currentUser != null && currentUser!.id.isNotEmpty) {
+        SocketService.connect(userId: currentUser!.id);
       }
       final rawList = await ApiService.getConversations();
       conversations = rawList
@@ -101,14 +112,18 @@ class ChatProvider extends ChangeNotifier {
 
     try {
       final res = await ApiService.sendMessage(selectedConversation!.id, text, type: type);
-      if (res['data'] != null) {
-        final realMsg = MessageModel.fromJson(res['data']);
+      final msgData = res['data'] ?? (res['success'] == true ? res : null);
+      if (msgData is Map<String, dynamic>) {
+        final realMsg = MessageModel.fromJson(msgData);
         final idx = messages.indexWhere((m) => m.id == optId);
         if (idx != -1) {
           messages[idx] = realMsg;
+        } else if (!messages.any((m) => m.id == realMsg.id)) {
+          messages.add(realMsg);
         }
         notifyListeners();
       }
+      fetchConversations();
     } catch (e) {
       debugPrint('Error sending message: $e');
     }

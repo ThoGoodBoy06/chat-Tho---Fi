@@ -2,14 +2,48 @@ const prisma = require("../prisma");
 const { v4: uuidv4 } = require("uuid");
 const { sendPushNotification } = require("../controllers/chat.controller");
 
+const jwt = require("jsonwebtoken");
+
 module.exports = (io) => {
   // Biến này để lưu trữ id người dùng và socket id của họ (để biết gửi tin nhắn cho ai)
   const userSockets = new Map();
   // Gắn map vào instance 'io' để các route handler có thể truy cập
   io.userSockets = userSockets;
 
-  io.on("connection", (socket) => {
+  io.on("connection", async (socket) => {
     console.log("⚡ Một thiết bị vừa kết nối với Socket: " + socket.id);
+
+    // Tự động xác thực qua token nếu được truyền trong handshake
+    const token = socket.handshake.auth?.token || socket.handshake.query?.token;
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || "supersecretkey_chat_tho_fi");
+        const userId = decoded.id || decoded.userId;
+        if (userId) {
+          userSockets.set(userId, socket.id);
+          socket.userId = userId;
+          socket.join(userId);
+
+          const conversations = await prisma.conversationMembers.findMany({
+            where: { userId },
+            select: { conversationId: true },
+          });
+          conversations.forEach((conv) => {
+            socket.join(conv.conversationId);
+          });
+
+          await prisma.users.update({
+            where: { id: userId },
+            data: { isOnline: true },
+          }).catch(() => {});
+
+          io.emit("user_status_changed", { userId, isOnline: true });
+          console.log(`👤 Socket ${socket.id} tự động xác thực User ${userId} qua Token.`);
+        }
+      } catch (e) {
+        console.warn(`⚠️ Socket ${socket.id} token validation warning:`, e.message);
+      }
+    }
 
     // Lắng nghe khi client yêu cầu tham gia phòng trò chuyện (như khi được thêm vào nhóm)
     socket.on("join_conversation", (conversationId) => {

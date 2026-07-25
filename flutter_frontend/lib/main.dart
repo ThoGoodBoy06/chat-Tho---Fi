@@ -36,7 +36,14 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
   Future<void> _checkAuth() async {
     final token = await ApiService.getToken();
     if (token != null) {
-      await SocketService.connect();
+      final meRes = await ApiService.getMe();
+      final userObj = meRes['data'] ?? meRes['user'];
+      String? userId;
+      if (userObj is Map<String, dynamic> && mounted) {
+        userId = userObj['id']?.toString();
+        Provider.of<ChatProvider>(context, listen: false).setCurrentUser(userObj);
+      }
+      await SocketService.connect(userId: userId);
       setState(() {
         _isLoggedIn = true;
       });

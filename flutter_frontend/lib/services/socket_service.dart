@@ -8,16 +8,23 @@ class SocketService {
 
   static Stream<Map<String, dynamic>> get onMessageReceived => _messageController.stream;
 
-  static Future<void> connect() async {
+  static Future<void> connect({String? userId}) async {
     final token = await ApiService.getToken();
     if (token == null) return;
+
+    if (socket != null && socket!.connected) {
+      if (userId != null && userId.isNotEmpty) {
+        socket?.emit('user_connected', userId);
+      }
+      return;
+    }
 
     socket = IO.io(
       '/',
       IO.OptionBuilder()
           .setTransports(['websocket', 'polling'])
           .setAuth({'token': token})
-          .disableAutoConnect()
+          .enableAutoConnect()
           .build(),
     );
 
@@ -25,9 +32,13 @@ class SocketService {
 
     socket?.onConnect((_) {
       print('🔥 Socket connected to Flutter Web');
+      if (userId != null && userId.isNotEmpty) {
+        socket?.emit('user_connected', userId);
+      }
     });
 
     socket?.on('receive_message', (data) {
+      print('📩 Socket receive_message: $data');
       if (data is Map<String, dynamic>) {
         _messageController.add(data);
       }
