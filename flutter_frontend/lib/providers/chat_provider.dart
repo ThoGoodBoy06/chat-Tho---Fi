@@ -40,7 +40,9 @@ class ChatProvider extends ChangeNotifier {
 
     try {
       final rawList = await ApiService.getConversations();
-      conversations = rawList.map((c) => ConversationModel.fromJson(c)).toList();
+      conversations = rawList
+          .map((c) => ConversationModel.fromJson(c, currentUserId: currentUser?.id))
+          .toList();
     } catch (e) {
       debugPrint('Error fetching conversations: $e');
     } finally {

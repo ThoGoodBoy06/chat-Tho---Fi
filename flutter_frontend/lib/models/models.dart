@@ -91,7 +91,7 @@ class ConversationModel {
     this.members = const [],
   });
 
-  factory ConversationModel.fromJson(Map<String, dynamic> rawJson) {
+  factory ConversationModel.fromJson(Map<String, dynamic> rawJson, {String? currentUserId}) {
     final json = (rawJson['Conversations'] is Map<String, dynamic>)
         ? rawJson['Conversations'] as Map<String, dynamic>
         : rawJson;
@@ -105,14 +105,31 @@ class ConversationModel {
     String convName = json['name']?.toString() ?? '';
     String? convAvatar = json['avatar']?.toString();
 
-    if (rawJson['nickname'] != null && rawJson['nickname'].toString().isNotEmpty) {
-      convName = rawJson['nickname'].toString();
-    } else if (json['ConversationMembers'] is List) {
-      for (var member in (json['ConversationMembers'] as List)) {
-        if (member is Map && member['Users'] != null) {
-          final user = member['Users'];
-          if (convName.isEmpty) convName = user['fullName']?.toString() ?? user['username']?.toString() ?? '';
-          if (convAvatar == null) convAvatar = user['avatar']?.toString();
+    final membersList = json['ConversationMembers'] ?? rawJson['ConversationMembers'];
+    if (membersList is List) {
+      for (var member in membersList) {
+        if (member is Map) {
+          final memberUserId = member['userId']?.toString();
+          final userObj = member['Users'];
+          
+          if (currentUserId != null && memberUserId != null && memberUserId != currentUserId) {
+            final nickname = member['nickname']?.toString();
+            if (nickname != null && nickname.isNotEmpty) {
+              convName = nickname;
+            } else if (userObj is Map) {
+              convName = userObj['fullName']?.toString() ?? userObj['username']?.toString() ?? convName;
+            }
+            if (userObj is Map && (convAvatar == null || convAvatar.isEmpty)) {
+              convAvatar = userObj['avatar']?.toString();
+            }
+          } else if (currentUserId == null && userObj is Map) {
+            if (convName.isEmpty) {
+              convName = member['nickname']?.toString() ?? userObj['fullName']?.toString() ?? '';
+            }
+            if (convAvatar == null) {
+              convAvatar = userObj['avatar']?.toString();
+            }
+          }
         }
       }
     }
