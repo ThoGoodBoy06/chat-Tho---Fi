@@ -51,12 +51,14 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
+  int _lastMessageCount = 0;
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 250),
+          duration: const Duration(milliseconds: 200),
           curve: Curves.easeOutCubic,
         );
       }
@@ -65,12 +67,10 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _handleSend(ChatProvider provider) async {
     final text = _textController.text.trim();
-    if (text.isEmpty) {
-      await provider.sendMessage('👍');
-    } else {
-      _textController.clear();
-      await provider.sendMessage(text);
-    }
+    final sendText = text.isEmpty ? '👍' : text;
+    _textController.clear();
+    _scrollToBottom();
+    await provider.sendMessage(sendText);
     _scrollToBottom();
   }
 
@@ -100,6 +100,11 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     final provider = Provider.of<ChatProvider>(context);
     final isMobile = MediaQuery.of(context).size.width < 768;
+
+    if (provider.messages.length != _lastMessageCount) {
+      _lastMessageCount = provider.messages.length;
+      _scrollToBottom();
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0F2F5),

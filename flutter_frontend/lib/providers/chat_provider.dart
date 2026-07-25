@@ -30,7 +30,7 @@ class ChatProvider extends ChangeNotifier {
         }
         notifyListeners();
       }
-      fetchConversations();
+      fetchConversations(showLoading: false);
     });
   }
 
@@ -42,9 +42,11 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> fetchConversations() async {
-    isLoadingConversations = true;
-    notifyListeners();
+  Future<void> fetchConversations({bool showLoading = true}) async {
+    if (showLoading) {
+      isLoadingConversations = true;
+      notifyListeners();
+    }
 
     try {
       if (currentUser == null) {
@@ -143,7 +145,7 @@ class ChatProvider extends ChangeNotifier {
         }
         notifyListeners();
       }
-      fetchConversations();
+      fetchConversations(showLoading: false);
     } catch (e) {
       debugPrint('Error sending message: $e');
     }
