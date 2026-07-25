@@ -4327,8 +4327,12 @@ RESPONSIVE DESIGN (MOBILE & TABLET VIEWPORTS)
         height: -webkit-fill-available !important;
     }
 
-    /* Tab Bar Viên Thuốc + Kính mờ (Bản Floating Capsule cực sang trọng) */
-    /* ── TAB BAR CONTAINER ── */
+    /* Ẩn Tab Bar hoàn toàn khi chưa đăng nhập */
+    body:not(.user-logged-in) #main-tab-bar,
+    #auth-screen:not([style*="display: none"]) ~ #main-tab-bar {
+        display: none !important;
+    }
+
     .sidebar {
         order: 3 !important;
         position: fixed !important;

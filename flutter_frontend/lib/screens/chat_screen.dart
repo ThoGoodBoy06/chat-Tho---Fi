@@ -13,10 +13,16 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  int _currentTabIndex = 0; // 0: Messages, 1: Contacts, 2: News, 3: AI, 4: Profile
+  int _currentTabIndex = 0; // 0: Tin nhắn, 1: Danh bạ, 2: Tin tức, 3: Trợ lý AI, 4: Cá nhân
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
   bool _isTyping = false;
+
+  // AI Assistant Chat state
+  final List<Map<String, String>> _aiMessages = [
+    {'sender': 'ai', 'content': 'Xin chào! Tôi là Trợ lý AI Chat Tho-Fi. Tôi có thể giúp gì cho bạn hôm nay?'}
+  ];
+  final _aiTextController = TextEditingController();
 
   @override
   void initState() {
@@ -37,6 +43,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void dispose() {
     _textController.dispose();
+    _aiTextController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -56,13 +63,31 @@ class _ChatScreenState extends State<ChatScreen> {
   void _handleSend(ChatProvider provider) async {
     final text = _textController.text.trim();
     if (text.isEmpty) {
-      // Like emoji 👍 button when empty
       await provider.sendMessage('👍');
     } else {
       _textController.clear();
       await provider.sendMessage(text);
     }
     _scrollToBottom();
+  }
+
+  void _handleAiSend() {
+    final text = _aiTextController.text.trim();
+    if (text.isEmpty) return;
+
+    setState(() {
+      _aiMessages.add({'sender': 'user', 'content': text});
+      _aiTextController.clear();
+    });
+
+    // Simulate AI response
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (mounted) {
+        setState(() {
+          _aiMessages.add({'sender': 'ai', 'content': 'Cảm ơn bạn đã hỏi "$text". Tôi đang hỗ trợ xử lý yêu cầu của bạn một cách tốt nhất!'});
+        });
+      }
+    });
   }
 
   String _formatTime(DateTime dt) {
@@ -82,14 +107,27 @@ class _ChatScreenState extends State<ChatScreen> {
             // Left App Navigation Drawer (Desktop/Tablet)
             if (!isMobile) _buildDesktopNavRail(),
 
-            // Sidebar / Conversations List
+            // Main View Switcher based on Selected Tab
+            Expanded(
+              child: _buildBodyForCurrentTab(provider, isMobile),
+            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: isMobile ? _buildMobileBottomBar() : null,
+    );
+  }
+
+  Widget _buildBodyForCurrentTab(ChatProvider provider, bool isMobile) {
+    switch (_currentTabIndex) {
+      case 0: // Tin nhắn (Messages)
+        return Row(
+          children: [
             if (!isMobile || provider.selectedConversation == null)
               SizedBox(
                 width: isMobile ? MediaQuery.of(context).size.width : 340,
                 child: _buildConversationsList(provider, isMobile),
               ),
-
-            // Chat Main Window
             if (!isMobile || provider.selectedConversation != null)
               Expanded(
                 child: provider.selectedConversation == null
@@ -97,12 +135,18 @@ class _ChatScreenState extends State<ChatScreen> {
                     : _buildActiveChatArea(provider, isMobile),
               ),
           ],
-        ),
-      ),
-      bottomNavigationBar: (isMobile && provider.selectedConversation == null)
-          ? _buildMobileBottomBar()
-          : null,
-    );
+        );
+      case 1: // Danh bạ (Contacts)
+        return _buildContactsTab(provider);
+      case 2: // Tin tức AI (News)
+        return _buildNewsTab();
+      case 3: // Trợ lý AI (AI Assistant)
+        return _buildAiAssistantTab();
+      case 4: // Cá nhân (Profile)
+        return _buildProfileTab(provider);
+      default:
+        return _buildConversationsList(provider, isMobile);
+    }
   }
 
   Widget _buildDesktopNavRail() {
@@ -132,7 +176,9 @@ class _ChatScreenState extends State<ChatScreen> {
               itemBuilder: (context, index) {
                 final isSelected = _currentTabIndex == index;
                 return InkWell(
-                  onTap: () => setState(() => _currentTabIndex = index),
+                  onTap: () => setState(() {
+                    _currentTabIndex = index;
+                  }),
                   child: Container(
                     margin: const EdgeInsets.symmetric(vertical: 8),
                     padding: const EdgeInsets.all(12),
@@ -166,7 +212,7 @@ class _ChatScreenState extends State<ChatScreen> {
       color: const Color(0xFF131927),
       child: Column(
         children: [
-          // Search & Header
+          // Header & Search
           Container(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -205,7 +251,8 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
           const Divider(height: 1, color: Color(0xFF1E2638)),
-          // List
+
+          // Conversations List
           Expanded(
             child: provider.isLoadingConversations
                 ? const Center(child: CircularProgressIndicator(color: Color(0xFF0068FF)))
@@ -219,7 +266,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           return ListTile(
                             selected: isSelected,
                             selectedTileColor: const Color(0xFF1E273D),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                             leading: Stack(
                               children: [
                                 CircleAvatar(
@@ -487,6 +534,305 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  // TAB 1: Danh bạ (Contacts)
+  Widget _buildContactsTab(ChatProvider provider) {
+    return Container(
+      color: const Color(0xFF090D1A),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.contacts, color: Color(0xFF0068FF), size: 28),
+              const SizedBox(width: 12),
+              const Text(
+                'Danh Bạ Bạn Bè',
+                style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+              const Spacer(),
+              ElevatedButton.icon(
+                onPressed: () {},
+                icon: const Icon(Icons.person_add, size: 18),
+                label: const Text('Thêm Bạn'),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0068FF)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Expanded(
+            child: ListView.builder(
+              itemCount: provider.conversations.length,
+              itemBuilder: (context, index) {
+                final conv = provider.conversations[index];
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF131927),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 22,
+                        backgroundColor: const Color(0xFF0068FF),
+                        child: Text(conv.name.isNotEmpty ? conv.name[0].toUpperCase() : 'U'),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(conv.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                            const SizedBox(height: 4),
+                            const Text('Tài khoản đã xác thực', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          setState(() => _currentTabIndex = 0);
+                          provider.selectConversation(conv);
+                        },
+                        icon: const Icon(Icons.chat, size: 16),
+                        label: const Text('Nhắn tin'),
+                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1C2436)),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // TAB 2: Tin tức AI (News)
+  Widget _buildNewsTab() {
+    final newsList = [
+      {'title': 'OpenAI ra mắt mô hình AI mới nâng cấp khả năng suy luận', 'time': '10 phút trước', 'category': 'Trí tuệ nhân tạo'},
+      {'title': 'Google Gemini cập nhật tính năng phân tích video và âm thanh trực tiếp', 'time': '1 giờ trước', 'category': 'Google AI'},
+      {'title': 'Meta phát hành Llama 3 mã nguồn mở đạt hiệu năng vượt trội', 'time': '3 giờ trước', 'category': 'Meta AI'},
+    ];
+
+    return Container(
+      color: const Color(0xFF090D1A),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.newspaper, color: Color(0xFF0068FF), size: 28),
+              SizedBox(width: 12),
+              Text(
+                'Tin Tức Công Nghệ AI',
+                style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Expanded(
+            child: ListView.builder(
+              itemCount: newsList.length,
+              itemBuilder: (context, index) {
+                final item = newsList[index];
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF131927),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white.withOpacity(0.05)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(color: const Color(0xFF0068FF).withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
+                            child: Text(item['category']!, style: const TextStyle(color: Color(0xFF0068FF), fontSize: 12, fontWeight: FontWeight.bold)),
+                          ),
+                          const Spacer(),
+                          Text(item['time']!, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(item['title']!, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      TextButton.icon(
+                        onPressed: () {},
+                        icon: const Icon(Icons.arrow_forward, size: 16, color: Color(0xFF0068FF)),
+                        label: const Text('Đọc chi tiết', style: TextStyle(color: Color(0xFF0068FF))),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // TAB 3: Trợ lý AI (AI Assistant)
+  Widget _buildAiAssistantTab() {
+    return Container(
+      color: const Color(0xFF090D1A),
+      child: Column(
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.all(16),
+            color: const Color(0xFF131927),
+            child: Row(
+              children: const [
+                Icon(Icons.smart_toy, color: Color(0xFF0068FF), size: 28),
+                SizedBox(width: 12),
+                Text('Trợ Lý AI Chat Tho-Fi', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+
+          // Messages
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _aiMessages.length,
+              itemBuilder: (context, index) {
+                final msg = _aiMessages[index];
+                final isUser = msg['sender'] == 'user';
+                return Align(
+                  alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(14),
+                    constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+                    decoration: BoxDecoration(
+                      color: isUser ? const Color(0xFF0068FF) : const Color(0xFF131927),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(msg['content']!, style: const TextStyle(color: Colors.white, fontSize: 15)),
+                  ),
+                );
+              },
+            ),
+          ),
+
+          // Input
+          Container(
+            padding: const EdgeInsets.all(12),
+            color: const Color(0xFF131927),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _aiTextController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: 'Hỏi Trợ lý AI bất kỳ điều gì...',
+                      hintStyle: const TextStyle(color: Colors.grey),
+                      filled: true,
+                      fillColor: const Color(0xFF1C2436),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+                    ),
+                    onSubmitted: (_) => _handleAiSend(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.send, color: Color(0xFF0068FF)),
+                  onPressed: _handleAiSend,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // TAB 4: Cá nhân (Profile)
+  Widget _buildProfileTab(ChatProvider provider) {
+    final user = provider.currentUser;
+
+    return Container(
+      color: const Color(0xFF090D1A),
+      padding: const EdgeInsets.all(32),
+      child: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 480),
+          padding: const EdgeInsets.all(32),
+          decoration: BoxDecoration(
+            color: const Color(0xFF131927),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.white.withOpacity(0.05)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                radius: 44,
+                backgroundColor: const Color(0xFF0068FF),
+                child: Text(
+                  (user?.fullName ?? 'U')[0].toUpperCase(),
+                  style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                user?.fullName ?? 'Người dùng',
+                style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '@${user?.username ?? "user"}',
+                style: const TextStyle(color: Colors.grey, fontSize: 14),
+              ),
+              const SizedBox(height: 24),
+              const Divider(color: Color(0xFF1E2638)),
+              ListTile(
+                leading: const Icon(Icons.person_outline, color: Color(0xFF0068FF)),
+                title: const Text('Thông tin cá nhân', style: TextStyle(color: Colors.white)),
+                trailing: const Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 16),
+                onTap: () {},
+              ),
+              ListTile(
+                leading: const Icon(Icons.lock_outline, color: Color(0xFF0068FF)),
+                title: const Text('Đổi mật khẩu', style: TextStyle(color: Colors.white)),
+                trailing: const Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 16),
+                onTap: () {},
+              ),
+              ListTile(
+                leading: const Icon(Icons.dark_mode_outlined, color: Color(0xFF0068FF)),
+                title: const Text('Giao diện Tối (Dark Mode)', style: TextStyle(color: Colors.white)),
+                trailing: const Icon(Icons.check_circle, color: Colors.greenAccent, size: 20),
+                onTap: () {},
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton.icon(
+                  onPressed: widget.onLogout,
+                  icon: const Icon(Icons.logout, color: Colors.white),
+                  label: const Text('Đăng Xuất', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

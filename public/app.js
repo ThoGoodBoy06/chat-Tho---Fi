@@ -1803,11 +1803,12 @@ function initizeChatSession(userData, userToken) {
     document.getElementById("end-call-btn").onclick = () => endCall(true);
 
     // Chuyển sang màn hình chat
+    document.body.classList.add("user-logged-in");
     document.getElementById("auth-screen").style.display = "none";
     document.getElementById("chat-screen").style.display = "flex";
     // Hiển thị Tab Bar (đã chuyển ra ngoài #chat-screen)
     const tabBar = document.getElementById("main-tab-bar");
-    if (tabBar) tabBar.style.display = "";
+    if (tabBar) tabBar.style.display = "flex";
 
     loadConversations();
     loadFriends();
@@ -5944,6 +5945,7 @@ async function logout() {
         mobileChatWindow.insertBefore(mobileHeader, mobileChatWindow.firstChild);
     }
     // Ẩn Tab Bar (đã chuyển ra ngoài #chat-screen)
+    document.body.classList.remove("user-logged-in");
     const tabBarLogout = document.getElementById("main-tab-bar");
     if (tabBarLogout) tabBarLogout.style.display = "none";
     document.getElementById("auth-screen").style.display = "flex";
