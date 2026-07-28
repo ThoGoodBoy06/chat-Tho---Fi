@@ -1,9 +1,18 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:html' as html;
 
 class ApiService {
-  static const String baseUrl = '/api';
+  static String get baseUrl {
+    final location = html.window.location;
+    final host = location.hostname;
+    // Nếu đang chạy trên Flutter dev server (port 8080), trỏ về backend port 3000
+    if (location.port == '8080') {
+      return 'http://$host:3000/api';
+    }
+    return '/api';
+  }
 
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();

@@ -14,24 +14,50 @@ class ChatProvider extends ChangeNotifier {
   bool isPartnerTyping = false;
   StreamSubscription? _socketSubscription;
 
+  /// Callback để thông báo cho UI cuộn xuống khi có tin nhắn mới
+  VoidCallback? onNewMessageReceived;
+
   ChatProvider() {
     _initSocket();
   }
 
   void _initSocket() {
     _socketSubscription = SocketService.onMessageReceived.listen((data) {
+      print('📨 ChatProvider nhận tin nhắn từ socket: ${data['id']}');
       final newMsg = MessageModel.fromJson(data);
-      if (selectedConversation != null && newMsg.conversationId == selectedConversation!.id) {
-        final existingIdx = messages.indexWhere((m) => m.id == newMsg.id);
-        if (existingIdx == -1) {
-          messages.add(newMsg);
-        } else {
-          messages[existingIdx] = newMsg;
-        }
-        notifyListeners();
-      }
+      addRealtimeMessage(newMsg);
       fetchConversations(showLoading: false);
     });
+  }
+
+  /// Thêm tin nhắn real-time vào danh sách, tránh trùng lặp
+  void addRealtimeMessage(MessageModel msg) {
+    if (selectedConversation == null) return;
+    if (msg.conversationId != selectedConversation!.id) return;
+
+    // Kiểm tra trùng lặp (bao gồm cả optimistic message)
+    final existingIdx = messages.indexWhere((m) => m.id == msg.id);
+    if (existingIdx != -1) {
+      // Cập nhật tin nhắn đã có (thay thế optimistic bằng real)
+      messages[existingIdx] = msg;
+    } else {
+      // Kiểm tra xem có phải tin nhắn do chính mình gửi và đã có optimistic chưa
+      // (optimistic id bắt đầu bằng 'optimistic-')
+      final optimisticIdx = messages.indexWhere((m) =>
+          m.id.startsWith('optimistic-') &&
+          m.content == msg.content &&
+          m.senderId == msg.senderId);
+      if (optimisticIdx != -1) {
+        messages[optimisticIdx] = msg;
+      } else {
+        messages.add(msg);
+      }
+    }
+
+    notifyListeners();
+
+    // Gọi callback để UI cuộn xuống
+    onNewMessageReceived?.call();
   }
 
   Future<void> setCurrentUser(Map<String, dynamic> userJson) async {
@@ -77,6 +103,9 @@ class ChatProvider extends ChangeNotifier {
     messages = [];
     notifyListeners();
 
+    // Join vào room của conversation để nhận tin nhắn real-time
+    SocketService.joinRoom(conv.id);
+
     try {
       final res = await ApiService.getMessages(conv.id);
       final rawData = res['data'] as List? ?? [];
@@ -86,10 +115,14 @@ class ChatProvider extends ChangeNotifier {
     } finally {
       isLoadingMessages = false;
       notifyListeners();
+
+      // Cuộn xuống sau khi load xong
+      onNewMessageReceived?.call();
     }
   }
 
   void deselectConversation() {
+    SocketService.leaveRoom();
     selectedConversation = null;
     messages = [];
     notifyListeners();
@@ -131,6 +164,7 @@ class ChatProvider extends ChangeNotifier {
 
     messages.add(optMsg);
     notifyListeners();
+    onNewMessageReceived?.call();
 
     try {
       final res = await ApiService.sendMessage(selectedConversation!.id, text, type: type);

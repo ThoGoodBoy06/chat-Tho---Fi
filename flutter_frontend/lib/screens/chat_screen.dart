@@ -33,7 +33,10 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<ChatProvider>(context, listen: false).fetchConversations();
+      final provider = Provider.of<ChatProvider>(context, listen: false);
+      provider.fetchConversations();
+      // Đăng ký callback auto-scroll khi có tin nhắn mới từ socket
+      provider.onNewMessageReceived = _scrollToBottom;
     });
     _textController.addListener(_onTextChanged);
     _scrollController.addListener(_onScroll);
@@ -58,6 +61,10 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    // Hủy callback auto-scroll
+    try {
+      Provider.of<ChatProvider>(context, listen: false).onNewMessageReceived = null;
+    } catch (_) {}
     _textController.removeListener(_onTextChanged);
     _scrollController.removeListener(_onScroll);
     _textController.dispose();
@@ -73,7 +80,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 200),
+          duration: const Duration(milliseconds: 300),
           curve: Curves.easeOutCubic,
         );
       }
@@ -115,10 +122,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final provider = Provider.of<ChatProvider>(context);
     final isMobile = MediaQuery.of(context).size.width < 768;
 
-    if (provider.messages.length != _lastMessageCount) {
-      _lastMessageCount = provider.messages.length;
-      _scrollToBottom();
-    }
+    // Auto-scroll giờ được xử lý qua callback onNewMessageReceived trong ChatProvider
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0F2F5),
