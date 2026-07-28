@@ -23,6 +23,10 @@ class SocketService {
       if (_currentUserId != null && _currentUserId!.isNotEmpty) {
         socket?.emit('user_connected', _currentUserId);
       }
+      if (_currentRoomId != null && _currentRoomId!.isNotEmpty) {
+        socket?.emit('join_room', _currentRoomId);
+        socket?.emit('join_conversation', _currentRoomId);
+      }
       return;
     }
 
@@ -38,8 +42,9 @@ class SocketService {
     socket = IO.io(
       serverUrl,
       IO.OptionBuilder()
-          .setTransports(['websocket', 'polling'])
+          .setTransports(['polling', 'websocket'])
           .setAuth({'token': token})
+          .setQuery({'token': token})
           .enableAutoConnect()
           .enableReconnection()
           .build(),
@@ -55,7 +60,16 @@ class SocketService {
       // Rejoin room nếu có (sau khi reconnect)
       if (_currentRoomId != null) {
         socket?.emit('join_room', _currentRoomId);
+        socket?.emit('join_conversation', _currentRoomId);
       }
+    });
+
+    socket?.onConnectError((data) {
+      print('⚠️ Socket connect_error: $data');
+    });
+
+    socket?.onError((data) {
+      print('⚠️ Socket error: $data');
     });
 
     socket?.on('receive_message', (data) {
@@ -75,7 +89,8 @@ class SocketService {
     _currentRoomId = roomId;
     if (socket != null && socket!.connected) {
       socket!.emit('join_room', roomId);
-      print('📡 Đã emit join_room: $roomId');
+      socket!.emit('join_conversation', roomId);
+      print('📡 Đã emit join_room & join_conversation: $roomId');
     }
   }
 
