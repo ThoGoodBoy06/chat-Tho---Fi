@@ -51,6 +51,12 @@ module.exports = (io) => {
         console.log(`📡 Socket ${socket.id} đã vào phòng: ${conversationId}`);
     });
 
+    // Alias: join_room (cho Flutter Web client)
+    socket.on("join_room", (roomId) => {
+        socket.join(roomId);
+        console.log(`📡 Socket ${socket.id} đã join_room: ${roomId}`);
+    });
+
     // 1. Lắng nghe khi người dùng đăng nhập app thành công
     socket.on("user_connected", async (userId) => {
       try {
@@ -97,7 +103,7 @@ module.exports = (io) => {
         await prisma.users.update({
           where: { id: userId },
           data: { isOnline: true },
-        });
+        }).catch((e) => console.warn("Lỗi update isOnline (soft fail):", e.message));
 
         // Báo cho mọi người khác biết user này vừa online (cả 2 dạng sự kiện để tương thích)
         io.emit("user_status_changed", { userId, isOnline: true });
