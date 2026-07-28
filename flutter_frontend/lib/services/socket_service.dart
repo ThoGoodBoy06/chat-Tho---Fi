@@ -30,13 +30,13 @@ class SocketService {
       return;
     }
 
-    // Nếu đang chạy trên Flutter dev server (port 8080), trỏ socket về backend port 3000
     final location = html.window.location;
     String serverUrl;
-    if (location.port == '8080') {
-      serverUrl = 'http://${location.hostname}:3000';
-    } else {
+    if (location.port == '3000') {
       serverUrl = Uri.base.origin;
+    } else {
+      final protocol = location.protocol.isEmpty ? 'http:' : location.protocol;
+      serverUrl = '$protocol//${location.hostname}:3000';
     }
 
     socket = IO.io(
@@ -57,7 +57,6 @@ class SocketService {
       if (_currentUserId != null && _currentUserId!.isNotEmpty) {
         socket?.emit('user_connected', _currentUserId);
       }
-      // Rejoin room nếu có (sau khi reconnect)
       if (_currentRoomId != null) {
         socket?.emit('join_room', _currentRoomId);
         socket?.emit('join_conversation', _currentRoomId);
@@ -84,7 +83,6 @@ class SocketService {
     socket?.onDisconnect((_) => print('🔴 Socket disconnected'));
   }
 
-  /// Join vào một phòng chat cụ thể để nhận tin nhắn real-time
   static void joinRoom(String roomId) {
     _currentRoomId = roomId;
     if (socket != null && socket!.connected) {
@@ -94,7 +92,6 @@ class SocketService {
     }
   }
 
-  /// Rời khỏi phòng chat hiện tại
   static void leaveRoom() {
     _currentRoomId = null;
   }

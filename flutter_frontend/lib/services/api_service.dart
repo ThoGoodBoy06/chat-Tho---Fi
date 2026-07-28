@@ -7,11 +7,13 @@ class ApiService {
   static String get baseUrl {
     final location = html.window.location;
     final host = location.hostname;
-    // Nếu đang chạy trên Flutter dev server (port 8080), trỏ về backend port 3000
-    if (location.port == '8080') {
-      return 'http://$host:3000/api';
+    // Nếu app chạy trực tiếp từ backend (port 3000), dùng relative path '/api'
+    if (location.port == '3000') {
+      return '/api';
     }
-    return '/api';
+    // Nếu chạy trên bất kỳ port nào khác (dev server 8080, 5000, 80, vv.), luôn trỏ về backend port 3000
+    final protocol = location.protocol.isEmpty ? 'http:' : location.protocol;
+    return '$protocol//$host:3000/api';
   }
 
   static Future<String?> getToken() async {
@@ -43,7 +45,7 @@ class ApiService {
       Uri.parse('$baseUrl/auth/login'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'identifier': identifier, 'password': password}),
-    );
+    ).timeout(const Duration(seconds: 10));
     return jsonDecode(response.body);
   }
 
@@ -53,7 +55,7 @@ class ApiService {
       Uri.parse('$baseUrl/auth/register'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(data),
-    );
+    ).timeout(const Duration(seconds: 10));
     return jsonDecode(response.body);
   }
 
@@ -63,7 +65,7 @@ class ApiService {
     final response = await http.get(
       Uri.parse('$baseUrl/auth/me'),
       headers: headers,
-    );
+    ).timeout(const Duration(seconds: 8));
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     }
@@ -76,7 +78,7 @@ class ApiService {
     final response = await http.get(
       Uri.parse('$baseUrl/chat/conversations'),
       headers: headers,
-    );
+    ).timeout(const Duration(seconds: 8));
     if (response.statusCode == 200) {
       final decoded = jsonDecode(response.body);
       if (decoded is Map<String, dynamic> && decoded['data'] is List) {
@@ -94,7 +96,7 @@ class ApiService {
     final response = await http.get(
       Uri.parse('$baseUrl/chat/$conversationId/messages?limit=$limit'),
       headers: headers,
-    );
+    ).timeout(const Duration(seconds: 8));
     if (response.statusCode == 200) {
       return jsonDecode(response.body) as Map<String, dynamic>;
     }
@@ -108,7 +110,7 @@ class ApiService {
       Uri.parse('$baseUrl/chat/conversations'),
       headers: headers,
       body: jsonEncode({'receiverId': receiverId}),
-    );
+    ).timeout(const Duration(seconds: 8));
     return jsonDecode(response.body);
   }
 
@@ -122,7 +124,7 @@ class ApiService {
         'content': content,
         'type': type,
       }),
-    );
+    ).timeout(const Duration(seconds: 8));
     return jsonDecode(response.body);
   }
 }
