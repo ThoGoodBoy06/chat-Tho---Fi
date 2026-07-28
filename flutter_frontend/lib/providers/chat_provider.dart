@@ -26,14 +26,41 @@ class ChatProvider extends ChangeNotifier {
       print('📨 ChatProvider nhận tin nhắn từ socket: ${data['id']}');
       final newMsg = MessageModel.fromJson(data);
       addRealtimeMessage(newMsg);
-      fetchConversations(showLoading: false);
+      _updateLastMessageInConversation(newMsg);
     });
+  }
+
+  /// Cập nhật tin nhắn mới nhất trong danh sách đoạn chat hoàn toàn ở bộ nhớ (không cần gọi API getConversations)
+  void _updateLastMessageInConversation(MessageModel msg) {
+    if (msg.conversationId == null || msg.conversationId!.isEmpty) return;
+    final idx = conversations.indexWhere((c) => c.id == msg.conversationId);
+    if (idx != -1) {
+      final old = conversations[idx];
+      final updatedConv = ConversationModel(
+        id: old.id,
+        name: old.name,
+        avatar: old.avatar,
+        type: old.type,
+        lastMessage: msg.content,
+        unreadCount: old.unreadCount,
+        updatedAt: msg.createdAt,
+        targetUserId: old.targetUserId,
+        members: old.members,
+      );
+      conversations.removeAt(idx);
+      conversations.insert(0, updatedConv);
+      notifyListeners();
+    }
   }
 
   /// Thêm tin nhắn real-time vào danh sách, tránh trùng lặp
   void addRealtimeMessage(MessageModel msg) {
     if (selectedConversation == null) return;
-    if (msg.conversationId != selectedConversation!.id) return;
+    if (msg.conversationId != null &&
+        msg.conversationId!.isNotEmpty &&
+        msg.conversationId != selectedConversation!.id) {
+      return;
+    }
 
     // Kiểm tra trùng lặp (bao gồm cả optimistic message)
     final existingIdx = messages.indexWhere((m) => m.id == msg.id);
@@ -42,7 +69,6 @@ class ChatProvider extends ChangeNotifier {
       messages[existingIdx] = msg;
     } else {
       // Kiểm tra xem có phải tin nhắn do chính mình gửi và đã có optimistic chưa
-      // (optimistic id bắt đầu bằng 'optimistic-')
       final optimisticIdx = messages.indexWhere((m) =>
           m.id.startsWith('optimistic-') &&
           m.content == msg.content &&
@@ -151,7 +177,7 @@ class ChatProvider extends ChangeNotifier {
   Future<void> sendMessage(String text, {String type = 'text'}) async {
     if (selectedConversation == null || text.trim().isEmpty) return;
 
-    // Optimistic UI message
+    // Optimistic UI message (Hiển thị tức thì trên màn hình)
     final optId = 'optimistic-${DateTime.now().millisecondsSinceEpoch}';
     final optMsg = MessageModel(
       id: optId,
@@ -163,6 +189,7 @@ class ChatProvider extends ChangeNotifier {
     );
 
     messages.add(optMsg);
+    _updateLastMessageInConversation(optMsg);
     notifyListeners();
     onNewMessageReceived?.call();
 
@@ -177,9 +204,9 @@ class ChatProvider extends ChangeNotifier {
         } else if (!messages.any((m) => m.id == realMsg.id)) {
           messages.add(realMsg);
         }
+        _updateLastMessageInConversation(realMsg);
         notifyListeners();
       }
-      fetchConversations(showLoading: false);
     } catch (e) {
       debugPrint('Error sending message: $e');
     }
