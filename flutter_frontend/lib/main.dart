@@ -34,23 +34,37 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
   }
 
   Future<void> _checkAuth() async {
-    final token = await ApiService.getToken();
-    if (token != null) {
-      final meRes = await ApiService.getMe();
-      final userObj = meRes['data'] ?? meRes['user'];
-      String? userId;
-      if (userObj is Map<String, dynamic> && mounted) {
-        userId = userObj['id']?.toString();
-        Provider.of<ChatProvider>(context, listen: false).setCurrentUser(userObj);
+    try {
+      final token = await ApiService.getToken();
+      if (token != null && token.isNotEmpty) {
+        final meRes = await ApiService.getMe();
+        final userObj = meRes['data'] ?? meRes['user'];
+        if (userObj is Map<String, dynamic> && userObj['id'] != null) {
+          final userId = userObj['id'].toString();
+          if (mounted) {
+            Provider.of<ChatProvider>(context, listen: false).setCurrentUser(userObj);
+            setState(() {
+              _isLoggedIn = true;
+            });
+          }
+          await SocketService.connect(userId: userId);
+        } else {
+          await ApiService.clearToken();
+          _isLoggedIn = false;
+        }
+      } else {
+        _isLoggedIn = false;
       }
-      await SocketService.connect(userId: userId);
-      setState(() {
-        _isLoggedIn = true;
-      });
+    } catch (e) {
+      debugPrint('Error in _checkAuth: $e');
+      _isLoggedIn = false;
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCheckingAuth = false;
+        });
+      }
     }
-    setState(() {
-      _isCheckingAuth = false;
-    });
   }
 
   void _onLoginSuccess() {
