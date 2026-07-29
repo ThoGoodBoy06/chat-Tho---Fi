@@ -1306,6 +1306,10 @@ class _ChatScreenState extends State<ChatScreen> {
                                   icon: const Icon(Icons.call_rounded, color: Colors.white),
                                   onPressed: () {
                                     autoRejectTimer?.cancel();
+                                    final audioPlayer = html.document.getElementById('remoteAudioPlayer') as html.AudioElement?;
+                                    audioPlayer?.muted = false;
+                                    audioPlayer?.volume = 1.0;
+                                    audioPlayer?.play().catchError((_) {});
                                     SocketService.socket?.emit('accept_call', {'callerId': callerId});
                                     Navigator.of(dialogContext).pop();
                                     _showCallDialog(
@@ -1364,6 +1368,11 @@ class _ChatScreenState extends State<ChatScreen> {
       );
       return;
     }
+
+    final audioPlayer = html.document.getElementById('remoteAudioPlayer') as html.AudioElement?;
+    audioPlayer?.muted = false;
+    audioPlayer?.volume = 1.0;
+    audioPlayer?.play().catchError((_) {});
 
     SocketService.socket?.emit('request_call', {
       'callerId': callerId,
