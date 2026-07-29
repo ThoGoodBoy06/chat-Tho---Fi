@@ -223,6 +223,51 @@ module.exports = (io) => {
       }
     });
 
+    // 3.5 Lắng nghe và chuyển tiếp tin nhắn thời gian thực trực tiếp qua Socket (<30ms)
+    socket.on("send_message", async (data) => {
+      try {
+        const { conversationId, content, type, tempId, replyMessageId } = data;
+        const senderId = socket.userId || data.senderId;
+
+        if (!conversationId || !content || !senderId) return;
+
+        const messageId = tempId || uuidv4();
+        const now = new Date().toISOString();
+
+        const mappedMessage = {
+          id: messageId,
+          conversationId,
+          senderId,
+          content,
+          type: type || "text",
+          replyMessageId: replyMessageId || null,
+          createdAt: now,
+          Users: {
+            id: senderId,
+            fullName: data.senderName || "Người dùng",
+            avatar: `/api/users/${senderId}/avatar`,
+          },
+        };
+
+        // ⚡ Phát tín hiệu socket tức thì tới phòng cuộc trò chuyện (<10ms)!
+        socket.to(conversationId).emit("receive_message", mappedMessage);
+
+        // Lưu vào DB bất đồng bộ không làm nghẽn luồng truyền tin nhắn
+        prisma.messages.create({
+          data: {
+            id: messageId,
+            conversationId,
+            senderId,
+            content,
+            type: type || "text",
+            replyMessageId: replyMessageId || null,
+          },
+        }).catch((err) => console.error("Lỗi lưu message socket vào DB:", err.message));
+      } catch (err) {
+        console.error("Lỗi xử lý send_message socket:", err.message);
+      }
+    });
+
     // 4. Lắng nghe trạng thái Dừng gõ (stop-typing mới)
     socket.on("stop-typing", ({ receiverId }) => {
       if (receiverId) {

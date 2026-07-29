@@ -491,15 +491,19 @@ exports.sendMessage = async(req, res) => {
             }
         });
 
-        // 3. Lấy Socket.IO instance và phát tin nhắn Real-time đến phòng của từng thành viên
+        // 3. Lấy Socket.IO instance và phát tin nhắn Real-time đến phòng conversationId và từng thành viên
         const io = req.app.get("io");
 
-        members.forEach((member) => {
-            if (io && member.userId) {
-                io.to(member.userId).emit("receive_message", mappedMessage);
-            }
+        if (io) {
+            io.to(conversationId).emit("receive_message", mappedMessage);
+            members.forEach((member) => {
+                if (member.userId) {
+                    io.to(member.userId).emit("receive_message", mappedMessage);
+                }
+            });
+        }
 
-            // --- BẮN PUSH NOTIFICATION ---
+        members.forEach((member) => {
             // Chỉ gửi cho người nhận (đối phương) và khi họ đã có FCM Token
             if (member.userId !== senderId && member.Users && member.Users.fcmToken) {
                 let snippet = mappedMessage.content;

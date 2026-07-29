@@ -1,19 +1,21 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:html' as html;
 
 class ApiService {
   static String get baseUrl {
-    final location = html.window.location;
-    final host = location.hostname;
-    // Nếu app chạy trực tiếp từ backend (port 3000), dùng relative path '/api'
-    if (location.port == '3000') {
-      return '/api';
+    if (kIsWeb) {
+      final location = html.window.location;
+      final host = location.hostname;
+      if ((host == 'localhost' || host == '127.0.0.1') && location.port != '3000') {
+        final protocol = location.protocol.isEmpty ? 'http:' : location.protocol;
+        return '$protocol//$host:3000/api';
+      }
+      return '${Uri.base.origin}/api';
     }
-    // Nếu chạy trên bất kỳ port nào khác (dev server 8080, 5000, 80, vv.), luôn trỏ về backend port 3000
-    final protocol = location.protocol.isEmpty ? 'http:' : location.protocol;
-    return '$protocol//$host:3000/api';
+    return 'https://chat-tho-fi-vn.onrender.com/api';
   }
 
   static Future<String?> getToken() async {

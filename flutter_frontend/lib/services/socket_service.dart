@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'api_service.dart';
 import 'dart:html' as html;
@@ -30,19 +31,24 @@ class SocketService {
       return;
     }
 
-    final location = html.window.location;
     String serverUrl;
-    if (location.port == '3000') {
-      serverUrl = Uri.base.origin;
+    if (kIsWeb) {
+      final location = html.window.location;
+      final host = location.hostname;
+      if ((host == 'localhost' || host == '127.0.0.1') && location.port != '3000') {
+        final protocol = location.protocol.isEmpty ? 'http:' : location.protocol;
+        serverUrl = '$protocol//$host:3000';
+      } else {
+        serverUrl = Uri.base.origin;
+      }
     } else {
-      final protocol = location.protocol.isEmpty ? 'http:' : location.protocol;
-      serverUrl = '$protocol//${location.hostname}:3000';
+      serverUrl = 'https://chat-tho-fi-vn.onrender.com';
     }
 
     socket = IO.io(
       serverUrl,
       IO.OptionBuilder()
-          .setTransports(['polling', 'websocket'])
+          .setTransports(['websocket', 'polling'])
           .setAuth({'token': token})
           .setQuery({'token': token})
           .enableAutoConnect()

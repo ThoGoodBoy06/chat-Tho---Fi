@@ -70,6 +70,13 @@ app.use(express.static(staticPath, {
     lastModified: false,
 }));
 
+app.get("/firebase-messaging-sw.js", (req, res) => {
+    const swPath = fs.existsSync(path.join(flutterWebPath, "firebase-messaging-sw.js"))
+        ? path.join(flutterWebPath, "firebase-messaging-sw.js")
+        : path.join(__dirname, "public", "firebase-messaging-sw.js");
+    res.sendFile(swPath);
+});
+
 // Import Routes
 const authRoutes = require("./routes/auth.routes");
 const chatRoutes = require("./routes/chat.routes");

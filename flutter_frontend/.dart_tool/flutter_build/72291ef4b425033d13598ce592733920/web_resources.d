@@ -1,1 +1,1 @@
-:  C:\\Du_an_nhantin_goidien\\flutter_frontend\\web\\index.html
+ build\\web\\firebase-messaging-sw.js:  C:\\Du_an_nhantin_goidien\\flutter_frontend\\web\\firebase-messaging-sw.js C:\\Du_an_nhantin_goidien\\flutter_frontend\\web\\index.html

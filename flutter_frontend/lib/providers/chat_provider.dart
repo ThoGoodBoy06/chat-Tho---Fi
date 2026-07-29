@@ -193,6 +193,18 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
     onNewMessageReceived?.call();
 
+    // ⚡ Bắn tín hiệu tin nhắn tức thời qua Socket.IO (<20ms)
+    if (SocketService.socket != null && SocketService.socket!.connected) {
+      SocketService.socket!.emit('send_message', {
+        'conversationId': selectedConversation!.id,
+        'content': text,
+        'type': type,
+        'tempId': optId,
+        'senderId': currentUser?.id,
+        'senderName': currentUser?.fullName,
+      });
+    }
+
     try {
       final res = await ApiService.sendMessage(selectedConversation!.id, text, type: type);
       final msgData = res['data'] ?? (res['success'] == true ? res : null);
