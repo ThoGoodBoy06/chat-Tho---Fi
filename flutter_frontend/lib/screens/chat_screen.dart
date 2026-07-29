@@ -1163,10 +1163,11 @@ class _ChatScreenState extends State<ChatScreen> {
 
     Timer? autoRejectTimer;
 
-    showDialog(
+    showGeneralDialog(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) {
+      barrierLabel: 'IncomingCall',
+      pageBuilder: (dialogContext, anim1, anim2) {
         autoRejectTimer = Timer(const Duration(seconds: 30), () {
           SocketService.socket?.emit('reject_call', {
             'callerId': callerId,
@@ -1177,89 +1178,159 @@ class _ChatScreenState extends State<ChatScreen> {
           }
         });
 
-        return Dialog(
-          backgroundColor: const Color(0xFF0F172A),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircleAvatar(
-                  radius: 48,
-                  backgroundColor: const Color(0xFF0068FF),
-                  child: Text(
-                    callerName.isNotEmpty ? callerName[0].toUpperCase() : 'U',
-                    style: const TextStyle(fontSize: 36, color: Colors.white, fontWeight: FontWeight.bold),
+        return WillPopScope(
+          onWillPop: () async => false,
+          child: Material(
+            color: const Color(0xFF090D1A),
+            child: SafeArea(
+              child: SizedBox.expand(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        children: [
+                          const SizedBox(height: 20),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                isVideo ? Icons.videocam_rounded : Icons.phone_in_talk_rounded,
+                                color: const Color(0xFF10B981),
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Cuộc gọi ${isVideo ? "Video" : "Thoại"} đến',
+                                style: const TextStyle(
+                                  color: Color(0xFF10B981),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+
+                      Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: const Color(0xFF10B981).withOpacity(0.5), width: 3),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF10B981).withOpacity(0.2),
+                                  blurRadius: 30,
+                                  spreadRadius: 10,
+                                ),
+                              ],
+                            ),
+                            child: CircleAvatar(
+                              radius: 60,
+                              backgroundColor: const Color(0xFF0068FF),
+                              child: Text(
+                                callerName.isNotEmpty ? callerName[0].toUpperCase() : 'U',
+                                style: const TextStyle(fontSize: 48, color: Colors.white, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          Text(
+                            callerName,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          const Text(
+                            'Đang đổ chuông...',
+                            style: TextStyle(
+                              color: Color(0xFF94A3B8),
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 24),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  iconSize: 36,
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: const Color(0xFFEF4444),
+                                    padding: const EdgeInsets.all(22),
+                                    elevation: 6,
+                                  ),
+                                  icon: const Icon(Icons.call_end_rounded, color: Colors.white),
+                                  onPressed: () {
+                                    autoRejectTimer?.cancel();
+                                    SocketService.socket?.emit('reject_call', {
+                                      'callerId': callerId,
+                                      'callType': callType,
+                                    });
+                                    Navigator.of(dialogContext).pop();
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'Từ chối',
+                                  style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500),
+                                ),
+                              ],
+                            ),
+
+                            Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  iconSize: 36,
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: const Color(0xFF10B981),
+                                    padding: const EdgeInsets.all(22),
+                                    elevation: 6,
+                                  ),
+                                  icon: const Icon(Icons.call_rounded, color: Colors.white),
+                                  onPressed: () {
+                                    autoRejectTimer?.cancel();
+                                    SocketService.socket?.emit('accept_call', {'callerId': callerId});
+                                    Navigator.of(dialogContext).pop();
+                                    _showCallDialog(
+                                      context: context,
+                                      partnerName: callerName,
+                                      isVideo: isVideo,
+                                      targetUserId: callerId,
+                                      isCaller: false,
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'Trả lời',
+                                  style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 20),
-                Text(
-                  callerName,
-                  style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      isVideo ? Icons.videocam_rounded : Icons.phone_rounded,
-                      color: const Color(0xFF10B981),
-                      size: 18,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Cuộc gọi ${isVideo ? "Video" : "Thoại"} đến...',
-                      style: const TextStyle(color: Color(0xFF10B981), fontSize: 14, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 40),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFEF4444),
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                      ),
-                      icon: const Icon(Icons.call_end_rounded, color: Colors.white),
-                      label: const Text('TỪ CHỐI', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      onPressed: () {
-                        autoRejectTimer?.cancel();
-                        SocketService.socket?.emit('reject_call', {
-                          'callerId': callerId,
-                          'callType': callType,
-                        });
-                        Navigator.of(dialogContext).pop();
-                      },
-                    ),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF10B981),
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                      ),
-                      icon: const Icon(Icons.call_rounded, color: Colors.white),
-                      label: const Text('TRẢ LỜI', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      onPressed: () {
-                        autoRejectTimer?.cancel();
-                        SocketService.socket?.emit('accept_call', {'callerId': callerId});
-                        Navigator.of(dialogContext).pop();
-                        _showCallDialog(
-                          context: context,
-                          partnerName: callerName,
-                          isVideo: isVideo,
-                          targetUserId: callerId,
-                          isCaller: false,
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
           ),
         );
@@ -1328,22 +1399,117 @@ class _ChatScreenState extends State<ChatScreen> {
     StreamSubscription? signalSub;
     html.RtcPeerConnection? pc;
     html.MediaStream? localStream;
+    html.AudioElement? remoteAudio;
+    final List<Map<String, dynamic>> pendingSignals = [];
 
-    showDialog(
+    void cleanupCall() {
+      try {
+        acceptSub?.cancel();
+        rejectSub?.cancel();
+        endSub?.cancel();
+        signalSub?.cancel();
+
+        if (remoteAudio != null) {
+          remoteAudio!.pause();
+          remoteAudio!.srcObject = null;
+          remoteAudio!.remove();
+          remoteAudio = null;
+        }
+
+        if (localStream != null) {
+          for (var track in localStream!.getTracks()) {
+            track.stop();
+          }
+          localStream = null;
+        }
+
+        pc?.close();
+        pc = null;
+        pendingSignals.clear();
+      } catch (e) {
+        print('⚠️ WebRTC cleanup error: $e');
+      }
+    }
+
+    showGeneralDialog(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) {
+      barrierLabel: 'CallRoom',
+      pageBuilder: (dialogContext, anim1, anim2) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            Future<void> processSignal(Map<String, dynamic> data) async {
+              final signal = data['signal'];
+              if (signal == null) return;
+              if (pc == null) {
+                pendingSignals.add(data);
+                return;
+              }
+              try {
+                final type = signal['type']?.toString();
+                if (type == 'offer') {
+                  await pc!.setRemoteDescription({
+                    'type': 'offer',
+                    'sdp': signal['sdp'],
+                  });
+                  final answer = await pc!.createAnswer();
+                  await pc!.setLocalDescription({
+                    'type': answer.type,
+                    'sdp': answer.sdp,
+                  });
+                  SocketService.socket?.emit('webrtc_signal', {
+                    'connectedUserId': targetUserId,
+                    'signal': {
+                      'type': 'answer',
+                      'sdp': answer.sdp,
+                    }
+                  });
+                } else if (type == 'answer') {
+                  await pc!.setRemoteDescription({
+                    'type': 'answer',
+                    'sdp': signal['sdp'],
+                  });
+                } else if (type == 'candidate') {
+                  final candidateStr = signal['candidate']?.toString();
+                  if (candidateStr != null && candidateStr.isNotEmpty) {
+                    final iceCandidate = html.RtcIceCandidate({
+                      'candidate': candidateStr,
+                      'sdpMid': signal['sdpMid']?.toString(),
+                      'sdpMLineIndex': signal['sdpMLineIndex'],
+                    });
+                    await pc!.addIceCandidate(iceCandidate);
+                  }
+                }
+              } catch (e) {
+                print('⚠️ WebRTC Signal Handling Error: $e');
+              }
+            }
+
             Future<void> initWebRTC() async {
-              if (!kIsWeb) return;
+              if (!kIsWeb || pc != null) return;
               try {
                 final config = {
                   'iceServers': [
-                    {'urls': 'stun:stun.l.google.com:19302'}
+                    {'urls': 'stun:stun.l.google.com:19302'},
+                    {'urls': 'stun:stun1.l.google.com:19302'},
+                    {'urls': 'stun:stun2.l.google.com:19302'},
+                    {'urls': 'stun:stun3.l.google.com:19302'},
+                    {'urls': 'stun:stun4.l.google.com:19302'}
                   ]
                 };
                 pc = await html.RtcPeerConnection(config);
+
+                final existingAudio = html.document.getElementById('remoteAudioPlayer') as html.AudioElement?;
+                if (existingAudio != null) {
+                  remoteAudio = existingAudio;
+                } else {
+                  remoteAudio = html.AudioElement()..autoplay = true;
+                  remoteAudio!.style.display = 'none';
+                  html.document.body?.children.add(remoteAudio!);
+                }
+                remoteAudio!.muted = false;
+                remoteAudio!.volume = 1.0;
+                remoteAudio!.play().catchError((_) {});
 
                 localStream = await html.window.navigator.mediaDevices?.getUserMedia({
                   'audio': true,
@@ -1355,6 +1521,25 @@ class _ChatScreenState extends State<ChatScreen> {
                     pc!.addTrack(track, localStream!);
                   }
                 }
+
+                pc?.onTrack.listen((event) {
+                  print('🔊 WebRTC onTrack fired! Track: ${event.track?.kind}');
+                  html.MediaStream? stream;
+                  if (event.streams != null && event.streams!.isNotEmpty) {
+                    stream = event.streams![0];
+                  } else if (event.track != null) {
+                    stream = html.MediaStream([event.track!]);
+                  }
+
+                  if (stream != null && remoteAudio != null) {
+                    remoteAudio!.srcObject = stream;
+                    remoteAudio!.muted = false;
+                    remoteAudio!.volume = 1.0;
+                    remoteAudio!.play().then((_) {
+                      print('✅ Remote WebRTC Audio IS NOW PLAYING!');
+                    }).catchError((e) => print('⚠️ Audio Play Error: $e'));
+                  }
+                });
 
                 pc?.onIceCandidate.listen((event) {
                   if (event.candidate != null && event.candidate!.candidate != null) {
@@ -1370,9 +1555,20 @@ class _ChatScreenState extends State<ChatScreen> {
                   }
                 });
 
+                if (pendingSignals.isNotEmpty) {
+                  final signalsToProcess = List<Map<String, dynamic>>.from(pendingSignals);
+                  pendingSignals.clear();
+                  for (var sig in signalsToProcess) {
+                    await processSignal(sig);
+                  }
+                }
+
                 if (isCaller) {
                   final offer = await pc!.createOffer();
-                  await pc!.setLocalDescription({'type': offer.type, 'sdp': offer.sdp});
+                  await pc!.setLocalDescription({
+                    'type': offer.type,
+                    'sdp': offer.sdp,
+                  });
                   SocketService.socket?.emit('webrtc_signal', {
                     'connectedUserId': targetUserId,
                     'signal': {
@@ -1398,6 +1594,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 callStatus = 'Người dùng bận / Từ chối';
               });
               Future.delayed(const Duration(milliseconds: 1200), () {
+                cleanupCall();
                 if (Navigator.of(dialogContext).canPop()) {
                   Navigator.of(dialogContext).pop();
                 }
@@ -1405,39 +1602,15 @@ class _ChatScreenState extends State<ChatScreen> {
             });
 
             endSub ??= SocketService.onCallEnded.listen((_) {
+              print('🔴 Đối phương đã tắt máy -> Tự động đóng màn hình gọi!');
+              cleanupCall();
               if (Navigator.of(dialogContext).canPop()) {
                 Navigator.of(dialogContext).pop();
               }
             });
 
             signalSub ??= SocketService.onWebrtcSignal.listen((data) async {
-              final signal = data['signal'];
-              if (signal == null || pc == null) return;
-              try {
-                final type = signal['type']?.toString();
-                if (type == 'offer') {
-                  await pc!.setRemoteDescription({'type': 'offer', 'sdp': signal['sdp']});
-                  final answer = await pc!.createAnswer();
-                  await pc!.setLocalDescription({'type': answer.type, 'sdp': answer.sdp});
-                  SocketService.socket?.emit('webrtc_signal', {
-                    'connectedUserId': targetUserId,
-                    'signal': {
-                      'type': 'answer',
-                      'sdp': answer.sdp,
-                    }
-                  });
-                } else if (type == 'answer') {
-                  await pc!.setRemoteDescription({'type': 'answer', 'sdp': signal['sdp']});
-                } else if (type == 'candidate') {
-                  await pc!.addIceCandidate({
-                    'candidate': signal['candidate'],
-                    'sdpMid': signal['sdpMid'],
-                    'sdpMLineIndex': signal['sdpMLineIndex'],
-                  });
-                }
-              } catch (e) {
-                print('⚠️ WebRTC Signal Handling Error: $e');
-              }
+              await processSignal(data);
             });
 
             if (!isCaller && pc == null) {
@@ -1446,100 +1619,175 @@ class _ChatScreenState extends State<ChatScreen> {
 
             return WillPopScope(
               onWillPop: () async => false,
-              child: Dialog(
-                backgroundColor: const Color(0xFF0F172A),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircleAvatar(
-                        radius: 48,
-                        backgroundColor: const Color(0xFF0068FF),
-                        child: Text(
-                          partnerName.isNotEmpty ? partnerName[0].toUpperCase() : 'U',
-                          style: const TextStyle(fontSize: 36, color: Colors.white, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        partnerName,
-                        style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
+              child: Material(
+                color: const Color(0xFF090D1A),
+                child: SafeArea(
+                  child: SizedBox.expand(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Icon(
-                            isVideo ? Icons.videocam_rounded : Icons.phone_rounded,
-                            color: const Color(0xFF0068FF),
-                            size: 18,
+                          Column(
+                            children: [
+                              const SizedBox(height: 10),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    isVideo ? Icons.videocam_rounded : Icons.phone_rounded,
+                                    color: const Color(0xFF0068FF),
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    callStatus,
+                                    style: const TextStyle(
+                                      color: Color(0xFF0068FF),
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 6),
-                          Text(
-                            callStatus,
-                            style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14, fontWeight: FontWeight.w500),
+                          Column(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: const Color(0xFF0068FF).withOpacity(0.5), width: 3),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF0068FF).withOpacity(0.25),
+                                      blurRadius: 40,
+                                      spreadRadius: 10,
+                                    ),
+                                  ],
+                                ),
+                                child: CircleAvatar(
+                                  radius: 64,
+                                  backgroundColor: const Color(0xFF0068FF),
+                                  child: Text(
+                                    partnerName.isNotEmpty ? partnerName[0].toUpperCase() : 'U',
+                                    style: const TextStyle(fontSize: 52, color: Colors.white, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                              Text(
+                                partnerName,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                callStatus == 'Đang đàm thoại' ? 'Đã kết nối âm thanh P2P' : 'Đang kết nối...',
+                                style: const TextStyle(
+                                  color: Color(0xFF94A3B8),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 24),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      iconSize: 32,
+                                      style: IconButton.styleFrom(
+                                        backgroundColor: isMuted ? Colors.white24 : const Color(0xFF1E293B),
+                                        padding: const EdgeInsets.all(18),
+                                      ),
+                                      icon: Icon(isMuted ? Icons.mic_off_rounded : Icons.mic_rounded, color: Colors.white),
+                                      onPressed: () {
+                                        setDialogState(() {
+                                          isMuted = !isMuted;
+                                          if (localStream != null) {
+                                            for (var track in localStream!.getAudioTracks()) {
+                                              track.enabled = !isMuted;
+                                            }
+                                          }
+                                        });
+                                      },
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      isMuted ? 'Đã tắt mic' : 'Tắt mic',
+                                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                    ),
+                                  ],
+                                ),
+                                Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      iconSize: 38,
+                                      style: IconButton.styleFrom(
+                                        backgroundColor: const Color(0xFFEF4444),
+                                        padding: const EdgeInsets.all(22),
+                                        elevation: 8,
+                                      ),
+                                      icon: const Icon(Icons.call_end_rounded, color: Colors.white),
+                                      onPressed: () {
+                                        SocketService.socket?.emit('end_call', {'connectedUserId': targetUserId});
+                                        cleanupCall();
+                                        if (Navigator.of(dialogContext).canPop()) {
+                                          Navigator.of(dialogContext).pop();
+                                        }
+                                      },
+                                    ),
+                                    const SizedBox(height: 8),
+                                    const Text(
+                                      'Tắt máy',
+                                      style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
+                                Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      iconSize: 32,
+                                      style: IconButton.styleFrom(
+                                        backgroundColor: isSpeakerOn ? const Color(0xFF0068FF).withOpacity(0.3) : const Color(0xFF1E293B),
+                                        padding: const EdgeInsets.all(18),
+                                      ),
+                                      icon: Icon(isSpeakerOn ? Icons.volume_up_rounded : Icons.volume_off_rounded, color: Colors.white),
+                                      onPressed: () {
+                                        setDialogState(() {
+                                          isSpeakerOn = !isSpeakerOn;
+                                          if (remoteAudio != null) {
+                                            remoteAudio!.muted = !isSpeakerOn;
+                                          }
+                                        });
+                                      },
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      isSpeakerOn ? 'Loa ngoài' : 'Tắt loa',
+                                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 40),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          IconButton(
-                            iconSize: 28,
-                            style: IconButton.styleFrom(
-                              backgroundColor: isMuted ? Colors.white24 : const Color(0xFF1E293B),
-                              padding: const EdgeInsets.all(14),
-                            ),
-                            icon: Icon(isMuted ? Icons.mic_off_rounded : Icons.mic_rounded, color: Colors.white),
-                            onPressed: () {
-                              setDialogState(() {
-                                isMuted = !isMuted;
-                                if (localStream != null) {
-                                  for (var track in localStream!.getAudioTracks()) {
-                                    track.enabled = !isMuted;
-                                  }
-                                }
-                              });
-                            },
-                          ),
-                          IconButton(
-                            iconSize: 28,
-                            style: IconButton.styleFrom(
-                              backgroundColor: const Color(0xFFEF4444),
-                              padding: const EdgeInsets.all(18),
-                            ),
-                            icon: const Icon(Icons.call_end_rounded, color: Colors.white),
-                            onPressed: () {
-                              acceptSub?.cancel();
-                              rejectSub?.cancel();
-                              endSub?.cancel();
-                              signalSub?.cancel();
-                              if (localStream != null) {
-                                for (var track in localStream!.getTracks()) {
-                                  track.stop();
-                                }
-                              }
-                              pc?.close();
-                              SocketService.socket?.emit('end_call', {'connectedUserId': targetUserId});
-                              Navigator.of(dialogContext).pop();
-                            },
-                          ),
-                          IconButton(
-                            iconSize: 28,
-                            style: IconButton.styleFrom(
-                              backgroundColor: isSpeakerOn ? const Color(0xFF0068FF).withOpacity(0.3) : const Color(0xFF1E293B),
-                              padding: const EdgeInsets.all(14),
-                            ),
-                            icon: Icon(isSpeakerOn ? Icons.volume_up_rounded : Icons.volume_off_rounded, color: Colors.white),
-                            onPressed: () => setDialogState(() => isSpeakerOn = !isSpeakerOn),
-                          ),
-                        ],
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -1548,16 +1796,7 @@ class _ChatScreenState extends State<ChatScreen> {
         );
       },
     ).then((_) {
-      acceptSub?.cancel();
-      rejectSub?.cancel();
-      endSub?.cancel();
-      signalSub?.cancel();
-      if (localStream != null) {
-        for (var track in localStream!.getTracks()) {
-          track.stop();
-        }
-      }
-      pc?.close();
+      cleanupCall();
     });
   }
 

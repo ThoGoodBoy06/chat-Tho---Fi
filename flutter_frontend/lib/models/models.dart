@@ -109,10 +109,16 @@ class ConversationModel {
     String? partnerUserId;
     final isGroup = json['type'] == 'group';
 
+    List<UserModel> parsedMembers = [];
     final membersList = json['ConversationMembers'] ?? rawJson['ConversationMembers'];
     if (membersList is List) {
+      for (var member in membersList) {
+        if (member is Map && member['Users'] is Map) {
+          parsedMembers.add(UserModel.fromJson(member['Users'] as Map<String, dynamic>));
+        }
+      }
+
       if (isGroup) {
-        // For groups: use provided name, or build from member names
         if (convName.isEmpty) {
           final memberNames = membersList
               .where((m) => m is Map && m['Users'] is Map)
@@ -122,13 +128,12 @@ class ConversationModel {
           convName = memberNames.join(', ');
         }
       } else {
-        // For private: find the OTHER member (not me)
         for (var member in membersList) {
           if (member is Map) {
-            final memberUserId = member['userId']?.toString();
+            final memberUserId = member['userId']?.toString() ?? (member['Users'] is Map ? member['Users']['id']?.toString() : null);
             final userObj = member['Users'];
             
-            if (currentUserId != null && memberUserId != null && memberUserId != currentUserId) {
+            if (memberUserId != null && (currentUserId == null || memberUserId != currentUserId)) {
               partnerUserId = memberUserId;
               final nickname = member['nickname']?.toString();
               if (nickname != null && nickname.isNotEmpty) {
@@ -139,9 +144,9 @@ class ConversationModel {
               if (userObj is Map && (convAvatar == null || convAvatar.isEmpty)) {
                 convAvatar = userObj['avatar']?.toString();
               }
-              break;
-            } else if (memberUserId != null && memberUserId != currentUserId) {
-              partnerUserId = memberUserId;
+              if (currentUserId != null && memberUserId != currentUserId) {
+                break;
+              }
             }
           }
         }
@@ -159,6 +164,7 @@ class ConversationModel {
       unreadCount: json['_count']?['Messages'] is int ? json['_count']['Messages'] : 0,
       updatedAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt'].toString()) : null,
       targetUserId: partnerUserId,
+      members: parsedMembers,
     );
   }
 }

@@ -559,9 +559,14 @@ module.exports = (io) => {
       });
     });
 
-    // 9. Kết thúc cuộc gọi
+    // 9. Kết thúc cuộc gọi (gửi thông báo cho cả 2 phía để tự động đóng màn hình)
     socket.on("end_call", ({ connectedUserId }) => {
-      io.to(connectedUserId).emit("call_ended");
+      if (connectedUserId) {
+        io.to(connectedUserId).emit("call_ended");
+      }
+      if (socket.userId) {
+        io.to(socket.userId).emit("call_ended");
+      }
     });
 
     // 10. Nâng cấp từ Voice lên Video
