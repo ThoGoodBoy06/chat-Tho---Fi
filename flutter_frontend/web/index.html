@@ -25,6 +25,8 @@
 </head>
 <body>
   <audio id="remoteAudioPlayer" autoplay playsinline style="display:none;"></audio>
+  <video id="remoteVideoPlayer" autoplay playsinline style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; object-fit:cover; z-index:99998; background:#090D1A;"></video>
+  <video id="localVideoPlayer" autoplay playsinline muted style="display:none; position:fixed; top:24px; right:24px; width:130px; height:170px; object-fit:cover; z-index:99999; border-radius:16px; border:2px solid rgba(255,255,255,0.8); box-shadow:0 10px 30px rgba(0,0,0,0.6); transform: scaleX(-1);"></video>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

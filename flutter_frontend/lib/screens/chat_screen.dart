@@ -1400,6 +1400,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }) {
     bool isMuted = false;
     bool isSpeakerOn = true;
+    bool isCameraOff = false;
     String callStatus = isCaller ? 'Đang gọi...' : 'Đang đàm thoại';
 
     StreamSubscription? acceptSub;
@@ -1417,6 +1418,19 @@ class _ChatScreenState extends State<ChatScreen> {
         rejectSub?.cancel();
         endSub?.cancel();
         signalSub?.cancel();
+
+        final localVideo = html.document.getElementById('localVideoPlayer') as html.VideoElement?;
+        final remoteVideo = html.document.getElementById('remoteVideoPlayer') as html.VideoElement?;
+        if (localVideo != null) {
+          localVideo.pause();
+          localVideo.srcObject = null;
+          localVideo.style.display = 'none';
+        }
+        if (remoteVideo != null) {
+          remoteVideo.pause();
+          remoteVideo.srcObject = null;
+          remoteVideo.style.display = 'none';
+        }
 
         if (remoteAudio != null) {
           remoteAudio!.pause();
@@ -1525,6 +1539,15 @@ class _ChatScreenState extends State<ChatScreen> {
                   'video': isVideo,
                 });
 
+                if (isVideo && localStream != null) {
+                  final localVideo = html.document.getElementById('localVideoPlayer') as html.VideoElement?;
+                  if (localVideo != null) {
+                    localVideo.srcObject = localStream;
+                    localVideo.style.display = 'block';
+                    localVideo.play().catchError((_) {});
+                  }
+                }
+
                 if (localStream != null && pc != null) {
                   try {
                     pc!.addStream(localStream!);
@@ -1538,13 +1561,21 @@ class _ChatScreenState extends State<ChatScreen> {
 
                 pc?.onAddStream.listen((event) {
                   print('🔊 WebRTC onAddStream fired! Stream: ${event.stream?.id}');
-                  if (event.stream != null && remoteAudio != null) {
-                    remoteAudio!.srcObject = event.stream!;
-                    remoteAudio!.muted = false;
-                    remoteAudio!.volume = 1.0;
-                    remoteAudio!.play().then((_) {
-                      print('✅ Remote WebRTC Audio IS NOW PLAYING via onAddStream!');
-                    }).catchError((e) => print('⚠️ Audio Play Error: $e'));
+                  if (event.stream != null) {
+                    if (remoteAudio != null) {
+                      remoteAudio!.srcObject = event.stream!;
+                      remoteAudio!.muted = false;
+                      remoteAudio!.volume = 1.0;
+                      remoteAudio!.play().catchError((e) => print('⚠️ Audio Play Error: $e'));
+                    }
+                    if (isVideo) {
+                      final remoteVideo = html.document.getElementById('remoteVideoPlayer') as html.VideoElement?;
+                      if (remoteVideo != null) {
+                        remoteVideo.srcObject = event.stream!;
+                        remoteVideo.style.display = 'block';
+                        remoteVideo.play().catchError((e) => print('⚠️ Remote Video Play Error: $e'));
+                      }
+                    }
                   }
                 });
 
@@ -1557,13 +1588,21 @@ class _ChatScreenState extends State<ChatScreen> {
                     stream = html.MediaStream([event.track!]);
                   }
 
-                  if (stream != null && remoteAudio != null) {
-                    remoteAudio!.srcObject = stream;
-                    remoteAudio!.muted = false;
-                    remoteAudio!.volume = 1.0;
-                    remoteAudio!.play().then((_) {
-                      print('✅ Remote WebRTC Audio IS NOW PLAYING via onTrack!');
-                    }).catchError((e) => print('⚠️ Audio Play Error: $e'));
+                  if (stream != null) {
+                    if (remoteAudio != null) {
+                      remoteAudio!.srcObject = stream;
+                      remoteAudio!.muted = false;
+                      remoteAudio!.volume = 1.0;
+                      remoteAudio!.play().catchError((e) => print('⚠️ Audio Play Error: $e'));
+                    }
+                    if (isVideo) {
+                      final remoteVideo = html.document.getElementById('remoteVideoPlayer') as html.VideoElement?;
+                      if (remoteVideo != null) {
+                        remoteVideo.srcObject = stream;
+                        remoteVideo.style.display = 'block';
+                        remoteVideo.play().catchError((e) => print('⚠️ Remote Video Play Error: $e'));
+                      }
+                    }
                   }
                 });
 
@@ -1646,7 +1685,7 @@ class _ChatScreenState extends State<ChatScreen> {
             return WillPopScope(
               onWillPop: () async => false,
               child: Material(
-                color: const Color(0xFF090D1A),
+                color: isVideo ? Colors.transparent : const Color(0xFF090D1A),
                 child: SafeArea(
                   child: SizedBox.expand(
                     child: Padding(
@@ -1657,158 +1696,159 @@ class _ChatScreenState extends State<ChatScreen> {
                           Column(
                             children: [
                               const SizedBox(height: 10),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    isVideo ? Icons.videocam_rounded : Icons.phone_rounded,
-                                    color: const Color(0xFF0068FF),
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    callStatus,
-                                    style: const TextStyle(
-                                      color: Color(0xFF0068FF),
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          Column(
-                            children: [
                               Container(
-                                padding: const EdgeInsets.all(4),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                 decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: const Color(0xFF0068FF).withOpacity(0.5), width: 3),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFF0068FF).withOpacity(0.25),
-                                      blurRadius: 40,
-                                      spreadRadius: 10,
+                                  color: Colors.black.withOpacity(0.5),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      isVideo ? Icons.videocam_rounded : Icons.phone_rounded,
+                                      color: isVideo ? const Color(0xFF10B981) : const Color(0xFF0068FF),
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      callStatus,
+                                      style: TextStyle(
+                                        color: isVideo ? const Color(0xFF10B981) : const Color(0xFF0068FF),
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ],
                                 ),
-                                child: CircleAvatar(
-                                  radius: 64,
-                                  backgroundColor: const Color(0xFF0068FF),
-                                  child: Text(
-                                    partnerName.isNotEmpty ? partnerName[0].toUpperCase() : 'U',
-                                    style: const TextStyle(fontSize: 52, color: Colors.white, fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 24),
-                              Text(
-                                partnerName,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              Text(
-                                callStatus == 'Đang đàm thoại' ? 'Đã kết nối âm thanh P2P' : 'Đang kết nối...',
-                                style: const TextStyle(
-                                  color: Color(0xFF94A3B8),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
                               ),
                             ],
                           ),
+
+                          if (!isVideo)
+                            Column(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: const Color(0xFF0068FF).withOpacity(0.5), width: 3),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFF0068FF).withOpacity(0.25),
+                                        blurRadius: 40,
+                                        spreadRadius: 10,
+                                      ),
+                                    ],
+                                  ),
+                                  child: CircleAvatar(
+                                    radius: 64,
+                                    backgroundColor: const Color(0xFF0068FF),
+                                    child: Text(
+                                      partnerName.isNotEmpty ? partnerName[0].toUpperCase() : 'U',
+                                      style: const TextStyle(fontSize: 52, color: Colors.white, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                Text(
+                                  partnerName,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  callStatus == 'Đang đàm thoại' ? 'Đã kết nối âm thanh P2P' : 'Đang kết nối...',
+                                  style: const TextStyle(
+                                    color: Color(0xFF94A3B8),
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            )
+                          else
+                            const SizedBox.shrink(),
+
                           Padding(
                             padding: const EdgeInsets.only(bottom: 24),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.6),
+                                borderRadius: BorderRadius.circular(32),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    iconSize: 30,
+                                    icon: Icon(isMuted ? Icons.mic_off_rounded : Icons.mic_rounded, color: Colors.white),
+                                    onPressed: () {
+                                      setDialogState(() {
+                                        isMuted = !isMuted;
+                                        if (localStream != null) {
+                                          for (var track in localStream!.getAudioTracks()) {
+                                            track.enabled = !isMuted;
+                                          }
+                                        }
+                                      });
+                                    },
+                                  ),
+                                  const SizedBox(width: 16),
+
+                                  if (isVideo) ...[
                                     IconButton(
-                                      iconSize: 32,
-                                      style: IconButton.styleFrom(
-                                        backgroundColor: isMuted ? Colors.white24 : const Color(0xFF1E293B),
-                                        padding: const EdgeInsets.all(18),
-                                      ),
-                                      icon: Icon(isMuted ? Icons.mic_off_rounded : Icons.mic_rounded, color: Colors.white),
+                                      iconSize: 30,
+                                      icon: Icon(isCameraOff ? Icons.videocam_off_rounded : Icons.videocam_rounded, color: Colors.white),
                                       onPressed: () {
                                         setDialogState(() {
-                                          isMuted = !isMuted;
+                                          isCameraOff = !isCameraOff;
                                           if (localStream != null) {
-                                            for (var track in localStream!.getAudioTracks()) {
-                                              track.enabled = !isMuted;
+                                            for (var track in localStream!.getVideoTracks()) {
+                                              track.enabled = !isCameraOff;
                                             }
                                           }
                                         });
                                       },
                                     ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      isMuted ? 'Đã tắt mic' : 'Tắt mic',
-                                      style: const TextStyle(color: Colors.white70, fontSize: 12),
-                                    ),
+                                    const SizedBox(width: 16),
                                   ],
-                                ),
-                                Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      iconSize: 38,
-                                      style: IconButton.styleFrom(
-                                        backgroundColor: const Color(0xFFEF4444),
-                                        padding: const EdgeInsets.all(22),
-                                        elevation: 8,
-                                      ),
-                                      icon: const Icon(Icons.call_end_rounded, color: Colors.white),
-                                      onPressed: () {
-                                        SocketService.socket?.emit('end_call', {'connectedUserId': targetUserId});
-                                        cleanupCall();
-                                        if (Navigator.of(dialogContext).canPop()) {
-                                          Navigator.of(dialogContext).pop();
+
+                                  IconButton(
+                                    iconSize: 36,
+                                    style: IconButton.styleFrom(
+                                      backgroundColor: const Color(0xFFEF4444),
+                                      padding: const EdgeInsets.all(16),
+                                    ),
+                                    icon: const Icon(Icons.call_end_rounded, color: Colors.white),
+                                    onPressed: () {
+                                      SocketService.socket?.emit('end_call', {'connectedUserId': targetUserId});
+                                      cleanupCall();
+                                      if (Navigator.of(dialogContext).canPop()) {
+                                        Navigator.of(dialogContext).pop();
+                                      }
+                                    },
+                                  ),
+                                  const SizedBox(width: 16),
+
+                                  IconButton(
+                                    iconSize: 30,
+                                    icon: Icon(isSpeakerOn ? Icons.volume_up_rounded : Icons.volume_off_rounded, color: Colors.white),
+                                    onPressed: () {
+                                      setDialogState(() {
+                                        isSpeakerOn = !isSpeakerOn;
+                                        if (remoteAudio != null) {
+                                          remoteAudio!.muted = !isSpeakerOn;
                                         }
-                                      },
-                                    ),
-                                    const SizedBox(height: 8),
-                                    const Text(
-                                      'Tắt máy',
-                                      style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                                    ),
-                                  ],
-                                ),
-                                Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      iconSize: 32,
-                                      style: IconButton.styleFrom(
-                                        backgroundColor: isSpeakerOn ? const Color(0xFF0068FF).withOpacity(0.3) : const Color(0xFF1E293B),
-                                        padding: const EdgeInsets.all(18),
-                                      ),
-                                      icon: Icon(isSpeakerOn ? Icons.volume_up_rounded : Icons.volume_off_rounded, color: Colors.white),
-                                      onPressed: () {
-                                        setDialogState(() {
-                                          isSpeakerOn = !isSpeakerOn;
-                                          if (remoteAudio != null) {
-                                            remoteAudio!.muted = !isSpeakerOn;
-                                          }
-                                        });
-                                      },
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      isSpeakerOn ? 'Loa ngoài' : 'Tắt loa',
-                                      style: const TextStyle(color: Colors.white70, fontSize: 12),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                                      });
+                                    },
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],
