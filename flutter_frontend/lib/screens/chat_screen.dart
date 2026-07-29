@@ -1517,10 +1517,27 @@ class _ChatScreenState extends State<ChatScreen> {
                 });
 
                 if (localStream != null && pc != null) {
+                  try {
+                    pc!.addStream(localStream!);
+                  } catch (_) {}
                   for (var track in localStream!.getTracks()) {
-                    pc!.addTrack(track, localStream!);
+                    try {
+                      pc!.addTrack(track, localStream!);
+                    } catch (_) {}
                   }
                 }
+
+                pc?.onAddStream.listen((event) {
+                  print('🔊 WebRTC onAddStream fired! Stream: ${event.stream?.id}');
+                  if (event.stream != null && remoteAudio != null) {
+                    remoteAudio!.srcObject = event.stream!;
+                    remoteAudio!.muted = false;
+                    remoteAudio!.volume = 1.0;
+                    remoteAudio!.play().then((_) {
+                      print('✅ Remote WebRTC Audio IS NOW PLAYING via onAddStream!');
+                    }).catchError((e) => print('⚠️ Audio Play Error: $e'));
+                  }
+                });
 
                 pc?.onTrack.listen((event) {
                   print('🔊 WebRTC onTrack fired! Track: ${event.track?.kind}');
@@ -1536,7 +1553,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     remoteAudio!.muted = false;
                     remoteAudio!.volume = 1.0;
                     remoteAudio!.play().then((_) {
-                      print('✅ Remote WebRTC Audio IS NOW PLAYING!');
+                      print('✅ Remote WebRTC Audio IS NOW PLAYING via onTrack!');
                     }).catchError((e) => print('⚠️ Audio Play Error: $e'));
                   }
                 });
