@@ -1774,3 +1774,78 @@ exports.blockUser = async (req, res) => {
         return res.status(500).json({ success: false, message: "Lỗi server", error: error.message });
     }
 };
+
+// API Upload Media (Ảnh, Âm thanh, File) lên Supabase Storage
+exports.uploadMedia = async (req, res) => {
+    try {
+        const senderId = req.user ? req.user.id || req.user.userId : req.userId;
+        const { conversationId } = req.params;
+        const file = req.file;
+
+        if (!file && !req.body.fileBytes) {
+            return res.status(400).json({ success: false, message: "Không tìm thấy file tải lên" });
+        }
+
+        let buffer;
+        let originalName = "";
+        let mimeType = "image/jpeg";
+
+        if (file) {
+            buffer = file.buffer;
+            originalName = file.originalname || `upload_${Date.now()}`;
+            mimeType = file.mimetype || "image/jpeg";
+        } else if (req.body.fileBytes) {
+            buffer = Buffer.from(req.body.fileBytes, "base64");
+            originalName = req.body.fileName || `upload_${Date.now()}`;
+            if (req.body.mimeType) mimeType = req.body.mimeType;
+        }
+
+        let type = "image";
+        if (mimeType.startsWith("audio/")) {
+            type = "audio";
+        } else if (mimeType.startsWith("video/")) {
+            type = "video";
+        } else if (req.body.type) {
+            type = req.body.type;
+        }
+
+        const { uploadBase64 } = require("../supabase");
+        const base64Str = `data:${mimeType};base64,${buffer.toString("base64")}`;
+        const publicUrl = await uploadBase64(base64Str, type, originalName);
+
+        const newMessage = await prisma.messages.create({
+            data: {
+                id: uuidv4(),
+                conversationId,
+                senderId,
+                content: publicUrl,
+                type: type,
+                imageUrl: type === "image" ? publicUrl : null,
+                audioUrl: type === "audio" ? publicUrl : null,
+            },
+            include: {
+                Users: {
+                    select: { id: true, fullName: true },
+                },
+            },
+        });
+
+        const mappedMessage = {
+            ...newMessage,
+            Users: newMessage.Users ? {
+                ...newMessage.Users,
+                avatar: `/api/users/${newMessage.Users.id}/avatar`,
+            } : null
+        };
+
+        res.status(201).json({ success: true, data: mappedMessage });
+
+        const io = req.app.get("io");
+        if (io) {
+            io.to(conversationId).emit("receive_message", mappedMessage);
+        }
+    } catch (error) {
+        console.error("❌ Lỗi uploadMedia:", error);
+        res.status(500).json({ success: false, message: "Lỗi server", error: error.message });
+    }
+};

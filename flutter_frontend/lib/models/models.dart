@@ -40,7 +40,9 @@ class MessageModel {
   final String? type;
   final String content;
   final String? imageUrl;
+  final String? audioUrl;
   final bool isRead;
+  final String? replyMessageId;
   final DateTime createdAt;
 
   MessageModel({
@@ -50,19 +52,35 @@ class MessageModel {
     this.type = 'text',
     required this.content,
     this.imageUrl,
+    this.audioUrl,
     this.isRead = false,
+    this.replyMessageId,
     required this.createdAt,
   });
 
   factory MessageModel.fromJson(Map<String, dynamic> json) {
+    String? img = json['imageUrl']?.toString();
+    String? aud = json['audioUrl']?.toString();
+    String msgType = json['type']?.toString() ?? 'text';
+    String contentStr = json['content']?.toString() ?? '';
+
+    if (msgType == 'image' && (img == null || img.isEmpty)) {
+      img = contentStr;
+    }
+    if (msgType == 'audio' && (aud == null || aud.isEmpty)) {
+      aud = contentStr;
+    }
+
     return MessageModel(
       id: json['id']?.toString() ?? '',
       conversationId: json['conversationId']?.toString(),
       senderId: json['senderId']?.toString(),
-      type: json['type']?.toString() ?? 'text',
-      content: json['content']?.toString() ?? '',
-      imageUrl: json['imageUrl']?.toString(),
+      type: msgType,
+      content: contentStr,
+      imageUrl: img,
+      audioUrl: aud,
       isRead: json['isRead'] == true,
+      replyMessageId: json['replyMessageId']?.toString(),
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
           : DateTime.now(),
@@ -80,6 +98,10 @@ class ConversationModel {
   final DateTime? updatedAt;
   final String? targetUserId;
   final List<UserModel> members;
+
+  bool get isOnline => members.any((m) => m.isOnline);
+  String? get partnerId => targetUserId;
+  DateTime? get lastMessageAt => updatedAt;
 
   ConversationModel({
     required this.id,

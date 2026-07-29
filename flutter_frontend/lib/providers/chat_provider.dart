@@ -12,7 +12,12 @@ class ChatProvider extends ChangeNotifier {
   bool isLoadingConversations = false;
   bool isLoadingMessages = false;
   bool isPartnerTyping = false;
+  Map<String, String> typingUsers = {};
+  MessageModel? replyingToMessage;
   StreamSubscription? _socketSubscription;
+  StreamSubscription? _typingSubscription;
+  StreamSubscription? _stopTypingSubscription;
+  StreamSubscription? _reactedSubscription;
 
   /// Callback để thông báo cho UI cuộn xuống khi có tin nhắn mới
   VoidCallback? onNewMessageReceived;
@@ -27,7 +32,84 @@ class ChatProvider extends ChangeNotifier {
       final newMsg = MessageModel.fromJson(data);
       addRealtimeMessage(newMsg);
       _updateLastMessageInConversation(newMsg);
+      if (newMsg.senderId != currentUser?.id) {
+        SocketService.playReceiveSound();
+      }
     });
+
+    _typingSubscription = SocketService.onUserTyping.listen((data) {
+      final convId = data['conversationId']?.toString();
+      final uid = data['userId']?.toString() ?? data['senderId']?.toString();
+      final nickname = data['nickname']?.toString() ?? data['senderName']?.toString() ?? 'Người dùng';
+
+      if (uid != null && uid == currentUser?.id) return;
+
+      if (convId != null && convId.isNotEmpty) {
+        typingUsers[convId] = nickname;
+        if (selectedConversation != null && selectedConversation!.id == convId) {
+          isPartnerTyping = true;
+        }
+        notifyListeners();
+      }
+    });
+
+    _stopTypingSubscription = SocketService.onUserStopTyping.listen((data) {
+      final convId = data['conversationId']?.toString();
+      if (convId != null && convId.isNotEmpty) {
+        typingUsers.remove(convId);
+        if (selectedConversation != null && selectedConversation!.id == convId) {
+          isPartnerTyping = false;
+        }
+        notifyListeners();
+      }
+    });
+
+    _reactedSubscription = SocketService.onMessageReacted.listen((data) {
+      final msgId = data['messageId']?.toString();
+      final emoji = data['emoji']?.toString();
+      if (msgId != null && emoji != null) {
+        SocketService.playReactSound();
+        notifyListeners();
+      }
+    });
+  }
+
+  void deleteMessage(String messageId) {
+    messages.removeWhere((m) => m.id == messageId);
+    notifyListeners();
+  }
+
+  void setReplyingToMessage(MessageModel? msg) {
+    replyingToMessage = msg;
+    notifyListeners();
+  }
+
+  void reactToMessage(String messageId, String emoji) {
+    if (selectedConversation == null) return;
+    SocketService.emitReactMessage(messageId, selectedConversation!.id, emoji);
+    notifyListeners();
+  }
+
+  String? getTypingUserForSelectedConversation() {
+    if (selectedConversation == null) return null;
+    return typingUsers[selectedConversation!.id];
+  }
+
+  void emitTyping() {
+    if (selectedConversation == null || currentUser == null) return;
+    SocketService.emitTyping(
+      selectedConversation!.id,
+      currentUser!.id,
+      currentUser!.fullName ?? currentUser!.username,
+    );
+  }
+
+  void emitStopTyping() {
+    if (selectedConversation == null || currentUser == null) return;
+    SocketService.emitStopTyping(
+      selectedConversation!.id,
+      currentUser!.id,
+    );
   }
 
   /// Cập nhật tin nhắn mới nhất trong danh sách đoạn chat hoàn toàn ở bộ nhớ (không cần gọi API getConversations)
@@ -123,8 +205,24 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
+  String? selectedConversationId;
+  bool showUnreadOnly = false;
+
+  void setShowUnreadOnly(bool val) {
+    showUnreadOnly = val;
+    notifyListeners();
+  }
+
+  void clearSelectedConversation() {
+    selectedConversation = null;
+    selectedConversationId = null;
+    messages = [];
+    notifyListeners();
+  }
+
   Future<void> selectConversation(ConversationModel conv) async {
     selectedConversation = conv;
+    selectedConversationId = conv.id;
     isLoadingMessages = true;
     messages = [];
     notifyListeners();
@@ -177,6 +275,12 @@ class ChatProvider extends ChangeNotifier {
   Future<void> sendMessage(String text, {String type = 'text'}) async {
     if (selectedConversation == null || text.trim().isEmpty) return;
 
+    emitStopTyping();
+    SocketService.playSendSound();
+
+    final replyId = replyingToMessage?.id;
+    replyingToMessage = null;
+
     // Optimistic UI message (Hiển thị tức thì trên màn hình)
     final optId = 'optimistic-${DateTime.now().millisecondsSinceEpoch}';
     final optMsg = MessageModel(
@@ -185,6 +289,7 @@ class ChatProvider extends ChangeNotifier {
       senderId: currentUser?.id,
       content: text,
       type: type,
+      replyMessageId: replyId,
       createdAt: DateTime.now(),
     );
 
@@ -227,6 +332,9 @@ class ChatProvider extends ChangeNotifier {
   @override
   void dispose() {
     _socketSubscription?.cancel();
+    _typingSubscription?.cancel();
+    _stopTypingSubscription?.cancel();
+    _reactedSubscription?.cancel();
     super.dispose();
   }
 }

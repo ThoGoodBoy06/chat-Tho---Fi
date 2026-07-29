@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'api_service.dart';
 import 'dart:html' as html;
+import 'dart:js' as js;
 
 class SocketService {
   static IO.Socket? socket;
@@ -15,6 +16,11 @@ class SocketService {
   static final _callRejectedController = StreamController<Map<String, dynamic>>.broadcast();
   static final _callEndedController = StreamController<void>.broadcast();
   static final _webrtcSignalController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _typingController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _stopTypingController = StreamController<Map<String, dynamic>>.broadcast();
+
+  static final _reactedController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _readController = StreamController<Map<String, dynamic>>.broadcast();
 
   static Stream<Map<String, dynamic>> get onMessageReceived => _messageController.stream;
   static Stream<Map<String, dynamic>> get onIncomingCall => _incomingCallController.stream;
@@ -22,6 +28,38 @@ class SocketService {
   static Stream<Map<String, dynamic>> get onCallRejected => _callRejectedController.stream;
   static Stream<void> get onCallEnded => _callEndedController.stream;
   static Stream<Map<String, dynamic>> get onWebrtcSignal => _webrtcSignalController.stream;
+  static Stream<Map<String, dynamic>> get onUserTyping => _typingController.stream;
+  static Stream<Map<String, dynamic>> get onUserStopTyping => _stopTypingController.stream;
+  static Stream<Map<String, dynamic>> get onMessageReacted => _reactedController.stream;
+  static Stream<Map<String, dynamic>> get onMessagesRead => _readController.stream;
+
+  // --- WEB AUDIO API SYNTHETIC SOUND GENERATOR ---
+  static void playSendSound() {
+    if (!kIsWeb) return;
+    try {
+      js.context.callMethod('eval', ['if(window.ChatSounds) window.ChatSounds.playSend();']);
+    } catch (e) {
+      print('⚠️ Sound play error: $e');
+    }
+  }
+
+  static void playReceiveSound() {
+    if (!kIsWeb) return;
+    try {
+      js.context.callMethod('eval', ['if(window.ChatSounds) window.ChatSounds.playReceive();']);
+    } catch (e) {
+      print('⚠️ Receive sound error: $e');
+    }
+  }
+
+  static void playReactSound() {
+    if (!kIsWeb) return;
+    try {
+      js.context.callMethod('eval', ['if(window.ChatSounds) window.ChatSounds.playReact();']);
+    } catch (e) {
+      print('⚠️ React sound error: $e');
+    }
+  }
 
   static Future<void> connect({String? userId}) async {
     final token = await ApiService.getToken();
@@ -133,7 +171,79 @@ class SocketService {
       }
     });
 
+    socket?.on('user_typing', (data) {
+      if (data is Map) {
+        _typingController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('typing', (data) {
+      if (data is Map) {
+        _typingController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('stop_typing', (data) {
+      if (data is Map) {
+        _stopTypingController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('user_stop_typing', (data) {
+      if (data is Map) {
+        _stopTypingController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('message_reacted', (data) {
+      if (data is Map) {
+        _reactedController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('messages_read', (data) {
+      if (data is Map) {
+        _readController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
     socket?.onDisconnect((_) => print('🔴 Socket disconnected'));
+  }
+
+  static void emitReactMessage(String messageId, String conversationId, String emoji) {
+    if (socket != null && socket!.connected) {
+      socket!.emit('react_message', {
+        'messageId': messageId,
+        'conversationId': conversationId,
+        'emoji': emoji,
+      });
+      playReactSound();
+    }
+  }
+
+  static void emitTyping(String conversationId, String userId, String nickname) {
+    if (socket != null && socket!.connected) {
+      socket!.emit('typing', {
+        'conversationId': conversationId,
+        'userId': userId,
+        'nickname': nickname,
+        'senderId': userId,
+        'senderName': nickname,
+      });
+    }
+  }
+
+  static void emitStopTyping(String conversationId, String userId) {
+    if (socket != null && socket!.connected) {
+      socket!.emit('stop_typing', {
+        'conversationId': conversationId,
+        'userId': userId,
+      });
+      socket!.emit('stop-typing', {
+        'conversationId': conversationId,
+        'userId': userId,
+      });
+    }
   }
 
   static void joinRoom(String roomId) {

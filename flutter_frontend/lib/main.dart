@@ -87,9 +87,9 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
       title: 'Chat Tho-Fi',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        brightness: Brightness.dark,
+        brightness: Brightness.light,
         primaryColor: const Color(0xFF0068FF),
-        scaffoldBackgroundColor: const Color(0xFF090D1A),
+        scaffoldBackgroundColor: const Color(0xFFF0F2F5),
       ),
       home: _isCheckingAuth
           ? const Scaffold(

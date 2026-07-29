@@ -4,6 +4,9 @@ const chatController = require("../controllers/chat.controller");
 const groupController = require("../controllers/group.controller");
 const authMiddleware = require("../middlewares/auth.middleware");
 
+const multer = require("multer");
+const upload = multer({ storage: multer.memoryStorage() });
+
 // Bật lớp bảo vệ: Chỉ user đã đăng nhập (có Token) mới được dùng các API này
 router.use(authMiddleware);
 
@@ -15,6 +18,7 @@ router.patch("/conversations/:conversationId/nickname", chatController.setNickna
 router.delete("/conversations/:conversationId", chatController.deleteConversation);
 router.get("/:conversationId/messages", chatController.getMessages);
 router.post("/:conversationId/messages", chatController.sendMessage);
+router.post("/:conversationId/upload-media", upload.single("file"), chatController.uploadMedia);
 
 // API cho các tính năng Big Update
 router.patch("/messages/:messageId/recall", chatController.recallMessage);

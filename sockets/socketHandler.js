@@ -191,100 +191,82 @@ module.exports = (io) => {
       }
     });
 
-    // 3. Lắng nghe trạng thái Đang gõ...
+    // 3. Lắng nghe trạng thái Đang gõ... (Typing indicator)
     socket.on("typing", async (payload) => {
-      if (payload && payload.receiverId) {
-        // Kiểm tra chặn trước khi gửi sự kiện typing
+      if (!payload) return;
+      const { conversationId, userId, nickname, senderId, senderName } = payload;
+      const uid = userId || senderId || socket.userId;
+      const name = nickname || senderName || "Người dùng";
+
+      if (conversationId) {
+        socket.to(conversationId).emit("user_typing", {
+          conversationId,
+          userId: uid,
+          nickname: name,
+        });
+        socket.to(conversationId).emit("typing", {
+          conversationId,
+          userId: uid,
+          senderId: uid,
+          senderName: name,
+        });
+      } else if (payload.receiverId) {
         const isBlocked = await prisma.block.findFirst({
-            where: {
-                OR: [
-                    { blockerId: socket.userId, blockedId: payload.receiverId },
-                    { blockerId: payload.receiverId, blockedId: socket.userId }
-                ]
-            }
+          where: {
+            OR: [
+              { blockerId: socket.userId, blockedId: payload.receiverId },
+              { blockerId: payload.receiverId, blockedId: socket.userId }
+            ]
+          }
         });
         if (isBlocked) return;
 
-        // Chuyển tiếp trực tiếp cho người nhận kèm tên người gửi
+        socket.to(payload.receiverId).emit("user_typing", {
+          userId: uid,
+          nickname: name,
+        });
         socket.to(payload.receiverId).emit("typing", { 
-          senderId: socket.userId || payload.senderId,
-          senderName: payload.senderName || "" 
-        });
-      } else if (payload && payload.conversationId) {
-        // Tìm những người trong cuộc trò chuyện này để phát tín hiệu (Group/Room cũ)
-        const members = await prisma.conversationMembers.findMany({
-          where: { conversationId: payload.conversationId },
-        });
-        members.forEach((m) => {
-          if (m.userId !== payload.senderId) {
-            io.to(m.userId).emit("typing", { conversationId: payload.conversationId, senderName: payload.senderName });
-          }
+          senderId: uid,
+          senderName: name 
         });
       }
     });
 
-    // 3.5 Lắng nghe và chuyển tiếp tin nhắn thời gian thực trực tiếp qua Socket (<30ms)
-    socket.on("send_message", async (data) => {
-      try {
-        const { conversationId, content, type, tempId, replyMessageId } = data;
-        const senderId = socket.userId || data.senderId;
+    // 4. Lắng nghe trạng thái Dừng gõ... (Stop typing indicator)
+    socket.on("stop_typing", (payload) => {
+      if (!payload) return;
+      const { conversationId, userId, receiverId } = payload;
+      const uid = userId || socket.userId;
 
-        if (!conversationId || !content || !senderId) return;
-
-        const messageId = tempId || uuidv4();
-        const now = new Date().toISOString();
-
-        const mappedMessage = {
-          id: messageId,
+      if (conversationId) {
+        socket.to(conversationId).emit("stop_typing", {
           conversationId,
-          senderId,
-          content,
-          type: type || "text",
-          replyMessageId: replyMessageId || null,
-          createdAt: now,
-          Users: {
-            id: senderId,
-            fullName: data.senderName || "Người dùng",
-            avatar: `/api/users/${senderId}/avatar`,
-          },
-        };
-
-        // ⚡ Phát tín hiệu socket tức thì tới phòng cuộc trò chuyện (<10ms)!
-        socket.to(conversationId).emit("receive_message", mappedMessage);
-
-        // Lưu vào DB bất đồng bộ không làm nghẽn luồng truyền tin nhắn
-        prisma.messages.create({
-          data: {
-            id: messageId,
-            conversationId,
-            senderId,
-            content,
-            type: type || "text",
-            replyMessageId: replyMessageId || null,
-          },
-        }).catch((err) => console.error("Lỗi lưu message socket vào DB:", err.message));
-      } catch (err) {
-        console.error("Lỗi xử lý send_message socket:", err.message);
+          userId: uid,
+        });
+        socket.to(conversationId).emit("user_stop_typing", {
+          conversationId,
+          userId: uid,
+        });
+      } else if (receiverId) {
+        socket.to(receiverId).emit("stop_typing", {
+          userId: uid,
+        });
       }
     });
 
-    // 4. Lắng nghe trạng thái Dừng gõ (stop-typing mới)
-    socket.on("stop-typing", ({ receiverId }) => {
-      if (receiverId) {
-        socket.to(receiverId).emit("stop-typing", { senderId: socket.userId });
-      }
-    });
+    socket.on("stop-typing", (payload) => {
+      if (!payload) return;
+      const { conversationId, userId, receiverId } = payload;
+      const uid = userId || socket.userId;
 
-    // Lắng nghe trạng thái Dừng gõ (stop_typing cũ)
-    socket.on("stop_typing", async ({ conversationId, senderId }) => {
-      const members = await prisma.conversationMembers.findMany({
-        where: { conversationId },
-      });
-      members.forEach((m) => {
-        if (m.userId !== senderId) {
-          io.to(m.userId).emit("stop_typing", { conversationId });
-        }
-      });
+      if (conversationId) {
+        socket.to(conversationId).emit("stop_typing", {
+          conversationId,
+          userId: uid,
+        });
+      } else if (receiverId) {
+        socket.to(receiverId).emit("stop-typing", { senderId: uid });
+      }
     });
 
     // 4.5 Lắng nghe sự kiện Đã xem tin nhắn
