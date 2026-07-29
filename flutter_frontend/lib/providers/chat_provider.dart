@@ -66,8 +66,31 @@ class ChatProvider extends ChangeNotifier {
 
     _reactedSubscription = SocketService.onMessageReacted.listen((data) {
       final msgId = data['messageId']?.toString();
-      final emoji = data['emoji']?.toString();
-      if (msgId != null && emoji != null) {
+      final rawReactions = data['reactions'];
+      if (msgId != null && rawReactions != null) {
+        Map<String, String> reactions = {};
+        if (rawReactions is Map) {
+          rawReactions.forEach((key, value) {
+            reactions[key.toString()] = value.toString();
+          });
+        }
+        final idx = messages.indexWhere((m) => m.id == msgId);
+        if (idx != -1) {
+          final old = messages[idx];
+          messages[idx] = MessageModel(
+            id: old.id,
+            conversationId: old.conversationId,
+            senderId: old.senderId,
+            type: old.type,
+            content: old.content,
+            imageUrl: old.imageUrl,
+            audioUrl: old.audioUrl,
+            isRead: old.isRead,
+            replyMessageId: old.replyMessageId,
+            reactions: reactions,
+            createdAt: old.createdAt,
+          );
+        }
         SocketService.playReactSound();
         notifyListeners();
       }

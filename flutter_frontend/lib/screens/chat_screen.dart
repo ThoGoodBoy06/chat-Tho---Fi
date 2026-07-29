@@ -113,6 +113,74 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
+  Map<String, int> _aggregateReactions(Map<String, String> reactions) {
+    final counts = <String, int>{};
+    for (final emoji in reactions.values) {
+      counts[emoji] = (counts[emoji] ?? 0) + 1;
+    }
+    return counts;
+  }
+
+  Widget _buildReactionBadges(Map<String, String> reactions, {double fontSize = 11, bool isOwnMessage = false, EdgeInsetsGeometry? margin}) {
+    if (reactions.isEmpty) return const SizedBox.shrink();
+    final aggregated = _aggregateReactions(reactions);
+    final entries = aggregated.entries.toList();
+    return Container(
+      margin: margin ?? EdgeInsets.zero,
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: entries.map((e) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 1),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(e.key, style: TextStyle(fontSize: fontSize + 2)),
+                if (e.value > 1)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 1),
+                    child: Text(
+                      '${e.value}',
+                      style: TextStyle(
+                        fontSize: fontSize - 2,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF65676B),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  void _showFlyingEmoji(BuildContext context, Offset startPosition, String emoji) {
+    final overlay = Overlay.of(context);
+    late OverlayEntry entry;
+    entry = OverlayEntry(
+      builder: (_) => _FlyingEmojiWidget(
+        from: startPosition,
+        emoji: emoji,
+        onComplete: () => entry.remove(),
+      ),
+    );
+    overlay.insert(entry);
+  }
+
   int _lastMessageCount = 0;
 
   void _scrollToBottom() {
@@ -187,14 +255,24 @@ class _ChatScreenState extends State<ChatScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               ...['❤️', '😆', '😮', '😢', '😡', '👍'].map((emoji) {
+                                final emojiKey = GlobalKey();
                                 return GestureDetector(
                                   onTap: () {
+                                    final renderBox = emojiKey.currentContext?.findRenderObject() as RenderBox?;
+                                    if (renderBox != null) {
+                                      final position = renderBox.localToGlobal(Offset.zero);
+                                      final center = Offset(
+                                        position.dx + renderBox.size.width / 2,
+                                        position.dy + renderBox.size.height / 2,
+                                      );
+                                      _showFlyingEmoji(context, center, emoji);
+                                    }
                                     Navigator.pop(context);
                                     provider.reactToMessage(msg.id, emoji);
                                   },
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(horizontal: 5),
-                                    child: Text(emoji, style: const TextStyle(fontSize: 26)),
+                                    child: Text(emoji, key: emojiKey, style: const TextStyle(fontSize: 26)),
                                   ),
                                 );
                               }),
@@ -251,27 +329,24 @@ class _ChatScreenState extends State<ChatScreen> {
                                 ),
                               ),
                             ),
-                            // Badge thả cảm xúc ở góc bong bóng tin nhắn (y chang trong hình)
-                            Positioned(
-                              bottom: -8,
-                              right: isMe ? null : 8,
-                              left: isMe ? 8 : null,
-                              child: Container(
-                                padding: const EdgeInsets.all(3),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.12),
-                                      blurRadius: 6,
-                                      offset: const Offset(0, 2),
+                            if (msg.reactions.isNotEmpty)
+                              Positioned(
+                                bottom: -10,
+                                right: isMe ? null : 8,
+                                left: isMe ? 8 : null,
+                                child: AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 200),
+                                  transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+                                  child: KeyedSubtree(
+                                    key: ValueKey('ctx_reactions_${msg.reactions.hashCode}'),
+                                    child: _buildReactionBadges(
+                                      msg.reactions,
+                                      fontSize: 12,
+                                      isOwnMessage: isMe,
                                     ),
-                                  ],
+                                  ),
                                 ),
-                                child: const Text('❤️', style: TextStyle(fontSize: 12)),
                               ),
-                            ),
                           ],
                         ),
                         const SizedBox(height: 14),
@@ -912,8 +987,12 @@ class _ChatScreenState extends State<ChatScreen> {
                                   const SizedBox(width: 8),
                                 ],
                                 Flexible(
-                                  child: GestureDetector(
+                                  child:                                   GestureDetector(
                                     onLongPress: () => _showMessengerStyleContextMenu(context, msg, provider, isMe),
+                                    onDoubleTapDown: (details) {
+                                      _showFlyingEmoji(context, details.globalPosition, '❤️');
+                                    },
+                                    onDoubleTap: () => provider.reactToMessage(msg.id, '❤️'),
                                     child: Column(
                                       crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                                       children: [
@@ -938,24 +1017,23 @@ class _ChatScreenState extends State<ChatScreen> {
                                                 ),
                                               ),
                                             ),
-                                            Positioned(
-                                              right: -4,
-                                              bottom: -6,
-                                              child: Container(
-                                                padding: const EdgeInsets.all(2),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.white,
-                                                  shape: BoxShape.circle,
-                                                  boxShadow: [
-                                                    BoxShadow(
-                                                      color: Colors.black.withOpacity(0.12),
-                                                      blurRadius: 4,
+                                            if (msg.reactions.isNotEmpty)
+                                              Positioned(
+                                                right: -4,
+                                                bottom: -8,
+                                                child: AnimatedSwitcher(
+                                                  duration: const Duration(milliseconds: 200),
+                                                  transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+                                                  child: KeyedSubtree(
+                                                    key: ValueKey('chat_reactions_${msg.reactions.hashCode}'),
+                                                    child: _buildReactionBadges(
+                                                      msg.reactions,
+                                                      fontSize: 10,
+                                                      isOwnMessage: isMe,
                                                     ),
-                                                  ],
+                                                  ),
                                                 ),
-                                                child: const Text('❤️', style: TextStyle(fontSize: 11)),
                                               ),
-                                            ),
                                           ],
                                         ),
                                         if (isMe) ...[
@@ -2655,6 +2733,96 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _FlyingEmojiWidget extends StatefulWidget {
+  final Offset from;
+  final String emoji;
+  final VoidCallback onComplete;
+
+  const _FlyingEmojiWidget({
+    Key? key,
+    required this.from,
+    required this.emoji,
+    required this.onComplete,
+  }) : super(key: key);
+
+  @override
+  State<_FlyingEmojiWidget> createState() => _FlyingEmojiWidgetState();
+}
+
+class _FlyingEmojiWidgetState extends State<_FlyingEmojiWidget> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<Offset> _positionAnimation;
+  late Animation<double> _opacityAnimation;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+
+    _positionAnimation = Tween<Offset>(
+      begin: widget.from,
+      end: widget.from - const Offset(0, 140),
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+    ));
+
+    _opacityAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.5, 1.0, curve: Curves.easeOut),
+    ));
+
+    _scaleAnimation = Tween<double>(
+      begin: 0.6,
+      end: 1.3,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.0, 0.3, curve: Curves.easeOutBack),
+    ));
+
+    _controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        widget.onComplete();
+      }
+    });
+
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Positioned(
+          left: _positionAnimation.value.dx,
+          top: _positionAnimation.value.dy,
+          child: Transform.scale(
+            scale: _scaleAnimation.value,
+            child: Opacity(
+              opacity: _opacityAnimation.value,
+              child: Text(widget.emoji, style: const TextStyle(fontSize: 36)),
+            ),
+          ),
+        );
+      },
     );
   }
 }

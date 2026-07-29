@@ -63,7 +63,7 @@
     },
     {
       "name": "flutter",
-      "rootUri": "file:///C:/Du_an_nhantin_goidien/.flutter_sdk/flutter/packages/flutter",
+      "rootUri": "file:///c:/Du_an_nhantin_goidien/.flutter_sdk/flutter/packages/flutter",
       "packageUri": "lib/",
       "languageVersion": "3.3"
     },
@@ -75,13 +75,13 @@
     },
     {
       "name": "flutter_test",
-      "rootUri": "file:///C:/Du_an_nhantin_goidien/.flutter_sdk/flutter/packages/flutter_test",
+      "rootUri": "file:///c:/Du_an_nhantin_goidien/.flutter_sdk/flutter/packages/flutter_test",
       "packageUri": "lib/",
       "languageVersion": "3.3"
     },
     {
       "name": "flutter_web_plugins",
-      "rootUri": "file:///C:/Du_an_nhantin_goidien/.flutter_sdk/flutter/packages/flutter_web_plugins",
+      "rootUri": "file:///c:/Du_an_nhantin_goidien/.flutter_sdk/flutter/packages/flutter_web_plugins",
       "packageUri": "lib/",
       "languageVersion": "3.2"
     },
@@ -273,7 +273,7 @@
     },
     {
       "name": "sky_engine",
-      "rootUri": "file:///C:/Du_an_nhantin_goidien/.flutter_sdk/flutter/bin/cache/pkg/sky_engine",
+      "rootUri": "file:///c:/Du_an_nhantin_goidien/.flutter_sdk/flutter/bin/cache/pkg/sky_engine",
       "packageUri": "lib/",
       "languageVersion": "3.2"
     },
@@ -362,10 +362,10 @@
       "languageVersion": "3.0"
     }
   ],
-  "generated": "2026-07-25T06:20:21.938530Z",
+  "generated": "2026-07-29T11:06:43.416304Z",
   "generator": "pub",
   "generatorVersion": "3.4.0",
-  "flutterRoot": "file:///C:/Du_an_nhantin_goidien/.flutter_sdk/flutter",
+  "flutterRoot": "file:///c:/Du_an_nhantin_goidien/.flutter_sdk/flutter",
   "flutterVersion": "3.22.0",
   "pubCache": "file:///C:/Users/MSI%20PC/AppData/Local/Pub/Cache"
 }

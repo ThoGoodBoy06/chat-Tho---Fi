@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class UserModel {
   final String id;
   final String username;
@@ -43,6 +45,7 @@ class MessageModel {
   final String? audioUrl;
   final bool isRead;
   final String? replyMessageId;
+  final Map<String, String> reactions;
   final DateTime createdAt;
 
   MessageModel({
@@ -55,6 +58,7 @@ class MessageModel {
     this.audioUrl,
     this.isRead = false,
     this.replyMessageId,
+    this.reactions = const {},
     required this.createdAt,
   });
 
@@ -71,6 +75,23 @@ class MessageModel {
       aud = contentStr;
     }
 
+    Map<String, String> parsedReactions = {};
+    final rawReactions = json['reactions'];
+    if (rawReactions is Map) {
+      rawReactions.forEach((key, value) {
+        parsedReactions[key.toString()] = value.toString();
+      });
+    } else if (rawReactions is String && rawReactions.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(rawReactions);
+        if (decoded is Map) {
+          decoded.forEach((key, value) {
+            parsedReactions[key.toString()] = value.toString();
+          });
+        }
+      } catch (_) {}
+    }
+
     return MessageModel(
       id: json['id']?.toString() ?? '',
       conversationId: json['conversationId']?.toString(),
@@ -81,6 +102,7 @@ class MessageModel {
       audioUrl: aud,
       isRead: json['isRead'] == true,
       replyMessageId: json['replyMessageId']?.toString(),
+      reactions: parsedReactions,
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
           : DateTime.now(),
