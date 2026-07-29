@@ -10,7 +10,18 @@ class SocketService {
   static String? _currentUserId;
   static String? _currentRoomId;
 
+  static final _incomingCallController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _callAcceptedController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _callRejectedController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _callEndedController = StreamController<void>.broadcast();
+  static final _webrtcSignalController = StreamController<Map<String, dynamic>>.broadcast();
+
   static Stream<Map<String, dynamic>> get onMessageReceived => _messageController.stream;
+  static Stream<Map<String, dynamic>> get onIncomingCall => _incomingCallController.stream;
+  static Stream<Map<String, dynamic>> get onCallAccepted => _callAcceptedController.stream;
+  static Stream<Map<String, dynamic>> get onCallRejected => _callRejectedController.stream;
+  static Stream<void> get onCallEnded => _callEndedController.stream;
+  static Stream<Map<String, dynamic>> get onWebrtcSignal => _webrtcSignalController.stream;
 
   static Future<void> connect({String? userId}) async {
     final token = await ApiService.getToken();
@@ -83,6 +94,42 @@ class SocketService {
         _messageController.add(data);
       } else if (data is Map) {
         _messageController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('incoming_call', (data) {
+      print('📞 Socket incoming_call: $data');
+      if (data is Map) {
+        _incomingCallController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('call_accepted', (data) {
+      print('✅ Socket call_accepted: $data');
+      if (data is Map) {
+        _callAcceptedController.add(Map<String, dynamic>.from(data));
+      } else {
+        _callAcceptedController.add({});
+      }
+    });
+
+    socket?.on('call_rejected', (data) {
+      print('❌ Socket call_rejected: $data');
+      if (data is Map) {
+        _callRejectedController.add(Map<String, dynamic>.from(data));
+      } else {
+        _callRejectedController.add({});
+      }
+    });
+
+    socket?.on('call_ended', (_) {
+      print('🔴 Socket call_ended');
+      _callEndedController.add(null);
+    });
+
+    socket?.on('webrtc_signal', (data) {
+      if (data is Map) {
+        _webrtcSignalController.add(Map<String, dynamic>.from(data));
       }
     });
 
