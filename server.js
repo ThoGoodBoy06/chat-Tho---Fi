@@ -105,30 +105,13 @@ if (RENDER_PING_URL) {
     }, 10 * 60 * 1000); // 10 phút / lần
 }
 
-// API test trạng thái backend
-app.get("/api/info", async(req, res) => {
-    try {
-        const userCount = await prisma.users.count();
-        res.json({
-            message: "🚀 Backend Chat App đang hoạt động tuyệt vời!",
-            database: "Đã kết nối PostgreSQL",
-            totalUsers: userCount,
-        });
-    } catch (error) {
-        res.status(500).json({ error: "Lỗi kết nối Database", details: error.message });
-    }
-});
-
-// Serve index.html cho tất cả các trang web (tránh hiện JSON hoặc bị màn hình trắng)
-app.get("*", (req, res, next) => {
-    if (req.path.startsWith("/api")) {
-        return next();
-    }
+// Serve index.html cho trang chủ /
+app.get("/", (req, res) => {
     const indexPath = path.join(staticPath, "index.html");
     if (fs.existsSync(indexPath)) {
         return res.sendFile(indexPath);
     }
-    res.status(404).send("File not found");
+    res.status(404).send("File index.html not found");
 });
 
 // API phụ trợ (Danh bạ) để xem danh sách tất cả người dùng và lấy ID dễ dàng
