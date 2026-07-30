@@ -44,6 +44,8 @@ class MessageModel {
   final String? imageUrl;
   final String? audioUrl;
   final bool isRead;
+  final bool isDelivered;
+  final bool isRecalled;
   final String? replyMessageId;
   final Map<String, String> reactions;
   final DateTime createdAt;
@@ -57,6 +59,8 @@ class MessageModel {
     this.imageUrl,
     this.audioUrl,
     this.isRead = false,
+    this.isDelivered = false,
+    this.isRecalled = false,
     this.replyMessageId,
     this.reactions = const {},
     required this.createdAt,
@@ -92,6 +96,10 @@ class MessageModel {
       } catch (_) {}
     }
 
+    final read = json['isRead'] == true;
+    final delivered = json['isDelivered'] == true || read;
+    final recalled = json['isRecalled'] == true;
+
     return MessageModel(
       id: json['id']?.toString() ?? '',
       conversationId: json['conversationId']?.toString(),
@@ -100,7 +108,9 @@ class MessageModel {
       content: contentStr,
       imageUrl: img,
       audioUrl: aud,
-      isRead: json['isRead'] == true,
+      isRead: read,
+      isDelivered: delivered,
+      isRecalled: recalled,
       replyMessageId: json['replyMessageId']?.toString(),
       reactions: parsedReactions,
       createdAt: json['createdAt'] != null
