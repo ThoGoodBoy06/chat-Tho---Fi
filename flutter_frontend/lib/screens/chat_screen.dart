@@ -53,6 +53,7 @@ class _ChatScreenState extends State<ChatScreen> {
       final provider = Provider.of<ChatProvider>(context, listen: false);
       provider.fetchConversations();
       provider.onNewMessageReceived = _scrollToBottom;
+      provider.onConversationSelected = _jumpToBottom;
       _initCallListeners();
     });
     _textController.addListener(_onTextChanged);
@@ -103,7 +104,9 @@ class _ChatScreenState extends State<ChatScreen> {
   void dispose() {
     _debounceTimer?.cancel();
     try {
-      Provider.of<ChatProvider>(context, listen: false).onNewMessageReceived = null;
+      final provider = Provider.of<ChatProvider>(context, listen: false);
+      provider.onNewMessageReceived = null;
+      provider.onConversationSelected = null;
     } catch (_) {}
     _textController.removeListener(_onTextChanged);
     _scrollController.removeListener(_onScroll);
@@ -183,13 +186,26 @@ class _ChatScreenState extends State<ChatScreen> {
 
   int _lastMessageCount = 0;
 
+  void _jumpToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.hasClients) {
+            _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+          }
+        });
+      }
+    });
+  }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOutCubic,
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
         );
       }
     });

@@ -22,6 +22,9 @@ class ChatProvider extends ChangeNotifier {
   /// Callback để thông báo cho UI cuộn xuống khi có tin nhắn mới
   VoidCallback? onNewMessageReceived;
 
+  /// Callback khi mở cuộc trò chuyện mới để nhảy ngay xuống tin nhắn mới nhất
+  VoidCallback? onConversationSelected;
+
   ChatProvider() {
     _initSocket();
   }
@@ -263,8 +266,8 @@ class ChatProvider extends ChangeNotifier {
       isLoadingMessages = false;
       notifyListeners();
 
-      // Cuộn xuống sau khi load xong
-      onNewMessageReceived?.call();
+      // Nhảy ngay xuống tin nhắn mới nhất khi chọn đoạn chat
+      onConversationSelected?.call();
     }
   }
 
