@@ -47,7 +47,7 @@ class ApiService {
       Uri.parse('$baseUrl/auth/login'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'identifier': identifier, 'password': password}),
-    ).timeout(const Duration(seconds: 10));
+    ).timeout(const Duration(seconds: 45));
     return jsonDecode(response.body);
   }
 
@@ -57,7 +57,7 @@ class ApiService {
       Uri.parse('$baseUrl/auth/register'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(data),
-    ).timeout(const Duration(seconds: 10));
+    ).timeout(const Duration(seconds: 45));
     return jsonDecode(response.body);
   }
 
@@ -67,7 +67,7 @@ class ApiService {
     final response = await http.get(
       Uri.parse('$baseUrl/auth/me'),
       headers: headers,
-    ).timeout(const Duration(seconds: 8));
+    ).timeout(const Duration(seconds: 45));
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     }
@@ -80,7 +80,7 @@ class ApiService {
     final response = await http.get(
       Uri.parse('$baseUrl/chat/conversations'),
       headers: headers,
-    ).timeout(const Duration(seconds: 8));
+    ).timeout(const Duration(seconds: 45));
     if (response.statusCode == 200) {
       final decoded = jsonDecode(response.body);
       if (decoded is Map<String, dynamic> && decoded['data'] is List) {
@@ -98,7 +98,7 @@ class ApiService {
     final response = await http.get(
       Uri.parse('$baseUrl/chat/$conversationId/messages?limit=$limit'),
       headers: headers,
-    ).timeout(const Duration(seconds: 8));
+    ).timeout(const Duration(seconds: 45));
     if (response.statusCode == 200) {
       return jsonDecode(response.body) as Map<String, dynamic>;
     }
@@ -112,7 +112,7 @@ class ApiService {
       Uri.parse('$baseUrl/chat/conversations'),
       headers: headers,
       body: jsonEncode({'receiverId': receiverId}),
-    ).timeout(const Duration(seconds: 8));
+    ).timeout(const Duration(seconds: 45));
     return jsonDecode(response.body);
   }
 
@@ -131,7 +131,7 @@ class ApiService {
       Uri.parse('$baseUrl/chat/$conversationId/messages'),
       headers: headers,
       body: jsonEncode(bodyMap),
-    ).timeout(const Duration(seconds: 8));
+    ).timeout(const Duration(seconds: 45));
     return jsonDecode(response.body);
   }
 
@@ -154,8 +154,26 @@ class ApiService {
       ),
     );
     request.fields['mimeType'] = mimeType;
-    final streamedResponse = await request.send().timeout(const Duration(seconds: 30));
+    final streamedResponse = await request.send().timeout(const Duration(seconds: 60));
     final response = await http.Response.fromStream(streamedResponse);
     return jsonDecode(response.body);
+  }
+
+  // Get all users (Contacts)
+  static Future<List<dynamic>> getUsers() async {
+    final headers = await _getHeaders();
+    final response = await http.get(
+      Uri.parse('$baseUrl/users'),
+      headers: headers,
+    ).timeout(const Duration(seconds: 45));
+    if (response.statusCode == 200) {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic> && decoded['data'] is List) {
+        return decoded['data'] as List<dynamic>;
+      } else if (decoded is List) {
+        return decoded as List<dynamic>;
+      }
+    }
+    return [];
   }
 }

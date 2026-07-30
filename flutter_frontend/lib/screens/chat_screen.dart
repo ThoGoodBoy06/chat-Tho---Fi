@@ -1531,83 +1531,200 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  void _showNewChatDialog(ChatProvider provider) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Tạo cuộc trò chuyện mới',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close_rounded, color: Color(0xFF8E8E93)),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: 360,
+            height: 380,
+            child: FutureBuilder<List<dynamic>>(
+              future: ApiService.getUsers(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator(color: Color(0xFF007AFF)));
+                }
+                final users = snapshot.data ?? [];
+                final filteredUsers = users.where((u) => u['id']?.toString() != provider.currentUser?.id).toList();
+
+                if (filteredUsers.isEmpty) {
+                  return const Center(
+                    child: Text('Chưa có người dùng nào khác trong hệ thống', style: TextStyle(color: Color(0xFF8E8E93))),
+                  );
+                }
+
+                return ListView.builder(
+                  itemCount: filteredUsers.length,
+                  itemBuilder: (context, index) {
+                    final u = filteredUsers[index];
+                    final name = u['fullName'] ?? u['username'] ?? 'Người dùng';
+                    final uid = u['id']?.toString() ?? '';
+
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      leading: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: _getAvatarGradient(name),
+                        ),
+                        child: Center(
+                          child: Text(
+                            _getInitials(name),
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                          ),
+                        ),
+                      ),
+                      title: Text(
+                        name,
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Colors.black),
+                      ),
+                      subtitle: Text('@${u['username'] ?? ''}', style: const TextStyle(color: Color(0xFF8E8E93), fontSize: 13)),
+                      trailing: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF007AFF),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Text('Nhắn tin', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                      ),
+                      onTap: () async {
+                        Navigator.pop(context);
+                        await provider.startPrivateChat(uid);
+                      },
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   // TAB 1: Danh bạ
   Widget _buildContactsTab(ChatProvider provider) {
     return Container(
-      color: const Color(0xFFF0F2F5),
-      padding: const EdgeInsets.all(24),
+      color: Colors.white,
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.people_alt_rounded, color: Color(0xFF0068FF), size: 28),
+              const Icon(Icons.people_alt_rounded, color: Color(0xFF007AFF), size: 28),
               const SizedBox(width: 12),
               const Text(
-                'Danh Bạ Bạn Bè',
-                style: TextStyle(color: Color(0xFF0F172A), fontSize: 22, fontWeight: FontWeight.bold),
+                'Danh Bạ Người Dùng',
+                style: TextStyle(color: Color(0xFF000000), fontSize: 22, fontWeight: FontWeight.bold),
               ),
               const Spacer(),
               ElevatedButton.icon(
-                onPressed: () {},
+                onPressed: () => _showNewChatDialog(provider),
                 icon: const Icon(Icons.person_add_rounded, size: 18),
-                label: const Text('Thêm Bạn'),
+                label: const Text('Tìm Mới'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0068FF),
+                  backgroundColor: const Color(0xFF007AFF),
+                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           Expanded(
-            child: ListView.builder(
-              itemCount: provider.conversations.length,
-              itemBuilder: (context, index) {
-                final conv = provider.conversations[index];
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 2)),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 24,
-                        backgroundColor: const Color(0xFF0068FF),
-                        child: Text(conv.name.isNotEmpty ? conv.name[0].toUpperCase() : 'U', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
+            child: FutureBuilder<List<dynamic>>(
+              future: ApiService.getUsers(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator(color: Color(0xFF007AFF)));
+                }
+                final users = snapshot.data ?? [];
+                final filteredUsers = users.where((u) => u['id']?.toString() != provider.currentUser?.id).toList();
+
+                if (filteredUsers.isEmpty) {
+                  return const Center(
+                    child: Text('Chưa có người dùng nào khác trong hệ thống', style: TextStyle(color: Color(0xFF8E8E93), fontSize: 14)),
+                  );
+                }
+
+                return ListView.builder(
+                  itemCount: filteredUsers.length,
+                  itemBuilder: (context, index) {
+                    final u = filteredUsers[index];
+                    final name = u['fullName'] ?? u['username'] ?? 'Người dùng';
+                    final uid = u['id']?.toString() ?? '';
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0x0F000000)),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(conv.name, style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 16)),
-                            const SizedBox(height: 4),
-                            const Text('Tài khoản đã xác thực', style: TextStyle(color: Color(0xFF64748B), fontSize: 13)),
-                          ],
-                        ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: _getAvatarGradient(name),
+                            ),
+                            child: Center(
+                              child: Text(
+                                _getInitials(name),
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(name, style: const TextStyle(color: Color(0xFF000000), fontWeight: FontWeight.bold, fontSize: 16)),
+                                const SizedBox(height: 2),
+                                Text('@${u['username'] ?? ''}', style: const TextStyle(color: Color(0xFF8E8E93), fontSize: 13)),
+                              ],
+                            ),
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              setState(() => _currentTabIndex = 0);
+                              await provider.startPrivateChat(uid);
+                            },
+                            icon: const Icon(Icons.chat_bubble_rounded, size: 16),
+                            label: const Text('Nhắn tin'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF007AFF),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ],
                       ),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          setState(() => _currentTabIndex = 0);
-                          provider.selectConversation(conv);
-                        },
-                        icon: const Icon(Icons.chat_bubble_rounded, size: 16),
-                        label: const Text('Nhắn tin'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFF1F5F9),
-                          foregroundColor: const Color(0xFF0F172A),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                      ),
-                    ],
-                  ),
+                    );
+                  },
                 );
               },
             ),
@@ -1842,43 +1959,6 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
-  void _showNewChatDialog(ChatProvider provider) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        final controller = TextEditingController();
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Bắt đầu cuộc trò chuyện mới', style: TextStyle(color: Color(0xFF050505), fontSize: 18, fontWeight: FontWeight.bold)),
-          content: TextField(
-            controller: controller,
-            decoration: const InputDecoration(
-              hintText: 'Nhập Username người nhận...',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Hủy'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0068FF)),
-              onPressed: () async {
-                final uname = controller.text.trim();
-                if (uname.isNotEmpty) {
-                  Navigator.pop(context);
-                  await provider.startPrivateChat(uname);
-                }
-              },
-              child: const Text('Bắt đầu'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   void _showMediaUploadOptions(ChatProvider provider) {
     showModalBottomSheet(
       context: context,
