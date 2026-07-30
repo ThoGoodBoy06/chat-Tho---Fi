@@ -25,6 +25,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF0F2F5),
       body: Container(
@@ -40,64 +43,65 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
+            padding: EdgeInsets.all(isMobile ? 16.0 : 24.0),
             child: Container(
-              constraints: const BoxConstraints(maxWidth: 440),
-              padding: const EdgeInsets.all(36.0),
+              constraints: const BoxConstraints(maxWidth: 420),
+              padding: EdgeInsets.all(isMobile ? 20.0 : 32.0),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.06),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
+                    blurRadius: 20,
+                    offset: const Offset(0, 6),
                   ),
                 ],
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Zalo App Logo
+                  // App Logo
                   Container(
-                    width: 76,
-                    height: 76,
+                    width: isMobile ? 56 : 72,
+                    height: isMobile ? 56 : 72,
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [Color(0xFF0068FF), Color(0xFF0091FF)],
+                        colors: [Color(0xFF007AFF), Color(0xFF0055FF)],
                       ),
-                      borderRadius: BorderRadius.circular(22),
+                      borderRadius: BorderRadius.circular(18),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF0068FF).withOpacity(0.3),
-                          blurRadius: 16,
-                          offset: const Offset(0, 6),
+                          color: const Color(0xFF007AFF).withOpacity(0.3),
+                          blurRadius: 14,
+                          offset: const Offset(0, 5),
                         ),
                       ],
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.chat_bubble_rounded,
-                      size: 42,
+                      size: isMobile ? 32 : 38,
                       color: Colors.white,
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  const Text(
+                  SizedBox(height: isMobile ? 14 : 18),
+                  Text(
                     'Chat Tho-Fi',
                     style: TextStyle(
-                      fontSize: 30,
+                      fontSize: isMobile ? 24 : 28,
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFF0F172A),
-                      letterSpacing: 0.5,
+                      color: const Color(0xFF0F172A),
+                      letterSpacing: -0.3,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
                     _isRegisterMode ? 'Đăng ký tài khoản trải nghiệm ngay' : 'Đăng nhập để tiếp tục trò chuyện',
-                    style: const TextStyle(fontSize: 14, color: Color(0xFF64748B)),
+                    style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                    textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 32),
+                  SizedBox(height: isMobile ? 20 : 28),
 
                   if (_errorMessage != null) ...[
                     Container(

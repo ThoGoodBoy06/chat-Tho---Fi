@@ -1624,32 +1624,45 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget _buildContactsTab(ChatProvider provider) {
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Icon(Icons.people_alt_rounded, color: Color(0xFF007AFF), size: 28),
-              const SizedBox(width: 12),
-              const Text(
-                'Danh Bạ Người Dùng',
-                style: TextStyle(color: Color(0xFF000000), fontSize: 22, fontWeight: FontWeight.bold),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Icon(Icons.people_alt_rounded, color: Color(0xFF007AFF), size: 24),
+                  SizedBox(width: 8),
+                  Text(
+                    'Danh Bạ',
+                    style: TextStyle(color: Color(0xFF000000), fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                ],
               ),
-              const Spacer(),
-              ElevatedButton.icon(
-                onPressed: () => _showNewChatDialog(provider),
-                icon: const Icon(Icons.person_add_rounded, size: 18),
-                label: const Text('Tìm Mới'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF007AFF),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              GestureDetector(
+                onTap: () => _showNewChatDialog(provider),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF007AFF),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(Icons.person_add_rounded, size: 15, color: Colors.white),
+                      SizedBox(width: 4),
+                      Text('Tìm Mới', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Expanded(
             child: FutureBuilder<List<dynamic>>(
               future: ApiService.getUsers(),
@@ -1662,7 +1675,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
                 if (filteredUsers.isEmpty) {
                   return const Center(
-                    child: Text('Chưa có người dùng nào khác trong hệ thống', style: TextStyle(color: Color(0xFF8E8E93), fontSize: 14)),
+                    child: Text('Chưa có người dùng nào khác trong hệ thống', style: TextStyle(color: Color(0xFF8E8E93), fontSize: 13)),
                   );
                 }
 
@@ -1674,18 +1687,25 @@ class _ChatScreenState extends State<ChatScreen> {
                     final uid = u['id']?.toString() ?? '';
 
                     return Container(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(color: const Color(0x0F000000)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.02),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: Row(
                         children: [
                           Container(
-                            width: 48,
-                            height: 48,
+                            width: 42,
+                            height: 42,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               gradient: _getAvatarGradient(name),
@@ -1693,32 +1713,54 @@ class _ChatScreenState extends State<ChatScreen> {
                             child: Center(
                               child: Text(
                                 _getInitials(name),
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 14),
+                          const SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(name, style: const TextStyle(color: Color(0xFF000000), fontWeight: FontWeight.bold, fontSize: 16)),
+                                Text(
+                                  name,
+                                  style: const TextStyle(color: Color(0xFF000000), fontWeight: FontWeight.w600, fontSize: 15),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                                 const SizedBox(height: 2),
-                                Text('@${u['username'] ?? ''}', style: const TextStyle(color: Color(0xFF8E8E93), fontSize: 13)),
+                                Text(
+                                  '@${u['username'] ?? ''}',
+                                  style: const TextStyle(color: Color(0xFF8E8E93), fontSize: 12),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ],
                             ),
                           ),
-                          ElevatedButton.icon(
-                            onPressed: () async {
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () async {
                               setState(() => _currentTabIndex = 0);
                               await provider.startPrivateChat(uid);
                             },
-                            icon: const Icon(Icons.chat_bubble_rounded, size: 16),
-                            label: const Text('Nhắn tin'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF007AFF),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                              decoration: BoxDecoration(
+                                color: const Color(0x0F007AFF),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: const [
+                                  Icon(Icons.chat_bubble_rounded, size: 14, color: Color(0xFF007AFF)),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Nhắn tin',
+                                    style: TextStyle(color: Color(0xFF007AFF), fontSize: 12, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],
