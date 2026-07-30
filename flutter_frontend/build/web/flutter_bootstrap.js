@@ -37,10 +37,6 @@ _flutter.buildConfig = {"engineRevision":"0cd610717bde95fd88343c64f81c11ba4e5c00
 
 _flutter.loader.load({
   serviceWorkerSettings: {
-<<<<<<< HEAD
-    serviceWorkerVersion: "2652901070" /* Flutter's service worker is deprecated and will be removed in a future Flutter release. */
-=======
-    serviceWorkerVersion: "714498519"
->>>>>>> e41d394 (fix: Instant jump to bottom when opening conversation)
+    serviceWorkerVersion: "84671431" /* Flutter's service worker is deprecated and will be removed in a future Flutter release. */
   }
 });
