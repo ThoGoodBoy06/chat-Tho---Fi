@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'providers/chat_provider.dart';
 import 'services/api_service.dart';
 import 'services/socket_service.dart';
@@ -88,13 +89,14 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.light,
-        primaryColor: const Color(0xFF0068FF),
-        scaffoldBackgroundColor: const Color(0xFFF0F2F5),
+        primaryColor: const Color(0xFF007AFF),
+        scaffoldBackgroundColor: const Color(0xFFFFFFFF),
+        fontFamily: GoogleFonts.inter().fontFamily,
       ),
       home: _isCheckingAuth
           ? const Scaffold(
               body: Center(
-                child: CircularProgressIndicator(color: Color(0xFF0068FF)),
+                child: CircularProgressIndicator(color: Color(0xFF007AFF)),
               ),
             )
           : _isLoggedIn
