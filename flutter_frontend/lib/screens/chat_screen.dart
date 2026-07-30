@@ -969,82 +969,162 @@ class _ChatScreenState extends State<ChatScreen> {
                             ),
                           Padding(
                             padding: const EdgeInsets.only(bottom: 12),
-                            child: Row(
-                              mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                if (!isMe) ...[
-                                  CircleAvatar(
-                                    radius: 14,
-                                    backgroundColor: primaryColor,
-                                    backgroundImage: (conv.avatar != null && conv.avatar!.isNotEmpty)
-                                        ? NetworkImage(conv.avatar!)
-                                        : null,
-                                    child: (conv.avatar == null || conv.avatar!.isEmpty)
-                                        ? Text(conv.name.isNotEmpty ? conv.name[0].toUpperCase() : 'U', style: const TextStyle(fontSize: 10, color: Colors.white))
-                                        : null,
-                                  ),
-                                  const SizedBox(width: 8),
-                                ],
-                                Flexible(
-                                  child:                                   GestureDetector(
-                                    onLongPress: () => _showMessengerStyleContextMenu(context, msg, provider, isMe),
-                                    onDoubleTapDown: (details) {
-                                      _showFlyingEmoji(context, details.globalPosition, '❤️');
-                                    },
-                                    onDoubleTap: () => provider.reactToMessage(msg.id, '❤️'),
-                                    child: Column(
-                                      crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                                      children: [
-                                        Stack(
-                                          clipBehavior: Clip.none,
-                                          children: [
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-                                              decoration: BoxDecoration(
-                                                gradient: isMe
-                                                    ? const LinearGradient(colors: [Color(0xFF0084FF), Color(0xFF0068FF)])
-                                                    : null,
-                                                color: isMe ? null : const Color(0xFFE4E6EB),
-                                                borderRadius: BorderRadius.circular(18),
-                                              ),
-                                              child: Text(
-                                                msg.content,
-                                                style: TextStyle(
-                                                  color: isMe ? Colors.white : const Color(0xFF050505),
-                                                  fontSize: 15,
-                                                  height: 1.3,
+                            child: _SwipeToReplyWrapper(
+                              onReply: () => provider.setReplyingToMessage(msg),
+                              child: Row(
+                                mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  if (!isMe) ...[
+                                    CircleAvatar(
+                                      radius: 14,
+                                      backgroundColor: primaryColor,
+                                      backgroundImage: (conv.avatar != null && conv.avatar!.isNotEmpty)
+                                          ? NetworkImage(conv.avatar!)
+                                          : null,
+                                      child: (conv.avatar == null || conv.avatar!.isEmpty)
+                                          ? Text(conv.name.isNotEmpty ? conv.name[0].toUpperCase() : 'U', style: const TextStyle(fontSize: 10, color: Colors.white))
+                                          : null,
+                                    ),
+                                    const SizedBox(width: 8),
+                                  ],
+                                  Flexible(
+                                    child: GestureDetector(
+                                      onLongPress: () => _showMessengerStyleContextMenu(context, msg, provider, isMe),
+                                      onSecondaryTapDown: (details) => _showMessengerStyleContextMenu(context, msg, provider, isMe),
+                                      onDoubleTapDown: (details) {
+                                        _showFlyingEmoji(context, details.globalPosition, '❤️');
+                                      },
+                                      onDoubleTap: () => provider.reactToMessage(msg.id, '❤️'),
+                                      child: Column(
+                                        crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                                        children: [
+                                          Stack(
+                                            clipBehavior: Clip.none,
+                                            children: [
+                                              Container(
+                                                constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
+                                                padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                                                decoration: BoxDecoration(
+                                                  color: msg.isRecalled
+                                                      ? Colors.transparent
+                                                      : (isMe ? null : const Color(0xFFE4E6EB)),
+                                                  gradient: (isMe && !msg.isRecalled)
+                                                      ? const LinearGradient(colors: [Color(0xFF0084FF), Color(0xFF0068FF)])
+                                                      : null,
+                                                  border: msg.isRecalled
+                                                      ? Border.all(color: const Color(0xFFCBD5E1), width: 1)
+                                                      : null,
+                                                  borderRadius: BorderRadius.circular(18),
                                                 ),
+                                                child: msg.isRecalled
+                                                    ? const Text(
+                                                        'Tin nhắn đã bị thu hồi',
+                                                        style: TextStyle(
+                                                          color: Color(0xFF8A8D91),
+                                                          fontSize: 14,
+                                                          fontStyle: FontStyle.italic,
+                                                        ),
+                                                      )
+                                                    : Column(
+                                                        crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                                                        mainAxisSize: MainAxisSize.min,
+                                                        children: [
+                                                          if (msg.replyMessageId != null && msg.replyMessageId!.isNotEmpty) ...[
+                                                            Builder(
+                                                              builder: (context) {
+                                                                MessageModel? originMsg;
+                                                                for (final m in provider.messages) {
+                                                                  if (m.id == msg.replyMessageId) {
+                                                                    originMsg = m;
+                                                                    break;
+                                                                  }
+                                                                }
+                                                                final originContent = originMsg?.content ?? 'Tin nhắn';
+                                                                final originSender = (originMsg != null && originMsg.senderId == provider.currentUser?.id)
+                                                                    ? 'Bạn'
+                                                                    : (conv.name.isNotEmpty ? conv.name : 'Người dùng');
+                                                                return Container(
+                                                                  margin: const EdgeInsets.only(bottom: 6),
+                                                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                                                  decoration: BoxDecoration(
+                                                                    color: isMe ? Colors.white.withOpacity(0.2) : Colors.black.withOpacity(0.06),
+                                                                    borderRadius: BorderRadius.circular(10),
+                                                                    border: Border(
+                                                                      left: BorderSide(
+                                                                        color: isMe ? Colors.white : const Color(0xFF0068FF),
+                                                                        width: 3,
+                                                                      ),
+                                                                    ),
+                                                                  ),
+                                                                  child: Column(
+                                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                                    mainAxisSize: MainAxisSize.min,
+                                                                    children: [
+                                                                      Text(
+                                                                        originSender,
+                                                                        style: TextStyle(
+                                                                          color: isMe ? Colors.white : const Color(0xFF0068FF),
+                                                                          fontWeight: FontWeight.bold,
+                                                                          fontSize: 11,
+                                                                        ),
+                                                                      ),
+                                                                      const SizedBox(height: 2),
+                                                                      Text(
+                                                                        originContent,
+                                                                        maxLines: 2,
+                                                                        overflow: TextOverflow.ellipsis,
+                                                                        style: TextStyle(
+                                                                          color: isMe ? Colors.white.withOpacity(0.9) : const Color(0xFF65676B),
+                                                                          fontSize: 12,
+                                                                        ),
+                                                                      ),
+                                                                    ],
+                                                                  ),
+                                                                );
+                                                              },
+                                                            ),
+                                                          ],
+                                                          Text(
+                                                            msg.content,
+                                                            style: TextStyle(
+                                                              color: isMe ? Colors.white : const Color(0xFF050505),
+                                                              fontSize: 15,
+                                                              height: 1.3,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
                                               ),
-                                            ),
-                                            if (msg.reactions.isNotEmpty)
-                                              Positioned(
-                                                right: -4,
-                                                bottom: -8,
-                                                child: AnimatedSwitcher(
-                                                  duration: const Duration(milliseconds: 200),
-                                                  transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
-                                                  child: KeyedSubtree(
-                                                    key: ValueKey('chat_reactions_${msg.reactions.hashCode}'),
-                                                    child: _buildReactionBadges(
-                                                      msg.reactions,
-                                                      fontSize: 10,
-                                                      isOwnMessage: isMe,
+                                              if (msg.reactions.isNotEmpty && !msg.isRecalled)
+                                                Positioned(
+                                                  right: -4,
+                                                  bottom: -8,
+                                                  child: AnimatedSwitcher(
+                                                    duration: const Duration(milliseconds: 200),
+                                                    transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+                                                    child: KeyedSubtree(
+                                                      key: ValueKey('chat_reactions_${msg.reactions.hashCode}'),
+                                                      child: _buildReactionBadges(
+                                                        msg.reactions,
+                                                        fontSize: 10,
+                                                        isOwnMessage: isMe,
+                                                      ),
                                                     ),
                                                   ),
                                                 ),
-                                              ),
+                                            ],
+                                          ),
+                                          if (isMe) ...[
+                                            const SizedBox(height: 4),
+                                            _buildMessageStatusIndicator(msg),
                                           ],
-                                        ),
-                                        if (isMe) ...[
-                                          const SizedBox(height: 4),
-                                          _buildMessageStatusIndicator(msg),
                                         ],
-                                      ],
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ],
@@ -1090,9 +1170,20 @@ class _ChatScreenState extends State<ChatScreen> {
             builder: (context, chatProv, child) {
               final replyMsg = chatProv.replyingToMessage;
               if (replyMsg == null) return const SizedBox.shrink();
+
+              String senderName = 'Người dùng';
+              if (replyMsg.senderId == chatProv.currentUser?.id) {
+                senderName = chatProv.currentUser?.fullName ?? 'chính mình';
+              } else if (chatProv.selectedConversation != null) {
+                senderName = chatProv.selectedConversation!.name;
+              }
+
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                color: Colors.white,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  border: Border(top: BorderSide(color: Color(0xFFE4E6EB))),
+                ),
                 child: Row(
                   children: [
                     Container(width: 4, height: 36, color: primaryColor),
@@ -1101,8 +1192,16 @@ class _ChatScreenState extends State<ChatScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Đang trả lời tin nhắn', style: TextStyle(color: primaryColor, fontSize: 12, fontWeight: FontWeight.bold)),
-                          Text(replyMsg.content, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF65676B), fontSize: 13)),
+                          Text(
+                            'Đang trả lời $senderName:',
+                            style: const TextStyle(color: primaryColor, fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            replyMsg.content,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: Color(0xFF65676B), fontSize: 13),
+                          ),
                         ],
                       ),
                     ),
@@ -2732,6 +2831,104 @@ class _ChatScreenState extends State<ChatScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SwipeToReplyWrapper extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onReply;
+
+  const _SwipeToReplyWrapper({
+    Key? key,
+    required this.child,
+    required this.onReply,
+  }) : super(key: key);
+
+  @override
+  State<_SwipeToReplyWrapper> createState() => _SwipeToReplyWrapperState();
+}
+
+class _SwipeToReplyWrapperState extends State<_SwipeToReplyWrapper> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  double _dragOffset = 0.0;
+  static const double _maxDrag = 48.0;
+  bool _triggered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onDragUpdate(DragUpdateDetails details) {
+    setState(() {
+      _dragOffset += details.delta.dx;
+      if (_dragOffset > _maxDrag) _dragOffset = _maxDrag;
+      if (_dragOffset < -_maxDrag) _dragOffset = -_maxDrag;
+
+      if (_dragOffset.abs() >= 30.0 && !_triggered) {
+        _triggered = true;
+      }
+    });
+  }
+
+  void _onDragEnd(DragEndDetails details) {
+    if (_triggered) {
+      widget.onReply();
+    }
+    _triggered = false;
+    final start = _dragOffset;
+    final animation = Tween<double>(begin: start, end: 0.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
+    );
+    animation.addListener(() {
+      setState(() {
+        _dragOffset = animation.value;
+      });
+    });
+    _controller.forward(from: 0.0);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = (_dragOffset.abs() / _maxDrag).clamp(0.0, 1.0);
+    return GestureDetector(
+      onHorizontalDragUpdate: _onDragUpdate,
+      onHorizontalDragEnd: _onDragEnd,
+      child: Stack(
+        alignment: _dragOffset > 0 ? Alignment.centerLeft : Alignment.centerRight,
+        children: [
+          if (progress > 0.05)
+            Opacity(
+              opacity: progress,
+              child: Transform.scale(
+                scale: progress,
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12),
+                  child: CircleAvatar(
+                    radius: 14,
+                    backgroundColor: Color(0xFF0068FF),
+                    child: Icon(Icons.reply_rounded, color: Colors.white, size: 16),
+                  ),
+                ),
+              ),
+            ),
+          Transform.translate(
+            offset: Offset(_dragOffset, 0),
+            child: widget.child,
+          ),
+        ],
       ),
     );
   }

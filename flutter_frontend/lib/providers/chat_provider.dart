@@ -330,11 +330,17 @@ class ChatProvider extends ChangeNotifier {
         'tempId': optId,
         'senderId': currentUser?.id,
         'senderName': currentUser?.fullName,
+        'replyMessageId': replyId,
       });
     }
 
     try {
-      final res = await ApiService.sendMessage(selectedConversation!.id, text, type: type);
+      final res = await ApiService.sendMessage(
+        selectedConversation!.id,
+        text,
+        type: type,
+        replyMessageId: replyId,
+      );
       final msgData = res['data'] ?? (res['success'] == true ? res : null);
       if (msgData is Map<String, dynamic>) {
         final realMsg = MessageModel.fromJson(msgData);

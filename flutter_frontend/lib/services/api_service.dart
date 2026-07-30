@@ -117,15 +117,20 @@ class ApiService {
   }
 
   // Send Message
-  static Future<Map<String, dynamic>> sendMessage(String conversationId, String content, {String type = 'text'}) async {
+  static Future<Map<String, dynamic>> sendMessage(
+      String conversationId, String content, {String type = 'text', String? replyMessageId}) async {
     final headers = await _getHeaders();
+    final bodyMap = <String, dynamic>{
+      'content': content,
+      'type': type,
+    };
+    if (replyMessageId != null && replyMessageId.isNotEmpty) {
+      bodyMap['replyMessageId'] = replyMessageId;
+    }
     final response = await http.post(
       Uri.parse('$baseUrl/chat/$conversationId/messages'),
       headers: headers,
-      body: jsonEncode({
-        'content': content,
-        'type': type,
-      }),
+      body: jsonEncode(bodyMap),
     ).timeout(const Duration(seconds: 8));
     return jsonDecode(response.body);
   }
