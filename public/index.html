@@ -6,16 +6,23 @@
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="Chat Tho-Fi Application">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+  
+  <!-- PWA Standalone & iOS Meta Tags -->
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Chat Tho-Fi">
+  <meta name="theme-color" content="#007AFF">
+
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="icon" type="image/png" href="/icon-192.png">
 
   <title>Chat Tho-Fi</title>
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="/manifest.json">
 
   <style>
     body {
-      background-color: #f0f2f5;
+      background-color: #FFFFFF;
       margin: 0;
       padding: 0;
       overflow: hidden;
@@ -95,19 +102,12 @@
       }
     };
 
-    // Tự động unregister Service Worker cũ gây trắng màn hình trên web/mobile
+    // Register ServiceWorker for full PWA Standalone Mode
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(registrations) {
-        for (let registration of registrations) {
-          registration.unregister();
-        }
-      });
-    }
-    if (window.caches) {
-      caches.keys().then(function(names) {
-        for (let name of names) {
-          caches.delete(name);
-        }
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/flutter_service_worker.js').catch(function (err) {
+          console.log('ServiceWorker registration failed: ', err);
+        });
       });
     }
   </script>

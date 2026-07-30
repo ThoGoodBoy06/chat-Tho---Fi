@@ -3,9 +3,11 @@
     "short_name": "Chat Tho-Fi",
     "description": "Ứng dụng nhắn tin gọi điện Real-time",
     "start_url": "/",
+    "scope": "/",
     "display": "standalone",
-    "background_color": "#f4f5f7",
-    "theme_color": "#0068ff",
+    "orientation": "portrait",
+    "background_color": "#FFFFFF",
+    "theme_color": "#007AFF",
     "icons": [
         {
             "src": "/icon-192.png",
