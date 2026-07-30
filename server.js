@@ -126,18 +126,6 @@ app.get("/", async(req, res) => {
     }
 });
 
-// SPA Fallback cho Flutter Web (tránh 404 / màn hình trắng khi F5 hoặc điều hướng trực tiếp)
-app.get("*", (req, res, next) => {
-    if (req.path.startsWith("/api") || req.path.startsWith("/socket.io") || req.path.startsWith("/uploads")) {
-        return next();
-    }
-    const indexPath = path.join(staticPath, "index.html");
-    if (fs.existsSync(indexPath)) {
-        return res.sendFile(indexPath);
-    }
-    next();
-});
-
 // API phụ trợ (Danh bạ) để xem danh sách tất cả người dùng và lấy ID dễ dàng
 app.get("/api/users", authMiddleware, async(req, res) => {
     const users = await prisma.users.findMany({
@@ -621,6 +609,17 @@ app.use((err, req, res, next) => {
         message: "Đã xảy ra lỗi hệ thống ở phía server.",
         error: err.message
     });
+});
+
+// SPA Fallback cho Flutter Web (Tương thích 100% với Express 5.x)
+app.use((req, res, next) => {
+    if (req.method === "GET" && !req.path.startsWith("/api") && !req.path.startsWith("/socket.io") && !req.path.startsWith("/uploads")) {
+        const indexPath = path.join(staticPath, "index.html");
+        if (fs.existsSync(indexPath)) {
+            return res.sendFile(indexPath);
+        }
+    }
+    next();
 });
 
 // Tích hợp Socket Handler
