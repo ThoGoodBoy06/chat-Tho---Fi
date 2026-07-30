@@ -77,17 +77,26 @@ class ApiService {
   // Fetch Conversations
   static Future<List<dynamic>> getConversations() async {
     final headers = await _getHeaders();
-    final response = await http.get(
-      Uri.parse('$baseUrl/chat/conversations'),
-      headers: headers,
-    ).timeout(const Duration(seconds: 45));
-    if (response.statusCode == 200) {
-      final decoded = jsonDecode(response.body);
-      if (decoded is Map<String, dynamic> && decoded['data'] is List) {
-        return decoded['data'] as List<dynamic>;
-      } else if (decoded is List) {
-        return decoded as List<dynamic>;
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/chat/conversations'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 45));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic> && decoded['data'] is List) {
+          return decoded['data'] as List<dynamic>;
+        } else if (decoded is List) {
+          return decoded as List<dynamic>;
+        }
+      } else if (response.statusCode == 401) {
+        debugPrint('⚠️ Token 401 Unauthorized khi lấy danh sách chat. Xóa token cũ.');
+        await clearToken();
+      } else {
+        debugPrint('⚠️ Lỗi API getConversations status: ${response.statusCode}');
       }
+    } catch (e) {
+      debugPrint('⚠️ Exeption getConversations: $e');
     }
     return [];
   }

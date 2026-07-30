@@ -70,7 +70,12 @@
     }
   </style>
 
-  <script>
+    // Safety auto-dismiss for splash loading screen after Flutter starts
+    setTimeout(function() {
+      var el = document.getElementById('loading-screen');
+      if (el) el.remove();
+    }, 4500);
+
     // iOS Standalone Link Handling: Ngăn Safari mở tab mới khi bấm link/chuyển trang
     if (("standalone" in window.navigator) && window.navigator.standalone) {
       document.addEventListener('click', function(e) {

@@ -1,3 +1,5 @@
+import 'dart:html' as html;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -31,7 +33,19 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _removeLoadingScreen();
+    });
     _checkAuth();
+  }
+
+  void _removeLoadingScreen() {
+    if (kIsWeb) {
+      try {
+        final element = html.document.getElementById('loading-screen');
+        element?.remove();
+      } catch (_) {}
+    }
   }
 
   Future<void> _checkAuth() async {
@@ -64,6 +78,7 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
         setState(() {
           _isCheckingAuth = false;
         });
+        _removeLoadingScreen();
       }
     }
   }
