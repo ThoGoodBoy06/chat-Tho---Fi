@@ -7,30 +7,94 @@
   <meta name="description" content="Chat Tho-Fi Application">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
   
-  <!-- PWA Standalone & iOS Meta Tags -->
+  <!-- PWA Standalone Meta Tags (iOS & Android) -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Chat Tho-Fi">
   <meta name="theme-color" content="#007AFF">
+  <meta name="application-name" content="Chat Tho-Fi">
 
-  <link rel="apple-touch-icon" href="/icon-192.png">
-  <link rel="icon" type="image/png" href="/icon-192.png">
+  <!-- Icons -->
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/icon.png">
+  <link rel="shortcut icon" href="/icon-192.png">
 
   <title>Chat Tho-Fi</title>
   <link rel="manifest" href="/manifest.json">
 
   <style>
+    * {
+      box-sizing: border-box;
+    }
     body {
       background-color: #FFFFFF;
       margin: 0;
       padding: 0;
       overflow: hidden;
       touch-action: manipulation;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    #loading-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      width: 100vw;
+      background-color: #FFFFFF;
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 9999;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(0, 122, 255, 0.15);
+      border-radius: 50%;
+      border-top-color: #007AFF;
+      animation: spin 0.8s ease-in-out infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .loading-text {
+      margin-top: 16px;
+      color: #007AFF;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.2px;
     }
   </style>
+
+  <script>
+    // iOS Standalone Link Handling: Ngăn Safari mở tab mới khi bấm link/chuyển trang
+    if (("standalone" in window.navigator) && window.navigator.standalone) {
+      document.addEventListener('click', function(e) {
+        var ctarget = e.target;
+        while (ctarget && ctarget.nodeName !== 'A') {
+          ctarget = ctarget.parentNode;
+        }
+        if (ctarget && ctarget.nodeName === 'A' && ctarget.getAttribute('href')) {
+          var href = ctarget.getAttribute('href');
+          if (href.indexOf('http') !== 0 || href.indexOf(window.location.host) !== -1) {
+            e.preventDefault();
+            window.location.href = href;
+          }
+        }
+      }, false);
+    }
+  </script>
 </head>
 <body>
+  <div id="loading-screen">
+    <div class="spinner"></div>
+    <div class="loading-text">Chat Tho-Fi</div>
+  </div>
+
   <audio id="remoteAudioPlayer" autoplay playsinline style="display:none;"></audio>
   <video id="remoteVideoPlayer" autoplay playsinline style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; object-fit:cover; z-index:99998; background:#090D1A;"></video>
   <video id="localVideoPlayer" autoplay playsinline muted style="display:none; position:fixed; top:24px; right:24px; width:130px; height:170px; object-fit:cover; z-index:99999; border-radius:16px; border:2px solid rgba(255,255,255,0.8); box-shadow:0 10px 30px rgba(0,0,0,0.6); transform: scaleX(-1);"></video>
@@ -101,15 +165,6 @@
         } catch(e){}
       }
     };
-
-    // Register ServiceWorker for full PWA Standalone Mode
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function () {
-        navigator.serviceWorker.register('/flutter_service_worker.js').catch(function (err) {
-          console.log('ServiceWorker registration failed: ', err);
-        });
-      });
-    }
   </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
