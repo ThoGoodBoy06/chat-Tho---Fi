@@ -105,7 +105,10 @@ if (RENDER_PING_URL) {
 // Tạo một API test thử xem server chạy chưa (nếu từ trình duyệt thì trả về file index.html giao diện)
 app.get("/", async(req, res) => {
     if (req.headers.accept && req.headers.accept.includes("text/html")) {
-        return res.sendFile(path.join(__dirname, "public", "index.html"));
+        const indexPath = path.join(staticPath, "index.html");
+        if (fs.existsSync(indexPath)) {
+            return res.sendFile(indexPath);
+        }
     }
 
     try {
@@ -113,7 +116,7 @@ app.get("/", async(req, res) => {
         const userCount = await prisma.users.count();
         res.json({
             message: "🚀 Backend Chat App đang hoạt động tuyệt vời!",
-            database: "Đã kết nối PostgreSQL", // Cập nhật cho đúng loại DB
+            database: "Đã kết nối PostgreSQL",
             totalUsers: userCount,
         });
     } catch (error) {
@@ -121,6 +124,18 @@ app.get("/", async(req, res) => {
             .status(500)
             .json({ error: "Lỗi kết nối Database", details: error.message });
     }
+});
+
+// SPA Fallback cho Flutter Web (tránh 404 / màn hình trắng khi F5 hoặc điều hướng trực tiếp)
+app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api") || req.path.startsWith("/socket.io") || req.path.startsWith("/uploads")) {
+        return next();
+    }
+    const indexPath = path.join(staticPath, "index.html");
+    if (fs.existsSync(indexPath)) {
+        return res.sendFile(indexPath);
+    }
+    next();
 });
 
 // API phụ trợ (Danh bạ) để xem danh sách tất cả người dùng và lấy ID dễ dàng

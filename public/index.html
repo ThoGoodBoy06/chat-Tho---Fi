@@ -94,6 +94,22 @@
         } catch(e){}
       }
     };
+
+    // Tự động unregister Service Worker cũ gây trắng màn hình trên web/mobile
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for (let registration of registrations) {
+          registration.unregister();
+        }
+      });
+    }
+    if (window.caches) {
+      caches.keys().then(function(names) {
+        for (let name of names) {
+          caches.delete(name);
+        }
+      });
+    }
   </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
