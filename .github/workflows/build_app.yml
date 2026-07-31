@@ -1,0 +1,90 @@
+name: Build Flutter Apps (iOS IPA & Android APK)
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    name: Build iOS IPA
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        run: |
+          cd flutter_frontend
+          flutter pub get
+
+      - name: Build iOS App (No Codesign)
+        run: |
+          cd flutter_frontend
+          flutter build ios --release --no-codesign
+
+      - name: Package Payload into IPA
+        run: |
+          cd flutter_frontend/build/ios/iphoneos
+          mkdir Payload
+          mv Runner.app Payload/
+          zip -r app-release.ipa Payload
+
+      - name: Upload iOS IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: iOS-IPA-Release
+          path: flutter_frontend/build/ios/iphoneos/app-release.ipa
+          retention-days: 7
+
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        run: |
+          cd flutter_frontend
+          flutter pub get
+
+      - name: Build Android APK
+        run: |
+          cd flutter_frontend
+          flutter build apk --release
+
+      - name: Upload Android APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Android-APK-Release
+          path: flutter_frontend/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 7

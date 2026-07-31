@@ -294,7 +294,7 @@ class _LoginScreenState extends State<LoginScreen> {
               userId = userObj['id']?.toString();
               provider.setCurrentUser(userObj);
             }
-            await SocketService.connect(userId: userId);
+            await SocketService.connect(userId: userId ?? '');
             widget.onLoginSuccess();
           }
         } else {
@@ -312,7 +312,7 @@ class _LoginScreenState extends State<LoginScreen> {
               userId = userObj['id']?.toString();
               provider.setCurrentUser(userObj);
             }
-            await SocketService.connect(userId: userId);
+            await SocketService.connect(userId: userId ?? '');
             widget.onLoginSuccess();
           }
         } else {

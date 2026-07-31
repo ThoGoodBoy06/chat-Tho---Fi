@@ -7,7 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'dart:html' as html;
+import 'package:universal_html/html.dart' as html;
 import '../models/models.dart';
 import '../providers/chat_provider.dart';
 import '../services/socket_service.dart';

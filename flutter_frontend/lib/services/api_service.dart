@@ -2,16 +2,15 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:html' as html;
 
 class ApiService {
   static String get baseUrl {
     if (kIsWeb) {
-      final location = html.window.location;
-      final host = location.hostname;
-      if ((host == 'localhost' || host == '127.0.0.1') && location.port != '3000') {
-        final protocol = location.protocol.isEmpty ? 'http:' : location.protocol;
-        return '$protocol//$host:3000/api';
+      final host = Uri.base.host;
+      final port = Uri.base.port;
+      if ((host == 'localhost' || host == '127.0.0.1') && port != 3000) {
+        final scheme = Uri.base.scheme.isEmpty ? 'http' : Uri.base.scheme;
+        return '$scheme://$host:3000/api';
       }
       return '${Uri.base.origin}/api';
     }
@@ -212,5 +211,22 @@ class ApiService {
       }
     }
     return [];
+  }
+
+  // Update FCM Device Token
+  static Future<bool> updateFcmToken(String fcmToken) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/users/fcm-token'),
+        headers: headers,
+        body: jsonEncode({'fcmToken': fcmToken}),
+      ).timeout(const Duration(seconds: 15));
+      debugPrint('🔥 [ApiService] Response updateFcmToken status: ${response.statusCode}');
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.updateFcmToken: $e');
+      return false;
+    }
   }
 }

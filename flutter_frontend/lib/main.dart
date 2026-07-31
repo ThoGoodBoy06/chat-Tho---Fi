@@ -1,4 +1,3 @@
-import 'dart:html' as html;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -6,8 +5,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'providers/chat_provider.dart';
 import 'services/api_service.dart';
 import 'services/socket_service.dart';
+import 'services/fcm_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/chat_screen.dart';
+import 'utils/web_utils.dart' as web_utils;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -40,12 +41,7 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
   }
 
   void _removeLoadingScreen() {
-    if (kIsWeb) {
-      try {
-        final element = html.document.getElementById('loading-screen');
-        element?.remove();
-      } catch (_) {}
-    }
+    web_utils.removeLoadingScreen();
   }
 
   Future<void> _checkAuth() async {
@@ -63,6 +59,7 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
             });
           }
           await SocketService.connect(userId: userId);
+          FCMService.initAndRegisterToken();
         } else {
           await ApiService.clearToken();
           _isLoggedIn = false;
@@ -87,6 +84,7 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
     setState(() {
       _isLoggedIn = true;
     });
+    FCMService.initAndRegisterToken();
   }
 
   void _onLogout() async {

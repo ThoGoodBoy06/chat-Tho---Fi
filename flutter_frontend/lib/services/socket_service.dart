@@ -2,8 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'api_service.dart';
-import 'dart:html' as html;
-import 'dart:js' as js;
+import 'sound_service.dart';
 
 class SocketService {
   static IO.Socket? socket;
@@ -33,47 +32,26 @@ class SocketService {
   static Stream<Map<String, dynamic>> get onMessageReacted => _reactedController.stream;
   static Stream<Map<String, dynamic>> get onMessagesRead => _readController.stream;
 
-  // --- WEB AUDIO API SYNTHETIC SOUND GENERATOR ---
+  // --- AUDIO API SYNTHETIC SOUND GENERATOR ---
   static void playSendSound() {
-    if (!kIsWeb) return;
-    try {
-      js.context.callMethod('eval', ['if(window.ChatSounds) window.ChatSounds.playSend();']);
-    } catch (e) {
-      print('⚠️ Sound play error: $e');
-    }
+    SoundService.playMessageSound();
   }
 
   static void playReceiveSound() {
-    if (!kIsWeb) return;
-    try {
-      js.context.callMethod('eval', ['if(window.ChatSounds) window.ChatSounds.playReceive();']);
-    } catch (e) {
-      print('⚠️ Receive sound error: $e');
-    }
+    SoundService.playMessageSound();
   }
 
   static void playReactSound() {
-    if (!kIsWeb) return;
-    try {
-      js.context.callMethod('eval', ['if(window.ChatSounds) window.ChatSounds.playReact();']);
-    } catch (e) {
-      print('⚠️ React sound error: $e');
-    }
+    SoundService.playMessageSound();
   }
 
-  static Future<void> connect({String? userId}) async {
+  static Future<void> connect({required String userId}) async {
     final token = await ApiService.getToken();
-    if (token == null) return;
-
-    if (userId != null && userId.isNotEmpty) {
-      _currentUserId = userId;
-    }
+    _currentUserId = userId;
 
     if (socket != null && socket!.connected) {
-      if (_currentUserId != null && _currentUserId!.isNotEmpty) {
-        socket?.emit('user_connected', _currentUserId);
-      }
-      if (_currentRoomId != null && _currentRoomId!.isNotEmpty) {
+      socket?.emit('user_connected', userId);
+      if (_currentRoomId != null) {
         socket?.emit('join_room', _currentRoomId);
         socket?.emit('join_conversation', _currentRoomId);
       }
@@ -82,11 +60,11 @@ class SocketService {
 
     String serverUrl;
     if (kIsWeb) {
-      final location = html.window.location;
-      final host = location.hostname;
-      if ((host == 'localhost' || host == '127.0.0.1') && location.port != '3000') {
-        final protocol = location.protocol.isEmpty ? 'http:' : location.protocol;
-        serverUrl = '$protocol//$host:3000';
+      final host = Uri.base.host;
+      final port = Uri.base.port;
+      if ((host == 'localhost' || host == '127.0.0.1') && port != 3000) {
+        final scheme = Uri.base.scheme.isEmpty ? 'http' : Uri.base.scheme;
+        serverUrl = '$scheme://$host:3000';
       } else {
         serverUrl = Uri.base.origin;
       }
