@@ -651,6 +651,7 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // Left: Bell Icon
                 IconButton(
@@ -756,6 +757,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                 ),
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     if (totalUnreadCount > 0)
                       Padding(
@@ -802,6 +804,7 @@ class _ChatScreenState extends State<ChatScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             margin: const EdgeInsets.only(bottom: 8),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 GestureDetector(
                   onTap: () => provider.setShowUnreadOnly(false),
@@ -3202,9 +3205,11 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       child: SafeArea(
         top: false,
-        child: SizedBox(
-          height: 56,
+        child: Container(
+          height: 60,
+          alignment: Alignment.center,
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: List.generate(navItems.length, (index) {
               final isSelected = _currentTabIndex == index;
               final item = navItems[index];
