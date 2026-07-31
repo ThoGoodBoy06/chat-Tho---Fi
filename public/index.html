@@ -7,6 +7,11 @@
   <meta name="description" content="Chat Tho-Fi Application">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
   
+  <!-- Anti-Cache Meta Tags (Cache Busting for iOS Safari & PWA) -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+
   <!-- PWA Standalone Meta Tags (iOS & Android) -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -69,6 +74,21 @@
       letter-spacing: -0.2px;
     }
   </style>
+
+  <script>
+    // Force HTML renderer for Flutter Web to prevent CanvasKit/WebGL distortion on iOS Safari
+    window._flutter = window._flutter || {};
+    window._flutter.buildConfig = window._flutter.buildConfig || {};
+    window._flutter.buildConfig.renderer = "html";
+
+    // Unregister stale Service Workers to compel browser to reload fresh assets (Cache Busting)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for (var registration of registrations) {
+          registration.unregister();
+        }
+      });
+    }
 
     // Safety auto-dismiss for splash loading screen after Flutter starts
     setTimeout(function() {
