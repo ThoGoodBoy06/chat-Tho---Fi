@@ -282,8 +282,8 @@ module.exports = (io) => {
         const unreadMessages = await prisma.messages.findMany({
           where: {
             conversationId,
-            senderId: { not: readerId },
-            isRead: false,
+            NOT: { senderId: readerId },
+            NOT: { isRead: true },
           },
           orderBy: { createdAt: "asc" },
           select: { id: true, senderId: true },

@@ -37,6 +37,9 @@ class ChatProvider extends ChangeNotifier {
       _updateLastMessageInConversation(newMsg);
       if (newMsg.senderId != currentUser?.id) {
         SocketService.playReceiveSound();
+        if (selectedConversation != null && selectedConversation!.id == newMsg.conversationId && currentUser != null) {
+          SocketService.markMessagesRead(newMsg.conversationId!, currentUser!.id);
+        }
       }
     });
 
@@ -138,19 +141,35 @@ class ChatProvider extends ChangeNotifier {
     );
   }
 
+  final Set<String> _processedMessageIdsForUnread = {};
+
   /// Cập nhật tin nhắn mới nhất trong danh sách đoạn chat hoàn toàn ở bộ nhớ (không cần gọi API getConversations)
   void _updateLastMessageInConversation(MessageModel msg) {
     if (msg.conversationId == null || msg.conversationId!.isEmpty) return;
     final idx = conversations.indexWhere((c) => c.id == msg.conversationId);
     if (idx != -1) {
       final old = conversations[idx];
+      final isFromSelf = (currentUser != null && msg.senderId != null && msg.senderId == currentUser!.id);
+      final isCurrentlySelected = (selectedConversation != null && selectedConversation!.id == old.id);
+
+      int newUnreadCount = old.unreadCount;
+      if (isFromSelf || isCurrentlySelected) {
+        newUnreadCount = 0;
+      } else {
+        // Chỉ tăng +1 duy nhất một lần cho mỗi mã tin nhắn (tránh bị nhân bản do socket)
+        if (msg.id.isNotEmpty && !_processedMessageIdsForUnread.contains(msg.id)) {
+          _processedMessageIdsForUnread.add(msg.id);
+          newUnreadCount = old.unreadCount + 1;
+        }
+      }
+
       final updatedConv = ConversationModel(
         id: old.id,
         name: old.name,
         avatar: old.avatar,
         type: old.type,
         lastMessage: msg.content,
-        unreadCount: old.unreadCount,
+        unreadCount: newUnreadCount,
         updatedAt: msg.createdAt,
         targetUserId: old.targetUserId,
         members: old.members,
@@ -249,9 +268,35 @@ class ChatProvider extends ChangeNotifier {
   Future<void> selectConversation(ConversationModel conv) async {
     selectedConversation = conv;
     selectedConversationId = conv.id;
+
+    // Đặt unreadCount của đoạn chat được chọn về 0 lập tức ở local
+    final idx = conversations.indexWhere((c) => c.id == conv.id);
+    if (idx != -1) {
+      final old = conversations[idx];
+      if (old.unreadCount > 0) {
+        conversations[idx] = ConversationModel(
+          id: old.id,
+          name: old.name,
+          avatar: old.avatar,
+          type: old.type,
+          lastMessage: old.lastMessage,
+          unreadCount: 0,
+          updatedAt: old.updatedAt,
+          targetUserId: old.targetUserId,
+          members: old.members,
+        );
+      }
+    }
+
     isLoadingMessages = true;
     messages = [];
     notifyListeners();
+
+    // Báo cho server socket & REST API biết người dùng đã xem tất cả tin nhắn trong cuộc trò chuyện này
+    if (currentUser != null) {
+      SocketService.markMessagesRead(conv.id, currentUser!.id);
+    }
+    ApiService.markAsRead(conv.id).catchError((_) {});
 
     // Join vào room của conversation để nhận tin nhắn real-time
     SocketService.joinRoom(conv.id);
@@ -359,6 +404,23 @@ class ChatProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error sending message: $e');
     }
+  }
+
+  Future<bool> deleteConversation(String conversationId) async {
+    try {
+      final success = await ApiService.deleteConversation(conversationId);
+      if (success) {
+        conversations.removeWhere((c) => c.id == conversationId);
+        if (selectedConversation != null && selectedConversation!.id == conversationId) {
+          clearSelectedConversation();
+        }
+        notifyListeners();
+        return true;
+      }
+    } catch (e) {
+      debugPrint('Error in deleteConversation provider: $e');
+    }
+    return false;
   }
 
   @override

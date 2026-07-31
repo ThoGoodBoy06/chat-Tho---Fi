@@ -259,6 +259,16 @@ class SocketService {
     _currentRoomId = null;
   }
 
+  static void markMessagesRead(String conversationId, String userId) {
+    if (socket != null && socket!.connected) {
+      socket!.emit('mark_messages_read', {
+        'conversationId': conversationId,
+        'userId': userId,
+      });
+      print('👀 Emitted mark_messages_read for conv: $conversationId');
+    }
+  }
+
   static void disconnect() {
     _currentRoomId = null;
     _currentUserId = null;

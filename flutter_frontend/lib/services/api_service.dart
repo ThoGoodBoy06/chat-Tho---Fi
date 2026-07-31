@@ -114,6 +114,34 @@ class ApiService {
     return {'data': []};
   }
 
+  // Mark all unread messages as read in a conversation
+  static Future<void> markAsRead(String conversationId) async {
+    try {
+      final headers = await _getHeaders();
+      await http.post(
+        Uri.parse('$baseUrl/chat/conversations/$conversationId/read'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 15));
+    } catch (e) {
+      debugPrint('Error in ApiService.markAsRead: $e');
+    }
+  }
+
+  // Delete conversation (soft delete on current user's side)
+  static Future<bool> deleteConversation(String conversationId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.delete(
+        Uri.parse('$baseUrl/chat/conversations/$conversationId'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 15));
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('Error deleteConversation API: $e');
+      return false;
+    }
+  }
+
   // Create or get 1-on-1 private conversation
   static Future<Map<String, dynamic>> createConversation(String receiverId) async {
     final headers = await _getHeaders();

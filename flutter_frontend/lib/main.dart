@@ -108,6 +108,18 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
         scaffoldBackgroundColor: const Color(0xFFFFFFFF),
         fontFamily: GoogleFonts.inter().fontFamily,
       ),
+      builder: (context, child) {
+        final mediaQueryData = MediaQuery.of(context);
+        return MediaQuery(
+          data: mediaQueryData.copyWith(
+            textScaler: mediaQueryData.textScaler.clamp(
+              minScaleFactor: 0.8,
+              maxScaleFactor: 1.0,
+            ),
+          ),
+          child: child!,
+        );
+      },
       home: _isCheckingAuth
           ? const Scaffold(
               body: Center(

@@ -769,15 +769,17 @@ class _ChatScreenState extends State<ChatScreen> {
                           ),
                         ),
                       ),
-                    GestureDetector(
+                    InkWell(
                       onTap: () => _showNewChatDialog(provider),
+                      borderRadius: BorderRadius.circular(12),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
-                          color: const Color(0x0F007AFF),
+                          color: const Color(0xFFEBF3FF),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: const [
                             Icon(Icons.add_rounded, size: 16, color: Color(0xFF007AFF)),
                             SizedBox(width: 2),
@@ -927,68 +929,106 @@ class _ChatScreenState extends State<ChatScreen> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                conv.name,
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: TextStyle(
-                                                  color: const Color(0xFF000000),
-                                                  fontSize: 15,
-                                                  fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w500,
-                                                ),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            if (conv.lastMessageAt != null)
-                                              Text(
-                                                _formatMessengerTime(conv.lastMessageAt!),
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: hasUnread ? const Color(0xFF007AFF) : const Color(0xFF8E8E93),
-                                                ),
-                                              ),
-                                          ],
+                                        Text(
+                                          conv.name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            color: const Color(0xFF000000),
+                                            fontSize: 15,
+                                            fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w500,
+                                          ),
                                         ),
                                         const SizedBox(height: 4),
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                conv.lastMessage ?? 'Bắt đầu cuộc trò chuyện',
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: TextStyle(
-                                                  fontSize: 13,
-                                                  color: hasUnread ? const Color(0xFF3C3C43) : const Color(0xFF8E8E93),
-                                                ),
+                                        Text(
+                                          conv.lastMessage ?? 'Bắt đầu cuộc trò chuyện',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: hasUnread ? const Color(0xFF3C3C43) : const Color(0xFF8E8E93),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  // Time & Unread Badge (Shifted slightly left)
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      if (conv.lastMessageAt != null)
+                                        Text(
+                                          _formatMessengerTime(conv.lastMessageAt!),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: hasUnread ? const Color(0xFF007AFF) : const Color(0xFF8E8E93),
+                                            fontWeight: hasUnread ? FontWeight.w600 : FontWeight.w400,
+                                          ),
+                                        ),
+                                      if (hasUnread) ...[
+                                        const SizedBox(height: 4),
+                                        Container(
+                                          constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF007AFF),
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              unreadCount > 99 ? '99+' : '$unreadCount',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                                height: 1.0,
                                               ),
                                             ),
-                                            if (hasUnread) ...[
-                                              const SizedBox(width: 8),
-                                              Container(
-                                                constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
-                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                decoration: const BoxDecoration(
-                                                  color: Color(0xFF007AFF),
-                                                  shape: BoxShape.circle,
-                                                ),
-                                                child: Center(
-                                                  child: Text(
-                                                    '$unreadCount',
-                                                    style: const TextStyle(
-                                                      color: Colors.white,
-                                                      fontSize: 11,
-                                                      fontWeight: FontWeight.bold,
-                                                    ),
-                                                  ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  const SizedBox(width: 4),
+                                  // Nút 3 chấm gần mép phải
+                                  SizedBox(
+                                    width: 28,
+                                    height: 28,
+                                    child: PopupMenuButton<String>(
+                                      padding: EdgeInsets.zero,
+                                      icon: const Icon(
+                                        Icons.more_vert_rounded,
+                                        size: 20,
+                                        color: Color(0xFF8E8E93),
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      elevation: 3,
+                                      onSelected: (value) {
+                                        if (value == 'delete') {
+                                          _confirmDeleteConversation(context, provider, conv);
+                                        }
+                                      },
+                                      itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                                        PopupMenuItem<String>(
+                                          value: 'delete',
+                                          child: Row(
+                                            children: const [
+                                              Icon(Icons.delete_outline_rounded, color: Colors.red, size: 20),
+                                              SizedBox(width: 8),
+                                              Text(
+                                                'Xóa cuộc trò chuyện',
+                                                style: TextStyle(
+                                                  color: Colors.red,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w500,
                                                 ),
                                               ),
                                             ],
-                                          ],
+),
                                         ),
                                       ],
                                     ),
@@ -999,6 +1039,44 @@ class _ChatScreenState extends State<ChatScreen> {
                           );
                         },
                       ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteConversation(BuildContext context, ChatProvider provider, ConversationModel conv) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Xóa cuộc trò chuyện', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        content: Text('Bạn có chắc chắn muốn xóa cuộc trò chuyện với "${conv.name}"? Cuộc trò chuyện chỉ bị ẩn ở phía bạn, đối phương vẫn thấy bình thường.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final success = await provider.deleteConversation(conv.id);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(success ? 'Đã xóa cuộc trò chuyện.' : 'Không thể xóa cuộc trò chuyện.'),
+                    backgroundColor: success ? const Color(0xFF007AFF) : Colors.red,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                );
+              }
+            },
+            child: const Text('Xóa', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -1323,7 +1401,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
           ),
 
-          // Typing Indicator Widget
+          // Typing Indicator Widget (Chuẩn Messenger: Bỏ icon phía trước, có chữ [Tên] đang gõ + 3 chấm chuyển động)
           Consumer<ChatProvider>(
             builder: (context, chatProv, child) {
               final typingUser = chatProv.getTypingUserForSelectedConversation();
@@ -1335,19 +1413,28 @@ class _ChatScreenState extends State<ChatScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 child: Row(
                   children: [
-                    CircleAvatar(
-                      radius: 12,
-                      backgroundColor: primaryColor,
-                      child: Text(typingUser[0].toUpperCase(), style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold)),
-                    ),
-                    const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF0F2F5),
-                        borderRadius: BorderRadius.circular(16),
+                        color: const Color(0xFFE4E6EB),
+                        borderRadius: BorderRadius.circular(18),
                       ),
-                      child: const BouncingDotsIndicator(),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '$typingUser đang gõ ',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF65676B),
+                              fontWeight: FontWeight.w500,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const BouncingDotsIndicator(),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -1702,6 +1789,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         ],
                       ),
                       child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Container(
                             width: 42,
@@ -1713,7 +1801,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             child: Center(
                               child: Text(
                                 _getInitials(name),
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white, height: 1.0),
                               ),
                             ),
                           ),
@@ -1739,28 +1827,24 @@ class _ChatScreenState extends State<ChatScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          GestureDetector(
-                            onTap: () async {
+                          ElevatedButton.icon(
+                            onPressed: () async {
                               setState(() => _currentTabIndex = 0);
                               await provider.startPrivateChat(uid);
                             },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                              decoration: BoxDecoration(
-                                color: const Color(0x0F007AFF),
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: const [
-                                  Icon(Icons.chat_bubble_rounded, size: 14, color: Color(0xFF007AFF)),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    'Nhắn tin',
-                                    style: TextStyle(color: Color(0xFF007AFF), fontSize: 12, fontWeight: FontWeight.bold),
-                                  ),
-                                ],
-                              ),
+                            icon: const Icon(Icons.chat_bubble_rounded, size: 13),
+                            label: const Text(
+                              'Nhắn tin',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFEBF3FF),
+                              foregroundColor: const Color(0xFF007AFF),
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
                           ),
                         ],
@@ -3112,14 +3196,14 @@ class _ChatScreenState extends State<ChatScreen> {
     ];
 
     return Container(
-      height: 84,
       decoration: const BoxDecoration(
-        color: Color(0xECFFFFFF),
+        color: Color(0xFAFFFFFF),
         border: Border(top: BorderSide(color: Color(0x14000000), width: 1)),
       ),
-      child: ClipRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 56,
           child: Row(
             children: List.generate(navItems.length, (index) {
               final isSelected = _currentTabIndex == index;
@@ -3130,13 +3214,12 @@ class _ChatScreenState extends State<ChatScreen> {
                   splashColor: Colors.transparent,
                   highlightColor: Colors.transparent,
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Top indicator line 20x2px #007AFF
                       Container(
-                        width: 20,
+                        width: 18,
                         height: 2,
-                        margin: const EdgeInsets.only(bottom: 12),
+                        margin: const EdgeInsets.only(bottom: 4),
                         decoration: BoxDecoration(
                           color: isSelected ? const Color(0xFF007AFF) : Colors.transparent,
                           borderRadius: BorderRadius.circular(1),
@@ -3144,10 +3227,10 @@ class _ChatScreenState extends State<ChatScreen> {
                       ),
                       Icon(
                         item['icon'] as IconData,
-                        size: 24,
+                        size: 22,
                         color: isSelected ? const Color(0xFF007AFF) : const Color(0xFF8E8E93),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 2),
                       Text(
                         item['label'] as String,
                         style: TextStyle(

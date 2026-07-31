@@ -113,8 +113,8 @@ exports.getConversations = async(req, res) => {
                             select: {
                                 Messages: {
                                     where: {
-                                        senderId: { not: userId },
-                                        isRead: false,
+                                        NOT: { senderId: userId },
+                                        NOT: { isRead: true },
                                     },
                                 },
                             },
@@ -199,6 +199,15 @@ exports.getMessages = async(req, res) => {
         const limit = Math.min(parseInt(req.query.limit) || 50, 100); // Giới hạn tối đa 100
         const before = req.query.before; // ID tin nhắn cursor (optional)
 
+        // Cập nhật ngay trạng thái isRead: true vào DB cho tất cả tin nhắn trong phòng này do người khác gửi
+        prisma.messages.updateMany({
+            where: {
+                conversationId,
+                senderId: { not: req.user.id },
+                isRead: false,
+            },
+            data: { isRead: true },
+        }).catch((err) => console.error("Lỗi cập nhật isRead trong getMessages:", err.message));
 
         // Xây dựng điều kiện where
         const whereClause = {
@@ -420,6 +429,15 @@ exports.sendMessage = async(req, res) => {
         }
 
         // 1. Lưu tin nhắn vào Database
+        // Đánh dấu tất cả tin nhắn cũ trong cuộc trò chuyện này là đã đọc đối với sender
+        prisma.messages.updateMany({
+            where: {
+                conversationId,
+                NOT: { senderId },
+                isRead: false,
+            },
+            data: { isRead: true },
+        }).catch(() => {});
 
         const newMessage = await prisma.messages.create({
             data: {
@@ -434,6 +452,8 @@ exports.sendMessage = async(req, res) => {
                 type: type || "text",
 
                 replyMessageId: replyMessageId || null,
+
+                isRead: false,
             },
 
             include: {
@@ -491,16 +511,11 @@ exports.sendMessage = async(req, res) => {
             }
         });
 
-        // 3. Lấy Socket.IO instance và phát tin nhắn Real-time đến phòng conversationId và từng thành viên
+        // 3. Lấy Socket.IO instance và phát tin nhắn Real-time đến phòng conversationId
         const io = req.app.get("io");
 
         if (io) {
             io.to(conversationId).emit("receive_message", mappedMessage);
-            members.forEach((member) => {
-                if (member.userId) {
-                    io.to(member.userId).emit("receive_message", mappedMessage);
-                }
-            });
         }
 
         members.forEach((member) => {
@@ -1847,5 +1862,26 @@ exports.uploadMedia = async (req, res) => {
     } catch (error) {
         console.error("❌ Lỗi uploadMedia:", error);
         res.status(500).json({ success: false, message: "Lỗi server", error: error.message });
+    }
+};
+
+exports.markAsRead = async(req, res) => {
+    try {
+        const { conversationId } = req.params;
+        const userId = req.user.id;
+
+        await prisma.messages.updateMany({
+            where: {
+                conversationId,
+                senderId: { not: userId },
+                isRead: false,
+            },
+            data: { isRead: true },
+        });
+
+        return res.json({ success: true, message: "Đã đánh dấu tin nhắn là đã đọc trong DB" });
+    } catch (error) {
+        console.error("Lỗi markAsRead:", error);
+        return res.status(500).json({ success: false, message: error.message });
     }
 };
