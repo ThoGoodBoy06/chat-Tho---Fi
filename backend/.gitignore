@@ -1,0 +1,13 @@
+node_modules
+# Keep environment variables out of version control
+.env
+
+/generated/prisma
+
+# Bỏ qua khóa bảo mật Firebase
+firebase-key
+firebase-key.json
+
+# Bỏ qua bộ cài SDK và build tạm Flutter
+flutter.zip
+.flutter_sdk

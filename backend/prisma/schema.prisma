@@ -1,0 +1,170 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model ConversationMembers {
+  id             String         @id @default(uuid())
+  conversationId String?
+  userId         String?
+  role           String?        @default("member")
+  nickname       String?
+  joinedAt       DateTime?      @default(now())
+  deletedAt      DateTime?
+  Conversations  Conversations? @relation(fields: [conversationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  Users          Users?         @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([userId])
+  @@index([conversationId])
+}
+
+model Conversations {
+  id                  String                @id @default(uuid())
+  type                String?               @default("private")
+  name                String?
+  avatar              String?
+  createdBy           String?
+  theme               String?               @default("default")
+  createdAt           DateTime?             @default(now())
+  ConversationMembers ConversationMembers[]
+  Users               Users?                @relation(fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  Messages            Messages[]
+}
+
+model Friends {
+  id                              String    @id @default(uuid())
+  senderId                        String?
+  receiverId                      String?
+  status                          String?   @default("pending")
+  createdAt                       DateTime? @default(now())
+  Users_Friends_receiverIdToUsers Users?    @relation("Friends_receiverIdToUsers", fields: [receiverId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  Users_Friends_senderIdToUsers   Users?    @relation("Friends_senderIdToUsers", fields: [senderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model Messages {
+  id             String         @id @default(uuid())
+  conversationId String?
+  senderId       String?
+  type           String?        @default("text")
+  content        String?
+  imageUrl       String?
+  videoUrl       String?
+  audioUrl       String?
+  fileUrl        String?
+  replyMessageId String?
+  isDeleted      Boolean?       @default(false)
+  isRecalled     Boolean?       @default(false)
+  isRead         Boolean?       @default(false)
+  isDelivered    Boolean?       @default(false)
+  isEdited       Boolean?       @default(false)
+  isPinned       Boolean?       @default(false)
+  isForwarded    Boolean?       @default(false)
+  pinnedAt       DateTime?
+  selfDestructDuration Int?
+  expiresAt      DateTime?
+  reactions      String?
+  deletedBy      String[]       @default([])
+  createdAt      DateTime?      @default(now())
+  updatedAt      DateTime?      @default(now())
+  Conversations  Conversations? @relation(fields: [conversationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  Users          Users?         @relation(fields: [senderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([conversationId])
+  @@index([createdAt])
+  @@index([senderId])
+  @@index([conversationId, createdAt(sort: Desc)])
+  @@index([conversationId, senderId, isRead])
+}
+
+model Users {
+  id                              String                @id @default(uuid())
+  username                        String                @unique
+  fullName                        String
+  email                           String?               @unique
+  phone                           String?               @unique
+  password                        String
+  avatar                          String?
+  coverPhoto                      String?
+  bio                             String?
+  isOnline                        Boolean?              @default(false)
+  lastActive                      DateTime?             @default(now())
+  createdAt                       DateTime?             @default(now())
+  updatedAt                       DateTime?             @default(now())
+  ConversationMembers             ConversationMembers[]
+  Conversations                   Conversations[]
+  Friends_Friends_receiverIdToUsers Friends[]             @relation("Friends_receiverIdToUsers")
+  Friends_Friends_senderIdToUsers   Friends[]             @relation("Friends_senderIdToUsers")
+  Messages                        Messages[]
+  sent_requests     FriendRequests[] @relation("sent_requests")
+  received_requests FriendRequests[] @relation("received_requests")
+  NotificationsReceived Notifications[] @relation("UserNotifications")
+  NotificationsSent     Notifications[] @relation("SenderNotifications")
+  blocksSent     Block[] @relation("UserBlocks")
+  blocksReceived Block[] @relation("UserBlockedBy")
+  fcmToken  String?  
+}
+
+model FriendRequests {
+  id           String   @id @default(uuid())
+  requesterId  String
+  receiverId   String
+  status       String   @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Định nghĩa quan hệ
+  requester    Users    @relation("sent_requests", fields: [requesterId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  receiver     Users    @relation("received_requests", fields: [receiverId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([requesterId, receiverId]) // Đảm bảo mỗi cặp user chỉ có 1 mối quan hệ
+  @@index([requesterId])
+  @@index([receiverId])
+  @@index([status])
+}
+
+model Notifications {
+  id        String   @id @default(uuid())
+  userId    String
+  senderId  String
+  type      String   // VD: 'FRIEND_ACCEPTED'
+  content   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  User      Users    @relation("UserNotifications", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  Sender    Users    @relation("SenderNotifications", fields: [senderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([isRead])
+}
+
+model News {
+  id          String   @id @default(uuid())
+  title       String
+  content     String
+  category    String   // "AI" hoặc "Tech"
+  link        String?  // Đường dẫn gốc của bài báo
+  fullContent String?  // Nội dung chi tiết bài báo (cào từ VNExpress)
+  createdAt   DateTime @default(now())
+
+  @@index([category])
+  @@index([createdAt])
+}
+
+model Block {
+  id        String   @id @default(uuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  blocker   Users    @relation("UserBlocks", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   Users    @relation("UserBlockedBy", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+}

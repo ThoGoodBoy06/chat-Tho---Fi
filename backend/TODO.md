@@ -1,0 +1,5 @@
+- [ ] Hiểu yêu cầu: thay/hiển thị câu “ý là tôi chào bạn á?” trong UI chat (theo vị trí mong muốn)
+- [ ] (Tạm thời đề xuất) Nếu muốn tin nhắn chào tự động khi mở app: chỉnh `backend/public/app.js` để render 1 tin nhắn hệ thống khi chưa có hội thoại và trước khi user bắt đầu chat
+- [ ] Chèn log/guard để không bị chèn trùng tin nhắn
+- [ ] Test thủ công: chạy server, đăng nhập, mở tab chat và kiểm tra hiển thị
+- [ ] (Tuỳ chọn) Nếu muốn server/bot tự trả lời khi user gõ câu chào: chỉnh `backend/controllers/chat.controller.js` hoặc `backend/sockets/socketHandler.js`

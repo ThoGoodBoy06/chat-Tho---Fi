@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <base href="/">
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="Chat Tho-Fi Application">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+  <!-- Anti-Cache Meta Tags (Cache Busting for iOS Safari & PWA) -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+
+  <!-- PWA Standalone Meta Tags (iOS & Android) -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Chat Tho-Fi">
+  <meta name="theme-color" content="#007AFF">
+  <meta name="application-name" content="Chat Tho-Fi">
+
+  <!-- Icons -->
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/icon.png">
+  <link rel="shortcut icon" href="/icon-192.png">
+
+  <title>Chat Tho-Fi</title>
+  <link rel="manifest" href="/manifest.json">
+
+  <!-- Firebase Web SDK (v10 compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+  <script>
+    window.registerFCMAndGetToken = async function() {
+      if (!('serviceWorker' in navigator) || !('Notification' in window)) {
+        console.log('[FCM] Service Worker hoặc Notification không được hỗ trợ');
+        return null;
+      }
+      try {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+          console.log('[FCM] Quyền thông báo bị từ chối:', permission);
+          return null;
+        }
+        const reg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        console.log('[FCM] ServiceWorker registered thành công:', reg);
+
+        if (!firebase.apps.length) {
+          firebase.initializeApp({
+            apiKey: "AIzaSyDk6fayVDs0YbbhwldYxgHcN4nnjnPwmRc",
+            authDomain: "chat-tho-fi.firebaseapp.com",
+            projectId: "chat-tho-fi",
+            storageBucket: "chat-tho-fi.firebasestorage.app",
+            messagingSenderId: "513501588929",
+            appId: "1:513501588929:web:54fd6c5fab227868bfd340",
+          });
+        }
+        const messaging = firebase.messaging();
+        const token = await messaging.getToken({ serviceWorkerRegistration: reg });
+        if (token) {
+          console.log('[FCM] Đã lấy FCM Device Token thành công:', token);
+          return token;
+        }
+      } catch (err) {
+        console.error('[FCM] Lỗi đăng ký / lấy FCM Token:', err);
+      }
+      return null;
+    };
+  </script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      background-color: #FFFFFF;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      touch-action: manipulation;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    #loading-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      width: 100vw;
+      background-color: #FFFFFF;
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 9999;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(0, 122, 255, 0.15);
+      border-radius: 50%;
+      border-top-color: #007AFF;
+      animation: spin 0.8s ease-in-out infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .loading-text {
+      margin-top: 16px;
+      color: #007AFF;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.2px;
+    }
+  </style>
+
+  <script>
+    // Force HTML renderer for Flutter Web to prevent CanvasKit/WebGL distortion on iOS Safari
+    window._flutter = window._flutter || {};
+    window._flutter.buildConfig = window._flutter.buildConfig || {};
+    window._flutter.buildConfig.renderer = "html";
+
+    // Unregister stale Service Workers to compel browser to reload fresh assets (Cache Busting)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for (var registration of registrations) {
+          registration.unregister();
+        }
+      });
+    }
+
+    // Safety auto-dismiss for splash loading screen after Flutter starts
+    setTimeout(function() {
+      var el = document.getElementById('loading-screen');
+      if (el) el.remove();
+    }, 4500);
+
+    // iOS Standalone Link Handling: Ngăn Safari mở tab mới khi bấm link/chuyển trang
+    if (("standalone" in window.navigator) && window.navigator.standalone) {
+      document.addEventListener('click', function(e) {
+        var ctarget = e.target;
+        while (ctarget && ctarget.nodeName !== 'A') {
+          ctarget = ctarget.parentNode;
+        }
+        if (ctarget && ctarget.nodeName === 'A' && ctarget.getAttribute('href')) {
+          var href = ctarget.getAttribute('href');
+          if (href.indexOf('http') !== 0 || href.indexOf(window.location.host) !== -1) {
+            e.preventDefault();
+            window.location.href = href;
+          }
+        }
+      }, false);
+    }
+  </script>
+</head>
+<body>
+  <div id="loading-screen">
+    <div class="spinner"></div>
+    <div class="loading-text">Đang tải Chat Tho-Fi...</div>
+  </div>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

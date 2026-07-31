@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <base href="/">
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="Chat Tho-Fi Application">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+  <!-- Anti-Cache Meta Tags (Cache Busting for iOS Safari & PWA) -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+
+  <!-- PWA Standalone Meta Tags (iOS & Android) -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Chat Tho-Fi">
+  <meta name="theme-color" content="#007AFF">
+  <meta name="application-name" content="Chat Tho-Fi">
+
+  <!-- Icons -->
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/icon.png">
+  <link rel="shortcut icon" href="/icon-192.png">
+
+  <title>Chat Tho-Fi</title>
+  <link rel="manifest" href="/manifest.json">
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      background-color: #FFFFFF;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      touch-action: manipulation;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    #loading-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      width: 100vw;
+      background-color: #FFFFFF;
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 9999;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(0, 122, 255, 0.15);
+      border-radius: 50%;
+      border-top-color: #007AFF;
+      animation: spin 0.8s ease-in-out infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .loading-text {
+      margin-top: 16px;
+      color: #007AFF;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.2px;
+    }
+  </style>
+
+  <script>
+    // Force HTML renderer for Flutter Web to prevent CanvasKit/WebGL distortion on iOS Safari
+    window._flutter = window._flutter || {};
+    window._flutter.buildConfig = window._flutter.buildConfig || {};
+    window._flutter.buildConfig.renderer = "html";
+
+    // Unregister stale Service Workers to compel browser to reload fresh assets (Cache Busting)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for (var registration of registrations) {
+          registration.unregister();
+        }
+      });
+    }
+
+    // Safety auto-dismiss for splash loading screen after Flutter starts
+    setTimeout(function() {
+      var el = document.getElementById('loading-screen');
+      if (el) el.remove();
+    }, 4500);
+
+    // iOS Standalone Link Handling: Ngăn Safari mở tab mới khi bấm link/chuyển trang
+    if (("standalone" in window.navigator) && window.navigator.standalone) {
+      document.addEventListener('click', function(e) {
+        var ctarget = e.target;
+        while (ctarget && ctarget.nodeName !== 'A') {
+          ctarget = ctarget.parentNode;
+        }
+        if (ctarget && ctarget.nodeName === 'A' && ctarget.getAttribute('href')) {
+          var href = ctarget.getAttribute('href');
+          if (href.indexOf('http') !== 0 || href.indexOf(window.location.host) !== -1) {
+            e.preventDefault();
+            window.location.href = href;
+          }
+        }
+      }, false);
+    }
+  </script>
+</head>
+<body>
+  <div id="loading-screen">
+    <div class="spinner"></div>
+    <div class="loading-text">Đang tải...</div>
+  </div>
+  <audio id="remoteAudioPlayer" autoplay playsinline style="display:none;"></audio>
+  <video id="remoteVideoPlayer" autoplay playsinline style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; object-fit:cover; z-index:99998; background:#090D1A;"></video>
+  <video id="localVideoPlayer" autoplay playsinline muted style="display:none; position:fixed; top:24px; right:24px; width:130px; height:170px; object-fit:cover; z-index:99999; border-radius:16px; border:2px solid rgba(255,255,255,0.8); box-shadow:0 10px 30px rgba(0,0,0,0.6); transform: scaleX(-1);"></video>
+  <script>
+    const ChatSounds = {
+      _ctx: null,
+      _init() {
+        if (!this._ctx) {
+          this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (this._ctx.state === 'suspended') {
+          this._ctx.resume().catch(() => {});
+        }
+        return this._ctx;
+      },
+      playSend() {
+        try {
+          const ctx = this._init();
+          const now = ctx.currentTime;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(160, now);
+          osc.frequency.exponentialRampToValueAtTime(750, now + 0.12);
+          gain.gain.setValueAtTime(0.01, now);
+          gain.gain.linearRampToValueAtTime(0.65, now + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+          osc.start(now);
+          osc.stop(now + 0.15);
+        } catch(e){}
+      },
+      playReceive() {
+        try {
+          const ctx = this._init();
+          const now = ctx.currentTime;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(800, now);
+          osc.frequency.exponentialRampToValueAtTime(400, now + 0.15);
+          gain.gain.setValueAtTime(0.01, now);
+          gain.gain.linearRampToValueAtTime(0.5, now + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+          osc.start(now);
+          osc.stop(now + 0.2);
+        } catch(e){}
+      },
+      playReact() {
+        try {
+          const ctx = this._init();
+          const now = ctx.currentTime;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(350, now);
+          osc.frequency.exponentialRampToValueAtTime(1200, now + 0.08);
+          gain.gain.setValueAtTime(0.01, now);
+          gain.gain.linearRampToValueAtTime(0.55, now + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+          osc.start(now);
+          osc.stop(now + 0.09);
+        } catch(e){}
+      }
+    };
+
+    // Tự động unregister Service Worker cũ gây trắng màn hình trên web/mobile
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for (let registration of registrations) {
+          registration.unregister();
+        }
+      });
+    }
+    if (window.caches) {
+      caches.keys().then(function(names) {
+        for (let name of names) {
+          caches.delete(name);
+        }
+      });
+    }
+  </script>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
