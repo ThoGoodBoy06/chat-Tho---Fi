@@ -1,4 +1,4 @@
-name: Build Flutter Apps (iOS IPA & Android APK)
+name: Build iOS IPA Only
 
 on:
   push:
@@ -16,12 +16,6 @@ jobs:
         with:
           submodules: false
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'zulu'
-          java-version: '17'
-
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -29,11 +23,15 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Install Dependencies & Precache
+      - name: Install Dependencies
         run: |
           cd flutter_frontend
-          flutter precache --ios
           flutter pub get
+
+      - name: Run CocoaPods Install
+        run: |
+          cd flutter_frontend/ios
+          pod install || pod install --repo-update
 
       - name: Build iOS App (No Codesign)
         run: |
@@ -43,8 +41,8 @@ jobs:
       - name: Package Payload into IPA
         run: |
           cd flutter_frontend/build/ios/iphoneos
-          mkdir Payload
-          mv Runner.app Payload/
+          mkdir -p Payload
+          cp -r Runner.app Payload/
           zip -r app-release.ipa Payload
 
       - name: Upload iOS IPA Artifact
@@ -52,45 +50,4 @@ jobs:
         with:
           name: iOS-IPA-Release
           path: flutter_frontend/build/ios/iphoneos/app-release.ipa
-          retention-days: 7
-
-  build-android:
-    name: Build Android APK
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          submodules: false
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'zulu'
-          java-version: '17'
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.22.0'
-          channel: 'stable'
-          cache: true
-
-      - name: Install Dependencies & Precache
-        run: |
-          cd flutter_frontend
-          flutter precache --android
-          flutter pub get
-
-      - name: Build Android APK
-        run: |
-          cd flutter_frontend
-          flutter build apk --release
-
-      - name: Upload Android APK Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Android-APK-Release
-          path: flutter_frontend/build/app/outputs/flutter-apk/app-release.apk
           retention-days: 7
