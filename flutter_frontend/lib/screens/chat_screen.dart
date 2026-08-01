@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:universal_html/html.dart' as html;
+import 'package:audioplayers/audioplayers.dart' as audioplayers;
 import '../models/models.dart';
 import '../providers/chat_provider.dart';
 import '../services/socket_service.dart';
@@ -3536,7 +3537,6 @@ class _BlinkingRedDotState extends State<BlinkingRedDot> with SingleTickerProvid
 class VoiceBubbleWidget extends StatefulWidget {
   final String audioUrl;
   final bool isMe;
-
   const VoiceBubbleWidget({Key? key, required this.audioUrl, required this.isMe}) : super(key: key);
 
   @override
@@ -3544,25 +3544,32 @@ class VoiceBubbleWidget extends StatefulWidget {
 }
 
 class _VoiceBubbleWidgetState extends State<VoiceBubbleWidget> {
-  html.AudioElement? _audioElement;
+  late final audioplayers.AudioPlayer _player;
   bool _isPlaying = false;
   double _progress = 0.0;
   String _currentTimeStr = "0:00";
+  Duration _totalDuration = Duration.zero;
+  StreamSubscription? _positionSub;
+  StreamSubscription? _durationSub;
+  StreamSubscription? _stateSub;
 
   @override
   void initState() {
     super.initState();
-    _audioElement = html.AudioElement(widget.audioUrl);
-    _audioElement?.onTimeUpdate.listen((_) {
-      if (_audioElement != null && _audioElement!.duration > 0 && mounted) {
-        setState(() {
-          _progress = (_audioElement!.currentTime / _audioElement!.duration).clamp(0.0, 1.0);
-          final sec = _audioElement!.currentTime.toInt();
-          _currentTimeStr = "${sec ~/ 60}:${(sec % 60).toString().padLeft(2, '0')}";
-        });
-      }
+    _player = audioplayers.AudioPlayer();
+    _durationSub = _player.onDurationChanged.listen((d) {
+      if (mounted) setState(() => _totalDuration = d);
     });
-    _audioElement?.onEnded.listen((_) {
+    _positionSub = _player.onPositionChanged.listen((pos) {
+      if (!mounted) return;
+      final totalMs = _totalDuration.inMilliseconds;
+      setState(() {
+        _progress = totalMs > 0 ? (pos.inMilliseconds / totalMs).clamp(0.0, 1.0) : 0.0;
+        final sec = pos.inSeconds;
+        _currentTimeStr = "${sec ~/ 60}:${(sec % 60).toString().padLeft(2, '0')}";
+      });
+    });
+    _stateSub = _player.onPlayerComplete.listen((_) {
       if (mounted) {
         setState(() {
           _isPlaying = false;
@@ -3575,18 +3582,19 @@ class _VoiceBubbleWidgetState extends State<VoiceBubbleWidget> {
 
   @override
   void dispose() {
-    _audioElement?.pause();
-    _audioElement = null;
+    _positionSub?.cancel();
+    _durationSub?.cancel();
+    _stateSub?.cancel();
+    _player.dispose();
     super.dispose();
   }
 
-  void _togglePlay() {
-    if (_audioElement == null) return;
+  void _togglePlay() async {
     if (_isPlaying) {
-      _audioElement!.pause();
+      await _player.pause();
       setState(() => _isPlaying = false);
     } else {
-      _audioElement!.play();
+      await _player.play(audioplayers.UrlSource(widget.audioUrl));
       setState(() => _isPlaying = true);
     }
   }
