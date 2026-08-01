@@ -30,7 +30,7 @@ jobs:
       - name: Build Flutter Web
         run: |
           cd flutter_frontend
-          flutter build web --web-renderer html --release
+          flutter build web --release
 
       - name: Commit & Push Compiled Web Build
         run: |
