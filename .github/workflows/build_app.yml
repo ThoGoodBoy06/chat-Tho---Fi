@@ -28,19 +28,14 @@ jobs:
           cd flutter_frontend
           flutter pub get
 
-      - name: Run CocoaPods Install
+      - name: Build iOS App (No Codesign)
         run: |
-          cd flutter_frontend/ios
-          pod install
-
-      - name: Build iOS App with Xcode (No Codesign)
-        run: |
-          cd flutter_frontend/ios
-          xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Release -sdk iphoneos CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" -derivedDataPath ../build/ios build
+          cd flutter_frontend
+          flutter build ios --release --no-codesign
 
       - name: Package Payload into IPA
         run: |
-          cd flutter_frontend/build/ios/Build/Products/Release-iphoneos
+          cd flutter_frontend/build/ios/iphoneos
           mkdir -p Payload
           cp -r Runner.app Payload/
           zip -r app-release.ipa Payload
@@ -49,5 +44,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: iOS-IPA-Release
-          path: flutter_frontend/build/ios/Build/Products/Release-iphoneos/app-release.ipa
+          path: flutter_frontend/build/ios/iphoneos/app-release.ipa
           retention-days: 7
