@@ -2234,7 +2234,7 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     _mediaRecorder?.stop();
-    _mediaStream?.getTracks().forEach((track) => track.stop());
+    _mediaStream?.getTracks().forEach((track) => (track as dynamic).stop());
 
     setState(() {
       _isRecording = false;
@@ -2246,7 +2246,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _recordingTimer?.cancel();
     try {
       _mediaRecorder?.stop();
-      _mediaStream?.getTracks().forEach((track) => track.stop());
+      _mediaStream?.getTracks().forEach((track) => (track as dynamic).stop());
     } catch (_) {}
     setState(() {
       _isRecording = false;
@@ -2713,7 +2713,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
         if (localStream != null) {
           for (var track in localStream!.getTracks()) {
-            track.stop();
+            (track as dynamic).stop();
           }
           localStream = null;
         }
