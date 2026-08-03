@@ -229,4 +229,20 @@ class ApiService {
       return false;
     }
   }
+
+  // React to Message API Fallback
+  static Future<Map<String, dynamic>> reactToMessage(String messageId, String emoji) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/chat/messages/$messageId/react'),
+        headers: headers,
+        body: jsonEncode({'reaction': emoji}),
+      ).timeout(const Duration(seconds: 15));
+      return jsonDecode(response.body);
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.reactToMessage: $e');
+      return {};
+    }
+  }
 }

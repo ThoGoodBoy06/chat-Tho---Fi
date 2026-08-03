@@ -176,16 +176,24 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _showFlyingEmoji(BuildContext context, Offset startPosition, String emoji) {
-    final overlay = Overlay.of(context);
-    late OverlayEntry entry;
-    entry = OverlayEntry(
-      builder: (_) => _FlyingEmojiWidget(
-        from: startPosition,
-        emoji: emoji,
-        onComplete: () => entry.remove(),
-      ),
-    );
-    overlay.insert(entry);
+    try {
+      final overlay = Overlay.of(context, rootOverlay: true);
+      late OverlayEntry entry;
+      entry = OverlayEntry(
+        builder: (_) => _FlyingEmojiWidget(
+          from: startPosition,
+          emoji: emoji,
+          onComplete: () {
+            try {
+              entry.remove();
+            } catch (_) {}
+          },
+        ),
+      );
+      overlay.insert(entry);
+    } catch (e) {
+      debugPrint('⚠️ Error showing flying emoji: $e');
+    }
   }
 
   int _lastMessageCount = 0;
@@ -226,20 +234,32 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _showMessengerStyleContextMenu(BuildContext context, MessageModel msg, ChatProvider provider, bool isMe) {
+    final parentOverlay = Overlay.of(context, rootOverlay: true);
+
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
       barrierLabel: 'Dismiss',
       barrierColor: Colors.transparent,
-      transitionDuration: const Duration(milliseconds: 180),
-      pageBuilder: (context, anim1, anim2) {
+      transitionDuration: const Duration(milliseconds: 220),
+      transitionBuilder: (dialogCtx, anim1, anim2, child) {
+        final curved = CurvedAnimation(parent: anim1, curve: Curves.easeOutBack);
+        return ScaleTransition(
+          scale: curved,
+          child: FadeTransition(
+            opacity: anim1,
+            child: child,
+          ),
+        );
+      },
+      pageBuilder: (dialogContext, anim1, anim2) {
         return Scaffold(
           backgroundColor: Colors.transparent,
           body: Stack(
             children: [
               // Nền làm mờ toàn màn hình & Chạm để đóng
               GestureDetector(
-                onTap: () => Navigator.pop(context),
+                onTap: () => Navigator.pop(dialogContext),
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
                   child: Container(
@@ -259,7 +279,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       children: [
                         // 1. Thanh thả cảm xúc phía trên (Y chang hình: Emojis + Camera xanh + Nút cộng)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(30),
@@ -275,25 +295,27 @@ class _ChatScreenState extends State<ChatScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               ...['❤️', '😆', '😮', '😢', '😡', '👍'].map((emoji) {
-                                final emojiKey = GlobalKey();
-                                return GestureDetector(
+                                return _SpringEmojiPickerItem(
+                                  emoji: emoji,
+                                  onFlyingEmojiRequested: (position) {
+                                    late OverlayEntry entry;
+                                    entry = OverlayEntry(
+                                      builder: (_) => _FlyingEmojiWidget(
+                                        from: position,
+                                        emoji: emoji,
+                                        onComplete: () {
+                                          try {
+                                            entry.remove();
+                                          } catch (_) {}
+                                        },
+                                      ),
+                                    );
+                                    parentOverlay.insert(entry);
+                                  },
                                   onTap: () {
-                                    final renderBox = emojiKey.currentContext?.findRenderObject() as RenderBox?;
-                                    if (renderBox != null) {
-                                      final position = renderBox.localToGlobal(Offset.zero);
-                                      final center = Offset(
-                                        position.dx + renderBox.size.width / 2,
-                                        position.dy + renderBox.size.height / 2,
-                                      );
-                                      _showFlyingEmoji(context, center, emoji);
-                                    }
-                                    Navigator.pop(context);
+                                    Navigator.pop(dialogContext);
                                     provider.reactToMessage(msg.id, emoji);
                                   },
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 5),
-                                    child: Text(emoji, key: emojiKey, style: const TextStyle(fontSize: 26)),
-                                  ),
                                 );
                               }),
                               const SizedBox(width: 4),
@@ -1106,11 +1128,80 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildMessageStatusIndicator(MessageModel msg) {
+  Widget _buildMessageStatusIndicator(MessageModel msg, ConversationModel? conv, bool isLastSentMessage) {
+    if (!isLastSentMessage) return const SizedBox.shrink();
+
     if (msg.isRead) {
-      return const Icon(Icons.done_all, color: Color(0xFF0068FF), size: 14);
+      String? partnerAvatar = conv?.avatar;
+      if ((partnerAvatar == null || partnerAvatar.isEmpty) && conv != null && conv.members.isNotEmpty) {
+        final partner = conv.members.firstWhere(
+          (m) => m.id != msg.senderId,
+          orElse: () => conv.members.first,
+        );
+        partnerAvatar = partner.avatar;
+      }
+
+      if (partnerAvatar != null && partnerAvatar.isNotEmpty) {
+        final fullUrl = partnerAvatar.startsWith('http')
+            ? partnerAvatar
+            : '${ApiService.baseUrl.replaceAll('/api', '')}$partnerAvatar';
+        return Container(
+          margin: const EdgeInsets.only(top: 3, right: 2),
+          width: 14,
+          height: 14,
+          child: CircleAvatar(
+            radius: 7,
+            backgroundImage: NetworkImage(fullUrl),
+            backgroundColor: Colors.transparent,
+          ),
+        );
+      } else {
+        final initial = (conv?.name != null && conv!.name.isNotEmpty) ? conv.name[0].toUpperCase() : 'U';
+        return Container(
+          margin: const EdgeInsets.only(top: 3, right: 2),
+          width: 14,
+          height: 14,
+          child: CircleAvatar(
+            radius: 7,
+            backgroundColor: const Color(0xFF0068FF),
+            child: Text(
+              initial,
+              style: const TextStyle(fontSize: 7, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+          ),
+        );
+      }
     }
-    return const Icon(Icons.done_all, color: Color(0xFF65676B), size: 14);
+
+    if (msg.isDelivered) {
+      // Trạng thái Đã nhận: Hiển thị icon hình tròn màu Xanh Zalo (#0068FF), có dấu tích trắng.
+      return Container(
+        margin: const EdgeInsets.only(top: 3, right: 2),
+        width: 14,
+        height: 14,
+        decoration: const BoxDecoration(
+          color: Color(0xFF0068FF),
+          shape: BoxShape.circle,
+        ),
+        child: const Center(
+          child: Icon(Icons.check, size: 9, color: Colors.white),
+        ),
+      );
+    }
+
+    // Trạng thái Đã gửi: Hiển thị icon hình tròn rỗng viền xám, có dấu tích (check) bên trong.
+    return Container(
+      margin: const EdgeInsets.only(top: 3, right: 2),
+      width: 14,
+      height: 14,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: const Color(0xFF94A3B8), width: 1.2),
+      ),
+      child: const Center(
+        child: Icon(Icons.check, size: 8, color: Color(0xFF94A3B8)),
+      ),
+    );
   }
 
   Widget _buildChatWindow(ChatProvider provider, {required bool isDesktop}) {
@@ -1206,14 +1297,19 @@ class _ChatScreenState extends State<ChatScreen> {
           Expanded(
             child: provider.isLoadingMessages
                 ? const Center(child: CircularProgressIndicator(color: primaryColor))
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    itemCount: provider.messages.length,
-                    itemBuilder: (context, index) {
-                      final msg = provider.messages[index];
-                      final isMe = msg.senderId == provider.currentUser?.id;
-                      final showTime = index == 0 || (index > 0 && msg.createdAt.difference(provider.messages[index - 1].createdAt).inMinutes > 30);
+                : Builder(
+                    builder: (context) {
+                      final lastSentMessageIndex = provider.messages.lastIndexWhere((m) => m.senderId == provider.currentUser?.id);
+
+                      return ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        itemCount: provider.messages.length,
+                        itemBuilder: (context, index) {
+                          final msg = provider.messages[index];
+                          final isMe = msg.senderId == provider.currentUser?.id;
+                          final isLastSentMessage = (index == lastSentMessageIndex);
+                          final showTime = index == 0 || (index > 0 && msg.createdAt.difference(provider.messages[index - 1].createdAt).inMinutes > 30);
 
                       if (msg.type == 'system') {
                         return Padding(
@@ -3355,6 +3451,109 @@ class _SwipeToReplyWrapperState extends State<_SwipeToReplyWrapper> with SingleT
   }
 }
 
+class _SpringEmojiPickerItem extends StatefulWidget {
+  final String emoji;
+  final VoidCallback onTap;
+  final Function(Offset position) onFlyingEmojiRequested;
+
+  const _SpringEmojiPickerItem({
+    Key? key,
+    required this.emoji,
+    required this.onTap,
+    required this.onFlyingEmojiRequested,
+  }) : super(key: key);
+
+  @override
+  State<_SpringEmojiPickerItem> createState() => _SpringEmojiPickerItemState();
+}
+
+class _SpringEmojiPickerItemState extends State<_SpringEmojiPickerItem> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  final GlobalKey _key = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 220),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.5).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleTap() {
+    final renderBox = _key.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox != null) {
+      final position = renderBox.localToGlobal(Offset.zero);
+      final center = Offset(
+        position.dx + renderBox.size.width / 2,
+        position.dy + renderBox.size.height / 2,
+      );
+      widget.onFlyingEmojiRequested(center);
+    }
+    widget.onTap();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => _controller.forward(),
+      onTapUp: (_) {
+        _controller.reverse();
+        _handleTap();
+      },
+      onTapCancel: () => _controller.reverse(),
+      child: AnimatedBuilder(
+        animation: _scaleAnimation,
+        builder: (context, child) {
+          return Transform.scale(
+            scale: _scaleAnimation.value,
+            child: child,
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+          child: Text(
+            widget.emoji,
+            key: _key,
+            style: const TextStyle(fontSize: 27),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmojiParticle {
+  final double dx;
+  final double dy;
+  final double startScale;
+  final double maxScale;
+  final double rotation;
+  final double fontSize;
+  final double delay;
+
+  _EmojiParticle({
+    required this.dx,
+    required this.dy,
+    required this.startScale,
+    required this.maxScale,
+    required this.rotation,
+    required this.fontSize,
+    required this.delay,
+  });
+}
+
 class _FlyingEmojiWidget extends StatefulWidget {
   final Offset from;
   final String emoji;
@@ -3373,41 +3572,43 @@ class _FlyingEmojiWidget extends StatefulWidget {
 
 class _FlyingEmojiWidgetState extends State<_FlyingEmojiWidget> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<Offset> _positionAnimation;
-  late Animation<double> _opacityAnimation;
-  late Animation<double> _scaleAnimation;
+  late List<_EmojiParticle> _particles;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 950),
       vsync: this,
     );
 
-    _positionAnimation = Tween<Offset>(
-      begin: widget.from,
-      end: widget.from - const Offset(0, 140),
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOutCubic,
-    ));
-
-    _opacityAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.0,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: const Interval(0.5, 1.0, curve: Curves.easeOut),
-    ));
-
-    _scaleAnimation = Tween<double>(
-      begin: 0.6,
-      end: 1.3,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: const Interval(0.0, 0.3, curve: Curves.easeOutBack),
-    ));
+    final rand = Random();
+    _particles = List.generate(7, (index) {
+      if (index == 0) {
+        return _EmojiParticle(
+          dx: 0,
+          dy: -190,
+          startScale: 0.4,
+          maxScale: 1.8,
+          rotation: 0,
+          fontSize: 42,
+          delay: 0.0,
+        );
+      }
+      final angle = (index - 3.5) * 0.45;
+      final distance = 130.0 + rand.nextDouble() * 60.0;
+      final dx = sin(angle) * distance;
+      final dy = -cos(angle) * distance - 30;
+      return _EmojiParticle(
+        dx: dx,
+        dy: dy,
+        startScale: 0.2 + rand.nextDouble() * 0.2,
+        maxScale: 0.8 + rand.nextDouble() * 0.4,
+        rotation: (rand.nextDouble() - 0.5) * 0.7,
+        fontSize: 24 + rand.nextDouble() * 12,
+        delay: rand.nextDouble() * 0.12,
+      );
+    });
 
     _controller.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
@@ -3429,16 +3630,42 @@ class _FlyingEmojiWidgetState extends State<_FlyingEmojiWidget> with SingleTicke
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
-        return Positioned(
-          left: _positionAnimation.value.dx,
-          top: _positionAnimation.value.dy,
-          child: Transform.scale(
-            scale: _scaleAnimation.value,
-            child: Opacity(
-              opacity: _opacityAnimation.value,
-              child: Text(widget.emoji, style: const TextStyle(fontSize: 36)),
-            ),
-          ),
+        final progress = _controller.value;
+        return Stack(
+          children: _particles.map((p) {
+            final effectiveProgress = max(0.0, min(1.0, (progress - p.delay) / (1.0 - p.delay)));
+            if (effectiveProgress <= 0) return const SizedBox.shrink();
+
+            final curveValue = Curves.easeOutCubic.transform(effectiveProgress);
+            final scaleCurve = Curves.elasticOut.transform(min(1.0, effectiveProgress * 2.2));
+            final opacity = (1.0 - Curves.easeIn.transform(max(0.0, (effectiveProgress - 0.35) / 0.65))).clamp(0.0, 1.0);
+
+            final wobble = sin(effectiveProgress * pi * 3.5) * 6;
+            final currentDx = widget.from.dx + (p.dx * curveValue) + wobble;
+            final currentDy = widget.from.dy + (p.dy * curveValue);
+            final scale = (p.startScale + (p.maxScale - p.startScale) * scaleCurve).clamp(0.0, 2.5);
+
+            return Positioned(
+              left: currentDx - (p.fontSize / 2),
+              top: currentDy - (p.fontSize / 2),
+              child: Transform.rotate(
+                angle: p.rotation * curveValue,
+                child: Transform.scale(
+                  scale: scale,
+                  child: Opacity(
+                    opacity: opacity,
+                    child: Text(
+                      widget.emoji,
+                      style: TextStyle(
+                        fontSize: p.fontSize,
+                        decoration: TextDecoration.none,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
         );
       },
     );

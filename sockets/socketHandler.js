@@ -269,6 +269,77 @@ module.exports = (io) => {
       }
     });
 
+    // 4.4 Lắng nghe sự kiện Đã nhận tin nhắn (Delivered)
+    socket.on("mark_as_delivered", async ({ messageId, conversationId }) => {
+      try {
+        if (!messageId) return;
+        const msg = await prisma.messages.findUnique({
+          where: { id: messageId },
+          select: { id: true, senderId: true, conversationId: true, isDelivered: true },
+        });
+        if (!msg) return;
+
+        if (!msg.isDelivered) {
+          await prisma.messages.update({
+            where: { id: messageId },
+            data: { isDelivered: true },
+          });
+        }
+
+        const targetConvId = conversationId || msg.conversationId;
+        if (msg.senderId) {
+          io.to(msg.senderId).emit("message_delivered", {
+            messageId,
+            conversationId: targetConvId,
+          });
+        }
+        if (targetConvId) {
+          io.to(targetConvId).emit("message_delivered", {
+            messageId,
+            conversationId: targetConvId,
+          });
+        }
+      } catch (err) {
+        console.error("Lỗi khi xử lý mark_as_delivered:", err.message);
+      }
+    });
+
+    // 4.5.1 Lắng nghe sự kiện Đã xem 1 tin nhắn cụ thể (mark_as_read)
+    socket.on("mark_as_read", async ({ messageId, conversationId }) => {
+      try {
+        if (!messageId && !conversationId) return;
+        const readerId = socket.userId;
+
+        if (messageId) {
+          const msg = await prisma.messages.findUnique({
+            where: { id: messageId },
+            select: { id: true, senderId: true, conversationId: true },
+          });
+          if (msg) {
+            await prisma.messages.update({
+              where: { id: messageId },
+              data: { isRead: true, isDelivered: true },
+            });
+            const targetConvId = conversationId || msg.conversationId;
+            if (msg.senderId) {
+              io.to(msg.senderId).emit("message_read", {
+                messageId,
+                conversationId: targetConvId,
+                readBy: readerId,
+              });
+              io.to(msg.senderId).emit("messages_read", {
+                conversationId: targetConvId,
+                readBy: readerId,
+                lastReadMessageId: messageId,
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Lỗi khi xử lý mark_as_read:", err.message);
+      }
+    });
+
     // 4.5 Lắng nghe sự kiện Đã xem tin nhắn
     socket.on("mark_messages_read", async ({ conversationId, userId }) => {
       try {
@@ -320,7 +391,7 @@ module.exports = (io) => {
             senderId: { not: readerId },
             id: { in: unreadMessages.map((m) => m.id) },
           },
-          data: { isRead: true },
+          data: { isRead: true, isDelivered: true },
         });
         console.log(
           `✅ Đã lưu trạng thái isRead: true cho ${unreadMessages.length} tin nhắn vào DB!`,
@@ -750,6 +821,62 @@ module.exports = (io) => {
         }
       } catch (error) {
         console.error("Lỗi khi ghim/bỏ ghim tin nhắn:", error);
+      }
+    });
+
+    // ══════════════════════════════════════════════════════
+    // 15. THẢ CẢM XÚC TIN NHẮN QUA SOCKET (React Message)
+    // ══════════════════════════════════════════════════════
+    socket.on("react_message", async (data) => {
+      try {
+        const userId = socket.userId;
+        const { messageId, conversationId, emoji } = data || {};
+        if (!messageId || !emoji || !userId) return;
+
+        const message = await prisma.messages.findUnique({
+          where: { id: messageId },
+        });
+        if (!message) return;
+
+        let currentReactions = message.reactions;
+        if (typeof currentReactions === "string") {
+          try {
+            currentReactions = JSON.parse(currentReactions);
+          } catch (e) {}
+        }
+        currentReactions =
+          typeof currentReactions === "object" && currentReactions !== null
+            ? currentReactions
+            : {};
+
+        const isRemoved = currentReactions[userId] === emoji;
+        if (isRemoved) {
+          delete currentReactions[userId];
+        } else {
+          currentReactions[userId] = emoji;
+        }
+
+        const updatedMessage = await prisma.messages.update({
+          where: { id: messageId },
+          data: { reactions: JSON.stringify(currentReactions) },
+        });
+
+        const targetConvId = conversationId || message.conversationId;
+
+        // Phát tín hiệu tới tất cả client trong phòng chat
+        io.to(targetConvId).emit("message_reacted", {
+          messageId: messageId,
+          conversationId: targetConvId,
+          reactions: currentReactions,
+          reaction: emoji,
+          userId: userId,
+          isRemoved: isRemoved,
+          data: updatedMessage,
+        });
+
+        console.log(`❤️ User ${userId} đã thả cảm xúc '${emoji}' vào tin nhắn: ${messageId}`);
+      } catch (error) {
+        console.error("Lỗi khi thả cảm xúc qua socket:", error);
       }
     });
   });

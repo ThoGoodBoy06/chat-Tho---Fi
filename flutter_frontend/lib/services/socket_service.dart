@@ -20,6 +20,7 @@ class SocketService {
 
   static final _reactedController = StreamController<Map<String, dynamic>>.broadcast();
   static final _readController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _deliveredController = StreamController<Map<String, dynamic>>.broadcast();
 
   static Stream<Map<String, dynamic>> get onMessageReceived => _messageController.stream;
   static Stream<Map<String, dynamic>> get onIncomingCall => _incomingCallController.stream;
@@ -31,6 +32,7 @@ class SocketService {
   static Stream<Map<String, dynamic>> get onUserStopTyping => _stopTypingController.stream;
   static Stream<Map<String, dynamic>> get onMessageReacted => _reactedController.stream;
   static Stream<Map<String, dynamic>> get onMessagesRead => _readController.stream;
+  static Stream<Map<String, dynamic>> get onMessageDelivered => _deliveredController.stream;
 
   // --- AUDIO API SYNTHETIC SOUND GENERATOR ---
   static void playSendSound() {
@@ -179,6 +181,18 @@ class SocketService {
       }
     });
 
+    socket?.on('message_delivered', (data) {
+      if (data is Map) {
+        _deliveredController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('message_read', (data) {
+      if (data is Map) {
+        _readController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
     socket?.on('messages_read', (data) {
       if (data is Map) {
         _readController.add(Map<String, dynamic>.from(data));
@@ -186,6 +200,29 @@ class SocketService {
     });
 
     socket?.onDisconnect((_) => print('🔴 Socket disconnected'));
+  }
+
+  static void emitMarkAsDelivered(String messageId, {String? conversationId}) {
+    if (socket != null && socket!.connected) {
+      socket!.emit('mark_as_delivered', {
+        'messageId': messageId,
+        'conversationId': conversationId,
+      });
+    }
+  }
+
+  static void emitMarkAsRead(String messageId, {String? conversationId}) {
+    if (socket != null && socket!.connected) {
+      socket!.emit('mark_as_read', {
+        'messageId': messageId,
+        'conversationId': conversationId,
+      });
+      if (conversationId != null) {
+        socket!.emit('mark_messages_read', {
+          'conversationId': conversationId,
+        });
+      }
+    }
   }
 
   static void emitReactMessage(String messageId, String conversationId, String emoji) {

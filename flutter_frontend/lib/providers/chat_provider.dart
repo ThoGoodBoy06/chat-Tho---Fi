@@ -18,6 +18,8 @@ class ChatProvider extends ChangeNotifier {
   StreamSubscription? _typingSubscription;
   StreamSubscription? _stopTypingSubscription;
   StreamSubscription? _reactedSubscription;
+  StreamSubscription? _deliveredSubscription;
+  StreamSubscription? _readSubscription;
 
   /// Callback để thông báo cho UI cuộn xuống khi có tin nhắn mới
   VoidCallback? onNewMessageReceived;
@@ -37,8 +39,9 @@ class ChatProvider extends ChangeNotifier {
       _updateLastMessageInConversation(newMsg);
       if (newMsg.senderId != currentUser?.id) {
         SocketService.playReceiveSound();
+        SocketService.emitMarkAsDelivered(newMsg.id, conversationId: newMsg.conversationId);
         if (selectedConversation != null && selectedConversation!.id == newMsg.conversationId && currentUser != null) {
-          SocketService.markMessagesRead(newMsg.conversationId!, currentUser!.id);
+          SocketService.emitMarkAsRead(newMsg.id, conversationId: newMsg.conversationId);
         }
       }
     });
@@ -48,9 +51,7 @@ class ChatProvider extends ChangeNotifier {
       final uid = data['userId']?.toString() ?? data['senderId']?.toString();
       final nickname = data['nickname']?.toString() ?? data['senderName']?.toString() ?? 'Người dùng';
 
-      if (uid != null && uid == currentUser?.id) return;
-
-      if (convId != null && convId.isNotEmpty) {
+      if (convId != null && uid != null && uid != currentUser?.id) {
         typingUsers[convId] = nickname;
         if (selectedConversation != null && selectedConversation!.id == convId) {
           isPartnerTyping = true;
@@ -61,7 +62,7 @@ class ChatProvider extends ChangeNotifier {
 
     _stopTypingSubscription = SocketService.onUserStopTyping.listen((data) {
       final convId = data['conversationId']?.toString();
-      if (convId != null && convId.isNotEmpty) {
+      if (convId != null) {
         typingUsers.remove(convId);
         if (selectedConversation != null && selectedConversation!.id == convId) {
           isPartnerTyping = false;
@@ -82,23 +83,36 @@ class ChatProvider extends ChangeNotifier {
         }
         final idx = messages.indexWhere((m) => m.id == msgId);
         if (idx != -1) {
-          final old = messages[idx];
-          messages[idx] = MessageModel(
-            id: old.id,
-            conversationId: old.conversationId,
-            senderId: old.senderId,
-            type: old.type,
-            content: old.content,
-            imageUrl: old.imageUrl,
-            audioUrl: old.audioUrl,
-            isRead: old.isRead,
-            replyMessageId: old.replyMessageId,
-            reactions: reactions,
-            createdAt: old.createdAt,
-          );
+          messages[idx] = messages[idx].copyWith(reactions: reactions);
         }
         SocketService.playReactSound();
         notifyListeners();
+      }
+    });
+
+    _deliveredSubscription = SocketService.onMessageDelivered.listen((data) {
+      final msgId = data['messageId']?.toString();
+      if (msgId != null) {
+        final idx = messages.indexWhere((m) => m.id == msgId);
+        if (idx != -1 && !messages[idx].isDelivered) {
+          messages[idx] = messages[idx].copyWith(isDelivered: true);
+          notifyListeners();
+        }
+      }
+    });
+
+    _readSubscription = SocketService.onMessagesRead.listen((data) {
+      final convId = data['conversationId']?.toString();
+      final readBy = data['readBy']?.toString();
+      if (selectedConversation != null && (convId == null || selectedConversation!.id == convId)) {
+        bool updated = false;
+        for (int i = 0; i < messages.length; i++) {
+          if (!messages[i].isRead && (readBy == null || messages[i].senderId != readBy)) {
+            messages[i] = messages[i].copyWith(isRead: true, isDelivered: true);
+            updated = true;
+          }
+        }
+        if (updated) notifyListeners();
       }
     });
   }
@@ -115,8 +129,34 @@ class ChatProvider extends ChangeNotifier {
 
   void reactToMessage(String messageId, String emoji) {
     if (selectedConversation == null) return;
+
+    // Optimistic update locally for instant feedback
+    final index = messages.indexWhere((m) => m.id == messageId);
+    if (index != -1 && currentUser != null) {
+      final msg = messages[index];
+      final Map<String, String> updatedReactions = Map<String, String>.from(msg.reactions);
+      final userId = currentUser!.id;
+
+      if (updatedReactions[userId] == emoji) {
+        updatedReactions.remove(userId);
+      } else {
+        updatedReactions[userId] = emoji;
+      }
+
+      messages[index] = msg.copyWith(reactions: updatedReactions);
+      notifyListeners();
+    }
+
+    // Play local reaction sound immediately
+    SocketService.playReactSound();
+
+    // Emit socket event for real-time broadcast
     SocketService.emitReactMessage(messageId, selectedConversation!.id, emoji);
-    notifyListeners();
+
+    // Call REST API fallback for guaranteed database persistence
+    ApiService.reactToMessage(messageId, emoji).catchError((e) {
+      debugPrint('⚠️ Fallback react API error: $e');
+    });
   }
 
   String? getTypingUserForSelectedConversation() {
@@ -429,6 +469,8 @@ class ChatProvider extends ChangeNotifier {
     _typingSubscription?.cancel();
     _stopTypingSubscription?.cancel();
     _reactedSubscription?.cancel();
+    _deliveredSubscription?.cancel();
+    _readSubscription?.cancel();
     super.dispose();
   }
 }

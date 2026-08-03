@@ -60,6 +60,7 @@ model Messages {
   isDeleted      Boolean?       @default(false)
   isRecalled     Boolean?       @default(false)
   isRead         Boolean?       @default(false)
+  isDelivered    Boolean?       @default(false)
   isEdited       Boolean?       @default(false)
   isPinned       Boolean?       @default(false)
   isForwarded    Boolean?       @default(false)

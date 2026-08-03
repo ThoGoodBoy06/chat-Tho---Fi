@@ -118,6 +118,38 @@ class MessageModel {
           : DateTime.now(),
     );
   }
+
+  MessageModel copyWith({
+    String? id,
+    String? conversationId,
+    String? senderId,
+    String? type,
+    String? content,
+    String? imageUrl,
+    String? audioUrl,
+    bool? isRead,
+    bool? isDelivered,
+    bool? isRecalled,
+    String? replyMessageId,
+    Map<String, String>? reactions,
+    DateTime? createdAt,
+  }) {
+    return MessageModel(
+      id: id ?? this.id,
+      conversationId: conversationId ?? this.conversationId,
+      senderId: senderId ?? this.senderId,
+      type: type ?? this.type,
+      content: content ?? this.content,
+      imageUrl: imageUrl ?? this.imageUrl,
+      audioUrl: audioUrl ?? this.audioUrl,
+      isRead: isRead ?? this.isRead,
+      isDelivered: isDelivered ?? this.isDelivered,
+      isRecalled: isRecalled ?? this.isRecalled,
+      replyMessageId: replyMessageId ?? this.replyMessageId,
+      reactions: reactions ?? this.reactions,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
 }
 
 class ConversationModel {
