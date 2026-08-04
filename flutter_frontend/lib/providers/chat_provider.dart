@@ -20,6 +20,8 @@ class ChatProvider extends ChangeNotifier {
   StreamSubscription? _reactedSubscription;
   StreamSubscription? _deliveredSubscription;
   StreamSubscription? _readSubscription;
+  StreamSubscription? _userStatusSubscription;
+  StreamSubscription? _nicknameSubscription;
 
   /// Callback để thông báo cho UI cuộn xuống khi có tin nhắn mới
   VoidCallback? onNewMessageReceived;
@@ -113,6 +115,27 @@ class ChatProvider extends ChangeNotifier {
           }
         }
         if (updated) notifyListeners();
+      }
+    });
+
+    _userStatusSubscription = SocketService.onUserStatusChanged.listen((data) {
+      final userId = data['userId']?.toString() ?? data['id']?.toString();
+      final isOnline = data['isOnline'] == true || data['status'] == 'online';
+      DateTime? lastActive;
+      if (data['lastActive'] != null) {
+        lastActive = DateTime.tryParse(data['lastActive'].toString());
+      }
+      if (userId != null && userId.isNotEmpty) {
+        updateUserOnlineStatus(userId, isOnline, lastActive: lastActive);
+      }
+    });
+
+    _nicknameSubscription = SocketService.onNicknameChanged.listen((data) {
+      final convId = data['conversationId']?.toString();
+      final userId = data['userId']?.toString();
+      final nickname = data['nickname']?.toString();
+      if (convId != null && userId != null) {
+        updateMemberNickname(convId, userId, nickname);
       }
     });
   }
@@ -463,6 +486,109 @@ class ChatProvider extends ChangeNotifier {
     return false;
   }
 
+  void updateUserOnlineStatus(String userId, bool isOnline, {DateTime? lastActive}) {
+    bool updated = false;
+    for (int i = 0; i < conversations.length; i++) {
+      final conv = conversations[i];
+      final memberIndex = conv.members.indexWhere((m) => m.id == userId);
+      if (memberIndex != -1) {
+        final updatedMembers = List<UserModel>.from(conv.members);
+        final oldMember = updatedMembers[memberIndex];
+        final newLastActive = isOnline
+            ? DateTime.now()
+            : (lastActive ?? oldMember.lastActive ?? DateTime.now());
+        updatedMembers[memberIndex] = UserModel(
+          id: oldMember.id,
+          username: oldMember.username,
+          fullName: oldMember.fullName,
+          email: oldMember.email,
+          phone: oldMember.phone,
+          avatar: oldMember.avatar,
+          isOnline: isOnline,
+          lastActive: newLastActive,
+        );
+        conversations[i] = ConversationModel(
+          id: conv.id,
+          name: conv.name,
+          avatar: conv.avatar,
+          type: conv.type,
+          lastMessage: conv.lastMessage,
+          unreadCount: conv.unreadCount,
+          updatedAt: conv.updatedAt,
+          targetUserId: conv.targetUserId,
+          members: updatedMembers,
+        );
+        if (selectedConversation?.id == conv.id) {
+          selectedConversation = conversations[i];
+        }
+        updated = true;
+      }
+    }
+    if (updated) {
+      notifyListeners();
+    }
+  }
+
+  Future<bool> updateNickname(String conversationId, String userId, String? nickname) async {
+    final success = await ApiService.updateNickname(conversationId, userId, nickname);
+    if (success) {
+      SocketService.emitChangeNickname(conversationId, userId, nickname);
+      updateMemberNickname(conversationId, userId, nickname);
+    }
+    return success;
+  }
+
+  void updateMemberNickname(String conversationId, String userId, String? nickname) {
+    bool updated = false;
+    for (int i = 0; i < conversations.length; i++) {
+      if (conversations[i].id == conversationId) {
+        final conv = conversations[i];
+        final memberIndex = conv.members.indexWhere((m) => m.id == userId);
+        if (memberIndex != -1) {
+          final updatedMembers = List<UserModel>.from(conv.members);
+          final oldMember = updatedMembers[memberIndex];
+          final cleanNickname = (nickname != null && nickname.trim().isNotEmpty) ? nickname.trim() : null;
+          updatedMembers[memberIndex] = UserModel(
+            id: oldMember.id,
+            username: oldMember.username,
+            fullName: oldMember.fullName,
+            nickname: cleanNickname,
+            email: oldMember.email,
+            phone: oldMember.phone,
+            avatar: oldMember.avatar,
+            isOnline: oldMember.isOnline,
+            lastActive: oldMember.lastActive,
+          );
+
+          String newConvName = conv.name;
+          if (conv.type == 'private' && userId == conv.targetUserId) {
+            newConvName = cleanNickname ?? oldMember.fullName;
+          }
+
+          conversations[i] = ConversationModel(
+            id: conv.id,
+            name: newConvName,
+            avatar: conv.avatar,
+            type: conv.type,
+            lastMessage: conv.lastMessage,
+            unreadCount: conv.unreadCount,
+            updatedAt: conv.updatedAt,
+            targetUserId: conv.targetUserId,
+            members: updatedMembers,
+          );
+
+          if (selectedConversation?.id == conversationId) {
+            selectedConversation = conversations[i];
+          }
+          updated = true;
+        }
+      }
+    }
+    if (updated) {
+      notifyListeners();
+    }
+  }
+
   @override
   void dispose() {
     _socketSubscription?.cancel();
@@ -471,6 +597,8 @@ class ChatProvider extends ChangeNotifier {
     _reactedSubscription?.cancel();
     _deliveredSubscription?.cancel();
     _readSubscription?.cancel();
+    _userStatusSubscription?.cancel();
+    _nicknameSubscription?.cancel();
     super.dispose();
   }
 }

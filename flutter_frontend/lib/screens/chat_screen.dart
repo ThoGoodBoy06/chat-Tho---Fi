@@ -23,7 +23,7 @@ class ChatScreen extends StatefulWidget {
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   int _currentTabIndex = 0; // 0: Tin nhắn, 1: Danh bạ, 2: Tin tức, 3: Trợ lý AI, 4: Cá nhân
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
@@ -34,6 +34,7 @@ class _ChatScreenState extends State<ChatScreen> {
   int _selectedEmojiCategory = 0;
   final _searchController = TextEditingController();
   StreamSubscription? _incomingCallSub;
+  StreamSubscription? _visibilitySub;
 
   // AI Assistant Chat state
   final List<Map<String, String>> _aiMessages = [
@@ -55,6 +56,16 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    if (kIsWeb) {
+      _visibilitySub = html.document.onVisibilityChange.listen((_) {
+        if (html.document.hidden == true) {
+          SocketService.emitGoOffline();
+        } else {
+          SocketService.emitGoOnline();
+        }
+      });
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = Provider.of<ChatProvider>(context, listen: false);
       provider.fetchConversations();
@@ -64,6 +75,16 @@ class _ChatScreenState extends State<ChatScreen> {
     });
     _textController.addListener(_onTextChanged);
     _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive || state == AppLifecycleState.detached) {
+      SocketService.emitGoOffline();
+    } else if (state == AppLifecycleState.resumed) {
+      SocketService.emitGoOnline();
+    }
   }
 
   void _initCallListeners() {
@@ -108,6 +129,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _visibilitySub?.cancel();
     _debounceTimer?.cancel();
     try {
       final provider = Provider.of<ChatProvider>(context, listen: false);
@@ -493,6 +516,24 @@ class _ChatScreenState extends State<ChatScreen> {
 
   String _formatTime(DateTime dt) {
     return DateFormat('HH:mm').format(dt);
+  }
+
+  String _formatLastActive(DateTime? lastActive, bool isOnline) {
+    if (isOnline) return 'Đang hoạt động';
+    if (lastActive == null) return 'Hoạt động gần đây';
+    final now = DateTime.now();
+    final diff = now.difference(lastActive);
+    if (diff.inSeconds < 60) {
+      return 'Hoạt động vừa xong';
+    } else if (diff.inMinutes < 60) {
+      return 'Hoạt động ${diff.inMinutes} phút trước';
+    } else if (diff.inHours < 24) {
+      return 'Hoạt động ${diff.inHours} giờ trước';
+    } else if (diff.inDays < 7) {
+      return 'Hoạt động ${diff.inDays} ngày trước';
+    } else {
+      return 'Hoạt động ${DateFormat('dd/MM').format(lastActive)}';
+    }
   }
 
   @override
@@ -1411,20 +1452,39 @@ class _ChatScreenState extends State<ChatScreen> {
                     icon: const Icon(Icons.chevron_left_rounded, color: primaryColor, size: 30),
                     onPressed: () => provider.clearSelectedConversation(),
                   ),
-                CircleAvatar(
-                  radius: 19,
-                  backgroundColor: primaryColor,
-                  backgroundImage: (conv.avatar != null && conv.avatar!.isNotEmpty)
-                      ? NetworkImage(conv.avatar!)
-                      : null,
-                  child: (conv.avatar == null || conv.avatar!.isEmpty)
-                      ? Text(
-                          conv.name.isNotEmpty ? conv.name[0].toUpperCase() : 'U',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                        )
-                      : null,
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    CircleAvatar(
+                      radius: 22,
+                      backgroundColor: primaryColor,
+                      backgroundImage: (conv.avatar != null && conv.avatar!.isNotEmpty)
+                          ? NetworkImage(conv.avatar!)
+                          : null,
+                      child: (conv.avatar == null || conv.avatar!.isEmpty)
+                          ? Text(
+                              conv.name.isNotEmpty ? conv.name[0].toUpperCase() : 'U',
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                            )
+                          : null,
+                    ),
+                    if (conv.isOnline == true)
+                      Positioned(
+                        right: -1,
+                        bottom: -1,
+                        child: Container(
+                          width: 14,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF31A24C),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2.5),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -1437,15 +1497,30 @@ class _ChatScreenState extends State<ChatScreen> {
                         style: const TextStyle(
                           color: Color(0xFF050505),
                           fontWeight: FontWeight.w700,
-                          fontSize: 16,
+                          fontSize: 18,
+                          letterSpacing: -0.3,
                         ),
                       ),
-                      Text(
-                        conv.isOnline == true ? 'Đang hoạt động' : 'Hoạt động gần đây',
-                        style: const TextStyle(
-                          color: Color(0xFF8A8D91),
-                          fontSize: 12,
-                        ),
+                      const SizedBox(height: 1),
+                      Builder(
+                        builder: (_) {
+                          UserModel? partner;
+                          if (conv.members.isNotEmpty) {
+                            final uid = provider.currentUser?.id;
+                            partner = conv.members.firstWhere(
+                              (m) => m.id != uid,
+                              orElse: () => conv.members.first,
+                            );
+                          }
+                          return Text(
+                            _formatLastActive(partner?.lastActive, conv.isOnline),
+                            style: const TextStyle(
+                              color: Color(0xFF65676B),
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.normal,
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -2676,23 +2751,330 @@ class _ChatScreenState extends State<ChatScreen> {
   void _showChatInfo(ChatProvider provider) {
     final conv = provider.selectedConversation;
     if (conv == null) return;
+
+    String? partnerAvatar = conv.avatar;
+    UserModel? partnerUser;
+    if (conv.members.isNotEmpty) {
+      final currentUserId = provider.currentUser?.id;
+      partnerUser = conv.members.firstWhere(
+        (m) => m.id != currentUserId,
+        orElse: () => conv.members.first,
+      );
+      if (partnerAvatar == null || partnerAvatar.isEmpty) {
+        partnerAvatar = partnerUser.avatar;
+      }
+    }
+
+    String? fullAvatarUrl;
+    if (partnerAvatar != null && partnerAvatar.isNotEmpty) {
+      fullAvatarUrl = partnerAvatar.startsWith('http')
+          ? partnerAvatar
+          : '${ApiService.baseUrl.replaceAll('/api', '')}$partnerAvatar';
+    }
+
+    final isOnline = conv.isOnline == true;
+
     showDialog(
       context: context,
       builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          elevation: 8,
+          backgroundColor: Colors.white,
+          child: Container(
+            width: 320,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // 1. Ảnh đại diện (Ở trên cùng, Căn giữa)
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    CircleAvatar(
+                      radius: 46,
+                      backgroundColor: const Color(0xFF0068FF),
+                      backgroundImage: fullAvatarUrl != null ? NetworkImage(fullAvatarUrl) : null,
+                      child: fullAvatarUrl == null
+                          ? Text(
+                              conv.name.isNotEmpty ? conv.name[0].toUpperCase() : 'U',
+                              style: const TextStyle(fontSize: 36, color: Colors.white, fontWeight: FontWeight.bold),
+                            )
+                          : null,
+                    ),
+                    if (isOnline)
+                      Positioned(
+                        right: 2,
+                        bottom: 2,
+                        child: Container(
+                          width: 16,
+                          height: 16,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF31A24C),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2.5),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // 2. Tên người dùng (Ngay bên dưới ảnh, Căn giữa)
+                Text(
+                  conv.name,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF050505),
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                const SizedBox(height: 4),
+
+                // 3. Trạng thái hoạt động
+                Text(
+                  _formatLastActive(partnerUser?.lastActive, isOnline),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.normal,
+                    color: Color(0xFF65676B),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // 4. Nút Đổi Biệt Danh (Đặt trong menu i)
+                InkWell(
+                  onTap: () {
+                    Navigator.pop(context);
+                    if (conv.type == 'group') {
+                      _showGroupNicknameSelectionSheet(provider, conv);
+                    } else if (partnerUser != null) {
+                      _showEditNicknameDialog(provider, conv, partnerUser);
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFBFDBFE), width: 1),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.edit_note_rounded, color: Color(0xFF0068FF), size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'Đổi biệt danh',
+                          style: TextStyle(color: Color(0xFF0068FF), fontSize: 14, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // 5. Các nút thao tác nhanh (Gọi thoại / Gọi Video)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    InkWell(
+                      onTap: () {
+                        Navigator.pop(context);
+                        _startVoiceCall(provider);
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.phone_rounded, color: Color(0xFF0068FF), size: 18),
+                            SizedBox(width: 6),
+                            Text(
+                              'Gọi thoại',
+                              style: TextStyle(color: Color(0xFF0F172A), fontSize: 13, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () {
+                        Navigator.pop(context);
+                        _startVideoCall(provider);
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.videocam_rounded, color: Color(0xFF10B981), size: 18),
+                            SizedBox(width: 6),
+                            Text(
+                              'Gọi Video',
+                              style: TextStyle(color: Color(0xFF0F172A), fontSize: 13, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // 6. Nút Đóng
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      backgroundColor: const Color(0xFFF8FAFC),
+                    ),
+                    child: const Text(
+                      'Đóng',
+                      style: TextStyle(color: Color(0xFF64748B), fontSize: 14, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showEditNicknameDialog(ChatProvider provider, ConversationModel conv, UserModel member) {
+    final controller = TextEditingController(text: member.nickname ?? '');
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text(conv.name),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          backgroundColor: Colors.white,
+          title: const Text(
+            'Đặt biệt danh',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF0F172A)),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(radius: 36, backgroundColor: const Color(0xFF0068FF), child: Text(conv.name[0].toUpperCase(), style: const TextStyle(fontSize: 28, color: Colors.white))),
+              Text(
+                'Đặt biệt danh cho ${member.fullName}:',
+                style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+              ),
               const SizedBox(height: 12),
-              Text(conv.isOnline == true ? 'Trạng thái: Đang hoạt động' : 'Trạng thái: Hoạt động gần đây'),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'Nhập biệt danh hoặc để trống để gỡ...',
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: const BorderSide(color: Color(0xFF0068FF), width: 2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: const BorderSide(color: Color(0xFFCBD5E1), width: 1.5),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Đóng')),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('Hủy', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final newNick = controller.text.trim();
+                Navigator.pop(dialogCtx);
+                await provider.updateNickname(conv.id, member.id, newNick);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0068FF),
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Lưu', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
           ],
+        );
+      },
+    );
+  }
+
+  void _showGroupNicknameSelectionSheet(ChatProvider provider, ConversationModel conv) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (modalCtx) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Chọn thành viên để đổi biệt danh',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+              ),
+              const SizedBox(height: 16),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: conv.members.length,
+                  itemBuilder: (ctx, idx) {
+                    final member = conv.members[idx];
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: const Color(0xFF0068FF),
+                        backgroundImage: (member.avatar != null && member.avatar!.isNotEmpty)
+                            ? NetworkImage(member.avatar!)
+                            : null,
+                        child: (member.avatar == null || member.avatar!.isEmpty)
+                            ? Text(member.displayName[0].toUpperCase(), style: const TextStyle(color: Colors.white))
+                            : null,
+                      ),
+                      title: Text(member.displayName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: member.nickname != null && member.nickname!.isNotEmpty
+                          ? Text('Tên gốc: ${member.fullName}', style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)))
+                          : null,
+                      trailing: const Icon(Icons.edit_outlined, color: Color(0xFF0068FF), size: 20),
+                      onTap: () {
+                        Navigator.pop(modalCtx);
+                        _showEditNicknameDialog(provider, conv, member);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         );
       },
     );

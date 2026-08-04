@@ -192,6 +192,32 @@ module.exports = (io) => {
     });
 
     // 3. Lắng nghe trạng thái Đang gõ... (Typing indicator)
+    socket.on("change_nickname", async (data) => {
+      if (!data) return;
+      const { conversationId, userId, nickname } = data;
+      if (!conversationId || !userId) return;
+
+      try {
+        const nickToSet = (nickname && nickname.trim().length > 0) ? nickname.trim() : null;
+        const member = await prisma.conversationMembers.findFirst({
+          where: { conversationId, userId },
+        });
+
+        if (member) {
+          await prisma.conversationMembers.update({
+            where: { id: member.id },
+            data: { nickname: nickToSet },
+          });
+        }
+
+        const payload = { conversationId, userId, nickname: nickToSet };
+        io.to(conversationId).emit("nickname_changed", payload);
+        console.log(`🏷️ User ${userId} đổi biệt danh trong room ${conversationId}: ${nickToSet}`);
+      } catch (e) {
+        console.error("Lỗi socket change_nickname:", e);
+      }
+    });
+
     socket.on("typing", async (payload) => {
       if (!payload) return;
       const { conversationId, userId, nickname, senderId, senderName } = payload;

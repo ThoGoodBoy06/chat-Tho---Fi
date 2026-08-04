@@ -4,16 +4,20 @@ class UserModel {
   final String id;
   final String username;
   final String fullName;
+  final String? nickname;
   final String? email;
   final String? phone;
   final String? avatar;
   final bool isOnline;
   final DateTime? lastActive;
 
+  String get displayName => (nickname != null && nickname!.trim().isNotEmpty) ? nickname!.trim() : fullName;
+
   UserModel({
     required this.id,
     required this.username,
     required this.fullName,
+    this.nickname,
     this.email,
     this.phone,
     this.avatar,
@@ -26,6 +30,7 @@ class UserModel {
       id: json['id']?.toString() ?? '',
       username: json['username']?.toString() ?? '',
       fullName: json['fullName']?.toString() ?? json['username']?.toString() ?? 'Người dùng',
+      nickname: json['nickname']?.toString(),
       email: json['email']?.toString(),
       phone: json['phone']?.toString(),
       avatar: json['avatar']?.toString(),
@@ -163,8 +168,16 @@ class ConversationModel {
   final String? targetUserId;
   final List<UserModel> members;
 
-  bool get isOnline => members.any((m) => m.isOnline);
-  String? get partnerId => targetUserId;
+  bool get isOnline {
+    if (targetUserId != null && targetUserId!.isNotEmpty && members.isNotEmpty) {
+      final partner = members.firstWhere(
+        (m) => m.id == targetUserId,
+        orElse: () => members.first,
+      );
+      return partner.isOnline;
+    }
+    return members.any((m) => m.isOnline);
+  }
   DateTime? get lastMessageAt => updatedAt;
 
   ConversationModel({
@@ -200,7 +213,11 @@ class ConversationModel {
     if (membersList is List) {
       for (var member in membersList) {
         if (member is Map && member['Users'] is Map) {
-          parsedMembers.add(UserModel.fromJson(member['Users'] as Map<String, dynamic>));
+          final userMap = Map<String, dynamic>.from(member['Users'] as Map);
+          if (member['nickname'] != null && member['nickname'].toString().isNotEmpty) {
+            userMap['nickname'] = member['nickname'].toString();
+          }
+          parsedMembers.add(UserModel.fromJson(userMap));
         }
       }
 

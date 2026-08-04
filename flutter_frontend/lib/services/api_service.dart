@@ -245,4 +245,20 @@ class ApiService {
       return {};
     }
   }
+
+  // Update Nickname in Conversation
+  static Future<bool> updateNickname(String conversationId, String userId, String? nickname) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.put(
+        Uri.parse('$baseUrl/chat/conversations/$conversationId/members/$userId/nickname'),
+        headers: headers,
+        body: jsonEncode({'nickname': nickname}),
+      ).timeout(const Duration(seconds: 15));
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.updateNickname: $e');
+      return false;
+    }
+  }
 }

@@ -1885,3 +1885,49 @@ exports.markAsRead = async(req, res) => {
         return res.status(500).json({ success: false, message: error.message });
     }
 };
+
+exports.updateNickname = async (req, res) => {
+    try {
+        const { conversationId, userId } = req.params;
+        const { nickname } = req.body;
+
+        const targetUserId = userId || req.body.targetUserId || req.body.userId;
+        const nickToSet = (nickname && nickname.trim().length > 0) ? nickname.trim() : null;
+
+        const member = await prisma.conversationMembers.findFirst({
+            where: {
+                conversationId: conversationId,
+                userId: targetUserId,
+            },
+        });
+
+        if (!member) {
+            return res.status(404).json({ success: false, message: "Không tìm thấy thành viên trong phòng chat" });
+        }
+
+        await prisma.conversationMembers.update({
+            where: { id: member.id },
+            data: { nickname: nickToSet },
+        });
+
+        const io = req.app.get("io");
+        if (io) {
+            io.to(conversationId).emit("nickname_changed", {
+                conversationId,
+                userId: targetUserId,
+                nickname: nickToSet,
+            });
+        }
+
+        return res.json({
+            success: true,
+            message: "Cập nhật biệt danh thành công",
+            data: { conversationId, userId: targetUserId, nickname: nickToSet },
+        });
+    } catch (error) {
+        console.error("❌ Lỗi updateNickname:", error);
+        return res.status(500).json({ success: false, message: "Lỗi server", error: error.message });
+    }
+};
+
+exports.setNickname = exports.updateNickname;

@@ -16,6 +16,8 @@ router.post("/conversations/:conversationId/read", chatController.markAsRead);
 router.post("/block", chatController.blockUser);
 router.patch("/conversations/:conversationId/theme", chatController.changeConversationTheme);
 router.patch("/conversations/:conversationId/nickname", chatController.setNickname);
+router.put("/conversations/:conversationId/members/:userId/nickname", chatController.updateNickname);
+router.put("/:conversationId/members/:userId/nickname", chatController.updateNickname);
 router.delete("/conversations/:conversationId", chatController.deleteConversation);
 router.get("/:conversationId/messages", chatController.getMessages);
 router.post("/:conversationId/messages", chatController.sendMessage);

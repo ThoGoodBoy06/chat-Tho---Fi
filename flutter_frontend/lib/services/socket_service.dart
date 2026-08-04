@@ -21,6 +21,8 @@ class SocketService {
   static final _reactedController = StreamController<Map<String, dynamic>>.broadcast();
   static final _readController = StreamController<Map<String, dynamic>>.broadcast();
   static final _deliveredController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _userStatusController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _nicknameController = StreamController<Map<String, dynamic>>.broadcast();
 
   static Stream<Map<String, dynamic>> get onMessageReceived => _messageController.stream;
   static Stream<Map<String, dynamic>> get onIncomingCall => _incomingCallController.stream;
@@ -33,6 +35,8 @@ class SocketService {
   static Stream<Map<String, dynamic>> get onMessageReacted => _reactedController.stream;
   static Stream<Map<String, dynamic>> get onMessagesRead => _readController.stream;
   static Stream<Map<String, dynamic>> get onMessageDelivered => _deliveredController.stream;
+  static Stream<Map<String, dynamic>> get onUserStatusChanged => _userStatusController.stream;
+  static Stream<Map<String, dynamic>> get onNicknameChanged => _nicknameController.stream;
 
   // --- AUDIO API SYNTHETIC SOUND GENERATOR ---
   static void playSendSound() {
@@ -199,7 +203,70 @@ class SocketService {
       }
     });
 
+    socket?.on('user_status_changed', (data) {
+      print('👤 Socket user_status_changed: $data');
+      if (data is Map) {
+        _userStatusController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('user_status_change', (data) {
+      print('👤 Socket user_status_change: $data');
+      if (data is Map) {
+        _userStatusController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('user_online', (data) {
+      print('👤 Socket user_online: $data');
+      if (data is Map) {
+        _userStatusController.add(Map<String, dynamic>.from(data));
+      } else if (data is String) {
+        _userStatusController.add({'userId': data, 'isOnline': true});
+      }
+    });
+
+    socket?.on('user_offline', (data) {
+      print('👤 Socket user_offline: $data');
+      if (data is Map) {
+        _userStatusController.add(Map<String, dynamic>.from(data));
+      } else if (data is String) {
+        _userStatusController.add({'userId': data, 'isOnline': false});
+      }
+    });
+
+    socket?.on('nickname_changed', (data) {
+      print('🏷️ Socket nickname_changed: $data');
+      if (data is Map) {
+        _nicknameController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
     socket?.onDisconnect((_) => print('🔴 Socket disconnected'));
+  }
+
+  static void emitChangeNickname(String conversationId, String userId, String? nickname) {
+    if (socket != null && socket!.connected) {
+      socket!.emit('change_nickname', {
+        'conversationId': conversationId,
+        'userId': userId,
+        'nickname': nickname,
+      });
+    }
+  }
+
+  static void emitGoOffline() {
+    if (socket != null && socket!.connected) {
+      print('👤 Emitting go_offline to socket');
+      socket!.emit('go_offline');
+    }
+  }
+
+  static void emitGoOnline() {
+    if (socket != null && socket!.connected) {
+      print('👤 Emitting go_online to socket');
+      socket!.emit('go_online');
+    }
   }
 
   static void emitMarkAsDelivered(String messageId, {String? conversationId}) {
