@@ -15,7 +15,7 @@
   <!-- PWA Standalone Meta Tags (iOS & Android) -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Chat Tho-Fi">
   <meta name="theme-color" content="#007AFF">
   <meta name="application-name" content="Chat Tho-Fi">
@@ -30,17 +30,61 @@
   <title>Chat Tho-Fi</title>
   <link rel="manifest" href="/manifest.json">
 
+  <!-- Firebase Web SDK (v10 compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+  <script>
+    window.registerFCMAndGetToken = async function() {
+      if (!('serviceWorker' in navigator) || !('Notification' in window)) {
+        console.log('[FCM] Service Worker hoặc Notification không được hỗ trợ');
+        return null;
+      }
+      try {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+          console.log('[FCM] Quyền thông báo bị từ chối:', permission);
+          return null;
+        }
+        const messaging = firebase.messaging();
+        const token = await messaging.getToken({
+          vapidKey: 'BEl62iUYgUivxIkv69yViEuiBIa-54316HqQ0t_n8b64b3v2457891234567890'
+        });
+        if (token) {
+          console.log('[FCM] Lấy FCM Token thành công!');
+          return token;
+        }
+      } catch (err) {
+        console.error('[FCM] Lỗi đăng ký / lấy FCM Token:', err);
+      }
+      return null;
+    };
+  </script>
+
   <style>
     * {
       box-sizing: border-box;
     }
-    body {
-      background-color: #FFFFFF;
+    html, body {
+      width: 100%;
+      height: 100%;
       margin: 0;
       padding: 0;
       overflow: hidden;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
       touch-action: manipulation;
+      -webkit-text-size-adjust: 100%;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    flutter-view, flt-glass-pane {
+      width: 100% !important;
+      height: 100% !important;
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
     }
     #loading-screen {
       display: flex;
@@ -76,16 +120,13 @@
   </style>
 
   <script>
-    // Force HTML renderer for Flutter Web to prevent CanvasKit/WebGL distortion on iOS Safari
-    window._flutter = window._flutter || {};
-    window._flutter.buildConfig = window._flutter.buildConfig || {};
-    window._flutter.buildConfig.renderer = "html";
-
-    // Unregister stale Service Workers to compel browser to reload fresh assets (Cache Busting)
+    // Unregister stale Flutter Service Workers only (Cache Busting)
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function(registrations) {
         for (var registration of registrations) {
-          registration.unregister();
+          if (registration.active && registration.active.scriptURL && registration.active.scriptURL.includes('flutter_service_worker')) {
+            registration.unregister();
+          }
         }
       });
     }
@@ -121,8 +162,8 @@
   </div>
 
   <audio id="remoteAudioPlayer" autoplay playsinline style="display:none;"></audio>
-  <video id="remoteVideoPlayer" autoplay playsinline style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; object-fit:cover; z-index:99998; background:#090D1A;"></video>
-  <video id="localVideoPlayer" autoplay playsinline muted style="display:none; position:fixed; top:24px; right:24px; width:130px; height:170px; object-fit:cover; z-index:99999; border-radius:16px; border:2px solid rgba(255,255,255,0.8); box-shadow:0 10px 30px rgba(0,0,0,0.6); transform: scaleX(-1);"></video>
+  <video id="remoteVideoPlayer" autoplay playsinline style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; object-fit:cover; z-index:2147483646; background:#090D1A;"></video>
+  <video id="localVideoPlayer" autoplay playsinline muted style="display:none; position:fixed; top:24px; right:24px; width:130px; height:170px; object-fit:cover; z-index:2147483647; border-radius:16px; border:2px solid rgba(255,255,255,0.8); box-shadow:0 10px 30px rgba(0,0,0,0.6); transform: scaleX(-1);"></video>
   <script>
     const ChatSounds = {
       _ctx: null,

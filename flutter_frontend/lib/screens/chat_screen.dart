@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:universal_html/html.dart' as html;
 import 'package:audioplayers/audioplayers.dart' as audioplayers;
+import 'package:emoji_picker_flutter/emoji_picker_flutter.dart' as emoji;
 import '../models/models.dart';
 import '../providers/chat_provider.dart';
 import '../services/socket_service.dart';
@@ -29,6 +30,8 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isTyping = false;
   String _searchQuery = '';
   bool _isSearchOpen = false;
+  bool _showEmojiPicker = false;
+  int _selectedEmojiCategory = 0;
   final _searchController = TextEditingController();
   StreamSubscription? _incomingCallSub;
 
@@ -221,6 +224,16 @@ class _ChatScreenState extends State<ChatScreen> {
         );
       }
     });
+  }
+
+  /// Kiểm tra tin nhắn chỉ chứa emoji (không có text thường)
+  bool _isEmojiOnly(String text) {
+    final emojiRegex = RegExp(
+      r'(\u00a9|\u00ae|[\u2000-\u3300]|[\ud83c-\ud83e][\ud000-\udfff]|[\ud83d][\ud000-\udfff]|[\u2600-\u27ff]|\ufe0f|\u200d|\u20e3|[\u2190-\u21ff]|[\u2300-\u23ff]|[\u2460-\u24ff]|[\u25a0-\u25ff]|[\u2900-\u297f]|[\u2b05-\u2b07]|[\u2b1b-\u2b1c]|[\u2b50]|[\u3030]|[\u303d]|[\u3297]|[\u3299])+',
+      unicode: true,
+    );
+    final stripped = text.replaceAll(emojiRegex, '').replaceAll(' ', '');
+    return text.trim().isNotEmpty && stripped.isEmpty;
   }
 
   void _handleSend(ChatProvider provider) {
@@ -1128,79 +1141,242 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  /// Card thông báo cuộc gọi chuẩn Messenger / Zalo (Nằm cùng hàng với đoạn chat, có avatar đối phương nếu là cuộc gọi đến)
+  Widget _buildCallNotificationCard(MessageModel msg, bool isMe, ChatProvider provider) {
+    final content = msg.content;
+    final lowerContent = content.toLowerCase();
+    final isMissed = msg.type == 'missed_call' || lowerContent.contains('nhỡ') || lowerContent.contains('bỏ lỡ') || lowerContent.contains('không trả lời');
+    final isVideo = lowerContent.contains('video');
+
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 255),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      decoration: BoxDecoration(
+        color: isMissed ? const Color(0xFFFFF1F2) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isMissed ? const Color(0xFFFECDD3) : const Color(0xFFE2E8F0),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Icon đại diện loại cuộc gọi
+          Container(
+            padding: const EdgeInsets.all(5),
+            decoration: BoxDecoration(
+              color: isMissed ? const Color(0xFFEF4444) : const Color(0xFF0068FF),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isMissed
+                  ? (isVideo ? Icons.videocam_off_rounded : Icons.phone_missed_rounded)
+                  : (isVideo ? Icons.videocam_rounded : Icons.phone_in_talk_rounded),
+              color: Colors.white,
+              size: 13,
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Tên thông báo & thời gian
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  content.isNotEmpty ? content : (isMissed ? 'Cuộc gọi nhỡ' : 'Cuộc gọi thoại'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: isMissed ? const Color(0xFF991B1B) : const Color(0xFF0F172A),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+                Text(
+                  _formatTime(msg.createdAt),
+                  style: const TextStyle(
+                    color: Color(0xFF94A3B8),
+                    fontSize: 9.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (isMissed) ...[
+            const SizedBox(width: 8),
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  if (isVideo) {
+                    _startVideoCall(provider);
+                  } else {
+                    _startVoiceCall(provider);
+                  }
+                },
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF4444),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.call, color: Colors.white, size: 10),
+                      SizedBox(width: 3),
+                      Text(
+                        'Gọi lại',
+                        style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildMessageStatusIndicator(MessageModel msg, ConversationModel? conv, bool isLastSentMessage) {
     if (!isLastSentMessage) return const SizedBox.shrink();
 
-    if (msg.isRead) {
-      String? partnerAvatar = conv?.avatar;
-      if ((partnerAvatar == null || partnerAvatar.isEmpty) && conv != null && conv.members.isNotEmpty) {
-        final partner = conv.members.firstWhere(
-          (m) => m.id != msg.senderId,
-          orElse: () => conv.members.first,
-        );
-        partnerAvatar = partner.avatar;
-      }
-
-      if (partnerAvatar != null && partnerAvatar.isNotEmpty) {
-        final fullUrl = partnerAvatar.startsWith('http')
-            ? partnerAvatar
-            : '${ApiService.baseUrl.replaceAll('/api', '')}$partnerAvatar';
+    // 1. Trạng thái Chưa Đọc: Giữ MẶC ĐỊNH (Icon tĩnh không tạo hiệu ứng rơi)
+    if (!msg.isRead) {
+      if (msg.isDelivered) {
+        // Trạng thái Đã nhận: Hiển thị icon hình tròn màu Xanh (#0068FF), có dấu tích trắng.
         return Container(
           margin: const EdgeInsets.only(top: 3, right: 2),
           width: 14,
           height: 14,
-          child: CircleAvatar(
-            radius: 7,
-            backgroundImage: NetworkImage(fullUrl),
-            backgroundColor: Colors.transparent,
+          decoration: const BoxDecoration(
+            color: Color(0xFF0068FF),
+            shape: BoxShape.circle,
+          ),
+          child: const Center(
+            child: Icon(Icons.check, size: 9, color: Colors.white),
           ),
         );
       } else {
-        final initial = (conv?.name != null && conv!.name.isNotEmpty) ? conv.name[0].toUpperCase() : 'U';
+        // Trạng thái Đã gửi: Hiển thị icon hình tròn rỗng viền xám, có dấu tích bên trong.
         return Container(
           margin: const EdgeInsets.only(top: 3, right: 2),
           width: 14,
           height: 14,
-          child: CircleAvatar(
-            radius: 7,
-            backgroundColor: const Color(0xFF0068FF),
-            child: Text(
-              initial,
-              style: const TextStyle(fontSize: 7, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: const Color(0xFF94A3B8), width: 1.2),
+          ),
+          child: const Center(
+            child: Icon(Icons.check, size: 8, color: Color(0xFF94A3B8)),
           ),
         );
       }
     }
 
-    if (msg.isDelivered) {
-      // Trạng thái Đã nhận: Hiển thị icon hình tròn màu Xanh Zalo (#0068FF), có dấu tích trắng.
-      return Container(
+    // 2. Trạng thái ĐÃ XEM: Hiển thị Avatar rơi từ GIỮA MÀN HÌNH xuống có VẬT LÝ BOUNCE
+    String? partnerAvatar = conv?.avatar;
+    if ((partnerAvatar == null || partnerAvatar.isEmpty) && conv != null && conv.members.isNotEmpty) {
+      final partner = conv.members.firstWhere(
+        (m) => m.id != msg.senderId,
+        orElse: () => conv.members.first,
+      );
+      partnerAvatar = partner.avatar;
+    }
+
+    Widget avatarWidget;
+    if (partnerAvatar != null && partnerAvatar.isNotEmpty) {
+      final fullUrl = partnerAvatar.startsWith('http')
+          ? partnerAvatar
+          : '${ApiService.baseUrl.replaceAll('/api', '')}$partnerAvatar';
+      avatarWidget = Container(
         margin: const EdgeInsets.only(top: 3, right: 2),
-        width: 14,
-        height: 14,
-        decoration: const BoxDecoration(
-          color: Color(0xFF0068FF),
+        width: 16,
+        height: 16,
+        decoration: BoxDecoration(
           shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 3,
+              offset: const Offset(0, 1),
+            ),
+          ],
         ),
-        child: const Center(
-          child: Icon(Icons.check, size: 9, color: Colors.white),
+        child: CircleAvatar(
+          radius: 8,
+          backgroundImage: NetworkImage(fullUrl),
+          backgroundColor: const Color(0xFFE4E6EB),
+        ),
+      );
+    } else {
+      final initial = (conv?.name != null && conv!.name.isNotEmpty) ? conv.name[0].toUpperCase() : 'U';
+      avatarWidget = Container(
+        margin: const EdgeInsets.only(top: 3, right: 2),
+        width: 16,
+        height: 16,
+        child: CircleAvatar(
+          radius: 8,
+          backgroundColor: const Color(0xFF0068FF),
+          child: Text(
+            initial,
+            style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
         ),
       );
     }
 
-    // Trạng thái Đã gửi: Hiển thị icon hình tròn rỗng viền xám, có dấu tích (check) bên trong.
-    return Container(
-      margin: const EdgeInsets.only(top: 3, right: 2),
-      width: 14,
-      height: 14,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFF94A3B8), width: 1.2),
-      ),
-      child: const Center(
-        child: Icon(Icons.check, size: 8, color: Color(0xFF94A3B8)),
-      ),
+    return Builder(
+      builder: (context) {
+        final screenSize = MediaQuery.of(context).size;
+        // Tính toán tọa độ trung tâm màn hình (Cả chiều X lẫn chiều Y):
+        // Indicator ở góc phải dưới tin nhắn. Cần lùi X về giữa (-35% chiều rộng) và đưa Y lên giữa (-42% chiều cao).
+        final double startYOffset = -(screenSize.height * 0.42) / 16.0;
+        final double startXOffset = -(screenSize.width * 0.35) / 16.0;
+
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 950),
+          reverseDuration: const Duration(milliseconds: 200),
+          switchInCurve: Curves.bounceOut,
+          switchOutCurve: Curves.easeIn,
+          transitionBuilder: (child, animation) {
+            final slideAnimation = Tween<Offset>(
+              begin: Offset(startXOffset, startYOffset),
+              end: Offset.zero,
+            ).animate(CurvedAnimation(
+              parent: animation,
+              curve: Curves.bounceOut,
+            ));
+
+            return SlideTransition(
+              position: slideAnimation,
+              child: ScaleTransition(
+                scale: animation,
+                child: FadeTransition(
+                  opacity: animation,
+                  child: child,
+                ),
+              ),
+            );
+          },
+          child: KeyedSubtree(
+            key: ValueKey('read_avatar_${msg.id}'),
+            child: avatarWidget,
+          ),
+        );
+      },
     );
   }
 
@@ -1323,6 +1499,54 @@ class _ChatScreenState extends State<ChatScreen> {
                         );
                       }
 
+                      final lowerContent = msg.content.toLowerCase();
+                      final isCallMsg = !msg.isRecalled && (
+                          msg.type == 'call' || msg.type == 'missed_call' || msg.type == 'video_call' ||
+                          lowerContent.contains('cuộc gọi') || lowerContent.contains('cuoc goi')
+                      );
+
+                      if (isCallMsg) {
+                        return Column(
+                          children: [
+                            if (showTime)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                child: Center(
+                                  child: Text(
+                                    _formatTime(msg.createdAt),
+                                    style: const TextStyle(color: Color(0xFF8A8D91), fontSize: 12, fontWeight: FontWeight.w500),
+                                  ),
+                                ),
+                              ),
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Row(
+                                mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  if (!isMe) ...[
+                                    CircleAvatar(
+                                      radius: 14,
+                                      backgroundColor: primaryColor,
+                                      backgroundImage: (conv.avatar != null && conv.avatar!.isNotEmpty)
+                                          ? NetworkImage(conv.avatar!)
+                                          : null,
+                                      child: (conv.avatar == null || conv.avatar!.isEmpty)
+                                          ? Text(conv.name.isNotEmpty ? conv.name[0].toUpperCase() : 'U', style: const TextStyle(fontSize: 10, color: Colors.white))
+                                          : null,
+                                    ),
+                                    const SizedBox(width: 8),
+                                  ],
+                                  Flexible(
+                                    child: _buildCallNotificationCard(msg, isMe, provider),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+
                       return Column(
                         children: [
                           if (showTime)
@@ -1370,99 +1594,115 @@ class _ChatScreenState extends State<ChatScreen> {
                                           Stack(
                                             clipBehavior: Clip.none,
                                             children: [
-                                              Container(
-                                                constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
-                                                padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-                                                decoration: BoxDecoration(
-                                                  color: msg.isRecalled
-                                                      ? Colors.transparent
-                                                      : (isMe ? null : const Color(0xFFE4E6EB)),
-                                                  gradient: (isMe && !msg.isRecalled)
-                                                      ? const LinearGradient(colors: [Color(0xFF0084FF), Color(0xFF0068FF)])
-                                                      : null,
-                                                  border: msg.isRecalled
-                                                      ? Border.all(color: const Color(0xFFCBD5E1), width: 1)
-                                                      : null,
-                                                  borderRadius: BorderRadius.circular(18),
-                                                ),
-                                                child: msg.isRecalled
-                                                    ? const Text(
-                                                        'Tin nhắn đã bị thu hồi',
-                                                        style: TextStyle(
-                                                          color: Color(0xFF8A8D91),
-                                                          fontSize: 14,
-                                                          fontStyle: FontStyle.italic,
-                                                        ),
-                                                      )
-                                                    : Column(
-                                                        crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                                                        mainAxisSize: MainAxisSize.min,
-                                                        children: [
-                                                          if (msg.replyMessageId != null && msg.replyMessageId!.isNotEmpty) ...[
-                                                            Builder(
-                                                              builder: (context) {
-                                                                MessageModel? originMsg;
-                                                                for (final m in provider.messages) {
-                                                                  if (m.id == msg.replyMessageId) {
-                                                                    originMsg = m;
-                                                                    break;
-                                                                  }
-                                                                }
-                                                                final originContent = originMsg?.content ?? 'Tin nhắn';
-                                                                final originSender = (originMsg != null && originMsg.senderId == provider.currentUser?.id)
-                                                                    ? 'Bạn'
-                                                                    : (conv.name.isNotEmpty ? conv.name : 'Người dùng');
-                                                                return Container(
-                                                                  margin: const EdgeInsets.only(bottom: 6),
-                                                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                                                  decoration: BoxDecoration(
-                                                                    color: isMe ? Colors.white.withOpacity(0.2) : Colors.black.withOpacity(0.06),
-                                                                    borderRadius: BorderRadius.circular(10),
-                                                                    border: Border(
-                                                                      left: BorderSide(
-                                                                        color: isMe ? Colors.white : const Color(0xFF0068FF),
-                                                                        width: 3,
-                                                                      ),
-                                                                    ),
-                                                                  ),
-                                                                  child: Column(
-                                                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                                                    mainAxisSize: MainAxisSize.min,
-                                                                    children: [
-                                                                      Text(
-                                                                        originSender,
-                                                                        style: TextStyle(
-                                                                          color: isMe ? Colors.white : const Color(0xFF0068FF),
-                                                                          fontWeight: FontWeight.bold,
-                                                                          fontSize: 11,
-                                                                        ),
-                                                                      ),
-                                                                      const SizedBox(height: 2),
-                                                                      Text(
-                                                                        originContent,
-                                                                        maxLines: 2,
-                                                                        overflow: TextOverflow.ellipsis,
-                                                                        style: TextStyle(
-                                                                          color: isMe ? Colors.white.withOpacity(0.9) : const Color(0xFF65676B),
-                                                                          fontSize: 12,
-                                                                        ),
-                                                                      ),
-                                                                    ],
-                                                                  ),
-                                                                );
-                                                              },
-                                                            ),
-                                                          ],
-                                                          Text(
-                                                            msg.content,
-                                                            style: TextStyle(
-                                                              color: isMe ? Colors.white : const Color(0xFF050505),
-                                                              fontSize: 15,
-                                                              height: 1.3,
-                                                            ),
-                                                          ),
-                                                        ],
+                                              Builder(
+                                                builder: (context) {
+                                                  final isEmojiMsg = !msg.isRecalled && msg.type == null || msg.type == 'text' ? _isEmojiOnly(msg.content) : false;
+                                                  final isSpecialType = msg.type == 'image' || msg.type == 'audio' || msg.type == 'file' || msg.type == 'missed_call' || msg.type == 'call'
+                                                      || msg.content.startsWith('data:image') || msg.content.startsWith('data:audio')
+                                                      || (msg.imageUrl != null && msg.imageUrl!.isNotEmpty);
+
+                                                  // Emoji-only: hiển thị to, không nền (giống Messenger)
+                                                  if (isEmojiMsg && !msg.isRecalled) {
+                                                    return Container(
+                                                      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
+                                                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                                      child: Text(
+                                                        msg.content,
+                                                        style: const TextStyle(fontSize: 48),
                                                       ),
+                                                    );
+                                                  }
+
+                                                  return Container(
+                                                    constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
+                                                    padding: isSpecialType
+                                                        ? const EdgeInsets.all(4)
+                                                        : const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                                                    decoration: BoxDecoration(
+                                                      color: msg.isRecalled
+                                                          ? Colors.transparent
+                                                          : (isMe ? null : const Color(0xFFE4E6EB)),
+                                                      gradient: (isMe && !msg.isRecalled)
+                                                          ? const LinearGradient(colors: [Color(0xFF0084FF), Color(0xFF0068FF)])
+                                                          : null,
+                                                      border: msg.isRecalled
+                                                          ? Border.all(color: const Color(0xFFCBD5E1), width: 1)
+                                                          : null,
+                                                      borderRadius: BorderRadius.circular(18),
+                                                    ),
+                                                    child: msg.isRecalled
+                                                        ? const Text(
+                                                            'Tin nhắn đã bị thu hồi',
+                                                            style: TextStyle(
+                                                              color: Color(0xFF8A8D91),
+                                                              fontSize: 14,
+                                                              fontStyle: FontStyle.italic,
+                                                            ),
+                                                          )
+                                                        : Column(
+                                                            crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                                                            mainAxisSize: MainAxisSize.min,
+                                                            children: [
+                                                              if (msg.replyMessageId != null && msg.replyMessageId!.isNotEmpty) ...[
+                                                                Builder(
+                                                                  builder: (context) {
+                                                                    MessageModel? originMsg;
+                                                                    for (final m in provider.messages) {
+                                                                      if (m.id == msg.replyMessageId) {
+                                                                        originMsg = m;
+                                                                        break;
+                                                                      }
+                                                                    }
+                                                                    final originContent = originMsg?.content ?? 'Tin nhắn';
+                                                                    final originSender = (originMsg != null && originMsg.senderId == provider.currentUser?.id)
+                                                                        ? 'Bạn'
+                                                                        : (conv.name.isNotEmpty ? conv.name : 'Người dùng');
+                                                                    return Container(
+                                                                      margin: const EdgeInsets.only(bottom: 6),
+                                                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                                                      decoration: BoxDecoration(
+                                                                        color: isMe ? Colors.white.withOpacity(0.2) : Colors.black.withOpacity(0.06),
+                                                                        borderRadius: BorderRadius.circular(10),
+                                                                        border: Border(
+                                                                          left: BorderSide(
+                                                                            color: isMe ? Colors.white : const Color(0xFF0068FF),
+                                                                            width: 3,
+                                                                          ),
+                                                                        ),
+                                                                      ),
+                                                                      child: Column(
+                                                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                                                        mainAxisSize: MainAxisSize.min,
+                                                                        children: [
+                                                                          Text(
+                                                                            originSender,
+                                                                            style: TextStyle(
+                                                                              color: isMe ? Colors.white : const Color(0xFF0068FF),
+                                                                              fontWeight: FontWeight.bold,
+                                                                              fontSize: 11,
+                                                                            ),
+                                                                          ),
+                                                                          const SizedBox(height: 2),
+                                                                          Text(
+                                                                            originContent,
+                                                                            maxLines: 2,
+                                                                            overflow: TextOverflow.ellipsis,
+                                                                            style: TextStyle(
+                                                                              color: isMe ? Colors.white.withOpacity(0.9) : const Color(0xFF65676B),
+                                                                              fontSize: 12,
+                                                                            ),
+                                                                          ),
+                                                                        ],
+                                                                      ),
+                                                                    );
+                                                                  },
+                                                                ),
+                                                              ],
+                                                              _buildMessageBubbleContent(msg, isMe),
+                                                            ],
+                                                          ),
+                                                  );
+                                                },
                                               ),
                                               if (msg.reactions.isNotEmpty && !msg.isRecalled)
                                                 Positioned(
@@ -1485,7 +1725,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                           ),
                                           if (isMe) ...[
                                             const SizedBox(height: 4),
-                                            _buildMessageStatusIndicator(msg),
+                                            _buildMessageStatusIndicator(msg, conv, isLastSentMessage),
                                           ],
                                         ],
                                       ),
@@ -1496,6 +1736,8 @@ class _ChatScreenState extends State<ChatScreen> {
                             ),
                           ),
                         ],
+                      );
+                    },
                       );
                     },
                   ),
@@ -1713,10 +1955,87 @@ class _ChatScreenState extends State<ChatScreen> {
                     ],
                   ),
           ),
+          if (_showEmojiPicker) ...[
+            _buildEmojiPicker(),
+          ],
         ],
       ),
     );
   }
+
+  void _toggleEmojiPicker() {
+    setState(() {
+      _showEmojiPicker = !_showEmojiPicker;
+    });
+  }
+
+  void _onEmojiSelected(String emoji) {
+    final text = _textController.text;
+    final selection = _textController.selection;
+    if (selection.isValid && selection.start >= 0 && selection.end >= 0) {
+      final newText = text.replaceRange(selection.start, selection.end, emoji);
+      _textController.value = TextEditingValue(
+        text: newText,
+        selection: TextSelection.collapsed(offset: selection.start + emoji.length),
+      );
+    } else {
+      _textController.text = text + emoji;
+      _textController.selection = TextSelection.collapsed(offset: _textController.text.length);
+    }
+    _onTextChanged();
+  }
+
+  Widget _buildEmojiPicker() {
+    return SizedBox(
+      height: 320,
+      child: emoji.EmojiPicker(
+        onEmojiSelected: (category, emojiItem) {
+          _onEmojiSelected(emojiItem.emoji);
+        },
+        config: emoji.Config(
+          height: 320,
+          emojiViewConfig: emoji.EmojiViewConfig(
+            columns: 8,
+            emojiSizeMax: 28,
+            verticalSpacing: 0,
+            horizontalSpacing: 0,
+            gridPadding: EdgeInsets.zero,
+            recentsLimit: 28,
+            noRecents: const Text(
+              'Chưa có emoji gần đây',
+              style: TextStyle(fontSize: 14, color: Color(0xFF8E8E93)),
+              textAlign: TextAlign.center,
+            ),
+            buttonMode: emoji.ButtonMode.MATERIAL,
+            loadingIndicator: const SizedBox.shrink(),
+          ),
+          categoryViewConfig: emoji.CategoryViewConfig(
+            initCategory: emoji.Category.SMILEYS,
+            indicatorColor: const Color(0xFF007AFF),
+            iconColorSelected: const Color(0xFF007AFF),
+            iconColor: const Color(0xFF65676B),
+            backspaceColor: const Color(0xFF007AFF),
+            categoryIcons: const emoji.CategoryIcons(),
+            tabBarHeight: 46,
+          ),
+          bottomActionBarConfig: const emoji.BottomActionBarConfig(
+            showBackspaceButton: true,
+            showSearchViewButton: true,
+            backgroundColor: Colors.white,
+          ),
+          searchViewConfig: const emoji.SearchViewConfig(
+            hintText: 'Tìm kiếm emoji...',
+            backgroundColor: Colors.white,
+          ),
+          skinToneConfig: const emoji.SkinToneConfig(
+            enabled: true,
+            indicatorColor: Color(0xFF007AFF),
+          ),
+        ),
+      ),
+    );
+  }
+
 
   void _showNewChatDialog(ChatProvider provider) {
     showDialog(
@@ -2266,10 +2585,6 @@ class _ChatScreenState extends State<ChatScreen> {
     provider.sendMessage('https://media.giphy.com/media/l0HlHJGHe3yAMhdQY/giphy.gif', type: 'image');
   }
 
-  void _toggleEmojiPicker() {
-    _textController.text = '${_textController.text}😊';
-  }
-
   Future<void> _handleVoiceRecording(ChatProvider provider) async {
     if (_isRecording) {
       await _stopAndSendRecording(provider);
@@ -2780,6 +3095,45 @@ class _ChatScreenState extends State<ChatScreen> {
     final List<Map<String, dynamic>> pendingSignals = [];
     final List<Map<String, dynamic>> iceCandidateQueue = [];
 
+    html.VideoElement getOrCreateVideo(String id, {required bool isLocal}) {
+      var el = html.document.getElementById(id) as html.VideoElement?;
+      if (el == null) {
+        el = html.VideoElement()
+          ..id = id
+          ..autoplay = true
+          ..setAttribute('playsinline', 'true');
+        html.document.body?.children.add(el);
+      }
+      el.autoplay = true;
+      el.setAttribute('playsinline', 'true');
+      if (isLocal) {
+        el.muted = true;
+        el.style
+          ..position = 'fixed'
+          ..top = '24px'
+          ..right = '24px'
+          ..width = '130px'
+          ..height = '175px'
+          ..objectFit = 'cover'
+          ..zIndex = '2147483647'
+          ..borderRadius = '16px'
+          ..border = '2px solid rgba(255, 255, 255, 0.8)'
+          ..boxShadow = '0 10px 30px rgba(0, 0, 0, 0.6)'
+          ..transform = 'scaleX(-1)';
+      } else {
+        el.style
+          ..position = 'fixed'
+          ..top = '0'
+          ..left = '0'
+          ..width = '100vw'
+          ..height = '100vh'
+          ..objectFit = 'cover'
+          ..zIndex = '2147483646'
+          ..background = '#090D1A';
+      }
+      return el;
+    }
+
     void cleanupCall() {
       try {
         acceptSub?.cancel();
@@ -2827,6 +3181,7 @@ class _ChatScreenState extends State<ChatScreen> {
       context: context,
       barrierDismissible: false,
       barrierLabel: 'CallRoom',
+      barrierColor: isVideo ? Colors.transparent : Colors.black.withOpacity(0.9),
       pageBuilder: (dialogContext, anim1, anim2) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
@@ -2938,28 +3293,35 @@ class _ChatScreenState extends State<ChatScreen> {
                 remoteAudio!.volume = 1.0;
                 remoteAudio!.play().catchError((_) {});
 
-                localStream = await html.window.navigator.mediaDevices?.getUserMedia({
-                  'audio': true,
-                  'video': isVideo ? {'width': 1280, 'height': 720, 'facingMode': 'user'} : false,
-                });
-
-                if (isVideo && localStream != null) {
-                  final localVideo = html.document.getElementById('localVideoPlayer') as html.VideoElement?;
-                  if (localVideo != null) {
-                    localVideo.srcObject = localStream;
-                    localVideo.style.display = 'block';
-                    localVideo.play().catchError((e) {
-                      Future.delayed(const Duration(milliseconds: 300), () {
-                        localVideo.play().catchError((_) {});
-                      });
+                try {
+                  localStream = await html.window.navigator.mediaDevices?.getUserMedia({
+                    'audio': true,
+                    'video': isVideo ? {'facingMode': 'user'} : false,
+                  });
+                } catch (camErr) {
+                  print('⚠️ Flexible camera request failed: $camErr, trying raw boolean...');
+                  try {
+                    localStream = await html.window.navigator.mediaDevices?.getUserMedia({
+                      'audio': true,
+                      'video': isVideo,
                     });
+                  } catch (rawErr) {
+                    print('❌ Final getUserMedia error: $rawErr');
                   }
                 }
 
+                if (isVideo && localStream != null) {
+                  final localVideo = getOrCreateVideo('localVideoPlayer', isLocal: true);
+                  localVideo.srcObject = localStream;
+                  localVideo.style.display = 'block';
+                  localVideo.play().catchError((e) {
+                    Future.delayed(const Duration(milliseconds: 300), () {
+                      localVideo.play().catchError((_) {});
+                    });
+                  });
+                }
+
                 if (localStream != null && pc != null) {
-                  try {
-                    pc!.addStream(localStream!);
-                  } catch (_) {}
                   for (var track in localStream!.getTracks()) {
                     try {
                       pc!.addTrack(track, localStream!);
@@ -2977,16 +3339,14 @@ class _ChatScreenState extends State<ChatScreen> {
                       remoteAudio!.play().catchError((e) => print('⚠️ Audio Play Error: $e'));
                     }
                     if (isVideo) {
-                      final remoteVideo = html.document.getElementById('remoteVideoPlayer') as html.VideoElement?;
-                      if (remoteVideo != null) {
-                        remoteVideo.srcObject = event.stream!;
-                        remoteVideo.style.display = 'block';
-                        remoteVideo.play().catchError((e) {
-                          Future.delayed(const Duration(milliseconds: 300), () {
-                            remoteVideo.play().catchError((_) {});
-                          });
+                      final remoteVideo = getOrCreateVideo('remoteVideoPlayer', isLocal: false);
+                      remoteVideo.srcObject = event.stream!;
+                      remoteVideo.style.display = 'block';
+                      remoteVideo.play().catchError((e) {
+                        Future.delayed(const Duration(milliseconds: 300), () {
+                          remoteVideo.play().catchError((_) {});
                         });
-                      }
+                      });
                     }
                   }
                 });
@@ -3008,16 +3368,14 @@ class _ChatScreenState extends State<ChatScreen> {
                       remoteAudio!.play().catchError((e) => print('⚠️ Audio Play Error: $e'));
                     }
                     if (isVideo) {
-                      final remoteVideo = html.document.getElementById('remoteVideoPlayer') as html.VideoElement?;
-                      if (remoteVideo != null) {
-                        remoteVideo.srcObject = stream;
-                        remoteVideo.style.display = 'block';
-                        remoteVideo.play().catchError((e) {
-                          Future.delayed(const Duration(milliseconds: 300), () {
-                            remoteVideo.play().catchError((_) {});
-                          });
+                      final remoteVideo = getOrCreateVideo('remoteVideoPlayer', isLocal: false);
+                      remoteVideo.srcObject = stream;
+                      remoteVideo.style.display = 'block';
+                      remoteVideo.play().catchError((e) {
+                        Future.delayed(const Duration(milliseconds: 300), () {
+                          remoteVideo.play().catchError((_) {});
                         });
-                      }
+                      });
                     }
                   }
                 });
