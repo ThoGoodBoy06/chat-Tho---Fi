@@ -199,8 +199,10 @@ module.exports = (io) => {
 
       try {
         const actorId = socket.userId || userId;
-        const nickToSet = (nickname && nickname.trim().length > 0) ? nickname.trim() : null;
-        const member = await prisma.conversationMembers.findFirst({
+        const actorMember = await prisma.conversationMembers.findFirst({
+          where: { conversationId, userId: actorId },
+        });
+        const targetMember = await prisma.conversationMembers.findFirst({
           where: { conversationId, userId },
         });
 
