@@ -198,21 +198,72 @@ module.exports = (io) => {
       if (!conversationId || !userId) return;
 
       try {
+        const actorId = socket.userId || userId;
         const nickToSet = (nickname && nickname.trim().length > 0) ? nickname.trim() : null;
         const member = await prisma.conversationMembers.findFirst({
           where: { conversationId, userId },
         });
 
-        if (member) {
+        const actorOldNickname = actorMember ? actorMember.nickname : null;
+        const targetOldNickname = targetMember ? targetMember.nickname : null;
+
+        if (targetMember) {
           await prisma.conversationMembers.update({
-            where: { id: member.id },
+            where: { id: targetMember.id },
             data: { nickname: nickToSet },
           });
         }
 
-        const payload = { conversationId, userId, nickname: nickToSet };
+        // Lấy tên thật của người thực hiện và người được đặt biệt danh
+        const [actorUser, targetUser] = await Promise.all([
+          prisma.users.findUnique({ where: { id: actorId }, select: { fullName: true } }),
+          prisma.users.findUnique({ where: { id: userId }, select: { fullName: true } }),
+        ]);
+
+        const actorDisplayName = actorOldNickname || (actorUser ? actorUser.fullName : "Người dùng");
+        const targetDisplayName = targetOldNickname || (targetUser ? targetUser.fullName : "Người dùng");
+
+        const systemPayload = {
+          action: "change_nickname",
+          actorId,
+          targetId: userId,
+          nickname: nickToSet,
+        };
+        const systemContent = JSON.stringify(systemPayload);
+
+        const systemMessage = await prisma.messages.create({
+          data: {
+            id: uuidv4(),
+            conversationId,
+            senderId: actorId,
+            content: systemContent,
+            type: "system",
+          },
+          include: {
+            Users: {
+              select: { id: true, fullName: true },
+            },
+          },
+        });
+
+        const mappedSystemMessage = {
+          ...systemMessage,
+          Users: systemMessage.Users ?
+            { ...systemMessage.Users, avatar: `/api/users/${systemMessage.Users.id}/avatar` } :
+            null,
+        };
+
+        const payload = {
+          conversationId,
+          targetUserId: userId,
+          userId,
+          nickname: nickToSet,
+          systemMessage: mappedSystemMessage,
+        };
+
+        io.to(conversationId).emit("receive_message", mappedSystemMessage);
         io.to(conversationId).emit("nickname_changed", payload);
-        console.log(`🏷️ User ${userId} đổi biệt danh trong room ${conversationId}: ${nickToSet}`);
+        console.log(`🏷️ User ${actorId} đặt biệt danh cho ${userId} trong room ${conversationId}: ${nickToSet}`);
       } catch (e) {
         console.error("Lỗi socket change_nickname:", e);
       }
@@ -421,7 +472,8 @@ module.exports = (io) => {
         try {
           const selfDestructMsgs = await prisma.messages.findMany({
             where: {
-              id: { in: unreadMessages.map((m) => m.id) },
+              conversationId,
+              senderId: { not: readerId },
               selfDestructDuration: { not: null },
               expiresAt: null,
             },

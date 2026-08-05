@@ -1291,6 +1291,73 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     );
   }
 
+  Widget _buildSystemMessage(MessageModel msg, ConversationModel? conv, UserModel? currentUser) {
+    String displayText = msg.content;
+    final metadata = msg.systemMetadata;
+
+    if (metadata != null) {
+      final action = metadata['action']?.toString();
+      final actorId = metadata['actorId']?.toString();
+      final targetId = metadata['targetId']?.toString();
+      final nickname = metadata['nickname']?.toString();
+
+      if (action == 'change_nickname') {
+        UserModel? actorUser;
+        UserModel? targetUser;
+
+        if (conv != null && conv.members.isNotEmpty) {
+          for (final m in conv.members) {
+            if (m.id == actorId) actorUser = m;
+            if (m.id == targetId) targetUser = m;
+          }
+        }
+
+        final actorName = (actorId != null && actorId == currentUser?.id)
+            ? 'Bạn'
+            : (actorUser?.displayName ?? 'Người dùng');
+        final targetName = (targetId != null && targetId == currentUser?.id)
+            ? 'bạn'
+            : (targetUser?.displayName ?? 'Người dùng');
+
+        final cleanNick = (nickname != null && nickname.trim().isNotEmpty) ? nickname.trim() : null;
+
+        if (cleanNick != null) {
+          if (actorId == targetId) {
+            displayText = (actorId == currentUser?.id)
+                ? 'Bạn đã tự đặt biệt danh của mình là "$cleanNick".'
+                : '$actorName đã tự đặt biệt danh của mình là "$cleanNick".';
+          } else {
+            displayText = '$actorName đã đặt biệt danh cho $targetName là "$cleanNick".';
+          }
+        } else {
+          if (actorId == targetId) {
+            displayText = (actorId == currentUser?.id)
+                ? 'Bạn đã xóa biệt danh của mình.'
+                : '$actorName đã xóa biệt danh của mình.';
+          } else {
+            displayText = '$actorName đã xóa biệt danh của $targetName.';
+          }
+        }
+      }
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 24),
+      child: Center(
+        child: Text(
+          displayText,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Color(0xFF8A8D91),
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildMessageStatusIndicator(MessageModel msg, ConversationModel? conv, bool isLastSentMessage) {
     if (!isLastSentMessage) return const SizedBox.shrink();
 
@@ -1570,15 +1637,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                           final showTime = index == 0 || (index > 0 && msg.createdAt.difference(provider.messages[index - 1].createdAt).inMinutes > 30);
 
                       if (msg.type == 'system') {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Center(
-                            child: Text(
-                              msg.content,
-                              style: const TextStyle(color: Color(0xFF8A8D91), fontSize: 12, fontStyle: FontStyle.italic),
-                            ),
-                          ),
-                        );
+                        return _buildSystemMessage(msg, conv, provider.currentUser);
                       }
 
                       final lowerContent = msg.content.toLowerCase();

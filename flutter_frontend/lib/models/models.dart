@@ -55,6 +55,16 @@ class MessageModel {
   final Map<String, String> reactions;
   final DateTime createdAt;
 
+  Map<String, dynamic>? get systemMetadata {
+    if (type != 'system') return null;
+    try {
+      final decoded = jsonDecode(content);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    } catch (_) {}
+    return null;
+  }
+
   MessageModel({
     required this.id,
     this.conversationId,

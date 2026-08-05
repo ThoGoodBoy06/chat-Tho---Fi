@@ -132,10 +132,18 @@ class ChatProvider extends ChangeNotifier {
 
     _nicknameSubscription = SocketService.onNicknameChanged.listen((data) {
       final convId = data['conversationId']?.toString();
-      final userId = data['userId']?.toString();
+      final userId = data['targetUserId']?.toString() ?? data['userId']?.toString();
       final nickname = data['nickname']?.toString();
       if (convId != null && userId != null) {
         updateMemberNickname(convId, userId, nickname);
+      }
+      if (data['systemMessage'] != null) {
+        final rawSys = data['systemMessage'];
+        if (rawSys is Map<String, dynamic>) {
+          addRealtimeMessage(MessageModel.fromJson(rawSys));
+        } else if (rawSys is Map) {
+          addRealtimeMessage(MessageModel.fromJson(Map<String, dynamic>.from(rawSys)));
+        }
       }
     });
   }

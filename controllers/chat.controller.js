@@ -1191,8 +1191,9 @@ exports.deleteConversation = async(req, res) => {
 exports.setNickname = async(req, res) => {
     try {
         const { conversationId } = req.params;
-        const { targetUserId, nickname } = req.body;
         const userId = req.user.id;
+        const targetUserId = req.body.targetUserId || req.body.userId || req.params.userId || userId;
+        const { nickname } = req.body;
 
         if (!targetUserId) {
             return res.status(400).json({ success: false, message: "Thiếu targetUserId." });
@@ -1230,30 +1231,26 @@ exports.setNickname = async(req, res) => {
             data: { nickname: cleanNickname },
         });
 
-        // 4. Lấy tên thật của người thực hiện và người được đặt biệt danh
-        const [actor, target] = await Promise.all([
+        // 4. Lấy tên hiển thị hiện tại (Biệt danh hoặc Tên thật) của người thực hiện và người được đặt biệt danh
+        const actorOldNickname = membership.nickname;
+        const targetOldNickname = targetMembership.nickname;
+
+        const [actorUser, targetUser] = await Promise.all([
             prisma.users.findUnique({ where: { id: userId }, select: { fullName: true } }),
             prisma.users.findUnique({ where: { id: targetUserId }, select: { fullName: true } }),
         ]);
 
-        const actorName = actor ? actor.fullName : "Người dùng";
-        const targetName = target ? target.fullName : "Người dùng";
+        const actorDisplayName = actorOldNickname || (actorUser ? actorUser.fullName : "Người dùng");
+        const targetDisplayName = targetOldNickname || (targetUser ? targetUser.fullName : "Người dùng");
 
-        // 5. Tạo tin nhắn hệ thống
-        let systemContent;
-        if (cleanNickname) {
-            if (targetUserId === userId) {
-                systemContent = `${actorName} đã đặt biệt danh của mình là ${cleanNickname}.`;
-            } else {
-                systemContent = `${actorName} đã đặt biệt danh cho ${targetName} là ${cleanNickname}.`;
-            }
-        } else {
-            if (targetUserId === userId) {
-                systemContent = `${actorName} đã xóa biệt danh của mình.`;
-            } else {
-                systemContent = `${actorName} đã xóa biệt danh của ${targetName}.`;
-            }
-        }
+        // 5. Tạo tin nhắn hệ thống dạng JSON Metadata
+        const systemPayload = {
+            action: "change_nickname",
+            actorId: userId,
+            targetId: targetUserId,
+            nickname: cleanNickname,
+        };
+        const systemContent = JSON.stringify(systemPayload);
 
         const systemMessage = await prisma.messages.create({
             data: {
@@ -1277,7 +1274,7 @@ exports.setNickname = async(req, res) => {
                 null,
         };
 
-        // 6. Phát socket event tới tất cả thành viên
+        // 6. Phát socket event tới tất cả thành viên và phòng chat
         const members = await prisma.conversationMembers.findMany({
             where: { conversationId },
             select: { userId: true, nickname: true },
@@ -1291,21 +1288,38 @@ exports.setNickname = async(req, res) => {
             if (m.nickname) nicknames[m.userId] = m.nickname;
         });
 
-        members.forEach((m) => {
-            io.to(m.userId).emit("nickname_changed", {
+        if (io) {
+            // Phát tin nhắn hệ thống vào khung chat real-time
+            io.to(conversationId).emit("receive_message", mappedSystemMessage);
+
+            // Cập nhật biệt danh trên giao diện cả 2 bên
+            io.to(conversationId).emit("nickname_changed", {
                 conversationId,
                 targetUserId,
+                userId: targetUserId,
                 nickname: cleanNickname,
                 nicknames,
                 systemMessage: mappedSystemMessage,
             });
-        });
+
+            members.forEach((m) => {
+                io.to(m.userId).emit("nickname_changed", {
+                    conversationId,
+                    targetUserId,
+                    userId: targetUserId,
+                    nickname: cleanNickname,
+                    nicknames,
+                    systemMessage: mappedSystemMessage,
+                });
+            });
+        }
 
         res.status(200).json({
             success: true,
             message: cleanNickname ? "Đặt biệt danh thành công." : "Đã xóa biệt danh.",
             nickname: cleanNickname,
             nicknames,
+            data: mappedSystemMessage,
         });
     } catch (error) {
         console.error("❌ Lỗi khi đặt biệt danh:", error);
