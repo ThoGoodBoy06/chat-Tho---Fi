@@ -94391,20 +94391,23 @@ r=t.p
 s=A.b([h,B.bf,new A.fO(1,B.bT,A.c4(A.b([A.aQ(s,q,1,B.at,q,q,A.d3(q,q,n?B.Gt:B.b2,q,q,q,q,q,q,q,q,12,q,q,B.aS,q,q,!0,q,q,q,q,q,q,q,q),q,q,q),A.aQ(A.LT("HH:mm").n8(a.as),q,q,q,q,q,B.anK,q,q,q)],r),B.aY,B.n,B.L),q)],r)
 if(n)B.b.L(s,A.b([B.bf,A.fl(B.H,q,A.iF(!1,A.bd(14),!0,A.as(q,B.agQ,B.j,q,q,new A.aP(B.co,q,q,A.bd(14),q,q,B.A),q,q,q,B.p3,q,q,q),q,!0,q,q,q,q,q,q,q,q,q,new A.aoR(this,m,c),q,q,q,q,q),B.j,B.B,0,q,q,q,q,q,B.bX)],r))
 return A.as(q,A.bB(s,B.o,B.n,B.L),B.j,q,B.DD,new A.aP(l,q,j,k,i,q,B.A),q,q,q,B.If,q,q,q)},
-a8a(a,b,c){var s,r,q,p=null,o={}
+a8a(a,b,c){var s,r,q,p,o,n,m=null,l={}
 if(!c)return B.ai
-if(!a.w)if(a.x)return A.as(p,B.Fw,B.j,p,p,B.nv,p,14,B.hr,p,p,p,14)
-else return A.as(p,B.Fu,B.j,p,p,new A.aP(p,p,A.fG(B.cF,1.2),p,p,p,B.aO),p,14,B.hr,p,p,p,14)
+if(!a.w)if(a.x)return A.as(m,B.Fw,B.j,m,m,B.nv,m,14,B.hr,m,m,m,14)
+else return A.as(m,B.Fu,B.j,m,m,new A.aP(m,m,A.fG(B.cF,1.2),m,m,m,B.aO),m,14,B.hr,m,m,m,14)
 s=b.c
-if(s==null||s.length===0)r=b.x.length!==0
-else r=!1
-if(r)s=B.b.oG(b.x,new A.apQ(a),new A.apR(b)).r
-o.a=null
-if(s!=null&&s.length!==0){if(J.tz(s,"http"))q=s
-else{r=A.fF()
-q=A.dW(r,"/api","")+s}r=A.b([new A.cq(0,B.av,A.V(38,0,0,0),B.cQ,3)],t.V)
-o.a=A.as(p,A.jb(B.eK,new A.id(q,1,p),p,8),B.j,p,p,new A.aP(p,p,p,p,r,p,B.aO),p,16,B.hr,p,p,p,16)}else{r=b.b
-o.a=A.as(p,A.jb(B.z,p,A.aQ(r.length!==0?r[0].toUpperCase():"U",p,p,p,p,p,B.ao0,p,p,p),8),B.j,p,p,p,p,16,B.hr,p,p,p,16)}return new A.dD(new A.apS(o,a),p)},
+r=b.w
+q=b.x
+p=q.length
+if(p!==0){o=B.b.oG(q,new A.apQ(a),new A.apR(b))
+if(r==null)r=o.a
+if(s==null||s.length===0)s=o.r}if((s==null||s.length===0)&&r!=null&&r.length!==0)s="/api/users/"+A.h(r)+"/avatar"
+l.a=null
+if(s!=null&&s.length!==0){if(J.tz(s,"http"))n=s
+else{q=A.fF()
+n=A.dW(q,"/api","")+s}q=A.b([new A.cq(0,B.av,A.V(38,0,0,0),B.cQ,3)],t.V)
+l.a=A.as(m,A.jb(B.eK,new A.id(n,1,m),m,8),B.j,m,m,new A.aP(m,m,m,m,q,m,B.aO),m,16,B.hr,m,m,m,16)}else{q=b.b
+l.a=A.as(m,A.jb(B.z,m,A.aQ(q.length!==0?q[0].toUpperCase():"U",m,m,m,m,m,B.ao0,m,m,m),8),B.j,m,m,m,m,16,B.hr,m,m,m,16)}return new A.dD(new A.apS(l,a),m)},
 Ov(a,b){var s,r,q,p,o,n,m,l,k,j,i=this,h=null,g=a.c
 if(g==null)return i.Ox()
 s=A.b([new A.cq(0,B.av,A.V(13,0,0,0),B.il,4)],t.V)

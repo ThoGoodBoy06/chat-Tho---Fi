@@ -376,51 +376,44 @@ module.exports = (io) => {
           `👀 User ${readerId} đang đánh dấu Đã xem phòng chat: ${conversationId}`,
         );
 
-        const unreadMessages = await prisma.messages.findMany({
+        // 1. Tìm tin nhắn mới nhất do người khác gửi trong cuộc trò chuyện này
+        const lastMsgFromOther = await prisma.messages.findFirst({
           where: {
             conversationId,
             NOT: { senderId: readerId },
-            NOT: { isRead: true },
           },
-          orderBy: { createdAt: "asc" },
+          orderBy: { createdAt: "desc" },
           select: { id: true, senderId: true },
         });
 
-        if (unreadMessages.length === 0) return;
-        if (unreadMessages.length === 0) {
-          return; // Không có tin nhắn mới nào để cập nhật
-        }
-
-        const lastReadBySender = new Map();
-        unreadMessages.forEach((message) => {
-          if (message.senderId) {
-            lastReadBySender.set(message.senderId, message.id);
-          }
-        });
-
-        const readAt = new Date().toISOString();
-        lastReadBySender.forEach((lastReadMessageId, senderId) => {
-          console.log(
-            `-> Phát tín hiệu Đã xem tin nhắn ${lastReadMessageId} về cho User ${senderId}`,
-          );
-          io.to(senderId).emit("messages_read", {
-            conversationId,
-            readBy: readerId,
-            lastReadMessageId,
-            readAt,
-          });
-        });
-
+        // 2. Cập nhật tất cả tin nhắn do người khác gửi sang isRead: true
         await prisma.messages.updateMany({
           where: {
             conversationId,
             senderId: { not: readerId },
-            id: { in: unreadMessages.map((m) => m.id) },
+            isRead: false,
           },
           data: { isRead: true, isDelivered: true },
         });
+
+        // 3. Bắn tín hiệu socket real-time về cho người gửi và toàn bộ phòng chat
+        const readAt = new Date().toISOString();
+        const lastReadMessageId = lastMsgFromOther ? lastMsgFromOther.id : null;
+
+        const payload = {
+          conversationId,
+          readBy: readerId,
+          lastReadMessageId,
+          readAt,
+        };
+
+        if (lastMsgFromOther && lastMsgFromOther.senderId) {
+          io.to(lastMsgFromOther.senderId).emit("messages_read", payload);
+        }
+        io.to(conversationId).emit("messages_read", payload);
+
         console.log(
-          `✅ Đã lưu trạng thái isRead: true cho ${unreadMessages.length} tin nhắn vào DB!`,
+          `✅ Đã phát tín hiệu Đã xem cho phòng ${conversationId}!`,
         );
 
         // ── TỰ HỦY TIN NHẮN ──

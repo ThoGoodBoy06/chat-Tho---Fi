@@ -1329,12 +1329,19 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
     // 2. Trạng thái ĐÃ XEM: Hiển thị Avatar rơi từ GIỮA MÀN HÌNH xuống có VẬT LÝ BOUNCE
     String? partnerAvatar = conv?.avatar;
-    if ((partnerAvatar == null || partnerAvatar.isEmpty) && conv != null && conv.members.isNotEmpty) {
+    String? partnerUserId = conv?.targetUserId;
+    if (conv != null && conv.members.isNotEmpty) {
       final partner = conv.members.firstWhere(
         (m) => m.id != msg.senderId,
         orElse: () => conv.members.first,
       );
-      partnerAvatar = partner.avatar;
+      partnerUserId ??= partner.id;
+      if (partnerAvatar == null || partnerAvatar.isEmpty) {
+        partnerAvatar = partner.avatar;
+      }
+    }
+    if ((partnerAvatar == null || partnerAvatar.isEmpty) && partnerUserId != null && partnerUserId.isNotEmpty) {
+      partnerAvatar = '/api/users/$partnerUserId/avatar';
     }
 
     Widget avatarWidget;
