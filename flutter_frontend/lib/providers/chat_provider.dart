@@ -29,6 +29,15 @@ class ChatProvider extends ChangeNotifier {
   /// Callback khi mở cuộc trò chuyện mới để nhảy ngay xuống tin nhắn mới nhất
   VoidCallback? onConversationSelected;
 
+  /// Tổng số tin nhắn chưa đọc từ tất cả cuộc trò chuyện
+  int get totalUnreadCount {
+    int total = 0;
+    for (final c in conversations) {
+      total += c.unreadCount;
+    }
+    return total;
+  }
+
   ChatProvider() {
     _initSocket();
   }

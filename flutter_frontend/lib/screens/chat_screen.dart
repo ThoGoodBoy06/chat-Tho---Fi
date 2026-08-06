@@ -65,6 +65,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   int _pendingFriendRequestsCount = 0;
   Future<List<dynamic>>? _contactsFuture;
+  Timer? _pendingRefreshTimer;
 
   String _removeAccents(String str) {
     var withDia = 'áàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđÁÀẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬÉÈẺẼẸÊẾỀỂỄỆÍÌỈĨỊÓÒỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÚÙỦŨỤƯỨỪỬỮỰÝỲỶỸỴĐ';
@@ -76,11 +77,15 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _fetchPendingRequestsCount() async {
-    final list = await ApiService.getPendingFriendRequests();
-    if (mounted) {
-      setState(() {
-        _pendingFriendRequestsCount = list.length;
-      });
+    try {
+      final list = await ApiService.getPendingFriendRequests();
+      if (mounted) {
+        setState(() {
+          _pendingFriendRequestsCount = list.length;
+        });
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error fetching pending requests count: $e');
     }
   }
 
@@ -95,9 +100,18 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           SocketService.emitGoOffline();
         } else {
           SocketService.emitGoOnline();
+          _fetchPendingRequestsCount();
         }
       });
     }
+
+    // Auto-refresh pending friend requests count badge in background every 8 seconds
+    _pendingRefreshTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+      if (mounted) {
+        _fetchPendingRequestsCount();
+      }
+    });
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = Provider.of<ChatProvider>(context, listen: false);
       provider.fetchConversations();
@@ -117,6 +131,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       SocketService.emitGoOffline();
     } else if (state == AppLifecycleState.resumed) {
       SocketService.emitGoOnline();
+      _fetchPendingRequestsCount();
     }
   }
 
@@ -131,9 +146,16 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       }
     });
     _friendRequestSub?.cancel();
-    _friendRequestSub = SocketService.onFriendRequestReceived.listen((_) {
+    _friendRequestSub = SocketService.onFriendRequestReceived.listen((data) {
+      debugPrint('⚡ [ChatScreen] Real-time friend request socket event: $data');
       if (mounted) {
-        _fetchPendingRequestsCount();
+        if (data is Map && data['count'] is int) {
+          setState(() {
+            _pendingFriendRequestsCount = data['count'] as int;
+          });
+        } else {
+          _fetchPendingRequestsCount();
+        }
         setState(() {
           _contactsFuture = ApiService.getFriends();
         });
@@ -195,6 +217,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     _friendRequestSub?.cancel();
     _unfriendSub?.cancel();
     _debounceTimer?.cancel();
+    _pendingRefreshTimer?.cancel();
     try {
       final provider = Provider.of<ChatProvider>(context, listen: false);
       provider.onNewMessageReceived = null;
@@ -959,17 +982,17 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                           color: const Color(0xFFEBF3FF),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            Icon(Icons.add_rounded, size: 16, color: Color(0xFF007AFF)),
-                            SizedBox(width: 2),
-                            Text(
-                              'Mới',
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF007AFF)),
-                            ),
-                          ],
-                        ),
+                        // child: Row(
+                        //   mainAxisSize: MainAxisSize.min,
+                        //   children: const [
+                        //     Icon(Icons.add_rounded, size: 16, color: Color(0xFF007AFF)),
+                        //     SizedBox(width: 2),
+                        //     Text(
+                        //       'Mới',
+                        //       style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF007AFF)),
+                        //     ),
+                        //   ],
+                        // ),
                       ),
                     ),
                   ],
@@ -4456,31 +4479,40 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildMobileBottomBar() {
+    final chatProvider = Provider.of<ChatProvider>(context);
+    final unreadMessagesCount = chatProvider.totalUnreadCount;
+    final pendingRequestsCount = _pendingFriendRequestsCount;
+
     final List<Map<String, dynamic>> tabs = [
       {
         'title': 'Tin nhắn',
         'outlineIcon': Icons.chat_bubble_outline_rounded,
         'solidIcon': Icons.chat_bubble_rounded,
+        'badge': unreadMessagesCount,
       },
       {
         'title': 'Danh bạ',
         'outlineIcon': Icons.people_outline_rounded,
         'solidIcon': Icons.people_rounded,
+        'badge': pendingRequestsCount,
       },
       {
         'title': 'Tin tức',
         'outlineIcon': Icons.article_outlined,
         'solidIcon': Icons.article_rounded,
+        'badge': 0,
       },
       {
         'title': 'Trợ lý AI',
         'outlineIcon': Icons.auto_awesome_outlined,
         'solidIcon': Icons.auto_awesome_rounded,
+        'badge': 0,
       },
       {
         'title': 'Cá nhân',
         'outlineIcon': Icons.person_outline_rounded,
         'solidIcon': Icons.person_rounded,
+        'badge': 0,
       },
     ];
 
@@ -4510,8 +4542,60 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: List.generate(tabs.length, (index) {
             bool isSelected = _currentTabIndex == index;
+            int badgeNum = (tabs[index]['badge'] as int? ?? 0);
+
+            Widget iconWidget = Icon(
+              isSelected ? tabs[index]['solidIcon'] as IconData : tabs[index]['outlineIcon'] as IconData,
+              color: isSelected ? const Color(0xFF0068FF) : const Color(0xFF64748B),
+              size: 22,
+            );
+
+            if (badgeNum > 0) {
+              iconWidget = Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  iconWidget,
+                  Positioned(
+                    top: -5,
+                    right: -7,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEF4444),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.white, width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFEF4444).withOpacity(0.4),
+                            blurRadius: 4,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        badgeNum > 99 ? '99+' : '$badgeNum',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.bold,
+                          height: 1.0,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }
+
             return GestureDetector(
-              onTap: () => setState(() => _currentTabIndex = index),
+              onTap: () {
+                setState(() => _currentTabIndex = index);
+                if (index == 1) {
+                  _fetchPendingRequestsCount();
+                }
+              },
               behavior: HitTestBehavior.opaque,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 250),
@@ -4524,11 +4608,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      isSelected ? tabs[index]['solidIcon'] as IconData : tabs[index]['outlineIcon'] as IconData,
-                      color: isSelected ? const Color(0xFF0068FF) : const Color(0xFF64748B),
-                      size: 22,
-                    ),
+                    iconWidget,
                     if (isSelected) ...[
                       const SizedBox(width: 6),
                       Text(

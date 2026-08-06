@@ -248,23 +248,34 @@ class SocketService {
 
     socket?.on('new_friend_request', (data) {
       print('📩 Socket new_friend_request: $data');
-      if (data is Map) {
-        _friendRequestController.add(Map<String, dynamic>.from(data));
+      _friendRequestController.add(data is Map ? Map<String, dynamic>.from(data) : {'data': data});
+    });
+
+    socket?.on('initial_friend_requests', (data) {
+      print('📩 Socket initial_friend_requests: $data');
+      if (data is List) {
+        _friendRequestController.add({'type': 'initial', 'count': data.length, 'data': data});
       }
+    });
+
+    socket?.on('friend_request_updated', (data) {
+      print('📩 Socket friend_request_updated: $data');
+      _friendRequestController.add(data is Map ? Map<String, dynamic>.from(data) : {'data': data});
+    });
+
+    socket?.on('friend_request_accepted', (data) {
+      print('🤝 Socket friend_request_accepted: $data');
+      _friendRequestController.add(data is Map ? Map<String, dynamic>.from(data) : {'data': data});
     });
 
     socket?.on('user_unfriended', (data) {
       print('❌ Socket user_unfriended: $data');
-      if (data is Map) {
-        _unfriendController.add(Map<String, dynamic>.from(data));
-      }
+      _unfriendController.add(data is Map ? Map<String, dynamic>.from(data) : {'data': data});
     });
 
     socket?.on('unfriended', (data) {
       print('❌ Socket unfriended: $data');
-      if (data is Map) {
-        _unfriendController.add(Map<String, dynamic>.from(data));
-      }
+      _unfriendController.add(data is Map ? Map<String, dynamic>.from(data) : {'data': data});
     });
 
     socket?.onDisconnect((_) => print('🔴 Socket disconnected'));
