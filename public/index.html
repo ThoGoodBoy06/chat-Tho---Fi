@@ -120,13 +120,18 @@
   </style>
 
   <script>
-    // Unregister stale Flutter Service Workers only (Cache Busting)
+    // Force unregister all stale Flutter Service Workers & wipe CacheStorage (Cache Busting)
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function(registrations) {
         for (var registration of registrations) {
-          if (registration.active && registration.active.scriptURL && registration.active.scriptURL.includes('flutter_service_worker')) {
-            registration.unregister();
-          }
+          registration.unregister();
+        }
+      });
+    }
+    if ('caches' in window) {
+      caches.keys().then(function(names) {
+        for (var name of names) {
+          caches.delete(name);
         }
       });
     }
