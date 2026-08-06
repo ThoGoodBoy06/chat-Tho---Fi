@@ -43,21 +43,28 @@
       animationFrameId: null,
       isScanning: false,
       start: async function(containerId) {
-        this.stop();
+        this.pause();
         this.isScanning = true;
         console.log('[WebQrScanner] Initializing camera for container:', containerId);
 
         try {
-          let stream;
-          try {
-            stream = await navigator.mediaDevices.getUserMedia({
-              video: { facingMode: "environment" }
-            });
-          } catch(err1) {
-            console.warn('[WebQrScanner] FacingMode environment failed, trying simple video constraint:', err1);
-            stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          let stream = this.stream;
+
+          // Reuse existing active stream if available to prevent browser permission prompt
+          if (!stream || !stream.active || !stream.getVideoTracks().some(t => t.readyState === 'live')) {
+            console.log('[WebQrScanner] Requesting new camera stream via getUserMedia...');
+            try {
+              stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: "environment" }
+              });
+            } catch(err1) {
+              console.warn('[WebQrScanner] FacingMode environment failed, trying simple video constraint:', err1);
+              stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            }
+            this.stream = stream;
+          } else {
+            console.log('[WebQrScanner] Reusing active camera stream (no permission dialog required)');
           }
-          this.stream = stream;
 
           const container = document.getElementById(containerId);
           if (!container) {
@@ -102,8 +109,8 @@
                   const qrData = code.data;
                   this.isScanning = false;
 
-                  // Stop camera tracks immediately to turn off camera LED
-                  this.stop();
+                  // Pause video scanning loop but keep stream active for fast re-use
+                  this.pause();
 
                   // Dispatch custom DOM event to Flutter
                   window.dispatchEvent(new CustomEvent('qr-scanned', { detail: qrData }));
@@ -139,7 +146,7 @@
             });
             if (code && code.data) {
               console.log('[WebQrScanner] Image QR Code detected:', code.data);
-              this.stop();
+              this.pause();
               window.dispatchEvent(new CustomEvent('qr-scanned', { detail: code.data }));
             } else {
               window.dispatchEvent(new CustomEvent('qr-scan-failed', { detail: 'No QR code found in image' }));
@@ -148,12 +155,23 @@
         };
         img.src = dataUrl;
       },
-      stop: function() {
+      pause: function() {
         this.isScanning = false;
         if (this.animationFrameId) {
           cancelAnimationFrame(this.animationFrameId);
           this.animationFrameId = null;
         }
+        if (this.video) {
+          try {
+            this.video.pause();
+            this.video.srcObject = null;
+            this.video.remove();
+          } catch(e) {}
+          this.video = null;
+        }
+      },
+      stop: function() {
+        this.pause();
         if (this.stream) {
           try {
             this.stream.getTracks().forEach(track => {
@@ -164,14 +182,6 @@
             console.error('[WebQrScanner] Error stopping tracks:', e);
           }
           this.stream = null;
-        }
-        if (this.video) {
-          try {
-            this.video.pause();
-            this.video.srcObject = null;
-            this.video.remove();
-          } catch(e) {}
-          this.video = null;
         }
       }
     };
