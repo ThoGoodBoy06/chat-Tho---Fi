@@ -835,3 +835,45 @@ exports.cancelFriendRequest = async (req, res) => {
   }
 };
 
+// 12. Đổi mật khẩu
+exports.changePassword = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { oldPassword, currentPassword, newPassword } = req.body;
+    const oldPass = oldPassword || currentPassword;
+
+    if (!oldPass || !newPassword) {
+      return res.status(400).json({ success: false, message: "Vui lòng nhập đầy đủ thông tin mật khẩu" });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: "Mật khẩu mới phải có ít nhất 6 ký tự" });
+    }
+
+    const user = await prisma.users.findUnique({ where: { id: userId } });
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy người dùng" });
+    }
+
+    const bcrypt = require("bcrypt");
+    const isMatch = await bcrypt.compare(oldPass, user.passwordHash || user.password);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: "Mật khẩu cũ không chính xác" });
+    }
+
+    const newHash = await bcrypt.hash(newPassword, 10);
+    await prisma.users.update({
+      where: { id: userId },
+      data: {
+        passwordHash: newHash,
+        password: newHash,
+      },
+    });
+
+    return res.status(200).json({ success: true, message: "Đổi mật khẩu thành công!" });
+  } catch (error) {
+    console.error("Lỗi đổi mật khẩu:", error.message);
+    return res.status(500).json({ success: false, message: "Lỗi server", error: error.message });
+  }
+};
+

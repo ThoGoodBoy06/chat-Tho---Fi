@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'providers/chat_provider.dart';
+import 'providers/theme_provider.dart';
 import 'services/api_service.dart';
 import 'services/socket_service.dart';
 import 'services/fcm_service.dart';
@@ -13,8 +14,11 @@ import 'utils/web_utils.dart' as web_utils;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => ChatProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+      ],
       child: const ChatThoFiApp(),
     ),
   );
@@ -101,15 +105,46 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
   @override
   Widget build(BuildContext context) {
     final chatProvider = Provider.of<ChatProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
     final currentUser = chatProvider.currentUser;
 
     return MaterialApp(
       title: 'Chat Tho-Fi',
       debugShowCheckedModeBanner: false,
+      themeMode: themeProvider.themeMode,
       theme: ThemeData(
         brightness: Brightness.light,
-        primaryColor: const Color(0xFF007AFF),
-        scaffoldBackgroundColor: const Color(0xFFFFFFFF),
+        primaryColor: const Color(0xFF0068FF),
+        scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.white,
+          foregroundColor: Color(0xFF0F172A),
+          elevation: 0,
+        ),
+        colorScheme: const ColorScheme.light(
+          primary: Color(0xFF0068FF),
+          secondary: Color(0xFF0068FF),
+          surface: Colors.white,
+          background: Color(0xFFF8FAFC),
+        ),
+        fontFamily: GoogleFonts.inter().fontFamily,
+      ),
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        primaryColor: const Color(0xFF0068FF),
+        scaffoldBackgroundColor: const Color(0xFF0F172A),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF1E293B),
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
+        cardColor: const Color(0xFF1E293B),
+        colorScheme: const ColorScheme.dark(
+          primary: Color(0xFF0068FF),
+          secondary: Color(0xFF0068FF),
+          surface: Color(0xFF1E293B),
+          background: Color(0xFF0F172A),
+        ),
         fontFamily: GoogleFonts.inter().fontFamily,
       ),
       builder: (context, child) {
@@ -127,7 +162,7 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
       home: _isCheckingAuth
           ? const Scaffold(
               body: Center(
-                child: CircularProgressIndicator(color: Color(0xFF007AFF)),
+                child: CircularProgressIndicator(color: Color(0xFF0068FF)),
               ),
             )
           : (currentUser == null

@@ -9,6 +9,8 @@ router.get("/:id/cover", userController.getUserCover);
 
 // Cập nhật profile (Tên, tiểu sử)
 router.put("/profile", authMiddleware, userController.updateProfile);
+router.put("/change-password", authMiddleware, userController.changePassword);
+router.post("/change-password", authMiddleware, userController.changePassword);
 
 // Cập nhật ảnh bìa - nhận Base64 từ JSON body, lưu thẳng vào Neon DB
 router.post(

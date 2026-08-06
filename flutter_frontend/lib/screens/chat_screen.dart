@@ -17,6 +17,7 @@ import '../services/api_service.dart';
 import 'friend_requests_screen.dart';
 import 'my_groups_screen.dart';
 import 'add_friend_screen.dart';
+import 'profile_tab.dart';
 
 class ChatScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -2924,77 +2925,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   // TAB 4: Cá nhân
   Widget _buildProfileTab(ChatProvider provider) {
-    final user = provider.currentUser;
-
-    return Container(
-      color: const Color(0xFFF0F2F5),
-      padding: const EdgeInsets.all(32),
-      child: Center(
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 480),
-          padding: const EdgeInsets.all(32),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 20)],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircleAvatar(
-                radius: 46,
-                backgroundColor: const Color(0xFF0068FF),
-                child: Text(
-                  (user?.fullName ?? 'U')[0].toUpperCase(),
-                  style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                user?.fullName ?? 'Người dùng',
-                style: const TextStyle(color: Color(0xFF0F172A), fontSize: 22, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '@${user?.username ?? "user"}',
-                style: const TextStyle(color: Color(0xFF64748B), fontSize: 14),
-              ),
-              const SizedBox(height: 24),
-              const Divider(color: Color(0xFFE2E8F0)),
-              ListTile(
-                leading: const Icon(Icons.person_outline_rounded, color: Color(0xFF0068FF)),
-                title: const Text('Thông tin cá nhân', style: TextStyle(color: Color(0xFF0F172A))),
-                trailing: const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFF94A3B8), size: 16),
-                onTap: () {},
-              ),
-              ListTile(
-                leading: const Icon(Icons.lock_outline_rounded, color: Color(0xFF0068FF)),
-                title: const Text('Đổi mật khẩu', style: TextStyle(color: Color(0xFF0F172A))),
-                trailing: const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFF94A3B8), size: 16),
-                onTap: () {},
-              ),
-              ListTile(
-                leading: const Icon(Icons.light_mode_outlined, color: Color(0xFF0068FF)),
-                title: const Text('Giao diện Sáng (White Mode)', style: TextStyle(color: Color(0xFF0F172A))),
-                trailing: const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 20),
-                onTap: () {},
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton.icon(
-                  onPressed: widget.onLogout,
-                  icon: const Icon(Icons.logout_rounded, color: Colors.white),
-                  label: const Text('Đăng Xuất', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    return ProfileTab(onLogout: widget.onLogout);
   }
   void _showMediaUploadOptions(ChatProvider provider) {
     showModalBottomSheet(

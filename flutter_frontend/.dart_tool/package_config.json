@@ -422,6 +422,18 @@
       "languageVersion": "2.12"
     },
     {
+      "name": "qr",
+      "rootUri": "file:///C:/Users/MSI%20PC/AppData/Local/Pub/Cache/hosted/pub.dev/qr-3.0.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
+    },
+    {
+      "name": "qr_flutter",
+      "rootUri": "file:///C:/Users/MSI%20PC/AppData/Local/Pub/Cache/hosted/pub.dev/qr_flutter-4.1.0",
+      "packageUri": "lib/",
+      "languageVersion": "2.19"
+    },
+    {
       "name": "shared_preferences",
       "rootUri": "file:///C:/Users/MSI%20PC/AppData/Local/Pub/Cache/hosted/pub.dev/shared_preferences-2.3.3",
       "packageUri": "lib/",
@@ -596,7 +608,7 @@
       "languageVersion": "3.0"
     }
   ],
-  "generated": "2026-08-04T08:37:31.803542Z",
+  "generated": "2026-08-06T03:12:53.700648Z",
   "generator": "pub",
   "generatorVersion": "3.4.0",
   "flutterRoot": "file:///C:/Du_an_nhantin_goidien/.flutter_sdk/flutter",

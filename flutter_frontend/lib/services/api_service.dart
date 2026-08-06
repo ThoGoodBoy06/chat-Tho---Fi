@@ -253,6 +253,49 @@ class ApiService {
     }
   }
 
+  // Change password API
+  static Future<Map<String, dynamic>> changePassword(String currentPassword, String newPassword) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/users/change-password'),
+        headers: headers,
+        body: jsonEncode({
+          'currentPassword': currentPassword,
+          'newPassword': newPassword,
+        }),
+      ).timeout(const Duration(seconds: 15));
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'message': data['message'] ?? 'Đổi mật khẩu thành công!'};
+      } else {
+        return {'success': false, 'message': data['message'] ?? 'Đổi mật khẩu thất bại'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Lỗi kết nối máy chủ: $e'};
+    }
+  }
+
+  // Update Profile API
+  static Future<bool> updateProfile({String? fullName, String? bio}) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.put(
+        Uri.parse('$baseUrl/users/profile'),
+        headers: headers,
+        body: jsonEncode({
+          if (fullName != null) 'fullName': fullName,
+          if (bio != null) 'bio': bio,
+        }),
+      ).timeout(const Duration(seconds: 15));
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.updateProfile: $e');
+      return false;
+    }
+  }
+
   // React to Message API Fallback
   static Future<Map<String, dynamic>> reactToMessage(String messageId, String emoji) async {
     try {

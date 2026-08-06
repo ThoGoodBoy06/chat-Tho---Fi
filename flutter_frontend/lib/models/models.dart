@@ -8,6 +8,8 @@ class UserModel {
   final String? email;
   final String? phone;
   final String? avatar;
+  final String? coverImage;
+  final String? bio;
   final String role;
   final bool isBlocked;
   final bool isOnline;
@@ -24,6 +26,8 @@ class UserModel {
     this.email,
     this.phone,
     this.avatar,
+    this.coverImage,
+    this.bio,
     this.role = 'USER',
     this.isBlocked = false,
     this.isOnline = false,
@@ -39,11 +43,31 @@ class UserModel {
       email: json['email']?.toString(),
       phone: json['phone']?.toString(),
       avatar: json['avatar']?.toString(),
+      coverImage: json['coverImage']?.toString() ?? json['cover_image']?.toString(),
+      bio: json['bio']?.toString(),
       role: json['role']?.toString() ?? 'USER',
       isBlocked: json['isBlocked'] == true,
       isOnline: json['isOnline'] == true,
       lastActive: json['lastActive'] != null ? DateTime.tryParse(json['lastActive'].toString()) : null,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'username': username,
+      'fullName': fullName,
+      'nickname': nickname,
+      'email': email,
+      'phone': phone,
+      'avatar': avatar,
+      'coverImage': coverImage,
+      'bio': bio,
+      'role': role,
+      'isBlocked': isBlocked,
+      'isOnline': isOnline,
+      'lastActive': lastActive?.toIso8601String(),
+    };
   }
 }
 
