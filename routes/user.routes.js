@@ -27,7 +27,13 @@ router.post("/friend-requests/cancel", authMiddleware, userController.cancelFrie
 router.post("/friend-requests/:receiverId/cancel", authMiddleware, userController.cancelFriendRequest);
 router.post("/friend-requests/:id/accept", authMiddleware, userController.acceptFriendRequest);
 router.post("/friend-requests/:id/reject", authMiddleware, userController.rejectFriendRequest);
+router.get("/friends", authMiddleware, userController.getFriends);
 router.delete("/friends/:friendId", authMiddleware, userController.deleteFriend);
+router.post("/friends/:friendId/delete", authMiddleware, userController.deleteFriend);
+router.post("/friends/delete", authMiddleware, userController.deleteFriend);
+
+// Lookup user by ID (for QR scan) - returns relationship status
+router.get("/:id/lookup", authMiddleware, userController.lookupUserById);
 
 // Lấy thông tin chi tiết hồ sơ người dùng khác
 router.get("/:id/profile", authMiddleware, userController.getOtherUserProfile);

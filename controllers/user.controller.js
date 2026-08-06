@@ -274,6 +274,90 @@ exports.getUserProfile = async (req, res) => {
   }
 };
 
+// Lookup user by ID (for QR scan) - returns user info + relationship status
+exports.lookupUserById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const currentUserId = req.user.id;
+
+    if (!id || id === "null" || id === "undefined") {
+      return res.status(400).json({ success: false, message: "ID người dùng không hợp lệ" });
+    }
+
+    const user = await prisma.users.findUnique({
+      where: { id },
+      select: { id: true, fullName: true, username: true, phone: true, email: true, isOnline: true, bio: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy người dùng" });
+    }
+
+    let status = "NONE";
+    let relationship = "none";
+
+    if (user.id === currentUserId) {
+      status = "SELF";
+      relationship = "self";
+    } else {
+      // Check FriendRequests
+      const fr = await prisma.friendRequests.findFirst({
+        where: {
+          OR: [
+            { requesterId: currentUserId, receiverId: user.id },
+            { receiverId: currentUserId, requesterId: user.id },
+          ],
+        },
+      });
+
+      // Check Friends table
+      let fRecord = null;
+      try {
+        if (prisma.friends) {
+          fRecord = await prisma.friends.findFirst({
+            where: {
+              OR: [
+                { senderId: currentUserId, receiverId: user.id },
+                { receiverId: currentUserId, senderId: user.id },
+              ],
+            },
+          });
+        }
+      } catch (_) {}
+
+      if ((fr && fr.status === "ACCEPTED") || (fRecord && (fRecord.status === "accepted" || fRecord.status === "ACCEPTED"))) {
+        status = "FRIEND";
+        relationship = "friends";
+      } else if (fr && fr.status === "PENDING") {
+        status = "PENDING";
+        relationship = fr.requesterId === currentUserId ? "pending_sent" : "pending_received";
+      } else if (fRecord && (fRecord.status === "pending" || fRecord.status === "PENDING")) {
+        status = "PENDING";
+        relationship = "pending_sent";
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        id: user.id,
+        fullName: user.fullName || user.username,
+        username: user.username,
+        phone: user.phone,
+        email: user.email,
+        isOnline: user.isOnline,
+        bio: user.bio,
+        avatar: `/api/users/${user.id}/avatar`,
+        status,
+        relationship,
+      },
+    });
+  } catch (error) {
+    console.error("Lỗi lookupUserById:", error.message);
+    return res.status(500).json({ success: false, message: "Lỗi server", error: error.message });
+  }
+};
+
 // 4. Lấy thông tin Hồ sơ người dùng khác đầy đủ cho modal mới
 exports.getOtherUserProfile = async (req, res) => {
   try {
@@ -577,8 +661,9 @@ exports.deleteFriend = async (req, res) => {
   try {
     const userId = req.user.id;
     const { friendId } = req.params;
+    const targetId = friendId || req.body?.friendId || req.body?.targetUserId;
 
-    if (!friendId) {
+    if (!targetId) {
       return res.status(400).json({ success: false, message: "ID bạn bè không hợp lệ" });
     }
 
@@ -586,8 +671,8 @@ exports.deleteFriend = async (req, res) => {
     await prisma.friendRequests.deleteMany({
       where: {
         OR: [
-          { requesterId: userId, receiverId: friendId },
-          { requesterId: friendId, receiverId: userId },
+          { requesterId: userId, receiverId: targetId },
+          { requesterId: targetId, receiverId: userId },
         ],
       },
     });
@@ -598,8 +683,8 @@ exports.deleteFriend = async (req, res) => {
         await prisma.friends.deleteMany({
           where: {
             OR: [
-              { senderId: userId, receiverId: friendId },
-              { senderId: friendId, receiverId: userId },
+              { senderId: userId, receiverId: targetId },
+              { senderId: targetId, receiverId: userId },
             ],
           },
         });
@@ -615,7 +700,7 @@ exports.deleteFriend = async (req, res) => {
           type: "private",
           AND: [
             { ConversationMembers: { some: { userId: userId } } },
-            { ConversationMembers: { some: { userId: friendId } } },
+            { ConversationMembers: { some: { userId: targetId } } },
           ],
         },
         include: {
@@ -647,10 +732,10 @@ exports.deleteFriend = async (req, res) => {
     try {
       const io = req.app.get("io");
       if (io) {
-        io.to(friendId).emit("user_unfriended", { userId: userId, friendId: userId });
-        io.to(userId).emit("user_unfriended", { userId: friendId, friendId: friendId });
-        io.to(friendId).emit("unfriended", { unfriendedBy: userId });
-        io.to(userId).emit("unfriended", { unfriendedBy: friendId });
+        io.to(targetId).emit("user_unfriended", { userId: userId, friendId: userId });
+        io.to(userId).emit("user_unfriended", { userId: targetId, friendId: targetId });
+        io.to(targetId).emit("unfriended", { unfriendedBy: userId });
+        io.to(userId).emit("unfriended", { unfriendedBy: targetId });
       }
     } catch (e) {
       console.warn("Lỗi phụ emit socket unfriend:", e.message);
@@ -659,6 +744,92 @@ exports.deleteFriend = async (req, res) => {
     return res.status(200).json({ success: true, message: "Đã xóa bạn bè và phòng chat thành công" });
   } catch (error) {
     console.error("Lỗi khi xóa bạn bè API:", error.message);
+    return res.status(500).json({ success: false, message: "Lỗi server", error: error.message });
+  }
+};
+
+// Lấy danh sách bạn bè đã kết bạn (status = ACCEPTED)
+exports.getFriends = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // 1. Tìm các yêu cầu kết bạn đã ACCEPTED
+    const acceptedRequests = await prisma.friendRequests.findMany({
+      where: {
+        status: "ACCEPTED",
+        OR: [
+          { requesterId: userId },
+          { receiverId: userId },
+        ],
+      },
+      include: {
+        requester: {
+          select: { id: true, fullName: true, username: true, phone: true, email: true, isOnline: true, lastActive: true, avatar: true },
+        },
+        receiver: {
+          select: { id: true, fullName: true, username: true, phone: true, email: true, isOnline: true, lastActive: true, avatar: true },
+        },
+      },
+    });
+
+    const friendMap = new Map();
+
+    acceptedRequests.forEach((r) => {
+      const friend = r.requesterId === userId ? r.receiver : r.requester;
+      if (friend && friend.id !== userId) {
+        friendMap.set(friend.id, {
+          id: friend.id,
+          fullName: friend.fullName || friend.username,
+          username: friend.username,
+          phone: friend.phone,
+          email: friend.email,
+          isOnline: friend.isOnline,
+          lastActive: friend.lastActive,
+          avatar: `/api/users/${friend.id}/avatar`,
+          status: "FRIEND",
+          relationship: "friends",
+        });
+      }
+    });
+
+    // 2. Check bảng Friends nếu có
+    try {
+      if (prisma.friends) {
+        const friendsRecords = await prisma.friends.findMany({
+          where: {
+            OR: [{ senderId: userId }, { receiverId: userId }],
+            status: { in: ["accepted", "ACCEPTED"] },
+          },
+          include: {
+            sender: { select: { id: true, fullName: true, username: true, phone: true, email: true, isOnline: true, lastActive: true } },
+            receiver: { select: { id: true, fullName: true, username: true, phone: true, email: true, isOnline: true, lastActive: true } },
+          },
+        });
+
+        for (const f of friendsRecords) {
+          const friend = f.senderId === userId ? f.receiver : f.sender;
+          if (friend && friend.id !== userId && !friendMap.has(friend.id)) {
+            friendMap.set(friend.id, {
+              id: friend.id,
+              fullName: friend.fullName || friend.username,
+              username: friend.username,
+              phone: friend.phone,
+              email: friend.email,
+              isOnline: friend.isOnline,
+              lastActive: friend.lastActive,
+              avatar: `/api/users/${friend.id}/avatar`,
+              status: "FRIEND",
+              relationship: "friends",
+            });
+          }
+        }
+      }
+    } catch (_) {}
+
+    const friendsList = Array.from(friendMap.values());
+    return res.status(200).json({ success: true, data: friendsList });
+  } catch (error) {
+    console.error("Lỗi lấy danh sách bạn bè:", error.message);
     return res.status(500).json({ success: false, message: "Lỗi server", error: error.message });
   }
 };

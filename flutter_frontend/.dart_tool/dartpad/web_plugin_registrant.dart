@@ -10,6 +10,7 @@ import 'package:audioplayers_web/audioplayers_web.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter_web.dart';
 import 'package:firebase_core_web/firebase_core_web.dart';
 import 'package:firebase_messaging_web/firebase_messaging_web.dart';
+import 'package:mobile_scanner/src/web/mobile_scanner_web.dart';
 import 'package:shared_preferences_web/shared_preferences_web.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 
@@ -19,6 +20,7 @@ void registerPlugins([final Registrar? pluginRegistrar]) {
   EmojiPickerFlutterPluginWeb.registerWith(registrar);
   FirebaseCoreWeb.registerWith(registrar);
   FirebaseMessagingWeb.registerWith(registrar);
+  MobileScannerWeb.registerWith(registrar);
   SharedPreferencesPlugin.registerWith(registrar);
   registrar.registerMessageHandler();
 }

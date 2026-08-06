@@ -17,6 +17,8 @@ import '../services/api_service.dart';
 import 'friend_requests_screen.dart';
 import 'my_groups_screen.dart';
 import 'add_friend_screen.dart';
+import 'qr_scanner_screen.dart';
+import 'other_user_profile_screen.dart';
 import 'profile_tab.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -811,41 +813,69 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                     color: Color(0xFF007AFF),
                   ),
                 ),
-                // Right: Plus (+) Icon for Add Friend Screen with text "Thêm"
-                GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const AddFriendScreen()),
-                    );
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0068FF).withOpacity(0.1),
-                      border: Border.all(color: const Color(0x1F0068FF), width: 1),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Icon(
-                          Icons.person_add_alt_1_rounded,
-                          color: Color(0xFF0068FF),
-                          size: 18,
+                // Right: QR Scanner + Add Friend Button
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // QR Scanner Button
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const QrScannerScreen()),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF475569).withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        SizedBox(width: 4),
-                        Text(
-                          'Thêm bạn bè',
-                          style: TextStyle(
-                            color: Color(0xFF0068FF),
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        child: const Icon(
+                          Icons.qr_code_scanner_rounded,
+                          color: Color(0xFF334155),
+                          size: 20,
                         ),
-                      ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    // Add Friend Button
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const AddFriendScreen()),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0068FF).withOpacity(0.1),
+                          border: Border.all(color: const Color(0x1F0068FF), width: 1),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(
+                              Icons.person_add_alt_1_rounded,
+                              color: Color(0xFF0068FF),
+                              size: 18,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              'Thêm bạn bè',
+                              style: TextStyle(
+                                color: Color(0xFF0068FF),
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -1598,77 +1628,104 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                     icon: const Icon(Icons.chevron_left_rounded, color: primaryColor, size: 30),
                     onPressed: () => provider.clearSelectedConversation(),
                   ),
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    CircleAvatar(
-                      radius: 22,
-                      backgroundColor: primaryColor,
-                      backgroundImage: (conv.avatar != null && conv.avatar!.isNotEmpty)
-                          ? NetworkImage(conv.avatar!)
-                          : null,
-                      child: (conv.avatar == null || conv.avatar!.isEmpty)
-                          ? Text(
-                              conv.name.isNotEmpty ? conv.name[0].toUpperCase() : 'U',
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
-                            )
-                          : null,
-                    ),
-                    if (conv.isOnline == true)
-                      Positioned(
-                        right: -1,
-                        bottom: -1,
-                        child: Container(
-                          width: 14,
-                          height: 14,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF31A24C),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2.5),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      if (!conv.isGroup) {
+                        UserModel? partner;
+                        if (conv.members.isNotEmpty) {
+                          final uid = provider.currentUser?.id;
+                          partner = conv.members.firstWhere(
+                            (m) => m.id != uid,
+                            orElse: () => conv.members.first,
+                          );
+                        }
+                        final targetId = partner?.id ?? conv.id;
+                        if (targetId.isNotEmpty) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => OtherUserProfileScreen(userId: targetId)),
+                          );
+                        }
+                      }
+                    },
+                    child: Row(
+                      children: [
+                        Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            CircleAvatar(
+                              radius: 22,
+                              backgroundColor: primaryColor,
+                              backgroundImage: (conv.avatar != null && conv.avatar!.isNotEmpty)
+                                  ? NetworkImage(conv.avatar!)
+                                  : null,
+                              child: (conv.avatar == null || conv.avatar!.isEmpty)
+                                  ? Text(
+                                      conv.name.isNotEmpty ? conv.name[0].toUpperCase() : 'U',
+                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                                    )
+                                  : null,
+                            ),
+                            if (conv.isOnline == true)
+                              Positioned(
+                                right: -1,
+                                bottom: -1,
+                                child: Container(
+                                  width: 14,
+                                  height: 14,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF31A24C),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.white, width: 2.5),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                conv.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Color(0xFF050505),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 18,
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                              const SizedBox(height: 1),
+                              Builder(
+                                builder: (_) {
+                                  UserModel? partner;
+                                  if (conv.members.isNotEmpty) {
+                                    final uid = provider.currentUser?.id;
+                                    partner = conv.members.firstWhere(
+                                      (m) => m.id != uid,
+                                      orElse: () => conv.members.first,
+                                    );
+                                  }
+                                  return Text(
+                                    _formatLastActive(partner?.lastActive, conv.isOnline),
+                                    style: const TextStyle(
+                                      color: Color(0xFF65676B),
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.normal,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                  ],
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        conv.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xFF050505),
-                          fontWeight: FontWeight.w700,
-                          fontSize: 18,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                      const SizedBox(height: 1),
-                      Builder(
-                        builder: (_) {
-                          UserModel? partner;
-                          if (conv.members.isNotEmpty) {
-                            final uid = provider.currentUser?.id;
-                            partner = conv.members.firstWhere(
-                              (m) => m.id != uid,
-                              orElse: () => conv.members.first,
-                            );
-                          }
-                          return Text(
-                            _formatLastActive(partner?.lastActive, conv.isOnline),
-                            style: const TextStyle(
-                              color: Color(0xFF65676B),
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.normal,
-                            ),
-                          );
-                        },
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 IconButton(
@@ -1781,15 +1838,26 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
                                   if (!isMe) ...[
-                                    CircleAvatar(
-                                      radius: 14,
-                                      backgroundColor: primaryColor,
-                                      backgroundImage: (conv.avatar != null && conv.avatar!.isNotEmpty)
-                                          ? NetworkImage(conv.avatar!)
-                                          : null,
-                                      child: (conv.avatar == null || conv.avatar!.isEmpty)
-                                          ? Text(conv.name.isNotEmpty ? conv.name[0].toUpperCase() : 'U', style: const TextStyle(fontSize: 10, color: Colors.white))
-                                          : null,
+                                    GestureDetector(
+                                      onTap: () {
+                                        final senderId = msg.senderId;
+                                        if (senderId != null && senderId.isNotEmpty) {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(builder: (_) => OtherUserProfileScreen(userId: senderId)),
+                                          );
+                                        }
+                                      },
+                                      child: CircleAvatar(
+                                        radius: 14,
+                                        backgroundColor: primaryColor,
+                                        backgroundImage: (conv.avatar != null && conv.avatar!.isNotEmpty)
+                                            ? NetworkImage(conv.avatar!)
+                                            : null,
+                                        child: (conv.avatar == null || conv.avatar!.isEmpty)
+                                            ? Text(conv.name.isNotEmpty ? conv.name[0].toUpperCase() : 'U', style: const TextStyle(fontSize: 10, color: Colors.white))
+                                            : null,
+                                      ),
                                     ),
                                     const SizedBox(width: 8),
                                   ],
@@ -2651,6 +2719,19 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                     final isOnline = u['isOnline'] == true || u['status'] == 'online';
 
                     return ListTile(
+                      onTap: () async {
+                        if (uid.isNotEmpty) {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => OtherUserProfileScreen(userId: uid)),
+                          );
+                          if (mounted) {
+                            setState(() {
+                              _contactsFuture = ApiService.getFriends();
+                            });
+                          }
+                        }
+                      },
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       leading: Stack(
                         children: [

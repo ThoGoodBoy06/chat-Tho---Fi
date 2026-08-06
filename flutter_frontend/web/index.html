@@ -33,6 +33,149 @@
   <!-- Firebase Web SDK (v10 compat) -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+
+  <!-- jsQR Library for Real-time Web QR Code Scanning -->
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <script>
+    window.webQrScanner = {
+      stream: null,
+      video: null,
+      animationFrameId: null,
+      isScanning: false,
+      start: async function(containerId) {
+        this.stop();
+        this.isScanning = true;
+        console.log('[WebQrScanner] Initializing camera for container:', containerId);
+
+        try {
+          let stream;
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: { facingMode: "environment" }
+            });
+          } catch(err1) {
+            console.warn('[WebQrScanner] FacingMode environment failed, trying simple video constraint:', err1);
+            stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          }
+          this.stream = stream;
+
+          const container = document.getElementById(containerId);
+          if (!container) {
+            console.error('[WebQrScanner] Target container element not found in DOM:', containerId);
+            return false;
+          }
+
+          const video = document.createElement('video');
+          video.setAttribute("playsinline", "true");
+          video.autoplay = true;
+          video.muted = true;
+          video.style.width = '100%';
+          video.style.height = '100%';
+          video.style.objectFit = 'cover';
+          video.srcObject = stream;
+
+          container.innerHTML = '';
+          container.appendChild(video);
+          this.video = video;
+
+          await video.play().catch(e => console.error('[WebQrScanner] video.play() error:', e));
+
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+
+          const tick = () => {
+            if (!this.isScanning) return;
+
+            if (video && video.readyState === video.HAVE_ENOUGH_DATA) {
+              canvas.width = video.videoWidth;
+              canvas.height = video.videoHeight;
+              ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+              const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+              if (window.jsQR) {
+                const code = window.jsQR(imageData.data, imageData.width, imageData.height, {
+                  inversionAttempts: "dontInvert"
+                });
+
+                if (code && code.data && this.isScanning) {
+                  console.log('[WebQrScanner] QR Code detected:', code.data);
+                  const qrData = code.data;
+                  this.isScanning = false;
+
+                  // Stop camera tracks immediately to turn off camera LED
+                  this.stop();
+
+                  // Dispatch custom DOM event to Flutter
+                  window.dispatchEvent(new CustomEvent('qr-scanned', { detail: qrData }));
+                  return;
+                }
+              }
+            }
+
+            if (this.isScanning) {
+              this.animationFrameId = requestAnimationFrame(tick);
+            }
+          };
+
+          this.animationFrameId = requestAnimationFrame(tick);
+          return true;
+        } catch(err) {
+          console.error('[WebQrScanner] Error accessing camera (NotAllowedError/NotFoundError):', err);
+          return false;
+        }
+      },
+      scanImage: function(dataUrl) {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          if (window.jsQR) {
+            const code = window.jsQR(imageData.data, imageData.width, imageData.height, {
+              inversionAttempts: "dontInvert"
+            });
+            if (code && code.data) {
+              console.log('[WebQrScanner] Image QR Code detected:', code.data);
+              this.stop();
+              window.dispatchEvent(new CustomEvent('qr-scanned', { detail: code.data }));
+            } else {
+              window.dispatchEvent(new CustomEvent('qr-scan-failed', { detail: 'No QR code found in image' }));
+            }
+          }
+        };
+        img.src = dataUrl;
+      },
+      stop: function() {
+        this.isScanning = false;
+        if (this.animationFrameId) {
+          cancelAnimationFrame(this.animationFrameId);
+          this.animationFrameId = null;
+        }
+        if (this.stream) {
+          try {
+            this.stream.getTracks().forEach(track => {
+              track.stop();
+              console.log('[WebQrScanner] Camera track stopped:', track.label);
+            });
+          } catch(e) {
+            console.error('[WebQrScanner] Error stopping tracks:', e);
+          }
+          this.stream = null;
+        }
+        if (this.video) {
+          try {
+            this.video.pause();
+            this.video.srcObject = null;
+            this.video.remove();
+          } catch(e) {}
+          this.video = null;
+        }
+      }
+    };
+  </script>
   <script>
     window.registerFCMAndGetToken = async function() {
       if (!('serviceWorker' in navigator) || !('Notification' in window)) {

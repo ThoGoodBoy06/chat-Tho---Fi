@@ -219,7 +219,7 @@ class ApiService {
     try {
       final headers = await _getHeaders();
       final response = await http.get(
-        Uri.parse('$baseUrl/users/friends'),
+        Uri.parse('$baseUrl/users/friends?_=${DateTime.now().millisecondsSinceEpoch}'),
         headers: headers,
       ).timeout(const Duration(seconds: 30));
       if (response.statusCode == 200) {
@@ -544,7 +544,7 @@ class ApiService {
     try {
       final headers = await _getHeaders();
       final response = await http.get(
-        Uri.parse('$baseUrl/users/search?q=${Uri.encodeComponent(query)}'),
+        Uri.parse('$baseUrl/users/search?q=${Uri.encodeComponent(query)}&_=${DateTime.now().millisecondsSinceEpoch}'),
         headers: headers,
       ).timeout(const Duration(seconds: 30));
       if (response.statusCode == 200) {
@@ -582,10 +582,19 @@ class ApiService {
   static Future<bool> deleteFriend(String friendId) async {
     try {
       final headers = await _getHeaders();
-      final response = await http.delete(
+      var response = await http.delete(
         Uri.parse('$baseUrl/users/friends/$friendId'),
         headers: headers,
-      ).timeout(const Duration(seconds: 30));
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode != 200) {
+        response = await http.post(
+          Uri.parse('$baseUrl/users/friends/$friendId/delete'),
+          headers: headers,
+          body: jsonEncode({'friendId': friendId}),
+        ).timeout(const Duration(seconds: 15));
+      }
+
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
         return decoded['success'] == true;
@@ -612,5 +621,25 @@ class ApiService {
       debugPrint('⚠️ Error ApiService.cancelFriendRequest: $e');
     }
     return false;
+  }
+
+  // Lookup user by ID (for QR scan)
+  static Future<Map<String, dynamic>?> lookupUserById(String userId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/users/$userId/lookup?_=${DateTime.now().millisecondsSinceEpoch}'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 15));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded['success'] == true && decoded['data'] != null) {
+          return decoded['data'] as Map<String, dynamic>;
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.lookupUserById: $e');
+    }
+    return null;
   }
 }

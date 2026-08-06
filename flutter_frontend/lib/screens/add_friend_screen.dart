@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/socket_service.dart';
+import 'other_user_profile_screen.dart';
 
 class AddFriendScreen extends StatefulWidget {
   const AddFriendScreen({Key? key}) : super(key: key);
@@ -342,69 +343,89 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
                   final subInfo = user['phone'] ?? user['email'] ?? '@$username';
                   final isOnline = user['isOnline'] == true;
 
+                  final uid = user['id']?.toString() ?? '';
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     child: Row(
                       children: [
-                        Stack(
-                          children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: _getAvatarGradient(name),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  _getInitials(name),
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            if (isOnline)
-                              Positioned(
-                                right: 0,
-                                bottom: 0,
-                                child: Container(
-                                  width: 14,
-                                  height: 14,
-                                  decoration: BoxDecoration(
-                                    color: Colors.green,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: Colors.white, width: 2),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(width: 12),
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                name,
-                                style: const TextStyle(
-                                  color: Color(0xFF0F172A),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
+                          child: GestureDetector(
+                            onTap: () async {
+                              if (uid.isNotEmpty) {
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => OtherUserProfileScreen(userId: uid)),
+                                );
+                                if (mounted && _query.isNotEmpty) {
+                                  _performSearch(_query);
+                                }
+                              }
+                            },
+                            child: Row(
+                              children: [
+                                Stack(
+                                  children: [
+                                    Container(
+                                      width: 48,
+                                      height: 48,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        gradient: _getAvatarGradient(name),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          _getInitials(name),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    if (isOnline)
+                                      Positioned(
+                                        right: 0,
+                                        bottom: 0,
+                                        child: Container(
+                                          width: 14,
+                                          height: 14,
+                                          decoration: BoxDecoration(
+                                            color: Colors.green,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(color: Colors.white, width: 2),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                subInfo.toString().startsWith('@') ? subInfo.toString() : '@$username • ${subInfo.toString()}',
-                                style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        name,
+                                        style: const TextStyle(
+                                          color: Color(0xFF0F172A),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        subInfo.toString().startsWith('@') ? subInfo.toString() : '@$username • ${subInfo.toString()}',
+                                        style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                         const SizedBox(width: 8),
