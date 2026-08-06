@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/chat_provider.dart';
@@ -20,191 +22,83 @@ class ProfileTab extends StatefulWidget {
 }
 
 class _ProfileTabState extends State<ProfileTab> {
-  final _bioController = TextEditingController();
-  final _fullNameController = TextEditingController();
-  bool _isSavingProfile = false;
+  bool _isUploadingAvatar = false;
+  bool _isUploadingCover = false;
 
-  @override
-  void dispose() {
-    _bioController.dispose();
-    _fullNameController.dispose();
-    super.dispose();
+  void _pickAndUpdateAvatar() {
+    final uploadInput = html.FileUploadInputElement()..accept = 'image/*';
+    uploadInput.click();
+    uploadInput.onChange.listen((e) {
+      final files = uploadInput.files;
+      if (files != null && files.isNotEmpty) {
+        final file = files[0];
+        final reader = html.FileReader();
+        reader.readAsDataUrl(file);
+        reader.onLoadEnd.listen((e) async {
+          if (reader.result is String) {
+            final base64Data = reader.result as String;
+            setState(() => _isUploadingAvatar = true);
+            final success = await ApiService.updateAvatar(base64Data);
+            if (mounted) {
+              setState(() => _isUploadingAvatar = false);
+              if (success) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Cập nhật ảnh đại diện thành công!'),
+                    backgroundColor: Color(0xFF10B981),
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Lỗi khi cập nhật ảnh đại diện. Vui lòng thử lại.'),
+                    backgroundColor: Color(0xFFEF4444),
+                  ),
+                );
+              }
+            }
+          }
+        });
+      }
+    });
   }
 
-  void _showEditProfileDialog(dynamic user) {
-    _fullNameController.text = user?.fullName ?? '';
-    _bioController.text = user?.bio ?? '';
-
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (dialogCtx, setDialogState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: const Row(
-                children: [
-                  Icon(Icons.edit_rounded, color: Color(0xFF0068FF)),
-                  SizedBox(width: 10),
-                  Text('Chỉnh sửa thông tin', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                ],
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: _fullNameController,
-                    decoration: InputDecoration(
-                      labelText: 'Tên hiển thị',
-                      prefixIcon: const Icon(Icons.person_outline_rounded),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    ),
+  void _pickAndUpdateCoverImage() {
+    final uploadInput = html.FileUploadInputElement()..accept = 'image/*';
+    uploadInput.click();
+    uploadInput.onChange.listen((e) {
+      final files = uploadInput.files;
+      if (files != null && files.isNotEmpty) {
+        final file = files[0];
+        final reader = html.FileReader();
+        reader.readAsDataUrl(file);
+        reader.onLoadEnd.listen((e) async {
+          if (reader.result is String) {
+            final base64Data = reader.result as String;
+            setState(() => _isUploadingCover = true);
+            final success = await ApiService.updateCoverImage(base64Data);
+            if (mounted) {
+              setState(() => _isUploadingCover = false);
+              if (success) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Cập nhật ảnh bìa thành công!'),
+                    backgroundColor: Color(0xFF10B981),
                   ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _bioController,
-                    maxLines: 2,
-                    decoration: InputDecoration(
-                      labelText: 'Tiểu sử / Dòng trạng thái',
-                      prefixIcon: const Icon(Icons.chat_bubble_outline_rounded),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Lỗi khi cập nhật ảnh bìa. Vui lòng thử lại.'),
+                    backgroundColor: Color(0xFFEF4444),
                   ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogCtx),
-                  child: const Text('Hủy', style: TextStyle(color: Color(0xFF64748B))),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0068FF),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  onPressed: _isSavingProfile
-                      ? null
-                      : () async {
-                          final newName = _fullNameController.text.trim();
-                          final newBio = _bioController.text.trim();
-
-                          if (newName.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Tên hiển thị không được để trống')),
-                            );
-                            return;
-                          }
-
-                          setDialogState(() => _isSavingProfile = true);
-                          final success = await ApiService.updateProfile(fullName: newName, bio: newBio);
-                          setDialogState(() => _isSavingProfile = false);
-
-                          if (mounted) {
-                            Navigator.pop(dialogCtx);
-                            if (success) {
-                              final provider = Provider.of<ChatProvider>(context, listen: false);
-                              final updatedUser = Map<String, dynamic>.from(provider.currentUser?.toJson() ?? {});
-                              updatedUser['fullName'] = newName;
-                              updatedUser['bio'] = newBio;
-                              provider.setCurrentUser(updatedUser);
-
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Cập nhật trang cá nhân thành công!'),
-                                  backgroundColor: Color(0xFF10B981),
-                                ),
-                              );
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Cập nhật thất bại, vui lòng thử lại')),
-                              );
-                            }
-                          }
-                        },
-                  child: _isSavingProfile
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text('Lưu thay đổi', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _showQrCodeModal(dynamic user) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-      builder: (ctx) {
-        return Container(
-          padding: const EdgeInsets.all(28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.white24 : Colors.black12,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Mã QR cá nhân',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Quét mã để kết bạn nhanh trên Chat Tho-Fi',
-                style: TextStyle(color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B), fontSize: 13),
-              ),
-              const SizedBox(height: 24),
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 15, offset: const Offset(0, 4)),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.qr_code_2_rounded,
-                      size: 180,
-                      color: const Color(0xFF0068FF),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      user?.fullName ?? 'Người dùng',
-                      style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-                    Text(
-                      '@${user?.username ?? "user"}',
-                      style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
-          ),
-        );
-      },
-    );
+                );
+              }
+            }
+          }
+        });
+      }
+    });
   }
 
   void _showPersonalDetailsModal(dynamic user) {
@@ -251,7 +145,10 @@ class _ProfileTabState extends State<ProfileTab> {
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.info_outline_rounded, color: Color(0xFF0068FF)),
                 title: const Text('Tiểu sử'),
-                subtitle: Text(user?.bio != null && user!.bio.toString().isNotEmpty ? user.bio : 'Chưa có tiểu sử', style: const TextStyle(fontWeight: FontWeight.w500)),
+                subtitle: Text(
+                  user?.bio != null && user!.bio.toString().isNotEmpty ? user.bio : 'Chưa có tiểu sử',
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
               ),
               const SizedBox(height: 16),
             ],
@@ -284,172 +181,167 @@ class _ProfileTabState extends State<ProfileTab> {
 
     return Scaffold(
       backgroundColor: bgColor,
-      body: CustomScrollView(
+      body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
-        slivers: [
-          // 1. Header tràn viền (Cover Photo & Stack Avatar)
-          SliverToBoxAdapter(
-            child: Stack(
+        child: Column(
+          children: [
+            // 1. Header Stack: Cover Photo + Info Box (Column) with Avatar rendered on TOP as Stack Child 3
+            Stack(
               clipBehavior: Clip.none,
-              alignment: Alignment.bottomLeft,
+              alignment: Alignment.topCenter,
               children: [
+                // Child 1: Cover photo & User Details Container in a Column
                 Column(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
                     // Khung Ảnh Bìa (Cover Photo)
-                    Container(
-                      height: 210,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF0052D4), Color(0xFF4364F7), Color(0xFF6FB1FC)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+                    Stack(
+                      children: [
+                        Container(
+                          height: 185,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF0052D4), Color(0xFF4364F7), Color(0xFF6FB1FC)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            image: (coverUrl != null && coverUrl.isNotEmpty)
+                                ? DecorationImage(
+                                    image: NetworkImage(coverUrl),
+                                    fit: BoxFit.cover,
+                                  )
+                                : null,
+                          ),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.black.withOpacity(0.35),
+                                  Colors.transparent,
+                                ],
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                              ),
+                            ),
+                          ),
                         ),
-                        image: (coverUrl != null && coverUrl.isNotEmpty)
-                            ? DecorationImage(
-                                image: NetworkImage(coverUrl),
-                                fit: BoxFit.cover,
-                              )
-                            : null,
-                      ),
-                      child: Stack(
-                        children: [
-                          // Overlay gradient mờ phía trên để icon bánh răng luôn nổi bật
-                          Positioned.fill(
+
+                        // Nút Đổi Ảnh Bìa (Góc dưới bên phải ảnh bìa)
+                        Positioned(
+                          bottom: 12,
+                          right: 16,
+                          child: InkWell(
+                            onTap: _isUploadingCover ? null : _pickAndUpdateCoverImage,
+                            borderRadius: BorderRadius.circular(16),
                             child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                               decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Colors.black.withOpacity(0.4),
-                                    Colors.transparent,
-                                    Colors.black.withOpacity(0.2),
-                                  ],
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                ),
+                                color: Colors.black.withOpacity(0.55),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: Colors.white.withOpacity(0.4), width: 1),
                               ),
-                            ),
-                          ),
-                          // Nút Cài đặt (Gear Icon) góc trên cùng bên phải bọc trong hình tròn mờ
-                          Positioned(
-                            top: 16,
-                            right: 16,
-                            child: SafeArea(
-                              child: Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(24),
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => SettingsScreen(onLogout: widget.onLogout),
-                                      ),
-                                    );
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withOpacity(0.35),
-                                      shape: BoxShape.circle,
-                                      border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
-                                    ),
-                                    child: const Icon(
-                                      Icons.settings_rounded,
-                                      color: Colors.white,
-                                      size: 22,
-                                    ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _isUploadingCover
+                                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                      : const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 15),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _isUploadingCover ? 'Đang tải...' : 'Sửa ảnh bìa',
+                                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
                                   ),
-                                ),
+                                ],
                               ),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
 
-                    // Khoảng không cho Avatar đè xuống & thông tin cá nhân bên dưới
+                    // Khung thông tin cá nhân dưới Avatar
                     Container(
                       width: double.infinity,
                       color: cardBgColor,
-                      padding: const EdgeInsets.fromLTRB(20, 56, 20, 20),
+                      padding: const EdgeInsets.fromLTRB(24, 56, 24, 24),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      fullName,
-                                      style: TextStyle(
-                                        color: textColor,
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: -0.3,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      '@$username',
-                                      style: TextStyle(
-                                        color: subTextColor,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                          // Tên người dùng căn giữa màn hình (font to, in đậm, xử lý overflow 3 chấm)
+                          Text(
+                            fullName,
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: textColor,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+
+                          // @username căn giữa, chữ xám
+                          Text(
+                            '@$username',
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: subTextColor,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Tiểu sử (Bio) văn bản thuần túy căn giữa, chữ xám, KHÔNG khung/viền
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              bio,
+                              textAlign: TextAlign.center,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
+                                fontSize: 13.5,
+                                height: 1.4,
+                                fontWeight: FontWeight.w400,
                               ),
-                              // Nút Chỉnh sửa profile
-                              OutlinedButton.icon(
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+
+                          // Nút "Chỉnh sửa trang cá nhân" rộng ~80% màn hình
+                          SizedBox(
+                            width: double.infinity,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              child: OutlinedButton.icon(
                                 onPressed: () {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(builder: (_) => const EditProfileScreen()),
                                   );
                                 },
-                                icon: const Icon(Icons.edit_outlined, size: 16, color: Color(0xFF0068FF)),
+                                icon: const Icon(Icons.edit_outlined, size: 18, color: Color(0xFF0068FF)),
                                 label: const Text(
-                                  'Sửa',
-                                  style: TextStyle(color: Color(0xFF0068FF), fontWeight: FontWeight.bold, fontSize: 13),
-                                ),
-                                style: OutlinedButton.styleFrom(
-                                  side: const BorderSide(color: Color(0xFF0068FF), width: 1.2),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                                  minimumSize: Size.zero,
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.format_quote_rounded, size: 14, color: subTextColor),
-                                const SizedBox(width: 6),
-                                Flexible(
-                                  child: Text(
-                                    bio,
-                                    style: TextStyle(color: textColor, fontSize: 13, fontWeight: FontWeight.w500),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
+                                  'Chỉnh sửa trang cá nhân',
+                                  style: TextStyle(
+                                    color: Color(0xFF0068FF),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14.5,
                                   ),
                                 ),
-                              ],
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(color: Color(0xFF0068FF), width: 1.5),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  backgroundColor: const Color(0xFF0068FF).withOpacity(0.04),
+                                ),
+                              ),
                             ),
                           ),
                         ],
@@ -458,63 +350,141 @@ class _ProfileTabState extends State<ProfileTab> {
                   ],
                 ),
 
-                // Avatar đè lên cạnh dưới của Ảnh bìa với viền trắng nổi bật
+                // Child 2: Icon Bánh răng (Cài đặt) ở góc trên cùng bên phải ảnh bìa
                 Positioned(
-                  left: 20,
-                  bottom: 110,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: cardBgColor,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.12),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
+                  top: 16,
+                  right: 16,
+                  child: SafeArea(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(24),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => SettingsScreen(onLogout: widget.onLogout),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.35),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+                          ),
+                          child: const Icon(
+                            Icons.settings_rounded,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Child 3: Avatar đặt đè lên ranh giới (top = 185 - 46 = 139). VẼ TRÊN CÙNG ĐỂ KHÔNG BAO GIỜ BỊ CHE KHUNG TRẮNG!
+                Positioned(
+                  top: 139,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: cardBgColor,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.16),
+                                blurRadius: 14,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: CircleAvatar(
+                            radius: 44,
+                            backgroundColor: const Color(0xFF0068FF),
+                            backgroundImage: (avatarUrl != null && avatarUrl.isNotEmpty)
+                                ? NetworkImage(avatarUrl)
+                                : null,
+                            child: _isUploadingAvatar
+                                ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5)
+                                : (avatarUrl == null || avatarUrl.isEmpty)
+                                    ? Text(
+                                        fullName.isNotEmpty ? fullName[0].toUpperCase() : 'U',
+                                        style: const TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.bold),
+                                      )
+                                    : null,
+                          ),
+                        ),
+
+                        // Nút camera nhỏ ở góc dưới Avatar để thay đổi ảnh đại diện
+                        Positioned(
+                          bottom: 2,
+                          right: 2,
+                          child: InkWell(
+                            onTap: _isUploadingAvatar ? null : _pickAndUpdateAvatar,
+                            borderRadius: BorderRadius.circular(16),
+                            child: Container(
+                              padding: const EdgeInsets.all(7),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF0068FF),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: cardBgColor, width: 2),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.2),
+                                    blurRadius: 6,
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.camera_alt_rounded,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                            ),
+                          ),
                         ),
                       ],
-                    ),
-                    child: CircleAvatar(
-                      radius: 44,
-                      backgroundColor: const Color(0xFF0068FF),
-                      backgroundImage: (avatarUrl != null && avatarUrl.isNotEmpty)
-                          ? NetworkImage(avatarUrl)
-                          : null,
-                      child: (avatarUrl == null || avatarUrl.isEmpty)
-                          ? Text(
-                              fullName.isNotEmpty ? fullName[0].toUpperCase() : 'U',
-                              style: const TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.bold),
-                            )
-                          : null,
                     ),
                   ),
                 ),
               ],
             ),
-          ),
 
-          // 2. Khoảng phân cách mờ
-          SliverToBoxAdapter(
-            child: Container(
-              height: 10,
-              color: bgColor,
-            ),
-          ),
+            const SizedBox(height: 12),
 
-          // 3. Danh sách tính năng (Menu phẳng tràn viền)
-          SliverToBoxAdapter(
-            child: Container(
-              color: cardBgColor,
+            // 2. Danh sách chức năng phẳng (Menu 3 mục duy nhất)
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: cardBgColor,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.03),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
               child: Column(
                 children: [
-                  // NHÓM 1: Thông tin & Mã QR
+                  // Mục 1: Thông tin cá nhân
                   ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
                     leading: Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(9),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF0068FF).withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(10),
+                        color: const Color(0xFF0068FF).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(Icons.person_outline_rounded, color: Color(0xFF0068FF), size: 22),
                     ),
@@ -522,22 +492,22 @@ class _ProfileTabState extends State<ProfileTab> {
                       'Thông tin cá nhân',
                       style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 15),
                     ),
-                    subtitle: Text('Xem và cập nhật chi tiết tài khoản', style: TextStyle(color: subTextColor, fontSize: 12.5)),
-                    trailing: Icon(Icons.arrow_forward_ios_rounded, color: subTextColor, size: 16),
+                    subtitle: Text('Xem chi tiết và cập nhật thông tin', style: TextStyle(color: subTextColor, fontSize: 12.5)),
+                    trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFFCBD5E1), size: 24),
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const EditProfileScreen()),
-                      );
+                      _showPersonalDetailsModal(user);
                     },
                   ),
-                  Divider(height: 1, indent: 64, color: dividerColor),
+                  Divider(height: 1, indent: 68, endIndent: 18, color: dividerColor),
+
+                  // Mục 2: Mã QR của tôi
                   ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
                     leading: Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(9),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF10B981).withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(10),
+                        color: const Color(0xFF10B981).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(Icons.qr_code_rounded, color: Color(0xFF10B981), size: 22),
                     ),
@@ -546,7 +516,7 @@ class _ProfileTabState extends State<ProfileTab> {
                       style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 15),
                     ),
                     subtitle: Text('Chia sẻ mã QR để kết bạn nhanh', style: TextStyle(color: subTextColor, fontSize: 12.5)),
-                    trailing: Icon(Icons.arrow_forward_ios_rounded, color: subTextColor, size: 16),
+                    trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFFCBD5E1), size: 24),
                     onTap: () {
                       Navigator.push(
                         context,
@@ -554,89 +524,64 @@ class _ProfileTabState extends State<ProfileTab> {
                       );
                     },
                   ),
+                  Divider(height: 1, indent: 68, endIndent: 18, color: dividerColor),
 
-                  // Ngăn cách nhóm mờ
-                  Divider(height: 16, thickness: 8, color: bgColor),
-
-                  // NHÓM 2: Lưu trữ & Bảo mật
+                  // Mục 3: Tin nhắn lưu trữ
                   ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
                     leading: Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(9),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF8B5CF6).withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(10),
+                        color: const Color(0xFF8B5CF6).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.archive_outlined, color: Color(0xFF8B5CF6), size: 22),
+                      child: const Icon(Icons.bookmark_outline_rounded, color: Color(0xFF8B5CF6), size: 22),
                     ),
                     title: Text(
                       'Tin nhắn lưu trữ',
                       style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 15),
                     ),
-                    subtitle: Text('Lưu trữ đám mây & các đoạn chat đã ghim', style: TextStyle(color: subTextColor, fontSize: 12.5)),
-                    trailing: Icon(Icons.arrow_forward_ios_rounded, color: subTextColor, size: 16),
+                    subtitle: Text('Lưu trữ đám mây & tin nhắn đã ghim', style: TextStyle(color: subTextColor, fontSize: 12.5)),
+                    trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFFCBD5E1), size: 24),
                     onTap: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Tính năng Tin nhắn lưu trữ đang hoạt động tích hợp đám mây')),
+                        const SnackBar(content: Text('Tính năng Tin nhắn lưu trữ đang hoạt động')),
                       );
                     },
                   ),
-                  Divider(height: 1, indent: 64, color: dividerColor),
-                  ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF59E0B).withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.security_rounded, color: Color(0xFFF59E0B), size: 22),
-                    ),
-                    title: Text(
-                      'Bảo mật & Quyền riêng tư',
-                      style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 15),
-                    ),
-                    subtitle: Text('Cài đặt ai có thể tìm thấy và nhắn tin cho bạn', style: TextStyle(color: subTextColor, fontSize: 12.5)),
-                    trailing: Icon(Icons.arrow_forward_ios_rounded, color: subTextColor, size: 16),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => SettingsScreen(onLogout: widget.onLogout),
-                        ),
-                      );
-                    },
-                  ),
-
-                  // Ngăn cách nhóm mờ
-                  Divider(height: 16, thickness: 8, color: bgColor),
-
-                  // NHÓM 3: Tiện ích & Hỗ trợ
-                  ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEC4899).withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.help_outline_rounded, color: Color(0xFFEC4899), size: 22),
-                    ),
-                    title: Text(
-                      'Trung tâm trợ giúp',
-                      style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 15),
-                    ),
-                    subtitle: Text('Hướng dẫn sử dụng & báo cáo sự cố', style: TextStyle(color: subTextColor, fontSize: 12.5)),
-                    trailing: Icon(Icons.arrow_forward_ios_rounded, color: subTextColor, size: 16),
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Chat Tho-Fi v1.0.0 hỗ trợ 24/7')),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 40),
                 ],
               ),
             ),
-          ),
-        ],
+
+            const SizedBox(height: 24),
+
+            // Nút Đăng xuất
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              width: double.infinity,
+              child: TextButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => SettingsScreen(onLogout: widget.onLogout)),
+                  );
+                },
+                icon: const Icon(Icons.logout_rounded, color: Color(0xFFEF4444), size: 20),
+                label: const Text(
+                  'Cài đặt tài khoản & Đăng xuất',
+                  style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.w600, fontSize: 14.5),
+                ),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  backgroundColor: const Color(0xFFEF4444).withOpacity(0.06),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 40),
+          ],
+        ),
       ),
     );
   }

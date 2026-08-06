@@ -22,6 +22,7 @@ class ChatProvider extends ChangeNotifier {
   StreamSubscription? _readSubscription;
   StreamSubscription? _userStatusSubscription;
   StreamSubscription? _nicknameSubscription;
+  StreamSubscription? _profileUpdatedSubscription;
 
   /// Callback để thông báo cho UI cuộn xuống khi có tin nhắn mới
   VoidCallback? onNewMessageReceived;
@@ -154,6 +155,23 @@ class ChatProvider extends ChangeNotifier {
           addRealtimeMessage(MessageModel.fromJson(Map<String, dynamic>.from(rawSys)));
         }
       }
+    });
+
+    _profileUpdatedSubscription = SocketService.onUserProfileUpdated.listen((data) {
+      final updatedUserId = data['id']?.toString() ?? data['userId']?.toString();
+      debugPrint('👤 Real-time user profile update for ID $updatedUserId');
+      if (updatedUserId != null && currentUser != null && currentUser!.id == updatedUserId) {
+        final updatedMap = Map<String, dynamic>.from(currentUser!.toJson());
+        if (data['fullName'] != null) updatedMap['fullName'] = data['fullName'];
+        if (data['bio'] != null) updatedMap['bio'] = data['bio'];
+        if (data['avatar'] != null) updatedMap['avatar'] = data['avatar'];
+        if (data['coverPhoto'] != null || data['coverImage'] != null) {
+          updatedMap['coverImage'] = data['coverPhoto'] ?? data['coverImage'];
+        }
+        currentUser = UserModel.fromJson(updatedMap);
+      }
+      fetchConversations();
+      notifyListeners();
     });
   }
 
@@ -624,6 +642,7 @@ class ChatProvider extends ChangeNotifier {
     _readSubscription?.cancel();
     _userStatusSubscription?.cancel();
     _nicknameSubscription?.cancel();
+    _profileUpdatedSubscription?.cancel();
     super.dispose();
   }
 }

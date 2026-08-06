@@ -198,12 +198,22 @@ exports.updateProfile = async (req, res) => {
     });
 
     // Map avatar và coverPhoto sang URL tĩnh để trả về client
+    const timestamp = Date.now();
     const responseData = {
       ...updatedUser,
-      avatar: `/api/users/${updatedUser.id}/avatar?v=${Date.now()}`,
-      coverPhoto: `/api/users/${updatedUser.id}/cover?v=${Date.now()}`,
-      coverImage: `/api/users/${updatedUser.id}/cover?v=${Date.now()}`
+      avatar: `/api/users/${updatedUser.id}/avatar?v=${timestamp}`,
+      coverPhoto: `/api/users/${updatedUser.id}/cover?v=${timestamp}`,
+      coverImage: `/api/users/${updatedUser.id}/cover?v=${timestamp}`
     };
+
+    try {
+      const io = req.app.get("io");
+      if (io) {
+        io.emit("user_profile_updated", responseData);
+      }
+    } catch (e) {
+      console.warn("Lỗi emit socket user_profile_updated:", e.message);
+    }
 
     res.status(200).json({ success: true, data: responseData });
   } catch (error) {
@@ -212,7 +222,48 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
-// 2. Cập nhật ảnh bìa (Cover Image)
+// 2. Cập nhật ảnh đại diện (Avatar)
+exports.updateAvatar = async (req, res) => {
+  try {
+    const userId = req.user ? req.user.id : req.userId;
+    const { avatar } = req.body;
+    if (!avatar)
+      return res.status(400).json({ message: "Vui lòng chọn ảnh đại diện" });
+
+    clearUserImageCache(userId);
+
+    const updatedUser = await prisma.users.update({
+      where: { id: userId },
+      data: { avatar: avatar },
+      select: { id: true, fullName: true, username: true, bio: true }
+    });
+
+    const timestamp = Date.now();
+    const avatarUrl = `/api/users/${userId}/avatar?v=${timestamp}`;
+    const coverUrl = `/api/users/${userId}/cover?v=${timestamp}`;
+
+    const payload = {
+      ...updatedUser,
+      avatar: avatarUrl,
+      coverPhoto: coverUrl,
+      coverImage: coverUrl
+    };
+
+    try {
+      const io = req.app.get("io");
+      if (io) {
+        io.emit("user_profile_updated", payload);
+      }
+    } catch (e) {}
+
+    res.status(200).json({ success: true, avatarUrl, data: payload });
+  } catch (error) {
+    console.error("!!! LỖI UPLOAD AVATAR:", error);
+    res.status(500).json({ message: "Lỗi upload ảnh đại diện", error: error.message });
+  }
+};
+
+// 3. Cập nhật ảnh bìa (Cover Image)
 exports.updateCoverImage = async (req, res) => {
   try {
     const userId = req.user ? req.user.id : req.userId;
@@ -222,12 +273,31 @@ exports.updateCoverImage = async (req, res) => {
 
     clearUserImageCache(userId);
 
-    await prisma.users.update({
+    const updatedUser = await prisma.users.update({
       where: { id: userId },
       data: { coverPhoto: coverPhoto },
+      select: { id: true, fullName: true, username: true, bio: true }
     });
 
-    res.status(200).json({ success: true, coverUrl: `/api/users/${userId}/cover?v=${Date.now()}` });
+    const timestamp = Date.now();
+    const coverUrl = `/api/users/${userId}/cover?v=${timestamp}`;
+    const avatarUrl = `/api/users/${userId}/avatar?v=${timestamp}`;
+
+    const payload = {
+      ...updatedUser,
+      avatar: avatarUrl,
+      coverPhoto: coverUrl,
+      coverImage: coverUrl
+    };
+
+    try {
+      const io = req.app.get("io");
+      if (io) {
+        io.emit("user_profile_updated", payload);
+      }
+    } catch (e) {}
+
+    res.status(200).json({ success: true, coverUrl, data: payload });
   } catch (error) {
     console.error("!!! LỖI UPLOAD COVER:", error);
     res

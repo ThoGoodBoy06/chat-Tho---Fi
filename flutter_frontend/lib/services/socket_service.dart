@@ -25,6 +25,7 @@ class SocketService {
   static final _nicknameController = StreamController<Map<String, dynamic>>.broadcast();
   static final _friendRequestController = StreamController<Map<String, dynamic>>.broadcast();
   static final _unfriendController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _profileUpdatedController = StreamController<Map<String, dynamic>>.broadcast();
 
   static Stream<Map<String, dynamic>> get onMessageReceived => _messageController.stream;
   static Stream<Map<String, dynamic>> get onIncomingCall => _incomingCallController.stream;
@@ -41,6 +42,7 @@ class SocketService {
   static Stream<Map<String, dynamic>> get onNicknameChanged => _nicknameController.stream;
   static Stream<Map<String, dynamic>> get onFriendRequestReceived => _friendRequestController.stream;
   static Stream<Map<String, dynamic>> get onUserUnfriended => _unfriendController.stream;
+  static Stream<Map<String, dynamic>> get onUserProfileUpdated => _profileUpdatedController.stream;
 
   // --- AUDIO API SYNTHETIC SOUND GENERATOR ---
   static void playSendSound() {
@@ -276,6 +278,13 @@ class SocketService {
     socket?.on('unfriended', (data) {
       print('❌ Socket unfriended: $data');
       _unfriendController.add(data is Map ? Map<String, dynamic>.from(data) : {'data': data});
+    });
+
+    socket?.on('user_profile_updated', (data) {
+      print('👤 Socket user_profile_updated: $data');
+      if (data is Map) {
+        _profileUpdatedController.add(Map<String, dynamic>.from(data));
+      }
     });
 
     socket?.onDisconnect((_) => print('🔴 Socket disconnected'));

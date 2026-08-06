@@ -296,6 +296,38 @@ class ApiService {
     }
   }
 
+  // Update Avatar API
+  static Future<bool> updateAvatar(String base64Image) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/users/avatar'),
+        headers: headers,
+        body: jsonEncode({'avatar': base64Image}),
+      ).timeout(const Duration(seconds: 45));
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.updateAvatar: $e');
+      return false;
+    }
+  }
+
+  // Update Cover Image API
+  static Future<bool> updateCoverImage(String base64Image) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/users/cover'),
+        headers: headers,
+        body: jsonEncode({'coverPhoto': base64Image}),
+      ).timeout(const Duration(seconds: 45));
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.updateCoverImage: $e');
+      return false;
+    }
+  }
+
   // React to Message API Fallback
   static Future<Map<String, dynamic>> reactToMessage(String messageId, String emoji) async {
     try {

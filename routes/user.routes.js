@@ -12,7 +12,8 @@ router.put("/profile", authMiddleware, userController.updateProfile);
 router.put("/change-password", authMiddleware, userController.changePassword);
 router.post("/change-password", authMiddleware, userController.changePassword);
 
-// Cập nhật ảnh bìa - nhận Base64 từ JSON body, lưu thẳng vào Neon DB
+// Cập nhật ảnh đại diện & ảnh bìa - nhận Base64 từ JSON body
+router.post("/avatar", authMiddleware, userController.updateAvatar);
 router.post(
   "/cover",
   authMiddleware,
