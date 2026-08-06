@@ -111,6 +111,33 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
     }
   }
 
+  Future<void> _handleAcceptRequest(Map<String, dynamic> user, int index) async {
+    final uid = user['id']?.toString() ?? '';
+    if (uid.isEmpty) return;
+
+    final success = await ApiService.acceptFriendRequest(uid);
+
+    if (mounted) {
+      if (success) {
+        setState(() {
+          _searchResults[index]['status'] = 'FRIEND';
+          _searchResults[index]['relationship'] = 'friends';
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Đã đồng ý kết bạn với ${user['fullName'] ?? user['username']}'),
+            backgroundColor: const Color(0xFF10B981),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Thao tác thất bại, vui lòng thử lại sau.')),
+        );
+      }
+    }
+  }
+
   LinearGradient _getAvatarGradient(String key) {
     final gradients = [
       const LinearGradient(colors: [Color(0xFF007AFF), Color(0xFF5AC8FA)]),
@@ -139,9 +166,10 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
   }
 
   Widget _buildActionButton(Map<String, dynamic> user, int index) {
-    final status = (user['status'] ?? user['relationship'] ?? 'NONE').toString().toUpperCase();
+    final status = (user['status'] ?? 'NONE').toString().toUpperCase();
+    final relationship = (user['relationship'] ?? 'none').toString().toLowerCase();
 
-    if (status == 'FRIEND' || status == 'FRIENDS') {
+    if (status == 'FRIEND' || relationship == 'friends') {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
@@ -153,7 +181,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
           style: TextStyle(color: Color(0xFF64748B), fontSize: 12, fontWeight: FontWeight.bold),
         ),
       );
-    } else if (status == 'SELF') {
+    } else if (status == 'SELF' || relationship == 'self') {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
@@ -165,7 +193,25 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
           style: TextStyle(color: Color(0xFF64748B), fontSize: 12, fontWeight: FontWeight.bold),
         ),
       );
-    } else if (status == 'PENDING' || status == 'PENDING_SENT' || status == 'PENDING_RECEIVED') {
+    } else if (relationship == 'pending_received') {
+      return ElevatedButton.icon(
+        onPressed: () => _handleAcceptRequest(user, index),
+        icon: const Icon(Icons.check_circle_outline_rounded, size: 15),
+        label: const Text(
+          'Chấp nhận',
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF10B981),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+      );
+    } else if (status == 'PENDING' || relationship == 'pending_sent') {
       return OutlinedButton.icon(
         onPressed: () => _handleCancelRequest(user, index),
         icon: const Icon(Icons.close_rounded, size: 14, color: Color(0xFFEF4444)),

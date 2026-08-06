@@ -357,9 +357,19 @@ exports.acceptFriendRequest = async (req, res) => {
     const userId = req.user.id;
     const { id } = req.params;
 
-    const request = await prisma.friendRequests.findUnique({
+    let request = await prisma.friendRequests.findUnique({
       where: { id },
-    });
+    }).catch(() => null);
+
+    if (!request) {
+      request = await prisma.friendRequests.findFirst({
+        where: {
+          requesterId: id,
+          receiverId: userId,
+          status: "PENDING",
+        },
+      });
+    }
 
     if (!request) {
       return res.status(404).json({ success: false, message: "Không tìm thấy lời mời kết bạn" });
@@ -370,7 +380,7 @@ exports.acceptFriendRequest = async (req, res) => {
     }
 
     const updatedRequest = await prisma.friendRequests.update({
-      where: { id },
+      where: { id: request.id },
       data: { status: "ACCEPTED" },
       include: {
         requester: { select: { id: true, fullName: true } },
@@ -388,7 +398,7 @@ exports.acceptFriendRequest = async (req, res) => {
         });
       }
     } catch (e) {
-      console.warn("Lỗi phụ khi tạo record Friends (không ảnh hưởng chính):", e.message);
+      console.warn("Lỗi phụ khi tạo record Friends:", e.message);
     }
 
     try {
@@ -464,9 +474,19 @@ exports.rejectFriendRequest = async (req, res) => {
     const userId = req.user.id;
     const { id } = req.params;
 
-    const request = await prisma.friendRequests.findUnique({
+    let request = await prisma.friendRequests.findUnique({
       where: { id },
-    });
+    }).catch(() => null);
+
+    if (!request) {
+      request = await prisma.friendRequests.findFirst({
+        where: {
+          requesterId: id,
+          receiverId: userId,
+          status: "PENDING",
+        },
+      });
+    }
 
     if (!request) {
       return res.status(404).json({ success: false, message: "Không tìm thấy lời mời kết bạn" });
@@ -477,9 +497,16 @@ exports.rejectFriendRequest = async (req, res) => {
     }
 
     const updatedRequest = await prisma.friendRequests.update({
-      where: { id },
+      where: { id: request.id },
       data: { status: "REJECTED" },
     });
+
+    try {
+      const io = req.app.get("io");
+      if (io) {
+        io.to(request.requesterId).emit("new_friend_request", { rejected: true });
+      }
+    } catch (e) {}
 
     return res.status(200).json({
       success: true,
@@ -523,6 +550,16 @@ exports.sendFriendRequest = async (req, res) => {
         status: "PENDING",
       },
     });
+
+    try {
+      const io = req.app.get("io");
+      if (io) {
+        io.to(targetId).emit("new_friend_request", { senderId });
+        io.to(targetId).emit("friend_request_updated", { type: "SEND", senderId });
+      }
+    } catch (e) {
+      console.warn("Lỗi phụ emit socket sendFriendRequest:", e.message);
+    }
 
     return res.status(200).json({
       success: true,
