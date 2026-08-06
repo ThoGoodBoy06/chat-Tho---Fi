@@ -170,7 +170,7 @@ class ChatProvider extends ChangeNotifier {
         }
         currentUser = UserModel.fromJson(updatedMap);
       }
-      fetchConversations();
+      fetchConversations(showLoading: false);
       notifyListeners();
     });
   }

@@ -407,6 +407,7 @@ exports.lookupUserById = async (req, res) => {
       }
     }
 
+    const ts = Date.now();
     return res.status(200).json({
       success: true,
       data: {
@@ -417,7 +418,9 @@ exports.lookupUserById = async (req, res) => {
         email: user.email,
         isOnline: user.isOnline,
         bio: user.bio,
-        avatar: `/api/users/${user.id}/avatar`,
+        avatar: `/api/users/${user.id}/avatar?v=${ts}`,
+        coverPhoto: `/api/users/${user.id}/cover?v=${ts}`,
+        coverImage: `/api/users/${user.id}/cover?v=${ts}`,
         status,
         relationship,
       },

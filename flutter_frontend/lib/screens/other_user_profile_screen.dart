@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/chat_provider.dart';
@@ -21,21 +22,53 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen> {
   Map<String, dynamic>? _userData;
   bool _isLoading = true;
   bool _isActionLoading = false;
+  StreamSubscription? _profileSub;
 
   @override
   void initState() {
     super.initState();
     _loadProfileData();
+    _profileSub = SocketService.onUserProfileUpdated.listen((data) {
+      final updatedId = data['id']?.toString() ?? data['userId']?.toString();
+      if (updatedId == widget.userId && mounted) {
+        setState(() {
+          if (_userData != null) {
+            if (data['fullName'] != null) _userData!['fullName'] = data['fullName'];
+            if (data['bio'] != null) _userData!['bio'] = data['bio'];
+            if (data['avatar'] != null) _userData!['avatar'] = data['avatar'];
+            if (data['coverPhoto'] != null || data['coverImage'] != null) {
+              _userData!['coverPhoto'] = data['coverPhoto'] ?? data['coverImage'];
+              _userData!['coverImage'] = data['coverPhoto'] ?? data['coverImage'];
+            }
+          }
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _profileSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadProfileData() async {
-    setState(() => _isLoading = true);
-    final data = await ApiService.lookupUserById(widget.userId);
-    if (mounted) {
-      setState(() {
-        _userData = data;
-        _isLoading = false;
-      });
+    if (mounted) setState(() => _isLoading = true);
+    try {
+      final data = await ApiService.lookupUserById(widget.userId);
+      if (mounted) {
+        setState(() {
+          _userData = data;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error loading other user profile: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -220,6 +253,43 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen> {
         ),
         body: const Center(
           child: CircularProgressIndicator(color: Color(0xFF0068FF)),
+        ),
+      );
+    }
+
+    if (_userData == null) {
+      return Scaffold(
+        backgroundColor: bgColor,
+        appBar: AppBar(
+          backgroundColor: cardBgColor,
+          elevation: 0.5,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back_ios_new_rounded, color: textColor, size: 20),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Text('Trang cá nhân', style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 18)),
+          centerTitle: true,
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline_rounded, color: Color(0xFFEF4444), size: 48),
+              const SizedBox(height: 12),
+              Text('Không thể tải thông tin hồ sơ.', style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: _loadProfileData,
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text('Thử lại'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0068FF),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }

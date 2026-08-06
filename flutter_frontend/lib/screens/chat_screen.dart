@@ -135,6 +135,17 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _refreshFriendsListSilently() async {
+    try {
+      final friends = await ApiService.getFriends();
+      if (mounted) {
+        setState(() {
+          _contactsFuture = Future.value(friends);
+        });
+      }
+    } catch (_) {}
+  }
+
   StreamSubscription? _friendRequestSub;
   StreamSubscription? _unfriendSub;
 
@@ -156,24 +167,20 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         } else {
           _fetchPendingRequestsCount();
         }
-        setState(() {
-          _contactsFuture = ApiService.getFriends();
-        });
+        _refreshFriendsListSilently();
         try {
           final provider = Provider.of<ChatProvider>(context, listen: false);
-          provider.fetchConversations();
+          provider.fetchConversations(showLoading: false);
         } catch (_) {}
       }
     });
     _unfriendSub?.cancel();
     _unfriendSub = SocketService.onUserUnfriended.listen((_) {
       if (mounted) {
-        setState(() {
-          _contactsFuture = ApiService.getFriends();
-        });
+        _refreshFriendsListSilently();
         try {
           final provider = Provider.of<ChatProvider>(context, listen: false);
-          provider.fetchConversations();
+          provider.fetchConversations(showLoading: false);
         } catch (_) {}
       }
     });
