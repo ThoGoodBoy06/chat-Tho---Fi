@@ -53,7 +53,7 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
         if (userObj is Map<String, dynamic> && userObj['id'] != null) {
           final userId = userObj['id'].toString();
           if (mounted) {
-            Provider.of<ChatProvider>(context, listen: false).setCurrentUser(userObj);
+            await Provider.of<ChatProvider>(context, listen: false).setCurrentUser(userObj);
             setState(() {
               _isLoggedIn = true;
             });
@@ -90,6 +90,9 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
   void _onLogout() async {
     await ApiService.clearToken();
     SocketService.disconnect();
+    if (mounted) {
+      Provider.of<ChatProvider>(context, listen: false).clearCurrentUser();
+    }
     setState(() {
       _isLoggedIn = false;
     });
@@ -97,6 +100,9 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
 
   @override
   Widget build(BuildContext context) {
+    final chatProvider = Provider.of<ChatProvider>(context);
+    final currentUser = chatProvider.currentUser;
+
     return MaterialApp(
       title: 'Chat Tho-Fi',
       debugShowCheckedModeBanner: false,
@@ -124,9 +130,9 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
                 child: CircularProgressIndicator(color: Color(0xFF007AFF)),
               ),
             )
-          : _isLoggedIn
-              ? ChatScreen(onLogout: _onLogout)
-              : LoginScreen(onLoginSuccess: _onLoginSuccess),
+          : (currentUser == null
+              ? LoginScreen(onLoginSuccess: _onLoginSuccess)
+              : ChatScreen(onLogout: _onLogout)),
     );
   }
 }

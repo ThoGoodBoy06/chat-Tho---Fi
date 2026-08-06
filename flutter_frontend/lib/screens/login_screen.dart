@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/chat_provider.dart';
 import '../services/api_service.dart';
 import '../services/socket_service.dart';
+import '../utils/web_utils.dart' as web_utils;
 
 class LoginScreen extends StatefulWidget {
   final VoidCallback onLoginSuccess;
@@ -292,7 +293,7 @@ class _LoginScreenState extends State<LoginScreen> {
             String? userId;
             if (userObj is Map<String, dynamic>) {
               userId = userObj['id']?.toString();
-              provider.setCurrentUser(userObj);
+              await provider.setCurrentUser(userObj);
             }
             await SocketService.connect(userId: userId ?? '');
             widget.onLoginSuccess();
@@ -310,7 +311,7 @@ class _LoginScreenState extends State<LoginScreen> {
             String? userId;
             if (userObj is Map<String, dynamic>) {
               userId = userObj['id']?.toString();
-              provider.setCurrentUser(userObj);
+              await provider.setCurrentUser(userObj);
             }
             await SocketService.connect(userId: userId ?? '');
             widget.onLoginSuccess();

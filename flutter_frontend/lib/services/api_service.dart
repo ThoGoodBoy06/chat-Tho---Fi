@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/models.dart';
 
 class ApiService {
   static String get baseUrl {
@@ -213,6 +214,28 @@ class ApiService {
     return [];
   }
 
+  // Get accepted friends only (Danh bạ bạn bè thực sự đã kết bạn)
+  static Future<List<dynamic>> getFriends() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/users/friends'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic> && decoded['data'] is List) {
+          return decoded['data'] as List<dynamic>;
+        } else if (decoded is List) {
+          return decoded as List<dynamic>;
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.getFriends: $e');
+    }
+    return [];
+  }
+
   // Update FCM Device Token
   static Future<bool> updateFcmToken(String fcmToken) async {
     try {
@@ -260,5 +283,291 @@ class ApiService {
       debugPrint('⚠️ Error in ApiService.updateNickname: $e');
       return false;
     }
+  }
+
+  // --- ADMIN APIs ---
+
+  // Lấy thống kê tổng quan (Overview Stats)
+  static Future<AdminStatsModel?> getAdminStats() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/admin/stats'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded['success'] == true && decoded['data'] != null) {
+          return AdminStatsModel.fromJson(Map<String, dynamic>.from(decoded['data']));
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.getAdminStats: $e');
+    }
+    return null;
+  }
+
+  // Lấy danh sách người dùng (Admin User Management)
+  static Future<Map<String, dynamic>> getAdminUsers({String search = '', int page = 1, int limit = 20}) async {
+    try {
+      final headers = await _getHeaders();
+      final queryParams = 'search=${Uri.encodeComponent(search)}&page=$page&limit=$limit';
+      final response = await http.get(
+        Uri.parse('$baseUrl/admin/users?$queryParams'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.getAdminUsers: $e');
+    }
+    return {'success': false, 'data': []};
+  }
+
+  // Khóa/Mở khóa hoặc Đổi Role người dùng
+  static Future<bool> updateUserStatus(String userId, {bool? isBlocked, String? role}) async {
+    try {
+      final headers = await _getHeaders();
+      final bodyMap = <String, dynamic>{};
+      if (isBlocked != null) bodyMap['isBlocked'] = isBlocked;
+      if (role != null) bodyMap['role'] = role;
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/admin/users/$userId/status'),
+        headers: headers,
+        body: jsonEncode(bodyMap),
+      ).timeout(const Duration(seconds: 15));
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.updateUserStatus: $e');
+      return false;
+    }
+  }
+
+  // Lấy danh sách tất cả các cuộc trò chuyện
+  static Future<List<dynamic>> getAdminConversations() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/admin/conversations'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded['success'] == true && decoded['data'] is List) {
+          return decoded['data'] as List<dynamic>;
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.getAdminConversations: $e');
+    }
+    return [];
+  }
+
+  // Xem chi tiết lịch sử tin nhắn của 1 cuộc trò chuyện
+  static Future<List<MessageModel>> getAdminMessages(String conversationId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/admin/conversations/$conversationId/messages'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded['success'] == true && decoded['data'] is List) {
+          return (decoded['data'] as List)
+              .map((m) => MessageModel.fromJson(Map<String, dynamic>.from(m)))
+              .toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.getAdminMessages: $e');
+    }
+    return [];
+  }
+
+  // Xóa / Thu hồi tin nhắn vi phạm
+  static Future<bool> deleteAdminMessage(String messageId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.delete(
+        Uri.parse('$baseUrl/admin/messages/$messageId'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 15));
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.deleteAdminMessage: $e');
+      return false;
+    }
+  }
+
+  // Lấy danh sách báo cáo vi phạm
+  static Future<List<ReportModel>> getAdminReports() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/admin/reports'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded['success'] == true && decoded['data'] is List) {
+          return (decoded['data'] as List)
+              .map((r) => ReportModel.fromJson(Map<String, dynamic>.from(r)))
+              .toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.getAdminReports: $e');
+    }
+    return [];
+  }
+
+  // Cập nhật trạng thái báo cáo
+  static Future<bool> updateReportStatus(String reportId, String status) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.put(
+        Uri.parse('$baseUrl/admin/reports/$reportId'),
+        headers: headers,
+        body: jsonEncode({'status': status}),
+      ).timeout(const Duration(seconds: 15));
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.updateReportStatus: $e');
+      return false;
+    }
+  }
+
+  // Lấy danh sách lời mời kết bạn PENDING
+  static Future<List<dynamic>> getPendingFriendRequests() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/users/friend-requests'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded['success'] == true && decoded['data'] is List) {
+          return decoded['data'] as List<dynamic>;
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.getPendingFriendRequests: $e');
+    }
+    return [];
+  }
+
+  // Chấp nhận lời mời kết bạn
+  static Future<bool> acceptFriendRequest(String requestId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/users/friend-requests/$requestId/accept'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        return decoded['success'] == true;
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.acceptFriendRequest: $e');
+    }
+    return false;
+  }
+
+  // Từ chối lời mời kết bạn
+  static Future<bool> rejectFriendRequest(String requestId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/users/friend-requests/$requestId/reject'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        return decoded['success'] == true;
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.rejectFriendRequest: $e');
+    }
+    return false;
+  }
+
+  // Tìm kiếm người dùng theo từ khóa (Tên, username, SĐT, email)
+  static Future<List<dynamic>> searchUsers(String query) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/users/search?q=${Uri.encodeComponent(query)}'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded['success'] == true && decoded['data'] is List) {
+          return decoded['data'] as List<dynamic>;
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.searchUsers: $e');
+    }
+    return [];
+  }
+
+  // Gửi lời mời kết bạn
+  static Future<bool> sendFriendRequest(String targetUserId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/users/friend-requests'),
+        headers: headers,
+        body: jsonEncode({'receiverId': targetUserId}),
+      ).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        return decoded['success'] == true;
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.sendFriendRequest: $e');
+    }
+    return false;
+  }
+
+  // Xóa bạn bè
+  static Future<bool> deleteFriend(String friendId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.delete(
+        Uri.parse('$baseUrl/users/friends/$friendId'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        return decoded['success'] == true;
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.deleteFriend: $e');
+    }
+    return false;
+  }
+
+  // Hủy lời mời kết bạn đã gửi
+  static Future<bool> cancelFriendRequest(String receiverId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/users/friend-requests/$receiverId/cancel'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        return decoded['success'] == true;
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.cancelFriendRequest: $e');
+    }
+    return false;
   }
 }

@@ -6,3 +6,9 @@ void removeLoadingScreen() {
     element?.remove();
   } catch (_) {}
 }
+
+void redirectToAdmin() {
+  try {
+    html.window.location.href = '/admin';
+  } catch (_) {}
+}

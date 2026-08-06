@@ -29,7 +29,8 @@ const path = require("path");
 const fs = require("fs");
 const jwt = require("jsonwebtoken");
 const authMiddleware = require("./middlewares/auth.middleware");
-const { clearUserImageCache } = require("./controllers/user.controller");
+const userController = require("./controllers/user.controller");
+const { clearUserImageCache } = userController;
 
 const app = express();
 const prisma = require("./prisma");
@@ -86,6 +87,8 @@ const chatRoutes = require("./routes/chat.routes");
 const userRoutes = require("./routes/user.routes");
 const aiRoutes = require("./routes/ai.routes");
 const newsRoutes = require("./routes/news.routes");
+const adminRoutes = require("./routes/admin.routes");
+const adminAuth = require("./middlewares/adminAuth");
 
 // API Health check cho kiểm tra trạng thái & Render keep-alive ping
 app.get("/api/health", (req, res) => {
@@ -117,7 +120,7 @@ app.get("/", (req, res) => {
 // API phụ trợ (Danh bạ) để xem danh sách tất cả người dùng và lấy ID dễ dàng
 app.get("/api/users", authMiddleware, async(req, res) => {
     const users = await prisma.users.findMany({
-        select: { id: true, username: true, fullName: true },
+        select: { id: true, username: true, fullName: true, isOnline: true },
     });
     res.json({ success: true, data: users });
 });
@@ -276,19 +279,8 @@ app.get("/api/gifs/search", async (req, res) => {
     }
 });
 
-// API Tìm kiếm người dùng bằng Tên (Tính năng kết bạn)
-app.get("/api/users/search", authMiddleware, async(req, res) => {
-    const { q } = req.query;
-    if (!q) return res.json({ success: true, data: [] });
-
-    const users = await prisma.users.findMany({
-        where: {
-            fullName: { contains: q }, // Tìm kiếm tương đối theo Họ và tên
-        },
-        select: { id: true, fullName: true, username: true },
-    });
-    res.json({ success: true, data: users });
-});
+// API Tìm kiếm người dùng bằng Tên, Username, SĐT, Email (Tính năng kết bạn)
+app.get("/api/users/search", authMiddleware, userController.searchUsers);
 
 // API Lấy danh sách bạn bè đã kết bạn
 app.get("/api/users/friends", async(req, res) => {
@@ -308,10 +300,10 @@ app.get("/api/users/friends", async(req, res) => {
             },
             include: {
                 requester: {
-                    select: { id: true, fullName: true, isOnline: true },
+                    select: { id: true, username: true, fullName: true, isOnline: true },
                 },
                 receiver: {
-                    select: { id: true, fullName: true, isOnline: true },
+                    select: { id: true, username: true, fullName: true, isOnline: true },
                 },
             },
         });
@@ -493,6 +485,8 @@ app.get("/api/auth/me", async(req, res) => {
                 email: true,
                 phone: true,
                 bio: true,
+                role: true,
+                isBlocked: true,
                 isOnline: true,
                 lastActive: true,
                 createdAt: true,
@@ -504,6 +498,11 @@ app.get("/api/auth/me", async(req, res) => {
             return res
                 .status(404)
                 .json({ success: false, message: "User không tồn tại." });
+        if (user.isBlocked) {
+            return res
+                .status(403)
+                .json({ success: false, message: "Tài khoản của bạn đã bị khóa." });
+        }
         // Map avatar & coverPhoto sang URL tĩnh để trả về client
         const mappedUser = {
             ...user,
@@ -524,6 +523,7 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/users", userRoutes); // Mount các API user (profile, cover) vào đây
 app.use("/api/ai", aiRoutes);
 app.use("/api/news", newsRoutes);
+app.use("/api/admin", adminAuth, adminRoutes);
 
 // --- TÍNH NĂNG UPLOAD AVATAR ---
 // Đảm bảo thư mục lưu trữ tồn tại

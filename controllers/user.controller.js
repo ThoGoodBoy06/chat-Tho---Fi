@@ -312,3 +312,489 @@ exports.getOtherUserProfile = async (req, res) => {
   }
 };
 
+// 5. Lấy danh sách lời mời kết bạn đang chờ (status = 'PENDING') gửi đến user hiện tại
+exports.getPendingFriendRequests = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const requests = await prisma.friendRequests.findMany({
+      where: {
+        receiverId: userId,
+        status: "PENDING",
+      },
+      include: {
+        requester: {
+          select: {
+            id: true,
+            fullName: true,
+            username: true,
+            isOnline: true,
+            bio: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const data = requests.map((r) => ({
+      id: r.id,
+      createdAt: r.createdAt,
+      requester: {
+        ...r.requester,
+        avatar: `/api/users/${r.requester.id}/avatar`,
+      },
+    }));
+
+    return res.status(200).json({ success: true, data });
+  } catch (error) {
+    console.error("Lỗi lấy danh sách lời mời kết bạn:", error.message);
+    return res.status(500).json({ success: false, message: "Lỗi server", error: error.message });
+  }
+};
+
+// 6. Chấp nhận lời mời kết bạn
+exports.acceptFriendRequest = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+
+    const request = await prisma.friendRequests.findUnique({
+      where: { id },
+    });
+
+    if (!request) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy lời mời kết bạn" });
+    }
+
+    if (request.receiverId !== userId) {
+      return res.status(403).json({ success: false, message: "Bạn không có quyền xử lý yêu cầu này" });
+    }
+
+    const updatedRequest = await prisma.friendRequests.update({
+      where: { id },
+      data: { status: "ACCEPTED" },
+      include: {
+        requester: { select: { id: true, fullName: true } },
+      },
+    });
+
+    try {
+      if (prisma.friends) {
+        await prisma.friends.create({
+          data: {
+            senderId: request.requesterId,
+            receiverId: request.receiverId,
+            status: "accepted",
+          },
+        });
+      }
+    } catch (e) {
+      console.warn("Lỗi phụ khi tạo record Friends (không ảnh hưởng chính):", e.message);
+    }
+
+    try {
+      if (prisma.notifications) {
+        await prisma.notifications.create({
+          data: {
+            userId: request.requesterId,
+            senderId: userId,
+            type: "FRIEND_ACCEPTED",
+            content: "đã chấp nhận lời mời kết bạn của bạn",
+          },
+        });
+      }
+    } catch (e) {
+      console.warn("Lỗi phụ khi tạo notification:", e.message);
+    }
+
+    // Tự động kiểm tra & tạo cuộc trò chuyện 1-1 riêng nếu chưa có
+    try {
+      const existingConvs = await prisma.conversations.findMany({
+        where: {
+          type: "private",
+          AND: [
+            { ConversationMembers: { some: { userId: request.requesterId } } },
+            { ConversationMembers: { some: { userId: request.receiverId } } },
+          ],
+        },
+      });
+
+      if (existingConvs.length === 0) {
+        await prisma.conversations.create({
+          data: {
+            type: "private",
+            createdBy: userId,
+            ConversationMembers: {
+              create: [
+                { userId: request.requesterId, role: "member" },
+                { userId: request.receiverId, role: "member" },
+              ],
+            },
+          },
+        });
+      }
+    } catch (e) {
+      console.warn("Lỗi phụ khi tự động tạo cuộc trò chuyện 1-1:", e.message);
+    }
+
+    // Bắn Socket notification tới cả 2 người để làm mới danh sách chat & danh bạ real-time
+    try {
+      const io = req.app.get("io");
+      if (io) {
+        io.to(request.requesterId).emit("friend_request_accepted", { userId });
+        io.to(request.receiverId).emit("friend_request_accepted", { userId: request.requesterId });
+      }
+    } catch (e) {
+      console.warn("Lỗi phụ emit socket friend_request_accepted:", e.message);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Đã chấp nhận lời mời kết bạn",
+      data: updatedRequest,
+    });
+  } catch (error) {
+    console.error("Lỗi chấp nhận lời mời kết bạn:", error.message);
+    return res.status(500).json({ success: false, message: "Lỗi server", error: error.message });
+  }
+};
+
+// 7. Từ chối lời mời kết bạn
+exports.rejectFriendRequest = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+
+    const request = await prisma.friendRequests.findUnique({
+      where: { id },
+    });
+
+    if (!request) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy lời mời kết bạn" });
+    }
+
+    if (request.receiverId !== userId) {
+      return res.status(403).json({ success: false, message: "Bạn không có quyền xử lý yêu cầu này" });
+    }
+
+    const updatedRequest = await prisma.friendRequests.update({
+      where: { id },
+      data: { status: "REJECTED" },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Đã từ chối lời mời kết bạn",
+      data: updatedRequest,
+    });
+  } catch (error) {
+    console.error("Lỗi từ chối lời mời kết bạn:", error.message);
+    return res.status(500).json({ success: false, message: "Lỗi server", error: error.message });
+  }
+};
+
+// 8. Gửi lời mời kết bạn
+exports.sendFriendRequest = async (req, res) => {
+  try {
+    const senderId = req.user.id;
+    const { receiverId, targetUserId } = req.body;
+    const targetId = receiverId || targetUserId;
+
+    if (!targetId || targetId === senderId) {
+      return res.status(400).json({ success: false, message: "ID người nhận không hợp lệ" });
+    }
+
+    const existing = await prisma.friendRequests.findFirst({
+      where: {
+        OR: [
+          { requesterId: senderId, receiverId: targetId },
+          { requesterId: targetId, receiverId: senderId },
+        ],
+      },
+    });
+
+    if (existing) {
+      return res.status(400).json({ success: false, message: "Đã gửi lời mời hoặc đã là bạn bè" });
+    }
+
+    const newRequest = await prisma.friendRequests.create({
+      data: {
+        requesterId: senderId,
+        receiverId: targetId,
+        status: "PENDING",
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Đã gửi lời mời kết bạn",
+      data: newRequest,
+    });
+  } catch (error) {
+    console.error("Lỗi khi gửi lời mời kết bạn API:", error.message);
+    return res.status(500).json({ success: false, message: "Lỗi server", error: error.message });
+  }
+};
+
+// 9. Xóa bạn bè
+exports.deleteFriend = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { friendId } = req.params;
+
+    if (!friendId) {
+      return res.status(400).json({ success: false, message: "ID bạn bè không hợp lệ" });
+    }
+
+    // 1. Xóa tất cả bản ghi liên quan trong FriendRequests
+    await prisma.friendRequests.deleteMany({
+      where: {
+        OR: [
+          { requesterId: userId, receiverId: friendId },
+          { requesterId: friendId, receiverId: userId },
+        ],
+      },
+    });
+
+    // 2. Xóa bản ghi trong Friends nếu bảng tồn tại
+    try {
+      if (prisma.friends) {
+        await prisma.friends.deleteMany({
+          where: {
+            OR: [
+              { senderId: userId, receiverId: friendId },
+              { senderId: friendId, receiverId: userId },
+            ],
+          },
+        });
+      }
+    } catch (e) {
+      console.warn("Lỗi phụ khi xóa record Friends:", e.message);
+    }
+
+    // 3. Tìm và xóa cuộc trò chuyện 1-1 riêng giữa 2 người nếu có
+    try {
+      const conversations = await prisma.conversations.findMany({
+        where: {
+          type: "private",
+          AND: [
+            { ConversationMembers: { some: { userId: userId } } },
+            { ConversationMembers: { some: { userId: friendId } } },
+          ],
+        },
+        include: {
+          _count: { select: { ConversationMembers: true } },
+        },
+      });
+
+      const privateConversation = conversations.find(
+        (c) => c._count.ConversationMembers === 2
+      );
+
+      if (privateConversation) {
+        await prisma.messages.deleteMany({
+          where: { conversationId: privateConversation.id },
+        });
+        await prisma.conversationMembers.deleteMany({
+          where: { conversationId: privateConversation.id },
+        });
+        await prisma.conversations.delete({
+          where: { id: privateConversation.id },
+        });
+        console.log("🗑️ Đã xóa cuộc trò chuyện 1-1 riêng khi xóa bạn bè:", privateConversation.id);
+      }
+    } catch (e) {
+      console.warn("Lỗi phụ khi xóa cuộc trò chuyện 1-1:", e.message);
+    }
+
+    // 4. Phát Socket.IO real-time tới CẢ HÀI thiết bị
+    try {
+      const io = req.app.get("io");
+      if (io) {
+        io.to(friendId).emit("user_unfriended", { userId: userId, friendId: userId });
+        io.to(userId).emit("user_unfriended", { userId: friendId, friendId: friendId });
+        io.to(friendId).emit("unfriended", { unfriendedBy: userId });
+        io.to(userId).emit("unfriended", { unfriendedBy: friendId });
+      }
+    } catch (e) {
+      console.warn("Lỗi phụ emit socket unfriend:", e.message);
+    }
+
+    return res.status(200).json({ success: true, message: "Đã xóa bạn bè và phòng chat thành công" });
+  } catch (error) {
+    console.error("Lỗi khi xóa bạn bè API:", error.message);
+    return res.status(500).json({ success: false, message: "Lỗi server", error: error.message });
+  }
+};
+
+// 10. Tìm kiếm người dùng bằng Tên, Username, SĐT, Email (Trả về status: FRIEND, PENDING, NONE, SELF)
+exports.searchUsers = async (req, res) => {
+  try {
+    const { q } = req.query;
+    const currentUserId = req.user.id;
+
+    if (!q || !q.trim()) return res.json({ success: true, data: [] });
+    const keyword = q.trim();
+
+    // Query tất cả user
+    const allUsers = await prisma.users.findMany({
+      select: { id: true, fullName: true, username: true, phone: true, email: true, isOnline: true, avatar: true },
+      take: 200,
+    });
+
+    // Hàm bỏ dấu Tiếng Việt
+    function removeAccents(str) {
+      if (!str) return "";
+      return str
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/đ/g, "d")
+        .replace(/Đ/g, "d")
+        .toLowerCase();
+    }
+
+    const lowerQ = keyword.toLowerCase();
+    const cleanQ = removeAccents(lowerQ);
+
+    const users = allUsers.filter((u) => {
+      const name = u.fullName || "";
+      const uname = u.username || "";
+      const phone = u.phone || "";
+      const email = u.email || "";
+
+      const nLower = name.toLowerCase();
+      const nClean = removeAccents(name);
+      const uLower = uname.toLowerCase();
+      const uClean = removeAccents(uname);
+
+      return (
+        nLower.includes(lowerQ) ||
+        nClean.includes(cleanQ) ||
+        uLower.includes(lowerQ) ||
+        uClean.includes(cleanQ) ||
+        phone.includes(keyword) ||
+        email.toLowerCase().includes(lowerQ)
+      );
+    });
+
+    const targetUserIds = users.map((u) => u.id);
+
+    // 1. Kiểm tra trong FriendRequests (ACCEPTED hoặc PENDING)
+    const friendRequests = targetUserIds.length > 0 ? await prisma.friendRequests.findMany({
+      where: {
+        OR: [
+          { requesterId: currentUserId, receiverId: { in: targetUserIds } },
+          { receiverId: currentUserId, requesterId: { in: targetUserIds } },
+        ],
+      },
+    }) : [];
+
+    // 2. Kiểm tra trong bảng Friends nếu có
+    let friendsRecords = [];
+    try {
+      if (prisma.friends && targetUserIds.length > 0) {
+        friendsRecords = await prisma.friends.findMany({
+          where: {
+            OR: [
+              { senderId: currentUserId, receiverId: { in: targetUserIds } },
+              { receiverId: currentUserId, senderId: { in: targetUserIds } },
+            ],
+          },
+        });
+      }
+    } catch (_) {}
+
+    const mappedUsers = users.map((u) => {
+      let status = "NONE";
+      let relationship = "none";
+
+      if (u.id === currentUserId) {
+        status = "SELF";
+        relationship = "self";
+      } else {
+        const fr = friendRequests.find(
+          (r) =>
+            (r.requesterId === currentUserId && r.receiverId === u.id) ||
+            (r.receiverId === currentUserId && r.requesterId === u.id)
+        );
+
+        const fRecord = friendsRecords.find(
+          (f) =>
+            (f.senderId === currentUserId && f.receiverId === u.id) ||
+            (f.receiverId === currentUserId && f.senderId === u.id)
+        );
+
+        if ((fr && fr.status === "ACCEPTED") || (fRecord && (fRecord.status === "accepted" || fRecord.status === "ACCEPTED"))) {
+          status = "FRIEND";
+          relationship = "friends";
+        } else if (fr && fr.status === "PENDING") {
+          status = "PENDING";
+          relationship = fr.requesterId === currentUserId ? "pending_sent" : "pending_received";
+        } else if (fRecord && (fRecord.status === "pending" || fRecord.status === "PENDING")) {
+          status = "PENDING";
+          relationship = "pending_sent";
+        }
+      }
+
+      return {
+        id: u.id,
+        fullName: u.fullName || u.username,
+        username: u.username,
+        phone: u.phone,
+        email: u.email,
+        isOnline: u.isOnline,
+        avatar: `/api/users/${u.id}/avatar`,
+        status, // "FRIEND", "PENDING", "NONE", "SELF"
+        relationship,
+      };
+    });
+
+    return res.status(200).json({ success: true, data: mappedUsers });
+  } catch (error) {
+    console.error("Lỗi khi tìm kiếm người dùng controller:", error.message);
+    return res.status(500).json({ success: false, message: "Lỗi server", error: error.message });
+  }
+};
+
+// 11. Hủy lời mời kết bạn đã gửi
+exports.cancelFriendRequest = async (req, res) => {
+  try {
+    const requesterId = req.user.id;
+    const { receiverId } = req.params;
+    const targetId = receiverId || req.body.receiverId;
+
+    if (!targetId) {
+      return res.status(400).json({ success: false, message: "ID người nhận không hợp lệ" });
+    }
+
+    const existing = await prisma.friendRequests.findFirst({
+      where: {
+        requesterId: requesterId,
+        receiverId: targetId,
+        status: "PENDING",
+      },
+    });
+
+    if (existing) {
+      await prisma.friendRequests.delete({
+        where: { id: existing.id },
+      });
+
+      try {
+        const io = req.app.get("io");
+        if (io) {
+          io.to(targetId).emit("new_friend_request", { canceled: true });
+        }
+      } catch (e) {
+        console.warn("Lỗi phụ socket cancel friend request:", e.message);
+      }
+
+      return res.status(200).json({ success: true, message: "Đã hủy lời mời kết bạn" });
+    } else {
+      return res.status(404).json({ success: false, message: "Không tìm thấy lời mời kết bạn để hủy" });
+    }
+  } catch (error) {
+    console.error("Lỗi khi hủy lời mời kết bạn API:", error.message);
+    return res.status(500).json({ success: false, message: "Lỗi server", error: error.message });
+  }
+};
+

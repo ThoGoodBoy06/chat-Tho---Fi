@@ -8,10 +8,13 @@ class UserModel {
   final String? email;
   final String? phone;
   final String? avatar;
+  final String role;
+  final bool isBlocked;
   final bool isOnline;
   final DateTime? lastActive;
 
   String get displayName => (nickname != null && nickname!.trim().isNotEmpty) ? nickname!.trim() : fullName;
+  bool get isAdmin => role.toUpperCase() == 'ADMIN';
 
   UserModel({
     required this.id,
@@ -21,6 +24,8 @@ class UserModel {
     this.email,
     this.phone,
     this.avatar,
+    this.role = 'USER',
+    this.isBlocked = false,
     this.isOnline = false,
     this.lastActive,
   });
@@ -34,8 +39,73 @@ class UserModel {
       email: json['email']?.toString(),
       phone: json['phone']?.toString(),
       avatar: json['avatar']?.toString(),
+      role: json['role']?.toString() ?? 'USER',
+      isBlocked: json['isBlocked'] == true,
       isOnline: json['isOnline'] == true,
       lastActive: json['lastActive'] != null ? DateTime.tryParse(json['lastActive'].toString()) : null,
+    );
+  }
+}
+
+class AdminStatsModel {
+  final int totalUsers;
+  final int onlineUsers;
+  final int totalMessages;
+  final int totalGroups;
+
+  AdminStatsModel({
+    required this.totalUsers,
+    required this.onlineUsers,
+    required this.totalMessages,
+    required this.totalGroups,
+  });
+
+  factory AdminStatsModel.fromJson(Map<String, dynamic> json) {
+    return AdminStatsModel(
+      totalUsers: json['totalUsers'] is int ? json['totalUsers'] : 0,
+      onlineUsers: json['onlineUsers'] is int ? json['onlineUsers'] : 0,
+      totalMessages: json['totalMessages'] is int ? json['totalMessages'] : 0,
+      totalGroups: json['totalGroups'] is int ? json['totalGroups'] : 0,
+    );
+  }
+}
+
+class ReportModel {
+  final String id;
+  final String reporterId;
+  final String reporterName;
+  final String reportedUserId;
+  final String reportedUserName;
+  final bool reportedIsBlocked;
+  final String reason;
+  final String status;
+  final DateTime createdAt;
+
+  ReportModel({
+    required this.id,
+    required this.reporterId,
+    required this.reporterName,
+    required this.reportedUserId,
+    required this.reportedUserName,
+    required this.reportedIsBlocked,
+    required this.reason,
+    required this.status,
+    required this.createdAt,
+  });
+
+  factory ReportModel.fromJson(Map<String, dynamic> json) {
+    return ReportModel(
+      id: json['id']?.toString() ?? '',
+      reporterId: json['reporterId']?.toString() ?? '',
+      reporterName: json['reporter']?['fullName']?.toString() ?? json['reporter']?['username']?.toString() ?? 'N/A',
+      reportedUserId: json['reportedUserId']?.toString() ?? '',
+      reportedUserName: json['reportedUser']?['fullName']?.toString() ?? json['reportedUser']?['username']?.toString() ?? 'N/A',
+      reportedIsBlocked: json['reportedUser']?['isBlocked'] == true,
+      reason: json['reason']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'PENDING',
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
+          : DateTime.now(),
     );
   }
 }
@@ -177,6 +247,9 @@ class ConversationModel {
   final DateTime? updatedAt;
   final String? targetUserId;
   final List<UserModel> members;
+
+  bool get isGroup => type == 'group';
+  int get memberCount => members.length;
 
   bool get isOnline {
     if (targetUserId != null && targetUserId!.isNotEmpty && members.isNotEmpty) {

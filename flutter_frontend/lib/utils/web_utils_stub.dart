@@ -1,1 +1,3 @@
 void removeLoadingScreen() {}
+void redirectToAdmin() {}
+

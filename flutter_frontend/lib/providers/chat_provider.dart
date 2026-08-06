@@ -292,6 +292,14 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void clearCurrentUser() {
+    currentUser = null;
+    selectedConversation = null;
+    messages = [];
+    conversations = [];
+    notifyListeners();
+  }
+
   Future<void> fetchConversations({bool showLoading = true}) async {
     if (showLoading) {
       isLoadingConversations = true;

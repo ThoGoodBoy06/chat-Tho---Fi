@@ -17,6 +17,16 @@ router.post(
   userController.updateCoverImage,
 );
 
+// API Lời mời kết bạn & Bạn bè & Tìm kiếm
+router.get("/search", authMiddleware, userController.searchUsers);
+router.get("/friend-requests", authMiddleware, userController.getPendingFriendRequests);
+router.post("/friend-requests", authMiddleware, userController.sendFriendRequest);
+router.post("/friend-requests/cancel", authMiddleware, userController.cancelFriendRequest);
+router.post("/friend-requests/:receiverId/cancel", authMiddleware, userController.cancelFriendRequest);
+router.post("/friend-requests/:id/accept", authMiddleware, userController.acceptFriendRequest);
+router.post("/friend-requests/:id/reject", authMiddleware, userController.rejectFriendRequest);
+router.delete("/friends/:friendId", authMiddleware, userController.deleteFriend);
+
 // Lấy thông tin chi tiết hồ sơ người dùng khác
 router.get("/:id/profile", authMiddleware, userController.getOtherUserProfile);
 

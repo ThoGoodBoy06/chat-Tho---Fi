@@ -642,8 +642,11 @@ file:///C:/Du_an_nhantin_goidien/flutter_frontend/.dart_tool/package_config.json
 file:///C:/Du_an_nhantin_goidien/flutter_frontend/lib/main.dart
 file:///C:/Du_an_nhantin_goidien/flutter_frontend/lib/models/models.dart
 file:///C:/Du_an_nhantin_goidien/flutter_frontend/lib/providers/chat_provider.dart
+file:///C:/Du_an_nhantin_goidien/flutter_frontend/lib/screens/add_friend_screen.dart
 file:///C:/Du_an_nhantin_goidien/flutter_frontend/lib/screens/chat_screen.dart
+file:///C:/Du_an_nhantin_goidien/flutter_frontend/lib/screens/friend_requests_screen.dart
 file:///C:/Du_an_nhantin_goidien/flutter_frontend/lib/screens/login_screen.dart
+file:///C:/Du_an_nhantin_goidien/flutter_frontend/lib/screens/my_groups_screen.dart
 file:///C:/Du_an_nhantin_goidien/flutter_frontend/lib/services/api_service.dart
 file:///C:/Du_an_nhantin_goidien/flutter_frontend/lib/services/fcm_service.dart
 file:///C:/Du_an_nhantin_goidien/flutter_frontend/lib/services/socket_service.dart

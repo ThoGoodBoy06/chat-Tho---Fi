@@ -847,6 +847,15 @@ module.exports = (io) => {
       }
     });
 
+    // 13.5 User A hoặc User B xóa bạn bè
+    socket.on("unfriend_user", ({ friendId }) => {
+      const userId = socket.userId;
+      if (!userId || !friendId) return;
+      io.to(friendId).emit("user_unfriended", { userId });
+      io.to(friendId).emit("unfriended", { unfriendedBy: userId });
+      console.log(`❌ Socket unfriend_user: User ${userId} unfriended ${friendId}`);
+    });
+
     // ══════════════════════════════════════════════════════
     // 14. GHIM TIN NHẮN QUA SOCKET (Pin/Unpin Message)
     // ══════════════════════════════════════════════════════

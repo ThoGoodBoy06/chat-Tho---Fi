@@ -91,6 +91,8 @@ model Users {
   avatar                          String?
   coverPhoto                      String?
   bio                             String?
+  role                            String                @default("USER")
+  isBlocked                       Boolean?              @default(false)
   isOnline                        Boolean?              @default(false)
   lastActive                      DateTime?             @default(now())
   createdAt                       DateTime?             @default(now())
@@ -106,7 +108,25 @@ model Users {
   NotificationsSent     Notifications[] @relation("SenderNotifications")
   blocksSent     Block[] @relation("UserBlocks")
   blocksReceived Block[] @relation("UserBlockedBy")
+  reportsCreated Report[] @relation("ReportsCreated")
+  reportsReceived Report[] @relation("ReportsReceived")
   fcmToken  String?  
+}
+
+model Report {
+  id             String   @id @default(uuid())
+  reporterId     String
+  reportedUserId String
+  reason         String
+  status         String   @default("PENDING")
+  createdAt      DateTime @default(now())
+
+  reporter     Users @relation("ReportsCreated", fields: [reporterId], references: [id], onDelete: Cascade)
+  reportedUser Users @relation("ReportsReceived", fields: [reportedUserId], references: [id], onDelete: Cascade)
+
+  @@index([reporterId])
+  @@index([reportedUserId])
+  @@index([status])
 }
 
 model FriendRequests {

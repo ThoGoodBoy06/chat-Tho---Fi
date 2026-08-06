@@ -5,7 +5,7 @@ const { v4: uuidv4 } = require("uuid");
 
 const generateToken = (user) => {
   return jwt.sign(
-    { id: user.id, username: user.username },
+    { id: user.id, username: user.username, role: user.role || "USER" },
     process.env.JWT_SECRET,
     { expiresIn: "7d" }, // Token có hạn 7 ngày
   );
@@ -36,6 +36,8 @@ exports.register = async (req, res) => {
         password: hashedPassword,
         email: `${username}@zalo.clone`, // Tự động tạo email ảo để vượt qua vòng bảo vệ DB
         phone: `+84-${username}`, // Tự động tạo SĐT ảo để vượt qua vòng bảo vệ DB
+        role: "USER",
+        isBlocked: false,
       },
     });
 
@@ -86,6 +88,8 @@ exports.login = async (req, res) => {
         phone: true,
         password: true,
         bio: true,
+        role: true,
+        isBlocked: true,
         isOnline: true,
         lastActive: true,
         createdAt: true,
@@ -95,6 +99,10 @@ exports.login = async (req, res) => {
 
     if (!user) {
       return res.status(404).json({ message: "Tài khoản không tồn tại!" });
+    }
+
+    if (user.isBlocked) {
+      return res.status(403).json({ message: "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Admin!" });
     }
 
     // 2. Kiểm tra mật khẩu

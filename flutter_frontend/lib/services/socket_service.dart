@@ -23,6 +23,8 @@ class SocketService {
   static final _deliveredController = StreamController<Map<String, dynamic>>.broadcast();
   static final _userStatusController = StreamController<Map<String, dynamic>>.broadcast();
   static final _nicknameController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _friendRequestController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _unfriendController = StreamController<Map<String, dynamic>>.broadcast();
 
   static Stream<Map<String, dynamic>> get onMessageReceived => _messageController.stream;
   static Stream<Map<String, dynamic>> get onIncomingCall => _incomingCallController.stream;
@@ -37,6 +39,8 @@ class SocketService {
   static Stream<Map<String, dynamic>> get onMessageDelivered => _deliveredController.stream;
   static Stream<Map<String, dynamic>> get onUserStatusChanged => _userStatusController.stream;
   static Stream<Map<String, dynamic>> get onNicknameChanged => _nicknameController.stream;
+  static Stream<Map<String, dynamic>> get onFriendRequestReceived => _friendRequestController.stream;
+  static Stream<Map<String, dynamic>> get onUserUnfriended => _unfriendController.stream;
 
   // --- AUDIO API SYNTHETIC SOUND GENERATOR ---
   static void playSendSound() {
@@ -242,7 +246,42 @@ class SocketService {
       }
     });
 
+    socket?.on('new_friend_request', (data) {
+      print('📩 Socket new_friend_request: $data');
+      if (data is Map) {
+        _friendRequestController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('user_unfriended', (data) {
+      print('❌ Socket user_unfriended: $data');
+      if (data is Map) {
+        _unfriendController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('unfriended', (data) {
+      print('❌ Socket unfriended: $data');
+      if (data is Map) {
+        _unfriendController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
     socket?.onDisconnect((_) => print('🔴 Socket disconnected'));
+  }
+
+  static void emitSendFriendRequest(String receiverId) {
+    if (socket != null && socket!.connected) {
+      socket!.emit('send_friend_request', {'receiverId': receiverId});
+      print('📩 Emitted send_friend_request to: $receiverId');
+    }
+  }
+
+  static void emitUnfriendUser(String friendId) {
+    if (socket != null && socket!.connected) {
+      socket!.emit('unfriend_user', {'friendId': friendId});
+      print('❌ Emitted unfriend_user to: $friendId');
+    }
   }
 
   static void emitChangeNickname(String conversationId, String userId, String? nickname) {
