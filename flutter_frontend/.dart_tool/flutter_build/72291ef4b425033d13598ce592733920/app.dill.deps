@@ -655,6 +655,7 @@ file:///C:/Du_an_nhantin_goidien/flutter_frontend/lib/screens/other_user_profile
 file:///C:/Du_an_nhantin_goidien/flutter_frontend/lib/screens/profile_tab.dart
 file:///C:/Du_an_nhantin_goidien/flutter_frontend/lib/screens/qr_scanner_screen.dart
 file:///C:/Du_an_nhantin_goidien/flutter_frontend/lib/screens/settings_screen.dart
+file:///C:/Du_an_nhantin_goidien/flutter_frontend/lib/screens/splash_screen.dart
 file:///C:/Du_an_nhantin_goidien/flutter_frontend/lib/services/api_service.dart
 file:///C:/Du_an_nhantin_goidien/flutter_frontend/lib/services/fcm_service.dart
 file:///C:/Du_an_nhantin_goidien/flutter_frontend/lib/services/socket_service.dart
