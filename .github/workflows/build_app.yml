@@ -8,7 +8,7 @@ on:
 jobs:
   build-ios:
     name: Build iOS IPA
-    runs-on: macos-13
+    runs-on: macos-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -17,7 +17,6 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          cache: true
 
       - name: Install Flutter Dependencies
         run: |
