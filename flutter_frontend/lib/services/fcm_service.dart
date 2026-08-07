@@ -6,7 +6,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'api_service.dart';
 import 'sound_service.dart';
 import 'dart:js_util' as js_util;
-import 'dart:html' as html;
+import 'package:universal_html/html.dart' as html;
 
 /// Hàm xử lý thông báo ngầm khi app bị đóng (Kill State / Terminated)
 @pragma('vm:entry-point')
