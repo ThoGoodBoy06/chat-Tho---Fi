@@ -7,6 +7,7 @@ import 'providers/theme_provider.dart';
 import 'services/api_service.dart';
 import 'services/socket_service.dart';
 import 'services/fcm_service.dart';
+import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/chat_screen.dart';
 import 'utils/web_utils.dart' as web_utils;
@@ -34,6 +35,7 @@ class ChatThoFiApp extends StatefulWidget {
 class _ChatThoFiAppState extends State<ChatThoFiApp> {
   bool _isLoggedIn = false;
   bool _isCheckingAuth = true;
+  bool _showSplash = true;
 
   @override
   void initState() {
@@ -159,15 +161,26 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
           child: child!,
         );
       },
-      home: _isCheckingAuth
-          ? const Scaffold(
-              body: Center(
-                child: CircularProgressIndicator(color: Color(0xFF0068FF)),
-              ),
+      home: _showSplash
+          ? SplashScreen(
+              onFinish: () {
+                if (mounted) {
+                  setState(() {
+                    _showSplash = false;
+                  });
+                }
+              },
             )
-          : (currentUser == null
-              ? LoginScreen(onLoginSuccess: _onLoginSuccess)
-              : ChatScreen(onLogout: _onLogout)),
+          : (_isCheckingAuth
+              ? const Scaffold(
+                  backgroundColor: Colors.white,
+                  body: Center(
+                    child: CircularProgressIndicator(color: Color(0xFF0068FF)),
+                  ),
+                )
+              : (currentUser == null
+                  ? LoginScreen(onLoginSuccess: _onLoginSuccess)
+                  : ChatScreen(onLogout: _onLogout))),
     );
   }
 }

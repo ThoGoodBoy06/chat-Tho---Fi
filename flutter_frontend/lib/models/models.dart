@@ -43,7 +43,7 @@ class UserModel {
       email: json['email']?.toString(),
       phone: json['phone']?.toString(),
       avatar: json['avatar']?.toString(),
-      coverImage: json['coverImage']?.toString() ?? json['cover_image']?.toString(),
+      coverImage: json['coverImage']?.toString() ?? json['coverPhoto']?.toString() ?? json['cover_image']?.toString() ?? json['cover_photo']?.toString(),
       bio: json['bio']?.toString(),
       role: json['role']?.toString() ?? 'USER',
       isBlocked: json['isBlocked'] == true,
@@ -62,6 +62,7 @@ class UserModel {
       'phone': phone,
       'avatar': avatar,
       'coverImage': coverImage,
+      'coverPhoto': coverImage,
       'bio': bio,
       'role': role,
       'isBlocked': isBlocked,
@@ -307,7 +308,20 @@ class ConversationModel {
     String? lastMsgText;
     if (json['Messages'] is List && (json['Messages'] as List).isNotEmpty) {
       final firstMsg = (json['Messages'] as List)[0];
-      if (firstMsg is Map) lastMsgText = firstMsg['content']?.toString();
+      if (firstMsg is Map) {
+        final content = firstMsg['content']?.toString() ?? '';
+        final type = firstMsg['type']?.toString();
+        final lower = content.toLowerCase().trim();
+        if (type == 'image' || lower.startsWith('data:image') || lower.contains('/uploads/') || lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
+          lastMsgText = 'Đã gửi một hình ảnh';
+        } else if (type == 'audio' || lower.startsWith('data:audio') || lower.contains('.webm') || lower.contains('.mp3')) {
+          lastMsgText = 'Đã gửi một tin nhắn thoại';
+        } else if (type == 'file' || lower.startsWith('{"filename"')) {
+          lastMsgText = 'Đã gửi một tệp đính kèm';
+        } else {
+          lastMsgText = content;
+        }
+      }
     }
 
     String convName = json['name']?.toString() ?? '';
@@ -365,12 +379,27 @@ class ConversationModel {
 
     if (convName.isEmpty) convName = 'Cuộc trò chuyện';
 
+    String? rawLast = lastMsgText ?? json['lastMessage']?.toString();
+    String? finalLastMsg;
+    if (rawLast != null && rawLast.isNotEmpty) {
+      final lower = rawLast.toLowerCase().trim();
+      if (lower.startsWith('data:image') || lower.contains('/uploads/') || lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.gif') || lower.endsWith('.webp')) {
+        finalLastMsg = 'Đã gửi một hình ảnh';
+      } else if (lower.startsWith('data:audio') || lower.contains('.webm') || lower.contains('.mp3') || lower.contains('.m4a') || lower.contains('.wav')) {
+        finalLastMsg = 'Đã gửi một tin nhắn thoại';
+      } else if (lower.startsWith('{"filename"')) {
+        finalLastMsg = 'Đã gửi một tệp đính kèm';
+      } else {
+        finalLastMsg = rawLast;
+      }
+    }
+
     return ConversationModel(
       id: json['id']?.toString() ?? rawJson['conversationId']?.toString() ?? '',
       name: convName,
       avatar: convAvatar,
       type: json['type']?.toString() ?? 'private',
-      lastMessage: lastMsgText ?? json['lastMessage']?.toString(),
+      lastMessage: finalLastMsg,
       unreadCount: json['_count']?['Messages'] is int ? json['_count']['Messages'] : 0,
       updatedAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt'].toString()) : null,
       targetUserId: partnerUserId,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/chat_provider.dart';
+import '../providers/theme_provider.dart';
 
 class MyGroupsScreen extends StatelessWidget {
   const MyGroupsScreen({Key? key}) : super(key: key);
@@ -35,20 +36,24 @@ class MyGroupsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<ChatProvider>(context);
+    final isDark = Provider.of<ThemeProvider>(context).isDarkMode;
+    final bgColor = isDark ? const Color(0xFF0F172A) : Colors.white;
+    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+
     final groupConversations = provider.conversations.where((conv) {
       return conv.isGroup;
     }).toList();
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: bgColor,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Nhóm của tôi',
-          style: TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 18),
+          style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 18),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: bgColor,
         elevation: 0.5,
-        iconTheme: const IconThemeData(color: Color(0xFF0F172A)),
+        iconTheme: IconThemeData(color: textColor),
       ),
       body: groupConversations.isEmpty
           ? Center(

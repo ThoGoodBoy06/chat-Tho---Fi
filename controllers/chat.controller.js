@@ -77,7 +77,10 @@ exports.getConversations = async(req, res) => {
                                     select: {
                                         id: true,
                                         fullName: true,
+                                        username: true,
                                         avatar: true,
+                                        coverPhoto: true,
+                                        bio: true,
                                         isOnline: true,
                                         lastActive: true,
                                     },

@@ -1,4 +1,4 @@
-name: Build iOS IPA Only
+name: Build Mobile Apps (iOS .ipa & Android .apk)
 
 on:
   push:
@@ -9,40 +9,70 @@ jobs:
   build-ios:
     name: Build iOS IPA
     runs-on: macos-latest
-
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          submodules: false
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      - name: Setup Flutter
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.0'
           channel: 'stable'
-          cache: true
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: |
           cd flutter_frontend
           flutter pub get
 
-      - name: Build iOS App (No Codesign)
+      - name: Build iOS No-Codesign IPA
         run: |
           cd flutter_frontend
           flutter build ios --release --no-codesign
-
-      - name: Package Payload into IPA
-        run: |
-          cd flutter_frontend/build/ios/iphoneos
           mkdir -p Payload
-          cp -r Runner.app Payload/
-          zip -r app-release.ipa Payload
+          mv build/ios/iphoneos/Runner.app Payload/
+          zip -r ChatThoFi.ipa Payload
 
       - name: Upload iOS IPA Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
-          name: iOS-IPA-Release
-          path: flutter_frontend/build/ios/iphoneos/app-release.ipa
-          retention-days: 7
+          name: ChatThoFi-iOS-ipa
+          path: flutter_frontend/ChatThoFi.ipa
+
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: |
+          cd flutter_frontend
+          flutter pub get
+
+      - name: Build APK
+        run: |
+          cd flutter_frontend
+          flutter build apk --release
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ChatThoFi-Android-apk
+          path: flutter_frontend/build/app/outputs/flutter-apk/app-release.apk

@@ -70,6 +70,13 @@ app.use(express.static(staticPath, {
     lastModified: false,
 }));
 
+// Mở thư mục chứa file upload cục bộ
+const uploadsPath = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadsPath)) {
+    fs.mkdirSync(uploadsPath, { recursive: true });
+}
+app.use("/uploads", express.static(uploadsPath));
+
 app.get("/firebase-messaging-sw.js", (req, res) => {
     const swPath = fs.existsSync(path.join(flutterWebPath, "firebase-messaging-sw.js"))
         ? path.join(flutterWebPath, "firebase-messaging-sw.js")

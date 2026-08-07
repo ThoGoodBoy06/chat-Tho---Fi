@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/theme_provider.dart';
 import '../services/api_service.dart';
 import '../services/socket_service.dart';
 import 'other_user_profile_screen.dart';
@@ -253,16 +255,22 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Provider.of<ThemeProvider>(context).isDarkMode;
+    final bgColor = isDark ? const Color(0xFF0F172A) : Colors.white;
+    final cardBgColor = isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC);
+    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final subTextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: bgColor,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Thêm bạn mới',
-          style: TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 18),
+          style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 18),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: bgColor,
         elevation: 0.5,
-        iconTheme: const IconThemeData(color: Color(0xFF0F172A)),
+        iconTheme: IconThemeData(color: textColor),
       ),
       body: Column(
         children: [
@@ -273,13 +281,14 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
               controller: _searchController,
               onChanged: _onSearchChanged,
               autofocus: true,
+              style: TextStyle(color: textColor),
               decoration: InputDecoration(
                 hintText: 'Nhập tên, username, SĐT hoặc email...',
-                hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+                hintStyle: TextStyle(color: subTextColor, fontSize: 14),
                 prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF0068FF), size: 22),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.clear_rounded, size: 18, color: Color(0xFF94A3B8)),
+                        icon: Icon(Icons.clear_rounded, size: 18, color: subTextColor),
                         onPressed: () {
                           _searchController.clear();
                           _onSearchChanged('');
@@ -287,15 +296,15 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
                       )
                     : null,
                 filled: true,
-                fillColor: const Color(0xFFF8FAFC),
+                fillColor: cardBgColor,
                 contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                  borderSide: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                  borderSide: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
@@ -354,7 +363,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
                               if (uid.isNotEmpty) {
                                 await Navigator.push(
                                   context,
-                                  MaterialPageRoute(builder: (_) => OtherUserProfileScreen(userId: uid)),
+                                  MaterialPageRoute(builder: (_) => OtherUserProfileScreen(userId: uid, initialUserData: user)),
                                 );
                                 if (mounted && _query.isNotEmpty) {
                                   _performSearch(_query);

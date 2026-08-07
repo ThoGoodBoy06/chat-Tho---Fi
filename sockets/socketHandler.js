@@ -10,6 +10,61 @@ module.exports = (io) => {
   // Gắn map vào instance 'io' để các route handler có thể truy cập
   io.userSockets = userSockets;
 
+  // Cache để tránh gọi DB update isOnline liên tục trong thời gian ngắn (Debounce 60 giây)
+  const lastOnlineUpdateMap = new Map();
+
+  async function handleUserConnect(socket, userId) {
+    if (!userId) return;
+    userSockets.set(userId, socket.id);
+    socket.userId = userId;
+    socket.join(userId);
+
+    // Chạy song song không block: Lấy conversations & pending friend requests
+    Promise.all([
+      prisma.conversationMembers.findMany({
+        where: { userId },
+        select: { conversationId: true },
+      }).catch(() => []),
+      prisma.friendRequests.findMany({
+        where: { receiverId: userId, status: "PENDING" },
+        select: {
+          id: true,
+          status: true,
+          createdAt: true,
+          requester: {
+            select: { id: true, fullName: true },
+          },
+        },
+      }).catch(() => []),
+    ]).then(([conversations, pendingRequests]) => {
+      conversations.forEach((conv) => {
+        socket.join(conv.conversationId);
+      });
+
+      if (pendingRequests && pendingRequests.length > 0) {
+        const mappedPending = pendingRequests.map((r) => {
+          if (r.requester) {
+            r.requester.avatar = `/api/users/${r.requester.id}/avatar`;
+          }
+          return r;
+        });
+        socket.emit("initial_friend_requests", mappedPending);
+      }
+    }).catch(() => {});
+
+    // Cập nhật isOnline với cache 60s
+    const lastUpdate = lastOnlineUpdateMap.get(userId) || 0;
+    const now = Date.now();
+    if (now - lastUpdate > 60000) {
+      lastOnlineUpdateMap.set(userId, now);
+      prisma.users.update({
+        where: { id: userId },
+        data: { isOnline: true },
+      }).catch(() => {});
+      io.emit("user_status_changed", { userId, isOnline: true });
+    }
+  }
+
   io.on("connection", async (socket) => {
     console.log("⚡ Một thiết bị vừa kết nối với Socket: " + socket.id);
 
@@ -20,98 +75,24 @@ module.exports = (io) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET || "supersecretkey_chat_tho_fi");
         const userId = decoded.id || decoded.userId;
         if (userId) {
-          userSockets.set(userId, socket.id);
-          socket.userId = userId;
-          socket.join(userId);
-
-          const conversations = await prisma.conversationMembers.findMany({
-            where: { userId },
-            select: { conversationId: true },
-          });
-          conversations.forEach((conv) => {
-            socket.join(conv.conversationId);
-          });
-
-          await prisma.users.update({
-            where: { id: userId },
-            data: { isOnline: true },
-          }).catch(() => {});
-
-          io.emit("user_status_changed", { userId, isOnline: true });
-          console.log(`👤 Socket ${socket.id} tự động xác thực User ${userId} qua Token.`);
+          handleUserConnect(socket, userId);
         }
-      } catch (e) {
-        console.warn(`⚠️ Socket ${socket.id} token validation warning:`, e.message);
-      }
+      } catch (e) {}
     }
+
+    // 1. Lắng nghe khi người dùng đăng nhập app thành công
+    socket.on("user_connected", (userId) => {
+      handleUserConnect(socket, userId);
+    });
 
     // Lắng nghe khi client yêu cầu tham gia phòng trò chuyện (như khi được thêm vào nhóm)
     socket.on("join_conversation", (conversationId) => {
-        socket.join(conversationId);
-        console.log(`📡 Socket ${socket.id} đã vào phòng: ${conversationId}`);
+      socket.join(conversationId);
     });
 
     // Alias: join_room (cho Flutter Web client)
     socket.on("join_room", (roomId) => {
-        socket.join(roomId);
-        console.log(`📡 Socket ${socket.id} đã join_room: ${roomId}`);
-    });
-
-    // 1. Lắng nghe khi người dùng đăng nhập app thành công
-    socket.on("user_connected", async (userId) => {
-      try {
-        userSockets.set(userId, socket.id);
-        socket.userId = userId;
-
-        // Đưa user vào một "phòng" có tên là ID của họ để dễ dàng gửi tin nhắn cá nhân
-        socket.join(userId);
-
-        // Tự động join vào các phòng chat mà user này là thành viên
-        const conversations = await prisma.conversationMembers.findMany({
-          where: { userId },
-          select: { conversationId: true },
-        });
-        conversations.forEach((conv) => {
-          socket.join(conv.conversationId);
-        });
-
-        // Lấy danh sách lời mời kết bạn đang chờ và gửi cho client
-        try {
-          const pendingRequests = await prisma.friendRequests.findMany({
-            where: { receiverId: userId, status: "PENDING" },
-            include: {
-              requester: {
-                select: { id: true, fullName: true },
-              },
-            },
-          });
-
-          // Map avatar sang URL tĩnh
-          const mappedPending = pendingRequests.map(r => {
-            if (r.requester) {
-              r.requester.avatar = `/api/users/${r.requester.id}/avatar`;
-            }
-            return r;
-          });
-
-          socket.emit("initial_friend_requests", mappedPending);
-        } catch (e) {
-          console.error("Lỗi khi lấy danh sách lời mời kết bạn:", e);
-        }
-
-        // Cập nhật trạng thái "Đang Online" vào Database
-        await prisma.users.update({
-          where: { id: userId },
-          data: { isOnline: true },
-        }).catch((e) => console.warn("Lỗi update isOnline (soft fail):", e.message));
-
-        // Báo cho mọi người khác biết user này vừa online (cả 2 dạng sự kiện để tương thích)
-        io.emit("user_status_changed", { userId, isOnline: true });
-        io.emit("user_status_change", { userId, isOnline: true });
-        console.log(`👤 User ${userId} đã kết nối.`);
-      } catch (err) {
-        console.error("❌ Lỗi trong sự kiện user_connected:", err);
-      }
+      socket.join(roomId);
     });
 
     // 1b. Lắng nghe khi người dùng chuyển ứng dụng chạy ngầm (go_offline)

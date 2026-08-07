@@ -8,10 +8,12 @@ import '../services/socket_service.dart';
 
 class OtherUserProfileScreen extends StatefulWidget {
   final String userId;
+  final Map<String, dynamic>? initialUserData;
 
   const OtherUserProfileScreen({
     Key? key,
     required this.userId,
+    this.initialUserData,
   }) : super(key: key);
 
   @override
@@ -27,12 +29,17 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialUserData != null) {
+      _userData = Map<String, dynamic>.from(widget.initialUserData!);
+      _isLoading = false;
+    }
     _loadProfileData();
     _profileSub = SocketService.onUserProfileUpdated.listen((data) {
       final updatedId = data['id']?.toString() ?? data['userId']?.toString();
-      if (updatedId == widget.userId && mounted) {
-        setState(() {
-          if (_userData != null) {
+      final currentTargetId = _userData?['id']?.toString() ?? widget.userId;
+      if ((updatedId == widget.userId || (updatedId != null && updatedId == currentTargetId)) && mounted) {
+        if (_userData != null) {
+          setState(() {
             if (data['fullName'] != null) _userData!['fullName'] = data['fullName'];
             if (data['bio'] != null) _userData!['bio'] = data['bio'];
             if (data['avatar'] != null) _userData!['avatar'] = data['avatar'];
@@ -40,8 +47,10 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen> {
               _userData!['coverPhoto'] = data['coverPhoto'] ?? data['coverImage'];
               _userData!['coverImage'] = data['coverPhoto'] ?? data['coverImage'];
             }
-          }
-        });
+          });
+        } else {
+          _loadProfileData();
+        }
       }
     });
   }
@@ -53,12 +62,16 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen> {
   }
 
   Future<void> _loadProfileData() async {
-    if (mounted) setState(() => _isLoading = true);
+    if (_userData == null && mounted) {
+      setState(() => _isLoading = true);
+    }
     try {
       final data = await ApiService.lookupUserById(widget.userId);
       if (mounted) {
         setState(() {
-          _userData = data;
+          if (data != null) {
+            _userData = data;
+          }
           _isLoading = false;
         });
       }

@@ -21,8 +21,13 @@ exports.getUserAvatar = async (req, res) => {
       return res.redirect(`https://ui-avatars.com/api/?name=User&background=random`);
     }
 
+    let cleanId = id.trim();
+    if (cleanId.startsWith("@")) {
+      cleanId = cleanId.substring(1).trim();
+    }
+
     // 1. Kiểm tra RAM cache
-    const cached = avatarCache.get(id);
+    const cached = avatarCache.get(cleanId);
     if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
       if (cached.isRedirect) {
         return res.redirect(cached.redirectUrl);
@@ -35,22 +40,44 @@ exports.getUserAvatar = async (req, res) => {
       return res.end(cached.buffer);
     }
 
-    // 2. Query DB nếu chưa có trong RAM
-    const user = await prisma.users.findUnique({
-      where: { id },
-      select: { avatar: true, fullName: true }
-    });
+    // 2. Query DB theo UUID hoặc username / phone / email
+    const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(cleanId);
+    let user = null;
+
+    if (isUuid) {
+      try {
+        user = await prisma.users.findUnique({
+          where: { id: cleanId },
+          select: { id: true, avatar: true, fullName: true }
+        });
+      } catch (_) {}
+    }
+
+    if (!user) {
+      try {
+        user = await prisma.users.findFirst({
+          where: {
+            OR: [
+              { username: { equals: cleanId, mode: "insensitive" } },
+              { phone: cleanId },
+              { email: { equals: cleanId, mode: "insensitive" } }
+            ]
+          },
+          select: { id: true, avatar: true, fullName: true }
+        });
+      } catch (_) {}
+    }
 
     if (!user || !user.avatar) {
       const name = encodeURIComponent(user ? user.fullName || "User" : "User");
       const redirectUrl = `https://ui-avatars.com/api/?name=${name}&background=random`;
-      avatarCache.set(id, { isRedirect: true, redirectUrl, timestamp: Date.now() });
+      avatarCache.set(cleanId, { isRedirect: true, redirectUrl, timestamp: Date.now() });
       return res.redirect(redirectUrl);
     }
 
     // Nếu là đường dẫn URL http hoặc file tĩnh
     if (user.avatar.startsWith("http") || user.avatar.startsWith("/")) {
-      avatarCache.set(id, { isRedirect: true, redirectUrl: user.avatar, timestamp: Date.now() });
+      avatarCache.set(cleanId, { isRedirect: true, redirectUrl: user.avatar, timestamp: Date.now() });
       return res.redirect(user.avatar);
     }
 
@@ -61,7 +88,7 @@ exports.getUserAvatar = async (req, res) => {
       const base64Data = matches[2];
       const buffer = Buffer.from(base64Data, "base64");
 
-      avatarCache.set(id, { buffer, contentType, timestamp: Date.now() });
+      avatarCache.set(cleanId, { buffer, contentType, timestamp: Date.now() });
       res.writeHead(200, {
         "Content-Type": contentType,
         "Content-Length": buffer.length,
@@ -73,7 +100,7 @@ exports.getUserAvatar = async (req, res) => {
     // Trả về trực tiếp nếu là Base64 thuần không có tiền tố data:
     try {
       const buffer = Buffer.from(user.avatar, "base64");
-      avatarCache.set(id, { buffer, contentType: "image/jpeg", timestamp: Date.now() });
+      avatarCache.set(cleanId, { buffer, contentType: "image/jpeg", timestamp: Date.now() });
       res.writeHead(200, {
         "Content-Type": "image/jpeg",
         "Content-Length": buffer.length,
@@ -83,7 +110,7 @@ exports.getUserAvatar = async (req, res) => {
     } catch (e) {
       const name = encodeURIComponent(user.fullName || "User");
       const redirectUrl = `https://ui-avatars.com/api/?name=${name}&background=random`;
-      avatarCache.set(id, { isRedirect: true, redirectUrl, timestamp: Date.now() });
+      avatarCache.set(cleanId, { isRedirect: true, redirectUrl, timestamp: Date.now() });
       return res.redirect(redirectUrl);
     }
   } catch (error) {
@@ -106,8 +133,13 @@ exports.getUserCover = async (req, res) => {
       return res.end(transparentPixel);
     }
 
+    let cleanId = id.trim();
+    if (cleanId.startsWith("@")) {
+      cleanId = cleanId.substring(1).trim();
+    }
+
     // 1. Kiểm tra RAM Cache
-    const cached = coverCache.get(id);
+    const cached = coverCache.get(cleanId);
     if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
       if (cached.isRedirect) return res.redirect(cached.redirectUrl);
       res.writeHead(200, {
@@ -118,23 +150,44 @@ exports.getUserCover = async (req, res) => {
       return res.end(cached.buffer);
     }
 
-    // 2. Query DB
-    const user = await prisma.users.findUnique({
-      where: { id },
-      select: { coverPhoto: true }
-    });
+    // 2. Query DB theo UUID hoặc Username / Phone / Email
+    const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(cleanId);
+    let user = null;
+
+    if (isUuid) {
+      try {
+        user = await prisma.users.findUnique({
+          where: { id: cleanId },
+          select: { id: true, coverPhoto: true }
+        });
+      } catch (_) {}
+    }
+
+    if (!user) {
+      try {
+        user = await prisma.users.findFirst({
+          where: {
+            OR: [
+              { username: { equals: cleanId, mode: "insensitive" } },
+              { phone: cleanId },
+              { email: { equals: cleanId, mode: "insensitive" } }
+            ]
+          },
+          select: { id: true, coverPhoto: true }
+        });
+      } catch (_) {}
+    }
 
     if (!user || !user.coverPhoto) {
-      coverCache.set(id, { buffer: transparentPixel, contentType: "image/png", timestamp: Date.now() });
       res.writeHead(200, {
         "Content-Type": "image/png",
-        "Cache-Control": "public, max-age=86400"
+        "Cache-Control": "no-cache"
       });
       return res.end(transparentPixel);
     }
 
     if (user.coverPhoto.startsWith("http") || user.coverPhoto.startsWith("/")) {
-      coverCache.set(id, { isRedirect: true, redirectUrl: user.coverPhoto, timestamp: Date.now() });
+      coverCache.set(cleanId, { isRedirect: true, redirectUrl: user.coverPhoto, timestamp: Date.now() });
       return res.redirect(user.coverPhoto);
     }
 
@@ -144,7 +197,7 @@ exports.getUserCover = async (req, res) => {
       const base64Data = matches[2];
       const buffer = Buffer.from(base64Data, "base64");
 
-      coverCache.set(id, { buffer, contentType, timestamp: Date.now() });
+      coverCache.set(cleanId, { buffer, contentType, timestamp: Date.now() });
       res.writeHead(200, {
         "Content-Type": contentType,
         "Content-Length": buffer.length,
@@ -155,7 +208,7 @@ exports.getUserCover = async (req, res) => {
 
     try {
       const buffer = Buffer.from(user.coverPhoto, "base64");
-      coverCache.set(id, { buffer, contentType: "image/jpeg", timestamp: Date.now() });
+      coverCache.set(cleanId, { buffer, contentType: "image/jpeg", timestamp: Date.now() });
       res.writeHead(200, {
         "Content-Type": "image/jpeg",
         "Content-Length": buffer.length,
@@ -163,10 +216,9 @@ exports.getUserCover = async (req, res) => {
       });
       return res.end(buffer);
     } catch (e) {
-      coverCache.set(id, { buffer: transparentPixel, contentType: "image/png", timestamp: Date.now() });
       res.writeHead(200, {
         "Content-Type": "image/png",
-        "Cache-Control": "public, max-age=86400"
+        "Cache-Control": "no-cache"
       });
       return res.end(transparentPixel);
     }
@@ -226,7 +278,7 @@ exports.updateProfile = async (req, res) => {
 exports.updateAvatar = async (req, res) => {
   try {
     const userId = req.user ? req.user.id : req.userId;
-    const { avatar } = req.body;
+    const avatar = req.body.avatar || req.body.avatarUrl || req.body.image;
     if (!avatar)
       return res.status(400).json({ message: "Vui lòng chọn ảnh đại diện" });
 
@@ -267,7 +319,7 @@ exports.updateAvatar = async (req, res) => {
 exports.updateCoverImage = async (req, res) => {
   try {
     const userId = req.user ? req.user.id : req.userId;
-    const { coverPhoto } = req.body; // Base64 string from client
+    const coverPhoto = req.body.coverPhoto || req.body.coverImage || req.body.cover;
     if (!coverPhoto)
       return res.status(400).json({ message: "Vui lòng chọn ảnh bìa" });
 
@@ -348,16 +400,64 @@ exports.getUserProfile = async (req, res) => {
 exports.lookupUserById = async (req, res) => {
   try {
     const { id } = req.params;
-    const currentUserId = req.user.id;
+    const currentUserId = req.user ? (req.user.id || req.user.userId) : null;
 
     if (!id || id === "null" || id === "undefined") {
       return res.status(400).json({ success: false, message: "ID người dùng không hợp lệ" });
     }
 
-    const user = await prisma.users.findUnique({
-      where: { id },
-      select: { id: true, fullName: true, username: true, phone: true, email: true, isOnline: true, bio: true },
-    });
+    let cleanId = id.trim();
+    if (cleanId.startsWith("@")) {
+      cleanId = cleanId.substring(1).trim();
+    }
+
+    // 1. Kiểm tra UUID regex để tránh Prisma ném lỗi 500 Malformed UUID khi tìm kiếm username/SĐT
+    const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(cleanId);
+    let user = null;
+    if (isUuid) {
+      try {
+        user = await prisma.users.findUnique({
+          where: { id: cleanId },
+          select: { id: true, fullName: true, username: true, phone: true, email: true, isOnline: true, bio: true, avatar: true, coverPhoto: true },
+        });
+      } catch (_) {}
+
+      // Nếu cleanId là UUID nhưng không phải User ID, kiểm tra xem có phải mã phòng chat Conversation ID không
+      if (!user) {
+        try {
+          const convMember = await prisma.conversationMembers.findFirst({
+            where: {
+              conversationId: cleanId,
+              userId: currentUserId ? { not: currentUserId } : undefined,
+            },
+            select: {
+              Users: {
+                select: { id: true, fullName: true, username: true, phone: true, email: true, isOnline: true, bio: true, avatar: true, coverPhoto: true },
+              },
+            },
+          });
+          if (convMember && convMember.Users) {
+            user = convMember.Users;
+          }
+        } catch (_) {}
+      }
+    }
+
+    // 2. Fallback: Tra cứu theo username, phone hoặc email
+    if (!user) {
+      try {
+        user = await prisma.users.findFirst({
+          where: {
+            OR: [
+              { username: { equals: cleanId, mode: "insensitive" } },
+              { phone: cleanId },
+              { email: { equals: cleanId, mode: "insensitive" } },
+            ],
+          },
+          select: { id: true, fullName: true, username: true, phone: true, email: true, isOnline: true, bio: true, avatar: true, coverPhoto: true },
+        });
+      } catch (_) {}
+    }
 
     if (!user) {
       return res.status(404).json({ success: false, message: "Không tìm thấy người dùng" });
@@ -366,44 +466,48 @@ exports.lookupUserById = async (req, res) => {
     let status = "NONE";
     let relationship = "none";
 
-    if (user.id === currentUserId) {
+    if (currentUserId && user.id === currentUserId) {
       status = "SELF";
       relationship = "self";
-    } else {
-      // Check FriendRequests
-      const fr = await prisma.friendRequests.findFirst({
-        where: {
-          OR: [
-            { requesterId: currentUserId, receiverId: user.id },
-            { receiverId: currentUserId, requesterId: user.id },
-          ],
-        },
-      });
-
-      // Check Friends table
-      let fRecord = null;
+    } else if (currentUserId) {
       try {
-        if (prisma.friends) {
-          fRecord = await prisma.friends.findFirst({
-            where: {
-              OR: [
-                { senderId: currentUserId, receiverId: user.id },
-                { receiverId: currentUserId, senderId: user.id },
-              ],
-            },
-          });
-        }
-      } catch (_) {}
+        // Check FriendRequests
+        const fr = await prisma.friendRequests.findFirst({
+          where: {
+            OR: [
+              { requesterId: currentUserId, receiverId: user.id },
+              { receiverId: currentUserId, requesterId: user.id },
+            ],
+          },
+        });
 
-      if ((fr && fr.status === "ACCEPTED") || (fRecord && (fRecord.status === "accepted" || fRecord.status === "ACCEPTED"))) {
-        status = "FRIEND";
-        relationship = "friends";
-      } else if (fr && fr.status === "PENDING") {
-        status = "PENDING";
-        relationship = fr.requesterId === currentUserId ? "pending_sent" : "pending_received";
-      } else if (fRecord && (fRecord.status === "pending" || fRecord.status === "PENDING")) {
-        status = "PENDING";
-        relationship = "pending_sent";
+        // Check Friends table
+        let fRecord = null;
+        try {
+          if (prisma.friends) {
+            fRecord = await prisma.friends.findFirst({
+              where: {
+                OR: [
+                  { senderId: currentUserId, receiverId: user.id },
+                  { receiverId: currentUserId, senderId: user.id },
+                ],
+              },
+            });
+          }
+        } catch (_) {}
+
+        if ((fr && fr.status === "ACCEPTED") || (fRecord && (fRecord.status === "accepted" || fRecord.status === "ACCEPTED"))) {
+          status = "FRIEND";
+          relationship = "friends";
+        } else if (fr && fr.status === "PENDING") {
+          status = "PENDING";
+          relationship = fr.requesterId === currentUserId ? "pending_sent" : "pending_received";
+        } else if (fRecord && (fRecord.status === "pending" || fRecord.status === "PENDING")) {
+          status = "PENDING";
+          relationship = "pending_sent";
+        }
+      } catch (e) {
+        console.warn("⚠️ Relationship check soft fail:", e.message);
       }
     }
 

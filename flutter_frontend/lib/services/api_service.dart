@@ -655,12 +655,16 @@ class ApiService {
     return false;
   }
 
-  // Lookup user by ID (for QR scan)
+  // Lookup user by ID (for QR scan or profile view)
   static Future<Map<String, dynamic>?> lookupUserById(String userId) async {
     try {
+      String cleanId = userId.trim();
+      if (cleanId.startsWith('@')) {
+        cleanId = cleanId.substring(1).trim();
+      }
       final headers = await _getHeaders();
       final response = await http.get(
-        Uri.parse('$baseUrl/users/$userId/lookup?_=${DateTime.now().millisecondsSinceEpoch}'),
+        Uri.parse('$baseUrl/users/${Uri.encodeComponent(cleanId)}/lookup?_=${DateTime.now().millisecondsSinceEpoch}'),
         headers: headers,
       ).timeout(const Duration(seconds: 15));
       if (response.statusCode == 200) {

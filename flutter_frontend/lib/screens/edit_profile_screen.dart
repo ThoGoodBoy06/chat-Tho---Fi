@@ -104,17 +104,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 19),
         ),
         centerTitle: true,
-        actions: [
-          TextButton(
-            onPressed: _isLoading ? null : _handleSaveProfile,
-            child: _isLoading
-                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Color(0xFF0068FF), strokeWidth: 2))
-                : const Text(
-                    'Lưu',
-                    style: TextStyle(color: Color(0xFF0068FF), fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-          ),
-        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(

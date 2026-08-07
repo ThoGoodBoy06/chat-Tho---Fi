@@ -1,5 +1,7 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:universal_html/html.dart' as html;
 
 class SoundService {
   static final AudioPlayer _ringtonePlayer = AudioPlayer();
@@ -13,7 +15,6 @@ class SoundService {
       _isPlayingRingtone = true;
       await _ringtonePlayer.setReleaseMode(ReleaseMode.loop);
       if (kIsWeb) {
-        // Trên Web phát sound qua URL tĩnh từ backend hoặc asset
         await _ringtonePlayer.play(UrlSource('/ringtone.mp3'));
       } else {
         await _ringtonePlayer.play(AssetSource('sounds/ringtone.mp3'));
@@ -36,16 +37,30 @@ class SoundService {
     }
   }
 
-  /// Phát âm thanh thông báo tin nhắn 1 lần
+  /// Phát âm thanh thông báo tin nhắn 1 lần & rung điện thoại
   static Future<void> playMessageSound() async {
     try {
+      // 1. Rung điện thoại (Haptic Feedback)
+      try {
+        await HapticFeedback.vibrate();
+        await HapticFeedback.heavyImpact();
+      } catch (e) {
+        debugPrint('Vibration error: $e');
+      }
+
+      // 2. Phát âm thanh amthanhtinnhan.mp3
+      await _messagePlayer.stop();
       await _messagePlayer.setReleaseMode(ReleaseMode.release);
       if (kIsWeb) {
-        await _messagePlayer.play(UrlSource('/amthanhtinnhan.mp3'));
+        try {
+          await _messagePlayer.play(UrlSource('/amthanhtinnhan.mp3'));
+        } catch (_) {
+          await _messagePlayer.play(UrlSource('/assets/assets/sounds/amthanhtinnhan.mp3'));
+        }
       } else {
-        await _messagePlayer.play(AssetSource('sounds/message.mp3'));
+        await _messagePlayer.play(AssetSource('sounds/amthanhtinnhan.mp3'));
       }
-      debugPrint('🎵 [SoundService] Đã phát âm thanh tin nhắn mới.');
+      debugPrint('🎵 [SoundService] Đã phát âm thanh amthanhtinnhan.mp3 & rung điện thoại.');
     } catch (e) {
       debugPrint('⚠️ [SoundService] Lỗi khi phát âm thanh tin nhắn: $e');
     }

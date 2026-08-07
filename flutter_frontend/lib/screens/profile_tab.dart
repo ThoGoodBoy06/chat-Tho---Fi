@@ -25,6 +25,59 @@ class _ProfileTabState extends State<ProfileTab> {
   bool _isUploadingAvatar = false;
   bool _isUploadingCover = false;
 
+  /// Tối ưu nén ảnh trực tiếp bằng HTML Canvas siêu nhanh trên Web
+  /// Giảm kích thước file ảnh từ ~15MB xuống còn ~80KB HD
+  /// Tối ưu nén ảnh trực tiếp bằng HTML Canvas siêu nhanh trên Web
+  /// Giảm kích thước file ảnh từ ~15MB xuống còn ~80KB HD
+  Future<String> _compressImageBase64(
+    String base64Data, {
+    required int maxWidth,
+    required int maxHeight,
+    double quality = 0.82,
+  }) {
+    final completer = Completer<String>();
+    final img = html.ImageElement();
+
+    img.onLoad.listen((_) {
+      int width = img.width ?? maxWidth;
+      int height = img.height ?? maxHeight;
+      if (width <= 0) width = maxWidth;
+      if (height <= 0) height = maxHeight;
+
+      if (width > maxWidth || height > maxHeight) {
+        if (width / height > maxWidth / maxHeight) {
+          height = (height * maxWidth / width).round();
+          width = maxWidth;
+        } else {
+          width = (width * maxHeight / height).round();
+          height = maxHeight;
+        }
+      }
+
+      final canvas = html.CanvasElement(width: width, height: height);
+      final ctx = canvas.context2D;
+      ctx.drawImageScaled(img, 0, 0, width, height);
+      final compressed = canvas.toDataUrl('image/jpeg', quality);
+      if (!completer.isCompleted) completer.complete(compressed);
+    });
+
+    img.onError.listen((_) {
+      if (!completer.isCompleted) completer.complete(base64Data);
+    });
+
+    // Đặt img.src SAU KHI đã gắn listener onLoad & onError để không bao giờ bị trôi sự kiện load 1st time
+    img.src = base64Data;
+
+    // Timeout dự phòng sau 2.5 giây nếu browser không kích hoạt onLoad
+    Future.delayed(const Duration(milliseconds: 2500), () {
+      if (!completer.isCompleted) {
+        completer.complete(base64Data);
+      }
+    });
+
+    return completer.future;
+  }
+
   void _pickAndUpdateAvatar() {
     final uploadInput = html.FileUploadInputElement()..accept = 'image/*';
     uploadInput.click();
@@ -36,23 +89,42 @@ class _ProfileTabState extends State<ProfileTab> {
         reader.readAsDataUrl(file);
         reader.onLoadEnd.listen((e) async {
           if (reader.result is String) {
-            final base64Data = reader.result as String;
+            final rawBase64 = reader.result as String;
             setState(() => _isUploadingAvatar = true);
-            final success = await ApiService.updateAvatar(base64Data);
-            if (mounted) {
-              setState(() => _isUploadingAvatar = false);
-              if (success) {
+            try {
+              final compressedBase64 = await _compressImageBase64(
+                rawBase64,
+                maxWidth: 512,
+                maxHeight: 512,
+                quality: 0.82,
+              );
+              final success = await ApiService.updateAvatar(compressedBase64);
+              if (mounted) {
+                setState(() => _isUploadingAvatar = false);
+                if (success) {
+                  Provider.of<ChatProvider>(context, listen: false).fetchConversations(showLoading: false);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Cập nhật ảnh đại diện thành công!'),
+                      backgroundColor: Color(0xFF10B981),
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Lỗi khi cập nhật ảnh đại diện. Vui lòng thử lại.'),
+                      backgroundColor: Color(0xFFEF4444),
+                    ),
+                  );
+                }
+              }
+            } catch (err) {
+              if (mounted) {
+                setState(() => _isUploadingAvatar = false);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Cập nhật ảnh đại diện thành công!'),
-                    backgroundColor: Color(0xFF10B981),
-                  ),
-                );
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Lỗi khi cập nhật ảnh đại diện. Vui lòng thử lại.'),
-                    backgroundColor: Color(0xFFEF4444),
+                  SnackBar(
+                    content: Text('Lỗi xử lý ảnh: $err'),
+                    backgroundColor: const Color(0xFFEF4444),
                   ),
                 );
               }
@@ -74,23 +146,42 @@ class _ProfileTabState extends State<ProfileTab> {
         reader.readAsDataUrl(file);
         reader.onLoadEnd.listen((e) async {
           if (reader.result is String) {
-            final base64Data = reader.result as String;
+            final rawBase64 = reader.result as String;
             setState(() => _isUploadingCover = true);
-            final success = await ApiService.updateCoverImage(base64Data);
-            if (mounted) {
-              setState(() => _isUploadingCover = false);
-              if (success) {
+            try {
+              final compressedBase64 = await _compressImageBase64(
+                rawBase64,
+                maxWidth: 1280,
+                maxHeight: 720,
+                quality: 0.82,
+              );
+              final success = await ApiService.updateCoverImage(compressedBase64);
+              if (mounted) {
+                setState(() => _isUploadingCover = false);
+                if (success) {
+                  Provider.of<ChatProvider>(context, listen: false).fetchConversations(showLoading: false);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Cập nhật ảnh bìa thành công!'),
+                      backgroundColor: Color(0xFF10B981),
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Lỗi khi cập nhật ảnh bìa. Vui lòng thử lại.'),
+                      backgroundColor: Color(0xFFEF4444),
+                    ),
+                  );
+                }
+              }
+            } catch (err) {
+              if (mounted) {
+                setState(() => _isUploadingCover = false);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Cập nhật ảnh bìa thành công!'),
-                    backgroundColor: Color(0xFF10B981),
-                  ),
-                );
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Lỗi khi cập nhật ảnh bìa. Vui lòng thử lại.'),
-                    backgroundColor: Color(0xFFEF4444),
+                  SnackBar(
+                    content: Text('Lỗi xử lý ảnh: $err'),
+                    backgroundColor: const Color(0xFFEF4444),
                   ),
                 );
               }
@@ -182,14 +273,15 @@ class _ProfileTabState extends State<ProfileTab> {
     return Scaffold(
       backgroundColor: bgColor,
       body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
+        physics: const AlwaysScrollableScrollPhysics(),
         child: Column(
           children: [
             // 1. Header Stack: Cover Photo + Info Box (Column) with Avatar rendered on TOP as Stack Child 3
-            Stack(
-              clipBehavior: Clip.none,
-              alignment: Alignment.topCenter,
-              children: [
+            RepaintBoundary(
+              child: Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.topCenter,
+                children: [
                 // Child 1: Cover photo & User Details Container in a Column
                 Column(
                   children: [
@@ -458,11 +550,13 @@ class _ProfileTabState extends State<ProfileTab> {
                 ),
               ],
             ),
+          ),
 
-            const SizedBox(height: 12),
+          const SizedBox(height: 12),
 
-            // 2. Danh sách chức năng phẳng (Menu 3 mục duy nhất)
-            Container(
+          // 2. Danh sách chức năng phẳng (Menu 3 mục duy nhất)
+          RepaintBoundary(
+            child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
                 color: cardBgColor,
@@ -477,30 +571,7 @@ class _ProfileTabState extends State<ProfileTab> {
               ),
               child: Column(
                 children: [
-                  // Mục 1: Thông tin cá nhân
-                  ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
-                    leading: Container(
-                      padding: const EdgeInsets.all(9),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF0068FF).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.person_outline_rounded, color: Color(0xFF0068FF), size: 22),
-                    ),
-                    title: Text(
-                      'Thông tin cá nhân',
-                      style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 15),
-                    ),
-                    subtitle: Text('Xem chi tiết và cập nhật thông tin', style: TextStyle(color: subTextColor, fontSize: 12.5)),
-                    trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFFCBD5E1), size: 24),
-                    onTap: () {
-                      _showPersonalDetailsModal(user);
-                    },
-                  ),
-                  Divider(height: 1, indent: 68, endIndent: 18, color: dividerColor),
-
-                  // Mục 2: Mã QR của tôi
+                  // Mục 1: Mã QR của tôi
                   ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
                     leading: Container(
@@ -526,7 +597,7 @@ class _ProfileTabState extends State<ProfileTab> {
                   ),
                   Divider(height: 1, indent: 68, endIndent: 18, color: dividerColor),
 
-                  // Mục 3: Tin nhắn lưu trữ
+                  // Mục 2: Tin nhắn lưu trữ
                   ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
                     leading: Container(
@@ -552,32 +623,7 @@ class _ProfileTabState extends State<ProfileTab> {
                 ],
               ),
             ),
-
-            const SizedBox(height: 24),
-
-            // Nút Đăng xuất
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              width: double.infinity,
-              child: TextButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => SettingsScreen(onLogout: widget.onLogout)),
-                  );
-                },
-                icon: const Icon(Icons.logout_rounded, color: Color(0xFFEF4444), size: 20),
-                label: const Text(
-                  'Cài đặt tài khoản & Đăng xuất',
-                  style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.w600, fontSize: 14.5),
-                ),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  backgroundColor: const Color(0xFFEF4444).withOpacity(0.06),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-              ),
-            ),
+          ),
 
             const SizedBox(height: 40),
           ],
