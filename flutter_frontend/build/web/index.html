@@ -189,7 +189,7 @@
   <script>
     window.registerFCMAndGetToken = async function(vapidKey) {
       if (!('serviceWorker' in navigator) || !('Notification' in window)) {
-        console.log('[FCM] Service Worker hoặc Notification không được hỗ trợ');
+        console.warn('[FCM Web] Service Worker hoặc Notification API không được hỗ trợ trên trình duyệt này.');
         return null;
       }
       try {
@@ -198,21 +198,23 @@
 
         const permission = await Notification.requestPermission();
         if (permission !== 'granted') {
-          console.log('[FCM] Quyền thông báo bị từ chối:', permission);
+          console.warn('[FCM Web] ⚠️ Quyền thông báo bị từ chối hoặc chưa được duyệt (Status: ' + permission + ').');
           return null;
         }
 
+        const effectiveVapidKey = vapidKey || 'BBtraQSvar7RExe_T8aVhoA3TebgLw0S-ucoMcuV-Oef-H7ULkJGWyBctnxfY5tLnawpWQ9Wn8Aihi-wJaLiGu0';
+
         const messaging = firebase.messaging();
         const token = await messaging.getToken({
-          vapidKey: vapidKey || 'BEl62iUYgUivxIkv69yViEuiBIa-54316HqQ0t_n8b64b3v2457891234567890',
+          vapidKey: effectiveVapidKey,
           serviceWorkerRegistration: registration
         });
         if (token) {
-          console.log('[FCM Web] Lấy FCM Token thành công!');
+          console.log('[FCM Web] ✅ Lấy FCM Token thành công:', token.substring(0, 15) + '...');
           return token;
         }
       } catch (err) {
-        console.error('[FCM Web] Lỗi đăng ký / lấy FCM Token:', err);
+        console.error('[FCM Web] ❌ Lỗi đăng ký / lấy FCM Token:', err);
       }
       return null;
     };

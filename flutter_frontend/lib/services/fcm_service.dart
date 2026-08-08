@@ -39,6 +39,9 @@ class FCMService {
   static bool _isRegistering = false;
   static final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
 
+  // VAPID Key thực tế từ Firebase Console (chat-tho-fi)
+  static const String webVapidKey = "BBtraQSvar7RExe_T8aVhoA3TebgLw0S-ucoMcuV-Oef-H7ULkJGWyBctnxfY5tLnawpWQ9Wn8Aihi-wJaLiGu0";
+
   /// Khởi tạo và Đăng ký FCM Device Token
   static Future<void> initAndRegisterToken() async {
     if (_isRegistering) return;
@@ -47,7 +50,7 @@ class FCMService {
     try {
       if (kIsWeb) {
         // 🌐 Xử lý FCM cho nền tảng Web PWA (Thuần Web Push API & Service Worker)
-        final token = await getFcmTokenFromWebJs();
+        final token = await getFcmTokenFromWebJs(webVapidKey);
         final deviceId = getWebDeviceId();
 
         if (token != null && token.isNotEmpty) {

@@ -202,10 +202,7 @@
           return null;
         }
 
-        const effectiveVapidKey = vapidKey || 'BEl62iUYgUivxIkv69yViEuiBIa-54316HqQ0t_n8b64b3v2457891234567890';
-        if (effectiveVapidKey.includes('54316HqQ0t_n8b64b3v2457891234567890')) {
-          console.warn('[FCM Web] ⚠️ VAPID Key hiện tại là mẫu. Cần thay bằng Web Push VAPID Key thực tế từ Firebase Console (Project Settings -> Cloud Messaging -> Web Push certificates).');
-        }
+        const effectiveVapidKey = vapidKey || 'BBtraQSvar7RExe_T8aVhoA3TebgLw0S-ucoMcuV-Oef-H7ULkJGWyBctnxfY5tLnawpWQ9Wn8Aihi-wJaLiGu0';
 
         const messaging = firebase.messaging();
         const token = await messaging.getToken({
