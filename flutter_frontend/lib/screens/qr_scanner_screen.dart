@@ -1,10 +1,9 @@
 import 'dart:async';
-import 'dart:js' as js;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:universal_html/html.dart' as html;
-import 'dart:ui_web' as ui_web;
+import '../utils/web_helpers.dart';
 import '../services/api_service.dart';
 import 'my_qr_screen.dart';
 import 'other_user_profile_screen.dart';
@@ -41,40 +40,17 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
   }
 
   void _initWebScanner() {
-    // Register platform view for HTML camera container
-    ui_web.platformViewRegistry.registerViewFactory(
-      _containerId,
-      (int viewId) {
-        final element = html.DivElement()
-          ..id = _containerId
-          ..style.width = '100%'
-          ..style.height = '100%'
-          ..style.background = 'black';
-        return element;
-      },
-    );
+    registerWebQrView(_containerId);
 
-    // Listen to custom 'qr-scanned' event dispatched by JS
-    _qrEventSub = html.window.on['qr-scanned'].listen((html.Event event) {
+    _qrEventSub = listenWebQrEvent((rawData) {
       if (_isProcessing) return;
-      if (event is html.CustomEvent && event.detail != null) {
-        final String rawData = event.detail.toString();
-        debugPrint('📸 [Dart] Received qr-scanned event with payload: $rawData');
-        _handleQrCodeDetected(rawData);
-      }
+      debugPrint('📸 [Dart] Received qr-scanned event with payload: $rawData');
+      _handleQrCodeDetected(rawData);
     });
 
-    // Start web camera after DOM element is mounted
     Future.delayed(const Duration(milliseconds: 150), () {
       if (!mounted) return;
-      try {
-        final jsObj = js.context['webQrScanner'];
-        if (jsObj != null) {
-          jsObj.callMethod('start', [_containerId]);
-        }
-      } catch (e) {
-        debugPrint('⚠️ Error starting web camera: $e');
-      }
+      startWebQrScanner(_containerId);
     });
   }
 
@@ -92,14 +68,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
 
   void _stopCamera() {
     if (kIsWeb) {
-      try {
-        final jsObj = js.context['webQrScanner'];
-        if (jsObj != null) {
-          jsObj.callMethod('stop', []);
-        }
-      } catch (e) {
-        debugPrint('⚠️ Error stopping web camera: $e');
-      }
+      stopWebQrScanner();
     } else {
       _mobileController?.stop();
     }
@@ -175,10 +144,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
 
     // Bật lại camera để người dùng quét lại
     if (kIsWeb) {
-      try {
-        final jsObj = js.context['webQrScanner'];
-        if (jsObj != null) jsObj.callMethod('start', [_containerId]);
-      } catch (_) {}
+      startWebQrScanner(_containerId);
     } else {
       _mobileController?.start();
     }
@@ -196,10 +162,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
           reader.onLoadEnd.listen((e) {
             final dataUrl = reader.result as String?;
             if (dataUrl != null) {
-              final jsObj = js.context['webQrScanner'];
-              if (jsObj != null) {
-                jsObj.callMethod('scanImage', [dataUrl]);
-              }
+              scanWebQrImage(dataUrl);
             }
           });
         }

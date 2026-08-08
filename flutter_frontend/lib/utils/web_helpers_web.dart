@@ -1,0 +1,73 @@
+import 'dart:async';
+import 'dart:js' as js;
+import 'dart:js_util' as js_util;
+import 'dart:ui_web' as ui_web;
+import 'package:universal_html/html.dart' as html;
+
+void registerWebQrView(String containerId) {
+  try {
+    ui_web.platformViewRegistry.registerViewFactory(
+      containerId,
+      (int viewId) {
+        final element = html.DivElement()
+          ..id = containerId
+          ..style.width = '100%'
+          ..style.height = '100%'
+          ..style.background = 'black';
+        return element;
+      },
+    );
+  } catch (e) {}
+}
+
+void startWebQrScanner(String containerId) {
+  try {
+    final jsObj = js.context['webQrScanner'];
+    if (jsObj != null) {
+      jsObj.callMethod('start', [containerId]);
+    }
+  } catch (e) {}
+}
+
+void stopWebQrScanner() {
+  try {
+    final jsObj = js.context['webQrScanner'];
+    if (jsObj != null) {
+      jsObj.callMethod('stop', []);
+    }
+  } catch (e) {}
+}
+
+void scanWebQrImage(String dataUrl) {
+  try {
+    final jsObj = js.context['webQrScanner'];
+    if (jsObj != null) {
+      jsObj.callMethod('scanImage', [dataUrl]);
+    }
+  } catch (e) {}
+}
+
+StreamSubscription? listenWebQrEvent(Function(String payload) onScanned) {
+  try {
+    return html.window.on['qr-scanned'].listen((html.Event event) {
+      if (event is html.CustomEvent && event.detail != null) {
+        onScanned(event.detail.toString());
+      }
+    });
+  } catch (e) {
+    return null;
+  }
+}
+
+Future<String?> getFcmTokenFromWebJs() async {
+  try {
+    if (js_util.hasProperty(html.window, 'registerFCMAndGetToken')) {
+      final promise = js_util.callMethod(html.window, 'registerFCMAndGetToken', []);
+      final token = await js_util.promiseToFuture(promise);
+      if (token != null && token.toString().isNotEmpty) {
+        return token.toString();
+      }
+    }
+  } catch (e) {}
+  return null;
+}

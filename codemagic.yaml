@@ -5,7 +5,7 @@ workflows:
     max_build_duration: 60
     working_directory: flutter_frontend
     environment:
-      flutter: stable
+      flutter: 3.27.4
       xcode: latest
       cocoapods: default
     scripts:
@@ -25,7 +25,7 @@ workflows:
     max_build_duration: 60
     working_directory: flutter_frontend
     environment:
-      flutter: stable
+      flutter: 3.27.4
       java: 17
     scripts:
       - name: Install dependencies

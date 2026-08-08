@@ -5,8 +5,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'api_service.dart';
 import 'sound_service.dart';
-import 'dart:js_util' as js_util;
-import 'package:universal_html/html.dart' as html;
+import '../utils/web_helpers.dart';
 
 /// Hàm xử lý thông báo ngầm khi app bị đóng (Kill State / Terminated)
 @pragma('vm:entry-point')
@@ -31,13 +30,10 @@ class FCMService {
     try {
       if (kIsWeb) {
         // Xử lý FCM cho nền tảng Web
-        if (js_util.hasProperty(html.window, 'registerFCMAndGetToken')) {
-          final promise = js_util.callMethod(html.window, 'registerFCMAndGetToken', []);
-          final token = await js_util.promiseToFuture(promise);
-          if (token != null && token is String && token.isNotEmpty) {
-            debugPrint('🔥 [FCM Web] Lấy thành công Token: ${token.substring(0, 15)}...');
-            await ApiService.updateFcmToken(token);
-          }
+        final token = await getFcmTokenFromWebJs();
+        if (token != null && token.isNotEmpty) {
+          debugPrint('🔥 [FCM Web] Lấy thành công Token: ${token.substring(0, 15)}...');
+          await ApiService.updateFcmToken(token);
         }
       } else {
         // Xử lý FCM cho Mobile (Android & iOS)
