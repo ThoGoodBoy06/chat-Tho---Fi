@@ -51,31 +51,44 @@ class FCMService {
           criticalAlert: true,
         );
 
-        if (settings.authorizationStatus == AuthorizationStatus.authorized ||
-            settings.authorizationStatus == AuthorizationStatus.provisional) {
-          debugPrint('✅ [FCM Mobile] Người dùng đã cấp quyền nhận thông báo.');
+        debugPrint('🔔 Authorization status: ${settings.authorizationStatus}');
 
-          // Khởi tạo Local Notifications Channel
-          await _initLocalNotifications();
+        // Khởi tạo Local Notifications Channel
+        await _initLocalNotifications();
 
-          // Lấy FCM Device Token
-          final token = await messaging.getToken();
-          if (token != null && token.isNotEmpty) {
-            debugPrint('🔥 [FCM Mobile] Token: ${token.substring(0, 15)}...');
-            await ApiService.updateFcmToken(token);
+        // Vòng lặp chờ APNs token sẵn sàng trên iOS và lấy FCM Token
+        String? token;
+        for (int i = 0; i < 5; i++) {
+          try {
+            if (defaultTargetPlatform == TargetPlatform.iOS) {
+              final apnsToken = await messaging.getAPNSToken();
+              debugPrint('🔥 [FCM iOS] APNs Token (Lần $i): $apnsToken');
+            }
+            token = await messaging.getToken();
+            if (token != null && token.isNotEmpty) break;
+          } catch (e) {
+            debugPrint('⚠️ Thử lần $i lấy FCM token lỗi: $e');
           }
-
-          // Lắng nghe token thay đổi
-          messaging.onTokenRefresh.listen((newToken) {
-            ApiService.updateFcmToken(newToken);
-          });
-
-          // Lắng nghe khi app đang mở (Foreground)
-          FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-            debugPrint('📩 [FCM Mobile] Tin nhắn Foreground: ${message.notification?.title}');
-            _showForegroundNotification(message);
-          });
+          await Future.delayed(const Duration(milliseconds: 600));
         }
+
+        if (token != null && token.isNotEmpty) {
+          debugPrint('🔥 [FCM Mobile] Token lấy thành công: ${token.substring(0, 15)}...');
+          await ApiService.updateFcmToken(token);
+        } else {
+          debugPrint('⚠️ [FCM Mobile] Chưa lấy được Token thiết bị.');
+        }
+
+        // Lắng nghe token thay đổi
+        messaging.onTokenRefresh.listen((newToken) {
+          ApiService.updateFcmToken(newToken);
+        });
+
+        // Lắng nghe khi app đang mở (Foreground)
+        FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+          debugPrint('📩 [FCM Mobile] Tin nhắn Foreground: ${message.notification?.title}');
+          _showForegroundNotification(message);
+        });
       }
     } catch (e) {
       debugPrint('⚠️ [FCMService] Ngoại lệ khi đăng ký FCM: $e');
