@@ -345,7 +345,7 @@
     },
     {
       "name": "mobile_scanner",
-      "rootUri": "file:///C:/Users/MSI%20PC/AppData/Local/Pub/Cache/hosted/pub.dev/mobile_scanner-5.2.3",
+      "rootUri": "file:///C:/Users/MSI%20PC/AppData/Local/Pub/Cache/hosted/pub.dev/mobile_scanner-6.0.11",
       "packageUri": "lib/",
       "languageVersion": "3.4"
     },
@@ -614,7 +614,7 @@
       "languageVersion": "3.0"
     }
   ],
-  "generated": "2026-08-08T08:51:57.278876Z",
+  "generated": "2026-08-08T08:56:30.320400Z",
   "generator": "pub",
   "generatorVersion": "3.4.0",
   "flutterRoot": "file:///C:/Du_an_nhantin_goidien/.flutter_sdk/flutter",
