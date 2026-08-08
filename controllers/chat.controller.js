@@ -547,7 +547,11 @@ exports.sendMessage = async(req, res) => {
                 }
 
                 const recipientTokens = Array.from(tokenSet);
-                if (recipientTokens.length === 0) return;
+                console.log(`🔍 [FCM Server] Tìm thấy ${recipientTokens.length} FCM Tokens cho người nhận User ${member.userId}`);
+                if (recipientTokens.length === 0) {
+                    console.warn(`⚠️ User ${member.userId} chưa có FCM Token nào được đăng ký trong hệ thống (UserDevices)!`);
+                    return;
+                }
 
                 let snippet = mappedMessage.content;
                 if (mappedMessage.type === "file") {
