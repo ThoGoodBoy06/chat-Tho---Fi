@@ -75,7 +75,7 @@ class FCMService {
 
         // Vòng lặp chờ APNs token sẵn sàng trên iOS và lấy FCM Token
         String? token;
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 10; i++) {
           try {
             if (defaultTargetPlatform == TargetPlatform.iOS) {
               final apnsToken = await messaging.getAPNSToken();
@@ -86,7 +86,7 @@ class FCMService {
           } catch (e) {
             debugPrint('⚠️ Thử lần $i lấy FCM token lỗi: $e');
           }
-          await Future.delayed(const Duration(milliseconds: 600));
+          await Future.delayed(const Duration(milliseconds: 800));
         }
 
         if (token != null && token.isNotEmpty) {
