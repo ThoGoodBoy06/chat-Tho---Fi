@@ -106,6 +106,26 @@ class FCMService {
           debugPrint('📩 [FCM Mobile] Tin nhắn Foreground: ${message.notification?.title}');
           _showForegroundNotification(message);
         });
+
+        // Lắng nghe khi người dùng bấm vào thông báo từ background / màn hình chính
+        FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+          debugPrint('🔔 [FCM Mobile] Bấm vào thông báo từ background: ${message.data}');
+          final convId = message.data['conversationId']?.toString();
+          if (convId != null && convId.isNotEmpty) {
+            ApiService.markAsRead(convId).catchError((_) {});
+          }
+        });
+
+        // Xử lý khi mở app từ trạng thái terminated bằng cách bấm thông báo
+        messaging.getInitialMessage().then((RemoteMessage? message) {
+          if (message != null) {
+            debugPrint('🔔 [FCM Mobile] Bấm vào thông báo từ terminated: ${message.data}');
+            final convId = message.data['conversationId']?.toString();
+            if (convId != null && convId.isNotEmpty) {
+              ApiService.markAsRead(convId).catchError((_) {});
+            }
+          }
+        });
       }
     } catch (e) {
       debugPrint('⚠️ [FCMService] Ngoại lệ khi đăng ký FCM: $e');
