@@ -84,3 +84,18 @@ String getWebDeviceId() {
   } catch (_) {}
   return 'web_unknown_device';
 }
+
+bool isNotificationPermissionGranted() {
+  try {
+    return html.Notification.permission == 'granted';
+  } catch (_) {}
+  return false;
+}
+
+Future<bool> requestWebNotificationPermission() async {
+  try {
+    final res = await html.Notification.requestPermission();
+    return res == 'granted';
+  } catch (_) {}
+  return false;
+}

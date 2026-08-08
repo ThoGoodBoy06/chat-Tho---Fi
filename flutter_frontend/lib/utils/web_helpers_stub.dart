@@ -19,3 +19,6 @@ Future<String?> getFcmTokenFromWebJs([String? vapidKey]) async {
 String getWebDeviceId() {
   return 'mobile_stub_device';
 }
+
+bool isNotificationPermissionGranted() => true;
+Future<bool> requestWebNotificationPermission() async => true;

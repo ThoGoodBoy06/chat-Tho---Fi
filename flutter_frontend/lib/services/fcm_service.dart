@@ -42,6 +42,27 @@ class FCMService {
   // VAPID Key thực tế từ Firebase Console (chat-tho-fi)
   static const String webVapidKey = "BBtraQSvar7RExe_T8aVhoA3TebgLw0S-ucoMcuV-Oef-H7ULkJGWyBctnxfY5tLnawpWQ9Wn8Aihi-wJaLiGu0";
 
+  /// Yêu cầu cấp quyền và lấy FCM Token chủ động khi người dùng bấm nút (Dành riêng cho iOS WebKit User Gesture)
+  static Future<bool> requestPermissionAndRegisterToken() async {
+    try {
+      if (kIsWeb) {
+        final granted = await requestWebNotificationPermission();
+        if (granted) {
+          final token = await getFcmTokenFromWebJs(webVapidKey);
+          final deviceId = getWebDeviceId();
+          if (token != null && token.isNotEmpty) {
+            debugPrint('🔥 [FCM Web User Gesture] Token lấy thành công: ${token.substring(0, 15)}...');
+            await ApiService.updateFcmToken(token, platform: 'web', deviceId: deviceId);
+            return true;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ [FCMService] Lỗi xin quyền thủ công: $e');
+    }
+    return false;
+  }
+
   /// Khởi tạo và Đăng ký FCM Device Token
   static Future<void> initAndRegisterToken() async {
     if (_isRegistering) return;
