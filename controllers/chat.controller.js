@@ -609,7 +609,7 @@ exports.sendMessage = async(req, res) => {
                                     title: senderDisplayName,
                                     body: snippet,
                                 },
-                                sound: "amthanhtinnhan.mp3",
+                                sound: "default",
                                 badge: 1,
                                 "content-available": 1,
                                 "mutable-content": 1,
@@ -626,9 +626,10 @@ exports.sendMessage = async(req, res) => {
                             body: snippet,
                             icon: avatarUrl,
                             badge: `${BASE_HOST_URL}/icon.png`,
-                            vibrate: [400, 100, 400, 100, 600],
+                            vibrate: [500, 250, 500, 250, 500],
                             tag: `conv-${conversationId}`,
                             renotify: true,
+                            sound: "default",
                         },
                         fcmOptions: {
                             link: `${BASE_HOST_URL}/?conversationId=${conversationId}`
@@ -1065,7 +1066,7 @@ exports.sendPushNotification = async(targetUserIdOrToken, title, body, customDat
             payload: {
                 aps: {
                     alert: { title: title, body: body },
-                    sound: dataOnly ? "ringtone.mp3" : "amthanhtinnhan.mp3",
+                    sound: "default",
                     badge: 1,
                     "content-available": 1,
                     "mutable-content": 1,
@@ -1084,8 +1085,9 @@ exports.sendPushNotification = async(targetUserIdOrToken, title, body, customDat
                 badge: `${BASE_HOST_URL}/icon.png`,
                 tag: conversationId ? `conv-${conversationId}` : "chat-notification",
                 renotify: true,
-                vibrate: dataOnly ? [1000, 500, 1000, 500] : [400, 100, 400],
+                vibrate: dataOnly ? [1000, 500, 1000, 500] : [500, 250, 500, 250, 500],
                 requireInteraction: dataOnly ? true : false,
+                sound: "default",
             },
             fcmOptions: {
                 link: conversationId ? `${BASE_HOST_URL}/?conversationId=${conversationId}` : BASE_HOST_URL,
