@@ -570,7 +570,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                 ListTile(
                                   dense: true,
                                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-                                  title: const Text('Thu hồi tin nhắn', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFFEF4444))),
+                                  title: const Text('Thu hồi & xóa tin nhắn', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFFEF4444))),
                                   trailing: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 20),
                                   onTap: () {
                                     Navigator.pop(dialogContext);
