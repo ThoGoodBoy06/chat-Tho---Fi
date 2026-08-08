@@ -15,6 +15,7 @@ import '../providers/chat_provider.dart';
 import '../providers/theme_provider.dart';
 import '../services/socket_service.dart';
 import '../services/api_service.dart';
+import '../services/sound_service.dart';
 import 'friend_requests_screen.dart';
 import 'my_groups_screen.dart';
 import 'add_friend_screen.dart';
@@ -4190,6 +4191,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     bool isCameraOff = false;
     String callStatus = isCaller ? 'Đang gọi...' : 'Đang đàm thoại';
 
+    // Phát âm thanh tương ứng
+    if (isCaller) {
+      SoundService.playTutTut();
+    } else {
+      SoundService.playRingtone();
+    }
+
     StreamSubscription? acceptSub;
     StreamSubscription? rejectSub;
     StreamSubscription? endSub;
@@ -4241,6 +4249,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
     void cleanupCall() {
       try {
+        SoundService.stopAllCallSounds();
         acceptSub?.cancel();
         rejectSub?.cancel();
         endSub?.cancel();
@@ -4531,6 +4540,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             }
 
             acceptSub ??= SocketService.onCallAccepted.listen((_) {
+              SoundService.stopAllCallSounds();
               setDialogState(() {
                 callStatus = 'Đang đàm thoại';
               });

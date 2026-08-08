@@ -88,9 +88,10 @@ class FCMService {
   static Future<void> _initLocalNotifications() async {
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosSettings = DarwinInitializationSettings(
-      requestSoundPermission: true,
-      requestBadgePermission: true,
       requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+      requestCriticalPermission: true,
     );
 
     const initSettings = InitializationSettings(android: androidSettings, iOS: iosSettings);
@@ -109,6 +110,7 @@ class FCMService {
         importance: Importance.max,
         playSound: true,
         sound: RawResourceAndroidNotificationSound('ringtone'),
+        enableVibration: true,
       );
 
       // Kênh tin nhắn
@@ -119,6 +121,7 @@ class FCMService {
         importance: Importance.high,
         playSound: true,
         sound: RawResourceAndroidNotificationSound('amthanhtinnhan'),
+        enableVibration: true,
       );
 
       await androidPlugin.createNotificationChannel(callChannel);
@@ -150,12 +153,16 @@ class FCMService {
             importance: Importance.max,
             priority: Priority.high,
             playSound: true,
+            enableVibration: true,
             sound: RawResourceAndroidNotificationSound(isCall ? 'ringtone' : 'amthanhtinnhan'),
           ),
           iOS: DarwinNotificationDetails(
             sound: isCall ? 'ringtone.mp3' : 'amthanhtinnhan.mp3',
             presentSound: true,
             presentAlert: true,
+            presentBadge: true,
+            presentBanner: true,
+            presentList: true,
           ),
         ),
       );
