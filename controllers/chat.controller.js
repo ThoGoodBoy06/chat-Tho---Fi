@@ -457,6 +457,8 @@ exports.sendMessage = async(req, res) => {
                 replyMessageId: replyMessageId || null,
 
                 isRead: false,
+
+                isDelivered: true,
             },
 
             include: {
@@ -576,6 +578,10 @@ exports.sendMessage = async(req, res) => {
                         },
                         payload: {
                             aps: {
+                                alert: {
+                                    title: senderDisplayName,
+                                    body: snippet,
+                                },
                                 sound: "amthanhtinnhan.mp3",
                                 badge: 1,
                                 "content-available": 1,
@@ -971,6 +977,10 @@ exports.sendPushNotification = async(fcmToken, title, body, customData = null, d
             },
             payload: {
                 aps: {
+                    alert: {
+                        title: title,
+                        body: body,
+                    },
                     sound: dataOnly ? "ringtone.mp3" : "amthanhtinnhan.mp3",
                     badge: 1,
                     "content-available": 1,
