@@ -46,14 +46,18 @@ class FCMService {
 
     try {
       if (kIsWeb) {
-        // Xử lý FCM cho nền tảng Web
+        // 🌐 Xử lý FCM cho nền tảng Web PWA (Thuần Web Push API & Service Worker)
         final token = await getFcmTokenFromWebJs();
+        final deviceId = getWebDeviceId();
+
         if (token != null && token.isNotEmpty) {
-          debugPrint('🔥 [FCM Web] Lấy thành công Token: ${token.substring(0, 15)}...');
-          await ApiService.updateFcmToken(token);
+          debugPrint('🔥 [FCM Web] Token lấy thành công: ${token.substring(0, 15)}...');
+          await ApiService.updateFcmToken(token, platform: 'web', deviceId: deviceId);
+        } else {
+          debugPrint('⚠️ [FCM Web] Chưa lấy được FCM Token Web (Cần cấp quyền hoặc Add to Home Screen trên iOS 16.4+).');
         }
       } else {
-        // Xử lý FCM cho Mobile (Android & iOS)
+        // 📱 Xử lý FCM cho Mobile Native (Android & iOS)
         await Firebase.initializeApp();
 
         // Đăng ký Background Handler
@@ -70,11 +74,13 @@ class FCMService {
 
         debugPrint('🔔 Authorization status: ${settings.authorizationStatus}');
 
-        // Khởi tạo Local Notifications Channel
+        // Khởi tạo Local Notifications Channel chỉ riêng cho Mobile
         await _initLocalNotifications();
 
         // Vòng lặp chờ APNs token sẵn sàng trên iOS và lấy FCM Token
         String? token;
+        final platformStr = defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android';
+
         for (int i = 0; i < 10; i++) {
           try {
             if (defaultTargetPlatform == TargetPlatform.iOS) {
@@ -91,17 +97,17 @@ class FCMService {
 
         if (token != null && token.isNotEmpty) {
           debugPrint('🔥 [FCM Mobile] Token lấy thành công: ${token.substring(0, 15)}...');
-          await ApiService.updateFcmToken(token);
+          await ApiService.updateFcmToken(token, platform: platformStr, deviceId: '${platformStr}_native_device');
         } else {
           debugPrint('⚠️ [FCM Mobile] Chưa lấy được Token thiết bị.');
         }
 
         // Lắng nghe token thay đổi
         messaging.onTokenRefresh.listen((newToken) {
-          ApiService.updateFcmToken(newToken);
+          ApiService.updateFcmToken(newToken, platform: platformStr, deviceId: '${platformStr}_native_device');
         });
 
-        // Lắng nghe khi app đang mở (Foreground)
+        // Lắng nghe khi app đang mở (Foreground) trên Mobile
         FirebaseMessaging.onMessage.listen((RemoteMessage message) {
           debugPrint('📩 [FCM Mobile] Tin nhắn Foreground: ${message.notification?.title}');
           _showForegroundNotification(message);

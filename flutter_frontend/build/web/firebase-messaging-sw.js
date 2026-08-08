@@ -88,11 +88,12 @@ self.addEventListener("push", function (event) {
   }
 });
 
-// Xử lý khi click vào banner thông báo chạy ngầm trên điện thoại
+// Xử lý khi click vào banner thông báo chạy ngầm trên điện thoại / máy tính
 self.addEventListener("notificationclick", function(event) {
   event.notification.close();
   const action = event.action; // "accept" hoặc "decline" hoặc undefined
-  const notificationData = event.notification.data;
+  const notificationData = event.notification.data || {};
+  const conversationId = notificationData.conversationId || "";
 
   if (notificationData && (notificationData.type === "incoming_call" || notificationData.type === "INCOMING_CALL")) {
     let url = `/?action=incoming_call&callerId=${notificationData.callerId}&callerName=${encodeURIComponent(notificationData.callerName || "")}&callType=${notificationData.callType || "voice"}&callerAvatar=${encodeURIComponent(notificationData.callerAvatar || "")}&t=${Date.now()}`;
@@ -118,16 +119,31 @@ self.addEventListener("notificationclick", function(event) {
       })
     );
   } else {
+    // Xử lý click tin nhắn chat
+    const targetUrl = conversationId ? `/?conversationId=${conversationId}` : "/";
+
     event.waitUntil(
       clients.matchAll({ type: "window", includeUncontrolled: true }).then(function(clientList) {
         for (let i = 0; i < clientList.length; i++) {
           let client = clientList[i];
-          if (client.url.includes(self.location.origin) && "focus" in client) {
-            return client.focus();
+          if (client.url.includes(self.location.origin)) {
+            // Bắn message tới Flutter PWA tab đang mở để trigger state navigation
+            if (client.postMessage) {
+              client.postMessage({
+                type: "NOTIFICATION_CLICKED",
+                conversationId: conversationId,
+              });
+            }
+            if ("navigate" in client) {
+              client.navigate(targetUrl);
+            }
+            if ("focus" in client) {
+              return client.focus();
+            }
           }
         }
         if (clients.openWindow) {
-          return clients.openWindow("/");
+          return clients.openWindow(targetUrl);
         }
       })
     );

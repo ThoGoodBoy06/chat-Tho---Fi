@@ -570,7 +570,7 @@ app.post("/api/users/avatar", async(req, res) => {
     }
 });
 
-// --- API LƯU FCM TOKEN CỦA THIẾT BỊ ---
+// --- API LƯU FCM TOKEN CỦA THIẾT BỊ (HỖ TRỢ ĐA THIẾT BỊ PWA & MOBILE) ---
 app.post("/api/users/fcm-token", async(req, res) => {
     try {
         const authHeader = req.headers.authorization;
@@ -579,11 +579,33 @@ app.post("/api/users/fcm-token", async(req, res) => {
             return res.status(401).json({ message: "Không có quyền truy cập" });
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const { fcmToken } = req.body;
+        const { fcmToken, platform = 'web', deviceId } = req.body;
 
+        if (!fcmToken) {
+            return res.status(400).json({ success: false, message: "Thiếu fcmToken" });
+        }
+
+        // 1. Cập nhật bảng Users (giữ tương thích ngược)
         await prisma.users.update({
             where: { id: decoded.id },
             data: { fcmToken: fcmToken },
+        }).catch(() => {});
+
+        // 2. Upsert vào bảng UserDevices hỗ trợ nhận push trên nhiều thiết bị đồng thời
+        await prisma.userDevices.upsert({
+            where: { fcmToken: fcmToken },
+            update: {
+                userId: decoded.id,
+                platform: platform,
+                deviceId: deviceId || null,
+                updatedAt: new Date(),
+            },
+            create: {
+                userId: decoded.id,
+                fcmToken: fcmToken,
+                platform: platform,
+                deviceId: deviceId || null,
+            },
         });
 
         res.json({ success: true, message: "Lưu mã thiết bị thành công" });

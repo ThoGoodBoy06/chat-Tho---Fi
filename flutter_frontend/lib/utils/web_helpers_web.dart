@@ -59,15 +59,28 @@ StreamSubscription? listenWebQrEvent(Function(String payload) onScanned) {
   }
 }
 
-Future<String?> getFcmTokenFromWebJs() async {
+Future<String?> getFcmTokenFromWebJs([String? vapidKey]) async {
   try {
     if (js_util.hasProperty(html.window, 'registerFCMAndGetToken')) {
-      final promise = js_util.callMethod(html.window, 'registerFCMAndGetToken', []);
+      final args = vapidKey != null ? [vapidKey] : [];
+      final promise = js_util.callMethod(html.window, 'registerFCMAndGetToken', args);
       final token = await js_util.promiseToFuture(promise);
       if (token != null && token.toString().isNotEmpty) {
         return token.toString();
       }
     }
-  } catch (e) {}
+  } catch (e) {
+    print('❌ [Web JS Interop] Lỗi lấy FCM Token: $e');
+  }
   return null;
+}
+
+String getWebDeviceId() {
+  try {
+    if (js_util.hasProperty(html.window, 'getWebDeviceId')) {
+      final id = js_util.callMethod(html.window, 'getWebDeviceId', []);
+      return id.toString();
+    }
+  } catch (_) {}
+  return 'web_unknown_device';
 }

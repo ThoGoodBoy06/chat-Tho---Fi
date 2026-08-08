@@ -253,14 +253,18 @@ class ApiService {
     return [];
   }
 
-  // Update FCM Device Token
-  static Future<bool> updateFcmToken(String fcmToken) async {
+  // Update FCM Device Token (Hỗ trợ Đa thiết bị PWA & Mobile)
+  static Future<bool> updateFcmToken(String fcmToken, {String platform = 'web', String? deviceId}) async {
     try {
       final headers = await _getHeaders();
       final response = await http.post(
         Uri.parse('$baseUrl/users/fcm-token'),
         headers: headers,
-        body: jsonEncode({'fcmToken': fcmToken}),
+        body: jsonEncode({
+          'fcmToken': fcmToken,
+          'platform': platform,
+          if (deviceId != null) 'deviceId': deviceId,
+        }),
       ).timeout(const Duration(seconds: 15));
       debugPrint('🔥 [ApiService] Response updateFcmToken status: ${response.statusCode}');
       return response.statusCode == 200;

@@ -510,11 +510,18 @@ exports.sendMessage = async(req, res) => {
         // Trả response ngay sau khi lưu DB xong (không đợi socket/FCM)
         res.status(201).json({ success: true, data: mappedMessage });
 
-        // 2. Lấy danh sách thành viên và phát tin nhắn real-time (sau khi đã respond xong)
+        // 2. Lấy danh sách thành viên và phát tin nhắn real-time
         const members = await prisma.conversationMembers.findMany({
             where: { conversationId },
             include: {
-                Users: { select: { fcmToken: true } }
+                Users: {
+                    select: {
+                        fcmToken: true,
+                        devices: {
+                            select: { fcmToken: true, platform: true }
+                        }
+                    }
+                }
             }
         });
 
@@ -525,9 +532,23 @@ exports.sendMessage = async(req, res) => {
             io.to(conversationId).emit("receive_message", mappedMessage);
         }
 
+        // 4. Gửi Push Notification đến tất cả thiết bị của đối phương
         members.forEach((member) => {
-            // Chỉ gửi cho người nhận (đối phương) và khi họ đã có FCM Token
-            if (member.userId !== senderId && member.Users && member.Users.fcmToken) {
+            if (member.userId !== senderId && member.Users) {
+                // Gom tất cả FCM Token từ bảng UserDevices và Users
+                const tokenSet = new Set();
+                if (member.Users.devices && member.Users.devices.length > 0) {
+                    member.Users.devices.forEach((d) => {
+                        if (d.fcmToken) tokenSet.add(d.fcmToken);
+                    });
+                }
+                if (member.Users.fcmToken) {
+                    tokenSet.add(member.Users.fcmToken);
+                }
+
+                const recipientTokens = Array.from(tokenSet);
+                if (recipientTokens.length === 0) return;
+
                 let snippet = mappedMessage.content;
                 if (mappedMessage.type === "file") {
                     try {
@@ -550,15 +571,15 @@ exports.sendMessage = async(req, res) => {
                         `${BASE_HOST_URL}${senderAvatar}`;
                 } else {
                     avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-            (newMessage.Users && newMessage.Users.fullName) || "User"
-          )}&background=random`;
+                        (newMessage.Users && newMessage.Users.fullName) || "User"
+                    )}&background=random`;
                 }
 
                 const senderMember = members.find((m) => m.userId === senderId);
                 const senderDisplayName = (senderMember && senderMember.nickname) || (newMessage.Users && newMessage.Users.fullName) || "Tin nhắn mới";
 
                 const payload = {
-                    token: member.Users.fcmToken,
+                    tokens: recipientTokens,
                     notification: {
                         title: senderDisplayName,
                         body: snippet,
@@ -594,28 +615,56 @@ exports.sendMessage = async(req, res) => {
                     webpush: {
                         headers: {
                             Urgency: "high",
+                            TTL: "86400",
                         },
                         notification: {
+                            title: senderDisplayName,
+                            body: snippet,
                             icon: avatarUrl,
                             badge: `${BASE_HOST_URL}/icon.png`,
                             vibrate: [400, 100, 400, 100, 600],
-                            tag: String(conversationId),
+                            tag: `conv-${conversationId}`,
                             renotify: true,
                         },
+                        fcmOptions: {
+                            link: `${BASE_HOST_URL}/?conversationId=${conversationId}`
+                        }
                     },
                     data: {
                         conversationId: String(conversationId),
                         senderId: String(senderId),
                         messageId: String(newMessage.id),
+                        title: senderDisplayName,
+                        body: snippet,
+                        avatar: avatarUrl,
                         type: "chat_message",
                     },
                 };
 
-                // Gửi ngầm không cần await để tránh làm chậm tốc độ gửi tin nhắn (Chỉ gửi khi Firebase đã khởi tạo)
+                // Bắn multicast cho tất cả thiết bị của user
                 if (getApps().length > 0) {
-                    getMessaging().send(payload)
-                        .then(async () => {
-                            console.log(`📲 Đã bắn Push Notification cho User ${member.userId}`);
+                    getMessaging().sendEachForMulticast(payload)
+                        .then(async (response) => {
+                            console.log(`📲 Đã bắn Push Multicast cho User ${member.userId}: ${response.successCount}/${recipientTokens.length} thành công.`);
+                            
+                            // Xóa token hỏng
+                            if (response.failureCount > 0) {
+                                const failedTokens = [];
+                                response.responses.forEach((resp, idx) => {
+                                    if (!resp.success && resp.error) {
+                                        const code = resp.error.code;
+                                        if (code === 'messaging/invalid-registration-token' || code === 'messaging/registration-token-not-registered') {
+                                            failedTokens.push(recipientTokens[idx]);
+                                        }
+                                    }
+                                });
+                                if (failedTokens.length > 0) {
+                                    prisma.userDevices.deleteMany({
+                                        where: { fcmToken: { in: failedTokens } }
+                                    }).catch(() => {});
+                                }
+                            }
+
                             try {
                                 await prisma.messages.update({
                                     where: { id: newMessage.id },
@@ -635,7 +684,7 @@ exports.sendMessage = async(req, res) => {
                                 console.error("Lỗi cập nhật isDelivered từ Push:", e.message);
                             }
                         })
-                        .catch((err) => console.error(`❌ Lỗi gửi Push Notification:`, err.message));
+                        .catch((err) => console.error(`❌ Lỗi gửi Push Notification Multicast:`, err.message));
                 }
             }
         });
@@ -949,20 +998,52 @@ exports.reactToMessage = async(req, res) => {
 };
 
 /**
- * Hàm gửi Push Notification sử dụng Firebase Admin SDK
- * @param {string} fcmToken - Token FCM của thiết bị nhận
+ * Hàm gửi Push Notification sử dụng Firebase Admin SDK (Hỗ trợ cả token đơn và userId đa thiết bị PWA/Mobile)
+ * @param {string} targetUserIdOrToken - Token FCM hoặc ID của người nhận
  * @param {string} title - Tiêu đề thông báo
  * @param {string} body - Nội dung thông báo
  * @param {object} customData - Dữ liệu tùy chỉnh gửi kèm
+ * @param {boolean} dataOnly - Chỉ gửi payload data (ví dụ cuộc gọi đến)
  */
-exports.sendPushNotification = async(fcmToken, title, body, customData = null, dataOnly = false) => {
+exports.sendPushNotification = async(targetUserIdOrToken, title, body, customData = null, dataOnly = false) => {
     if (getApps().length === 0) {
         console.warn("⚠️ Firebase Admin chưa được khởi tạo. Không thể gửi thông báo.");
         return;
     }
 
+    if (!targetUserIdOrToken) return;
+
+    let recipientTokens = [];
+
+    // 1. Kiểm tra nếu tham số truyền vào là Token đơn hay là UserId
+    if (typeof targetUserIdOrToken === "string" && (targetUserIdOrToken.includes(":") || targetUserIdOrToken.length > 50)) {
+        recipientTokens.push(targetUserIdOrToken);
+    } else {
+        // Tra cứu tất cả thiết bị của userId từ bảng UserDevices và Users
+        const devices = await prisma.userDevices.findMany({
+            where: { userId: targetUserIdOrToken },
+            select: { fcmToken: true }
+        });
+        devices.forEach(d => { if (d.fcmToken) recipientTokens.push(d.fcmToken); });
+
+        const user = await prisma.users.findUnique({
+            where: { id: targetUserIdOrToken },
+            select: { fcmToken: true }
+        });
+        if (user && user.fcmToken && !recipientTokens.includes(user.fcmToken)) {
+            recipientTokens.push(user.fcmToken);
+        }
+    }
+
+    if (recipientTokens.length === 0) {
+        console.warn(`⚠️ Không tìm thấy FCM Token nào cho target: ${targetUserIdOrToken}`);
+        return;
+    }
+
+    const conversationId = (customData && customData.conversationId) || "";
+
     const payload = {
-        token: fcmToken,
+        tokens: recipientTokens,
         android: {
             priority: "high",
             notification: {
@@ -979,10 +1060,7 @@ exports.sendPushNotification = async(fcmToken, title, body, customData = null, d
             },
             payload: {
                 aps: {
-                    alert: {
-                        title: title,
-                        body: body,
-                    },
+                    alert: { title: title, body: body },
                     sound: dataOnly ? "ringtone.mp3" : "amthanhtinnhan.mp3",
                     badge: 1,
                     "content-available": 1,
@@ -992,13 +1070,28 @@ exports.sendPushNotification = async(fcmToken, title, body, customData = null, d
         },
         webpush: {
             headers: {
-                Urgency: "high"
+                Urgency: "high",
+                TTL: "86400",
+            },
+            notification: {
+                title: title,
+                body: body,
+                icon: `${BASE_HOST_URL}/icon.png`,
+                badge: `${BASE_HOST_URL}/icon.png`,
+                tag: conversationId ? `conv-${conversationId}` : "chat-notification",
+                renotify: true,
+                vibrate: dataOnly ? [1000, 500, 1000, 500] : [400, 100, 400],
+                requireInteraction: dataOnly ? true : false,
+            },
+            fcmOptions: {
+                link: conversationId ? `${BASE_HOST_URL}/?conversationId=${conversationId}` : BASE_HOST_URL,
             }
         },
         data: {
             ...(customData || {}),
             title: title,
-            body: body
+            body: body,
+            type: (customData && customData.type) || (dataOnly ? "INCOMING_CALL" : "chat_message"),
         }
     };
 
@@ -1008,17 +1101,30 @@ exports.sendPushNotification = async(fcmToken, title, body, customData = null, d
             body: body,
             image: `${BASE_HOST_URL}/icon.png`
         };
-        payload.webpush.notification = {
-            icon: `${BASE_HOST_URL}/icon.png`,
-            badge: `${BASE_HOST_URL}/icon.png`,
-            vibrate: [1000, 500, 1000, 500, 1000],
-            requireInteraction: true
-        };
     }
 
     try {
-        const response = await getMessaging().send(payload);
-        console.log("📲 Đã gửi Push Notification thành công:", response);
+        const response = await getMessaging().sendEachForMulticast(payload);
+        console.log(`📲 Đã gửi Push Multicast thành công cho ${response.successCount}/${recipientTokens.length} thiết bị`);
+
+        // Dọn dẹp token bị hỏng
+        if (response.failureCount > 0) {
+            const failedTokens = [];
+            response.responses.forEach((resp, idx) => {
+                if (!resp.success && resp.error) {
+                    const code = resp.error.code;
+                    if (code === 'messaging/invalid-registration-token' || code === 'messaging/registration-token-not-registered') {
+                        failedTokens.push(recipientTokens[idx]);
+                    }
+                }
+            });
+            if (failedTokens.length > 0) {
+                prisma.userDevices.deleteMany({
+                    where: { fcmToken: { in: failedTokens } }
+                }).catch(() => {});
+            }
+        }
+
         return response;
     } catch (error) {
         console.error("❌ Lỗi gửi Push Notification qua Firebase Admin:", error.message);

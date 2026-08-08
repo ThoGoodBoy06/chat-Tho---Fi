@@ -111,6 +111,22 @@ model Users {
   reportsCreated Report[] @relation("ReportsCreated")
   reportsReceived Report[] @relation("ReportsReceived")
   fcmToken  String?  
+  devices   UserDevices[]
+}
+
+model UserDevices {
+  id        String   @id @default(uuid())
+  userId    String
+  fcmToken  String   @unique
+  platform  String   @default("web") // 'web' | 'android' | 'ios'
+  deviceId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user Users @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([fcmToken])
 }
 
 model Report {

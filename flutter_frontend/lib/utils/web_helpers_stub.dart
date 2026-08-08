@@ -12,6 +12,10 @@ StreamSubscription? listenWebQrEvent(Function(String payload) onScanned) {
   return null;
 }
 
-Future<String?> getFcmTokenFromWebJs() async {
+Future<String?> getFcmTokenFromWebJs([String? vapidKey]) async {
   return null;
+}
+
+String getWebDeviceId() {
+  return 'mobile_stub_device';
 }
