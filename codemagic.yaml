@@ -17,8 +17,10 @@ workflows:
         script: |
           flutter build ipa --release --no-codesign
     artifacts:
-      - flutter_frontend/build/ios/ipa/*.ipa
-      - flutter_frontend/build/ios/iphoneos/*.app
+      - build/ios/ipa/*.ipa
+      - build/ios/archive/*.xcarchive
+      - build/ios/iphoneos/*.app
+      - "*.ipa"
 
   android-workflow:
     name: Flutter Android Workflow
