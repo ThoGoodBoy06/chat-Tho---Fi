@@ -1,6 +1,18 @@
-// Version tracking - giúp trình duyệt iOS/Android nhận diện cập nhật mới và không dùng bản cache cũ
-const SW_VERSION = "1.2.2";
-console.log("[firebase-messaging-sw.js] Version:", SW_VERSION);
+// Version tracking - giúp trình duyệt nhận diện bản cập nhật mới và hủy cache SW cũ
+const SW_VERSION = "2.0.0";
+console.log("[firebase-messaging-sw.js] SW Version Active:", SW_VERSION);
+
+self.addEventListener("install", (event) => {
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches.keys().then((names) => {
+      return Promise.all(names.map((name) => caches.delete(name)));
+    }).then(() => self.clients.claim())
+  );
+});
 
 importScripts(
   "https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js",
@@ -150,33 +162,3 @@ self.addEventListener("notificationclick", function(event) {
   }
 });
 
-self.addEventListener("install", (event) => {
-  self.skipWaiting();
-});
-
-self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys().then((names) => {
-      return Promise.all(names.map((name) => caches.delete(name)));
-    }).then(() => self.clients.claim())
-  );
-});
-
-self.addEventListener("fetch", (event) => {
-  const url = new URL(event.request.url);
-  if (url.origin !== self.location.origin) return;
-  
-  if (event.request.mode === "navigate" || url.pathname === "/" || url.pathname.endsWith(".html")) {
-    event.respondWith(
-      fetch(event.request).catch(() => caches.match(event.request))
-    );
-    return;
-  }
-  
-  if (url.pathname.endsWith(".css") || url.pathname.endsWith(".js")) {
-    event.respondWith(
-      fetch(event.request).catch(() => caches.match(event.request))
-    );
-    return;
-  }
-});
