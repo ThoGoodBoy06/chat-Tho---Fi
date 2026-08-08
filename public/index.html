@@ -193,6 +193,18 @@
         return null;
       }
       try {
+        if (!firebase.apps.length) {
+          const firebaseConfig = {
+            apiKey: "AIzaSyDk6fayVDs0YbbhwldYxgHcN4nnjnPwmRc",
+            authDomain: "chat-tho-fi.firebaseapp.com",
+            projectId: "chat-tho-fi",
+            storageBucket: "chat-tho-fi.firebasestorage.app",
+            messagingSenderId: "513501588929",
+            appId: "1:513501588929:web:54fd6c5fab227868bfd340",
+          };
+          firebase.initializeApp(firebaseConfig);
+        }
+
         const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' });
         await registration.update();
         await navigator.serviceWorker.ready;
