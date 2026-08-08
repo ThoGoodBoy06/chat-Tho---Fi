@@ -13,6 +13,8 @@ router.use(authMiddleware);
 router.get("/conversations", chatController.getConversations);
 router.post("/conversations", chatController.createConversation);
 router.post("/conversations/:conversationId/read", chatController.markAsRead);
+router.post("/messages/mark-delivered", chatController.markAsDelivered);
+router.post("/messages/:messageId/delivered", chatController.markAsDelivered);
 router.post("/block", chatController.blockUser);
 router.patch("/conversations/:conversationId/theme", chatController.changeConversationTheme);
 router.patch("/conversations/:conversationId/nickname", chatController.setNickname);

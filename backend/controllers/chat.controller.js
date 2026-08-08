@@ -202,6 +202,16 @@ exports.getMessages = async(req, res) => {
         const before = req.query.before; // ID tin nhắn cursor (optional)
 
 
+        // Cập nhật ngay trạng thái isRead & isDelivered vào DB cho tất cả tin nhắn trong phòng này do người khác gửi
+        prisma.messages.updateMany({
+            where: {
+                conversationId,
+                senderId: { not: req.user.id },
+                OR: [{ isRead: false }, { isDelivered: false }],
+            },
+            data: { isRead: true, isDelivered: true },
+        }).catch((err) => console.error("Lỗi cập nhật isRead/isDelivered trong getMessages:", err.message));
+
         // Xây dựng điều kiện where
         const whereClause = {
             conversationId,
@@ -582,6 +592,7 @@ exports.sendMessage = async(req, res) => {
                     data: {
                         conversationId: String(conversationId),
                         senderId: String(senderId),
+                        messageId: String(newMessage.id),
                         type: "chat_message",
                     },
                 };
@@ -589,7 +600,27 @@ exports.sendMessage = async(req, res) => {
                 // Gửi ngầm không cần await để tránh làm chậm tốc độ gửi tin nhắn (Chỉ gửi khi Firebase đã khởi tạo)
                 if (getApps().length > 0) {
                     getMessaging().send(payload)
-                        .then(() => console.log(`📲 Đã bắn Push Notification cho User ${member.userId}`))
+                        .then(async () => {
+                            console.log(`📲 Đã bắn Push Notification cho User ${member.userId}`);
+                            try {
+                                await prisma.messages.update({
+                                    where: { id: newMessage.id },
+                                    data: { isDelivered: true },
+                                });
+                                if (io) {
+                                    io.to(senderId).emit("message_delivered", {
+                                        messageId: newMessage.id,
+                                        conversationId: String(conversationId),
+                                    });
+                                    io.to(String(conversationId)).emit("message_delivered", {
+                                        messageId: newMessage.id,
+                                        conversationId: String(conversationId),
+                                    });
+                                }
+                            } catch (e) {
+                                console.error("Lỗi cập nhật isDelivered từ Push:", e.message);
+                            }
+                        })
                         .catch((err) => console.error(`❌ Lỗi gửi Push Notification:`, err.message));
                 }
             }
@@ -1864,6 +1895,48 @@ exports.recallMessage = async (req, res) => {
     } catch (error) {
         console.error("Lỗi thu hồi tin nhắn:", error);
         return res.status(500).json({ success: false, message: "Lỗi hệ thống khi thu hồi tin nhắn" });
+    }
+};
+
+exports.markAsDelivered = async (req, res) => {
+    try {
+        const { messageId, conversationId } = req.body;
+        const targetMsgId = messageId || req.params.messageId;
+        if (!targetMsgId) return res.status(400).json({ error: "Missing messageId" });
+
+        const msg = await prisma.messages.findUnique({
+            where: { id: targetMsgId },
+            select: { id: true, senderId: true, conversationId: true, isDelivered: true },
+        });
+        if (!msg) return res.status(404).json({ error: "Message not found" });
+
+        if (!msg.isDelivered) {
+            await prisma.messages.update({
+                where: { id: targetMsgId },
+                data: { isDelivered: true },
+            });
+        }
+
+        const targetConvId = conversationId || msg.conversationId;
+        const io = req.app.get("io");
+        if (io) {
+            if (msg.senderId) {
+                io.to(msg.senderId).emit("message_delivered", {
+                    messageId: targetMsgId,
+                    conversationId: targetConvId,
+                });
+            }
+            if (targetConvId) {
+                io.to(targetConvId).emit("message_delivered", {
+                    messageId: targetMsgId,
+                    conversationId: targetConvId,
+                });
+            }
+        }
+        return res.json({ success: true, isDelivered: true });
+    } catch (err) {
+        console.error("Lỗi khi xử lý markAsDelivered HTTP:", err.message);
+        return res.status(500).json({ error: err.message });
     }
 };
 

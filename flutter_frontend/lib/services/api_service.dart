@@ -127,6 +127,23 @@ class ApiService {
     }
   }
 
+  // Mark message as delivered via HTTP
+  static Future<void> markAsDelivered(String messageId, {String? conversationId}) async {
+    try {
+      final headers = await _getHeaders();
+      await http.post(
+        Uri.parse('$baseUrl/chat/messages/mark-delivered'),
+        headers: headers,
+        body: jsonEncode({
+          'messageId': messageId,
+          if (conversationId != null) 'conversationId': conversationId,
+        }),
+      ).timeout(const Duration(seconds: 10));
+    } catch (e) {
+      debugPrint('Error in ApiService.markAsDelivered: $e');
+    }
+  }
+
   // Delete conversation (soft delete on current user's side)
   static Future<bool> deleteConversation(String conversationId) async {
     try {

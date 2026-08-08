@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:http/http.dart' as http;
 import 'api_service.dart';
 import 'sound_service.dart';
 import '../utils/web_helpers.dart';
@@ -13,6 +15,21 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
     await Firebase.initializeApp();
     debugPrint('🔥 [FCMService] Background Message ID: ${message.messageId}');
+    final data = message.data;
+    final msgId = data['messageId']?.toString();
+    final convId = data['conversationId']?.toString();
+    if (msgId != null && msgId.isNotEmpty) {
+      final url = Uri.parse('https://chat-tho-fi-vn.onrender.com/api/chat/messages/mark-delivered');
+      await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'messageId': msgId,
+          if (convId != null) 'conversationId': convId,
+        }),
+      ).timeout(const Duration(seconds: 8));
+      debugPrint('✅ [FCMService] Sent background markAsDelivered for $msgId');
+    }
   } catch (e) {
     debugPrint('⚠️ [FCMService] Lỗi xử lý Background Message: $e');
   }
