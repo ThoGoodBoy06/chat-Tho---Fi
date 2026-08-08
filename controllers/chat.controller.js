@@ -720,64 +720,48 @@ exports.createConversation = async(req, res) => {
 };
 
 // 5. Thu hồi tin nhắn
-
-exports.recallMessage = async(req, res) => {
+exports.recallMessage = async (req, res) => {
     try {
-        const userId = req.user.id;
-
+        const userId = req.user ? (req.user.id || req.user.userId) : req.userId;
         const { messageId } = req.params;
 
-        // Kiểm tra xem tin nhắn có tồn tại và có phải của user này gửi không
-
+        // 1. Lấy tin nhắn dựa vào messageId
         const message = await prisma.messages.findUnique({
             where: { id: messageId },
         });
 
         if (!message) {
-            return res.status(404).json({ message: "Không tìm thấy tin nhắn" });
+            return res.status(404).json({ success: false, message: "Không tìm thấy tin nhắn" });
         }
 
+        // 2. Bảo mật: Kiểm tra message.senderId == req.user.id. Báo lỗi 403 nếu cố tình thu hồi tin nhắn người khác
         if (message.senderId !== userId) {
             return res.status(403).json({
+                success: false,
                 message: "Bạn không có quyền thu hồi tin nhắn của người khác",
             });
         }
 
-        // Cập nhật trạng thái thu hồi vào Database
-
+        // 3. Cập nhật isRecalled = true (Không xóa trắng content)
         const updatedMessage = await prisma.messages.update({
             where: { id: messageId },
-
             data: { isRecalled: true },
         });
 
-        // Lấy danh sách thành viên trong cuộc trò chuyện để gửi Socket
-
-        const members = await prisma.conversationMembers.findMany({
-            where: { conversationId: message.conversationId },
-        });
-
+        // 4. Phát tín hiệu Socket.IO real-time
         const io = req.app.get("io");
-
-        members.forEach((member) => {
-            io.to(member.userId).emit("message_recalled", {
+        if (io && message.conversationId) {
+            io.to(message.conversationId).emit("message_recalled", {
                 messageId: messageId,
-
                 conversationId: message.conversationId,
-
                 data: updatedMessage,
             });
-        });
+        }
 
-        res.status(200).json({ success: true, data: updatedMessage });
+        return res.status(200).json({ success: true, data: updatedMessage });
     } catch (error) {
         console.error("!!! LỖI THU HỒI TIN NHẮN:", error);
-
-        res
-
-            .status(500)
-
-        .json({ message: "Lỗi thu hồi tin nhắn", error: error.message });
+        return res.status(500).json({ success: false, message: "Lỗi thu hồi tin nhắn", error: error.message });
     }
 };
 

@@ -18,6 +18,7 @@ class SocketService {
   static final _typingController = StreamController<Map<String, dynamic>>.broadcast();
   static final _stopTypingController = StreamController<Map<String, dynamic>>.broadcast();
 
+  static final _recalledController = StreamController<Map<String, dynamic>>.broadcast();
   static final _reactedController = StreamController<Map<String, dynamic>>.broadcast();
   static final _readController = StreamController<Map<String, dynamic>>.broadcast();
   static final _deliveredController = StreamController<Map<String, dynamic>>.broadcast();
@@ -28,6 +29,7 @@ class SocketService {
   static final _profileUpdatedController = StreamController<Map<String, dynamic>>.broadcast();
 
   static Stream<Map<String, dynamic>> get onMessageReceived => _messageController.stream;
+  static Stream<Map<String, dynamic>> get onMessageRecalled => _recalledController.stream;
   static Stream<Map<String, dynamic>> get onIncomingCall => _incomingCallController.stream;
   static Stream<Map<String, dynamic>> get onCallAccepted => _callAcceptedController.stream;
   static Stream<Map<String, dynamic>> get onCallRejected => _callRejectedController.stream;
@@ -188,6 +190,13 @@ class SocketService {
     socket?.on('message_reacted', (data) {
       if (data is Map) {
         _reactedController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('message_recalled', (data) {
+      print('🔄 Socket message_recalled received: $data');
+      if (data is Map) {
+        _recalledController.add(Map<String, dynamic>.from(data));
       }
     });
 
@@ -359,6 +368,16 @@ class SocketService {
         'emoji': emoji,
       });
       playReactSound();
+    }
+  }
+
+  static void emitRecallMessage(String messageId, String conversationId) {
+    if (socket != null && socket!.connected) {
+      socket!.emit('recall_message', {
+        'messageId': messageId,
+        'conversationId': conversationId,
+      });
+      print('🔄 Emitted recall_message for message $messageId in conversation $conversationId');
     }
   }
 

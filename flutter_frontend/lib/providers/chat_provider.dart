@@ -15,6 +15,7 @@ class ChatProvider extends ChangeNotifier {
   Map<String, String> typingUsers = {};
   MessageModel? replyingToMessage;
   StreamSubscription? _socketSubscription;
+  StreamSubscription? _recalledSubscription;
   StreamSubscription? _typingSubscription;
   StreamSubscription? _stopTypingSubscription;
   StreamSubscription? _reactedSubscription;
@@ -99,6 +100,17 @@ class ChatProvider extends ChangeNotifier {
         }
         SocketService.playReactSound();
         notifyListeners();
+      }
+    });
+
+    _recalledSubscription = SocketService.onMessageRecalled.listen((data) {
+      final msgId = data['messageId']?.toString();
+      if (msgId != null && msgId.isNotEmpty) {
+        final idx = messages.indexWhere((m) => m.id == msgId);
+        if (idx != -1) {
+          messages[idx] = messages[idx].copyWith(isRecalled: true);
+          notifyListeners();
+        }
       }
     });
 
@@ -632,9 +644,27 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
+  /// Thu hồi tin nhắn
+  Future<bool> recallMessage(String messageId) async {
+    final success = await ApiService.recallMessage(messageId);
+    if (success) {
+      final idx = messages.indexWhere((m) => m.id == messageId);
+      if (idx != -1) {
+        messages[idx] = messages[idx].copyWith(isRecalled: true);
+        notifyListeners();
+      }
+      if (selectedConversation != null) {
+        SocketService.emitRecallMessage(messageId, selectedConversation!.id);
+      }
+      return true;
+    }
+    return false;
+  }
+
   @override
   void dispose() {
     _socketSubscription?.cancel();
+    _recalledSubscription?.cancel();
     _typingSubscription?.cancel();
     _stopTypingSubscription?.cancel();
     _reactedSubscription?.cancel();

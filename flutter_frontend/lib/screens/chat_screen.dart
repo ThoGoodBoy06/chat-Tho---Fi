@@ -566,16 +566,29 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                 },
                               ),
                               const Divider(height: 1, color: Color(0xFFE2E8F0)),
-                              ListTile(
-                                dense: true,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-                                title: const Text('Xóa tin nhắn', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Color(0xFFEF4444))),
-                                trailing: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 20),
-                                onTap: () {
-                                  Navigator.pop(context);
-                                  provider.deleteMessage(msg.id);
-                                },
-                              ),
+                              if ((msg.senderId == provider.currentUser?.id || isMe) && !msg.isRecalled) ...[
+                                ListTile(
+                                  dense: true,
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                                  title: const Text('Thu hồi tin nhắn', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFFEF4444))),
+                                  trailing: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 20),
+                                  onTap: () {
+                                    Navigator.pop(dialogContext);
+                                    _showRecallOptionsSheet(context, msg, provider);
+                                  },
+                                ),
+                              ] else ...[
+                                ListTile(
+                                  dense: true,
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                                  title: const Text('Gỡ ở phía tôi', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Color(0xFF64748B))),
+                                  trailing: const Icon(Icons.delete_sweep_rounded, color: Color(0xFF64748B), size: 20),
+                                  onTap: () {
+                                    Navigator.pop(dialogContext);
+                                    provider.deleteMessage(msg.id);
+                                  },
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -588,6 +601,120 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           ),
         );
       },
+    );
+  }
+
+  void _showRecallOptionsSheet(BuildContext context, MessageModel msg, ChatProvider provider) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      backgroundColor: Colors.white,
+      builder: (modalCtx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFCBD5E1),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const Text(
+                'Thu hồi tin nhắn đối với ai?',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Chọn phương thức thu hồi cho tin nhắn này',
+                style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                tileColor: const Color(0xFFFEF2F2),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFEF4444),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.undo_rounded, color: Colors.white, size: 20),
+                ),
+                title: const Text(
+                  'Thu hồi với mọi người',
+                  style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+                subtitle: const Text(
+                  'Bỏ gửi tin nhắn này đối với tất cả mọi người trong chat',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF991B1B)),
+                ),
+                onTap: () async {
+                  Navigator.pop(modalCtx);
+                  final success = await provider.recallMessage(msg.id);
+                  if (!success && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Không thể thu hồi tin nhắn. Vui lòng thử lại.')),
+                    );
+                  }
+                },
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                tileColor: const Color(0xFFF8FAFC),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF94A3B8),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 20),
+                ),
+                title: const Text(
+                  'Gỡ ở phía bạn',
+                  style: TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.w600, fontSize: 15),
+                ),
+                subtitle: const Text(
+                  'Tin nhắn này sẽ bị xóa khỏi thiết bị của bạn',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                ),
+                onTap: () {
+                  Navigator.pop(modalCtx);
+                  provider.deleteMessage(msg.id);
+                },
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(modalCtx),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    backgroundColor: const Color(0xFFF1F5F9),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: const Text(
+                    'Hủy',
+                    style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -2212,164 +2339,167 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           ),
 
           // D. Input Area: Filled icons matching user reference images (+, camera, gallery, mic, pill Aa + emoji, send/like)
-          Container(
-            height: 56,
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-            decoration: BoxDecoration(
-              color: headerBgColor,
-              border: Border(top: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFE4E6EB))),
-            ),
-            child: _isRecording
-                ? Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline_rounded, color: Colors.red, size: 26),
-                        onPressed: _cancelRecording,
-                        tooltip: 'Hủy ghi âm',
-                      ),
-                      Expanded(
-                        child: Container(
-                          height: 38,
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF451A03) : const Color(0xFFFFF0F5),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.red.shade200),
-                          ),
-                          child: Row(
-                            children: [
-                              const BlinkingRedDot(),
-                              const SizedBox(width: 8),
-                              Text(
-                                _formatRecordingTime(_recordingSeconds),
-                                style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 14),
-                              ),
-                              const Spacer(),
-                              Text('Đang ghi âm...', style: TextStyle(color: subTextColor, fontSize: 12)),
-                            ],
+          SafeArea(
+            top: false,
+            bottom: true,
+            child: Container(
+              padding: const EdgeInsets.only(left: 8, right: 8, top: 8, bottom: 12),
+              decoration: BoxDecoration(
+                color: headerBgColor,
+                border: Border(top: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFE4E6EB))),
+              ),
+              child: _isRecording
+                  ? Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline_rounded, color: Colors.red, size: 26),
+                          onPressed: _cancelRecording,
+                          tooltip: 'Hủy ghi âm',
+                        ),
+                        Expanded(
+                          child: Container(
+                            height: 38,
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF451A03) : const Color(0xFFFFF0F5),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: Colors.red.shade200),
+                            ),
+                            child: Row(
+                              children: [
+                                const BlinkingRedDot(),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _formatRecordingTime(_recordingSeconds),
+                                  style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 14),
+                                ),
+                                const Spacer(),
+                                Text('Đang ghi âm...', style: TextStyle(color: subTextColor, fontSize: 12)),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      IconButton(
-                        icon: const Icon(Icons.send_rounded, color: primaryColor, size: 26),
-                        onPressed: () => _stopAndSendRecording(provider),
-                        tooltip: 'Gửi tin nhắn thoại',
-                      ),
-                    ],
-                  )
-                : Row(
-                    children: [
-                      TextFieldTapRegion(
-                        child: Focus(
-                          canRequestFocus: false,
-                          descendantsAreFocusable: false,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: AnimatedRotation(
-                                  turns: _isAttachmentMenuOpen ? 0.125 : 0.0,
+                        const SizedBox(width: 6),
+                        IconButton(
+                          icon: const Icon(Icons.send_rounded, color: primaryColor, size: 26),
+                          onPressed: () => _stopAndSendRecording(provider),
+                          tooltip: 'Gửi tin nhắn thoại',
+                        ),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        TextFieldTapRegion(
+                          child: Focus(
+                            canRequestFocus: false,
+                            descendantsAreFocusable: false,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: AnimatedRotation(
+                                    turns: _isAttachmentMenuOpen ? 0.125 : 0.0,
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeOutBack,
+                                    child: const Icon(Icons.add_circle_rounded, color: primaryColor, size: 28),
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _isAttachmentMenuOpen = !_isAttachmentMenuOpen;
+                                    });
+                                  },
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(minWidth: 36),
+                                  tooltip: _isAttachmentMenuOpen ? 'Đóng menu' : 'Mở menu tiện ích',
+                                ),
+                                AnimatedSize(
                                   duration: const Duration(milliseconds: 300),
                                   curve: Curves.easeOutBack,
-                                  child: const Icon(Icons.add_circle_rounded, color: primaryColor, size: 28),
+                                  child: _isAttachmentMenuOpen
+                                      ? Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            IconButton(
+                                              icon: const Icon(Icons.camera_alt_rounded, color: primaryColor, size: 24),
+                                              onPressed: () => _captureCameraImage(provider),
+                                              padding: EdgeInsets.zero,
+                                              constraints: const BoxConstraints(minWidth: 36),
+                                              tooltip: 'Chụp ảnh',
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(Icons.image_rounded, color: primaryColor, size: 24),
+                                              onPressed: () => _pickAndUploadImage(provider),
+                                              padding: EdgeInsets.zero,
+                                              constraints: const BoxConstraints(minWidth: 36),
+                                              tooltip: 'Gửi ảnh',
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(Icons.mic_rounded, color: primaryColor, size: 24),
+                                              onPressed: () => _handleVoiceRecording(provider),
+                                              padding: EdgeInsets.zero,
+                                              constraints: const BoxConstraints(minWidth: 36),
+                                              tooltip: 'Ghi âm',
+                                            ),
+                                          ],
+                                        )
+                                      : const SizedBox(width: 0, height: 0),
                                 ),
-                                onPressed: () {
-                                  setState(() {
-                                    _isAttachmentMenuOpen = !_isAttachmentMenuOpen;
-                                  });
-                                },
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(minWidth: 36),
-                                tooltip: _isAttachmentMenuOpen ? 'Đóng menu' : 'Mở menu tiện ích',
-                              ),
-                              AnimatedSize(
-                                duration: const Duration(milliseconds: 300),
-                                curve: Curves.easeOutBack,
-                                child: _isAttachmentMenuOpen
-                                    ? Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          IconButton(
-                                            icon: const Icon(Icons.camera_alt_rounded, color: primaryColor, size: 24),
-                                            onPressed: () => _captureCameraImage(provider),
-                                            padding: EdgeInsets.zero,
-                                            constraints: const BoxConstraints(minWidth: 36),
-                                            tooltip: 'Chụp ảnh',
-                                          ),
-                                          IconButton(
-                                            icon: const Icon(Icons.image_rounded, color: primaryColor, size: 24),
-                                            onPressed: () => _pickAndUploadImage(provider),
-                                            padding: EdgeInsets.zero,
-                                            constraints: const BoxConstraints(minWidth: 36),
-                                            tooltip: 'Gửi ảnh',
-                                          ),
-                                          IconButton(
-                                            icon: const Icon(Icons.mic_rounded, color: primaryColor, size: 24),
-                                            onPressed: () => _handleVoiceRecording(provider),
-                                            padding: EdgeInsets.zero,
-                                            constraints: const BoxConstraints(minWidth: 36),
-                                            tooltip: 'Ghi âm',
-                                          ),
-                                        ],
-                                      )
-                                    : const SizedBox(width: 0, height: 0),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                      Expanded(
-                        child: Container(
-                          height: 38,
-                          padding: const EdgeInsets.only(left: 14, right: 6),
-                          decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF0F2F5),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: _textController,
-                                  focusNode: _inputFocusNode,
-                                  onTapOutside: (event) {
-                                    FocusScope.of(context).unfocus();
-                                  },
-                                  style: TextStyle(color: textColor, fontSize: 15),
-                                  decoration: InputDecoration(
-                                    hintText: 'Aa',
-                                    hintStyle: TextStyle(color: subTextColor, fontSize: 15),
-                                    border: InputBorder.none,
-                                    isDense: true,
-                                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                        Expanded(
+                          child: Container(
+                            height: 38,
+                            padding: const EdgeInsets.only(left: 14, right: 6),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF0F2F5),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _textController,
+                                    focusNode: _inputFocusNode,
+                                    onTapOutside: (event) {
+                                      FocusScope.of(context).unfocus();
+                                    },
+                                    style: TextStyle(color: textColor, fontSize: 15),
+                                    decoration: InputDecoration(
+                                      hintText: 'Aa',
+                                      hintStyle: TextStyle(color: subTextColor, fontSize: 15),
+                                      border: InputBorder.none,
+                                      isDense: true,
+                                      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                                    ),
+                                    onSubmitted: (_) => _handleSend(provider),
                                   ),
-                                  onSubmitted: (_) => _handleSend(provider),
                                 ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.sentiment_satisfied_alt_rounded, color: primaryColor, size: 22),
-                                onPressed: () => _toggleEmojiPicker(),
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(minWidth: 30),
-                              ),
-                            ],
+                                IconButton(
+                                  icon: const Icon(Icons.sentiment_satisfied_alt_rounded, color: primaryColor, size: 22),
+                                  onPressed: () => _toggleEmojiPicker(),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(minWidth: 30),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 4),
-                      IconButton(
-                        icon: Icon(
-                          _isTyping ? Icons.send_rounded : Icons.thumb_up_rounded,
-                          color: primaryColor,
-                          size: 26,
+                        const SizedBox(width: 4),
+                        IconButton(
+                          icon: Icon(
+                            _isTyping ? Icons.send_rounded : Icons.thumb_up_rounded,
+                            color: primaryColor,
+                            size: 26,
+                          ),
+                          onPressed: () => _handleSend(provider),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 36),
                         ),
-                        onPressed: () => _handleSend(provider),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 36),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
+            ),
           ),
           if (_showEmojiPicker) ...[
             _buildEmojiPicker(),
@@ -2451,7 +2581,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       ),
     );
   }
-
 
   void _showNewChatDialog(ChatProvider provider) {
     showDialog(
@@ -3664,6 +3793,16 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildMessageBubbleContent(MessageModel msg, bool isMe) {
+    if (msg.isRecalled) {
+      return const Text(
+        'Tin nhắn đã được thu hồi',
+        style: TextStyle(
+          color: Color(0xFF8A8D91),
+          fontSize: 14,
+          fontStyle: FontStyle.italic,
+        ),
+      );
+    }
     final content = msg.content;
     final isImage = msg.type == 'image' || content.startsWith('data:image') || (msg.imageUrl != null && msg.imageUrl!.isNotEmpty);
     final isAudio = msg.type == 'audio' || content.startsWith('data:audio');

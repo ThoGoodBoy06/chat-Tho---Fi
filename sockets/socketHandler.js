@@ -942,5 +942,26 @@ module.exports = (io) => {
         console.error("Lỗi khi thả cảm xúc qua socket:", error);
       }
     });
+
+    // ══════════════════════════════════════════════════════
+    // 16. THU HỒI TIN NHẮN QUA SOCKET (Recall Message)
+    // ══════════════════════════════════════════════════════
+    socket.on("recall_message", (data) => {
+      try {
+        const { messageId, conversationId } = data || {};
+        if (!messageId) return;
+
+        const targetConvId = conversationId;
+        if (targetConvId) {
+          io.to(targetConvId).emit("message_recalled", {
+            messageId,
+            conversationId: targetConvId,
+          });
+        }
+        console.log(`🔄 Socket recall_message broadcasted for message: ${messageId}`);
+      } catch (error) {
+        console.error("Lỗi khi xử lý recall_message qua socket:", error);
+      }
+    });
   });
 };

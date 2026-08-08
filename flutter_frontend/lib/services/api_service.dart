@@ -344,6 +344,24 @@ class ApiService {
     }
   }
 
+  // Recall Message API: PUT /api/chat/messages/:messageId/recall
+  static Future<bool> recallMessage(String messageId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.put(
+        Uri.parse('$baseUrl/chat/messages/$messageId/recall'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 15));
+      if (response.statusCode == 200) {
+        return true;
+      }
+      debugPrint('⚠️ Lỗi ApiService.recallMessage status: ${response.statusCode}');
+    } catch (e) {
+      debugPrint('⚠️ Exception ApiService.recallMessage: $e');
+    }
+    return false;
+  }
+
   // Update Nickname in Conversation
   static Future<bool> updateNickname(String conversationId, String userId, String? nickname) async {
     try {

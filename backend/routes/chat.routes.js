@@ -21,6 +21,7 @@ router.post("/:conversationId/messages", chatController.sendMessage);
 router.post("/:conversationId/upload-media", upload.single("file"), chatController.uploadMedia);
 
 // API cho các tính năng Big Update
+router.put("/messages/:messageId/recall", chatController.recallMessage);
 router.patch("/messages/:messageId/recall", chatController.recallMessage);
 router.post("/messages/:messageId/react", chatController.reactToMessage);
 router.patch("/messages/:messageId/edit", chatController.editMessage);
