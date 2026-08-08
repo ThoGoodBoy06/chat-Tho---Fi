@@ -107,6 +107,8 @@ exports.getConversations = async(req, res) => {
                                 fileUrl: true,
                                 isRecalled: true,
                                 isDeleted: true,
+                                isRead: true,
+                                isDelivered: true,
                                 createdAt: true,
                             },
                             orderBy: { createdAt: "desc" },
