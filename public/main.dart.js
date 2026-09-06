@@ -99904,7 +99904,7 @@ ao8(a,b,c){A.aW8(B.f,new A.awI(c,b,a),a,B.anx,t.z)},
 SH(){var s=this,r=B.c.by(s.cy.a.a)
 if(r.length===0)return
 s.K(new A.ava(s,r))
-(new A.avb(s,r)).$0()},
+A.hX(B.E,new A.avb(s,r),t.a)},
 S9(a,b){var s,r
 if(b)return"\u0110ang ho\u1ea1t \u0111\u1ed9ng"
 if(a==null)return"Ho\u1ea1t \u0111\u1ed9ng g\u1ea7n \u0111\xe2y"
@@ -100655,19 +100655,19 @@ s.cx.push(A.V(["sender","user","content",this.b],r,r))
 s.cy.jJ(0,B.hs)},
 $S:0}
 A.avb.prototype={
-$0(){var s=this.a,prompt=this.b;
+$0(){try{var s=this.a,prompt=this.b;
 if(!s||s.c==null)return;
 var tn=t.N;
-var thinking=A.V(["sender","ai","content","⏳ Chat AI Tho-Fi đang trả lời..."],tn,tn);
+var thinking=A.V(["sender","ai","content","⏳ Chat AI đang trả lời..."],tn,tn);
 s.cx.push(thinking);
 if(s.c!=null)s.K(new A.ax1());
 var tk="";
-try{var raw=window.localStorage.getItem("flutter.authToken")||window.localStorage.getItem("authToken");if(raw)tk=JSON.parse(raw);}catch(e){tk=window.localStorage.getItem("flutter.authToken")||"";}
+try{var raw=window.localStorage.getItem("flutter.authToken")||window.localStorage.getItem("authToken");if(raw){if(raw.startsWith('"')&&raw.endsWith('"')){tk=JSON.parse(raw);}else{tk=raw;}}}catch(e){tk=window.localStorage.getItem("flutter.authToken")||window.localStorage.getItem("authToken")||"";}
 fetch("/api/ai/chat",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+tk},body:JSON.stringify({prompt:prompt})})
 .then(function(res){return res.json();})
 .then(function(d){
 var idx=s.cx.indexOf(thinking);if(idx!==-1)s.cx.splice(idx,1);
-var ans=(d&&d.success&&d.text)?d.text:((d&&d.error)?("⚠️ "+d.error):"Không nhận được phản hồi từ AI.");
+var ans=(d&&d.success&&d.text)?d.text:((d&&(d.error||d.message))?("⚠️ "+(d.error||d.message)):"Không nhận được phản hồi từ AI.");
 s.cx.push(A.V(["sender","ai","content",ans],tn,tn));
 if(s.c!=null)s.K(new A.ax1());
 })
@@ -100675,8 +100675,7 @@ if(s.c!=null)s.K(new A.ax1());
 var idx=s.cx.indexOf(thinking);if(idx!==-1)s.cx.splice(idx,1);
 s.cx.push(A.V(["sender","ai","content","⚠️ Lỗi kết nối: "+(err.message||"Không xác định")],tn,tn));
 if(s.c!=null)s.K(new A.ax1());
-});
-},
+});}catch(e){console.error("AI error:",e);}},
 $S:7}
 A.av9.prototype={
 $0(){},
