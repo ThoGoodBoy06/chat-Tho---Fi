@@ -75,7 +75,12 @@ function buildChatConfig() {
     return config;
 }
 
+const userConvCache = new Map();
+
 async function getOrCreateAiConversation(userId) {
+    if (userConvCache.has(userId)) {
+        return userConvCache.get(userId);
+    }
     let conversation = await prisma.conversations.findFirst({
         where: { type: "ai", createdBy: userId },
     });
@@ -85,6 +90,7 @@ async function getOrCreateAiConversation(userId) {
             data: { type: "ai", createdBy: userId, name: "Trợ lý AI Tho-Fi" },
         });
     }
+    userConvCache.set(userId, conversation);
     return conversation;
 }
 
@@ -272,18 +278,23 @@ exports.chat = async (req, res) => {
         }
 
         const userId = resolveUserId(req);
-        const conversation = await getOrCreateAiConversation(userId);
 
-        // 1. Lưu DB User Message
-        await prisma.messages.create({
-            data: { conversationId: conversation.id, senderId: userId, content: prompt.trim() },
+        // Chạy song song: Bắt đầu lấy session và lưu câu hỏi vào DB cùng lúc
+        const convPromise = getOrCreateAiConversation(userId);
+        const chatPromise = getOrCreateChatSession(userId);
+
+        // Lưu câu hỏi người dùng ngầm (không chặn Gemini)
+        convPromise.then((conv) => {
+            prisma.messages.create({
+                data: { conversationId: conv.id, senderId: userId, content: prompt.trim() },
+            }).catch((e) => console.warn("Lỗi lưu câu hỏi người dùng:", e.message));
         });
 
         let finalAiText = "";
         let chat = null;
 
         try {
-            chat = await getOrCreateChatSession(userId);
+            chat = await chatPromise;
             console.log(`🤖 Gemini đang xử lý cho user ${req.user?.username || "Unknown"}...`);
             const response = await callWithRetry(() => chat.sendMessage({ message: prompt.trim() }));
             finalAiText = response.text || "";
@@ -304,16 +315,23 @@ exports.chat = async (req, res) => {
             }
         }
 
-        // 3. Lưu DB AI Message
-        await prisma.messages.create({
-            data: { conversationId: conversation.id, senderId: null, content: finalAiText },
-        });
+        // TRẢ KẾT QUẢ NGAY LẬP TỨC CHO CLIENT (không phải đợi DB ghi xong)
+        res.json({ success: true, text: finalAiText });
 
-        if (chat) {
-            trimHistoryIfNeeded(userId, chat);
-        }
-
-        return res.json({ success: true, text: finalAiText });
+        // Lưu câu trả lời của AI vào DB trong nền
+        (async () => {
+            try {
+                const conv = await convPromise;
+                await prisma.messages.create({
+                    data: { conversationId: conv.id, senderId: null, content: finalAiText },
+                });
+                if (chat) {
+                    trimHistoryIfNeeded(userId, chat);
+                }
+            } catch (saveErr) {
+                console.warn("Lỗi lưu câu trả lời AI vào DB:", saveErr.message);
+            }
+        })();
     } catch (error) {
         console.error("❌ Lỗi hệ thống AI:", error);
         const status = error.status || error.code || (error.error && error.error.code);

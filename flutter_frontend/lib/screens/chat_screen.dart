@@ -3311,7 +3311,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                             child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0068FF)),
                           ),
                           const SizedBox(width: 10),
-                          Text('AI đang suy nghĩ...', style: TextStyle(color: subTextColor, fontSize: 14)),
+                          Text('Chat Tho-Fi đang trả lời...', style: TextStyle(color: subTextColor, fontSize: 14)),
                         ],
                       ),
                     ),
@@ -3353,7 +3353,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                     style: TextStyle(color: textColor),
                     enabled: !_isAiLoading,
                     decoration: InputDecoration(
-                      hintText: _isAiLoading ? 'Trợ lý AI đang phản hồi...' : 'Hỏi Trợ lý AI bất kỳ điều gì...',
+                      hintText: _isAiLoading ? 'Chat Tho-Fi đang trả lời...' : 'Hỏi Trợ lý AI bất kỳ điều gì...',
                       hintStyle: TextStyle(color: subTextColor),
                       filled: true,
                       fillColor: inputBgColor,

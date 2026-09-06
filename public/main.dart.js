@@ -99904,7 +99904,7 @@ ao8(a,b,c){A.aW8(B.f,new A.awI(c,b,a),a,B.anx,t.z)},
 SH(){var s=this,r=B.c.by(s.cy.a.a)
 if(r.length===0)return
 s.K(new A.ava(s,r))
-A.hX(B.dz,new A.avb(s,r),t.a)},
+(new A.avb(s,r)).$0()},
 S9(a,b){var s,r
 if(b)return"\u0110ang ho\u1ea1t \u0111\u1ed9ng"
 if(a==null)return"Ho\u1ea1t \u0111\u1ed9ng g\u1ea7n \u0111\xe2y"
@@ -100658,7 +100658,7 @@ A.avb.prototype={
 $0(){var s=this.a,prompt=this.b;
 if(!s||s.c==null)return;
 var tn=t.N;
-var thinking=A.V(["sender","ai","content","⏳ Trợ lý AI đang suy nghĩ..."],tn,tn);
+var thinking=A.V(["sender","ai","content","⏳ Chat Tho-Fi đang trả lời..."],tn,tn);
 s.cx.push(thinking);
 if(s.c!=null)s.K(new A.ax1());
 var tk="";
