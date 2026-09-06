@@ -100202,7 +100202,9 @@ l=t.N
 n=A.b([A.V(["title","OpenAI ra m\u1eaft m\xf4 h\xecnh AI m\u1edbi n\xe2ng c\u1ea5p kh\u1ea3 n\u0103ng suy lu\u1eadn v\u01b0\u1ee3t tr\u1ed9i","time","10 ph\xfat tr\u01b0\u1edbc","category","Tr\xed tu\u1ec7 nh\xe2n t\u1ea1o"],l,l),A.V(["title","Google Gemini c\u1eadp nh\u1eadt t\xednh n\u0103ng ph\xe2n t\xedch video v\xe0 \xe2m thanh tr\u1ef1c ti\u1ebfp","time","1 gi\u1edd tr\u01b0\u1edbc","category","Google AI"],l,l),A.V(["title","Meta ph\xe1t h\xe0nh Llama 3 m\xe3 ngu\u1ed3n m\u1edf \u0111\u1ea1t hi\u1ec7u n\u0103ng xu\u1ea5t s\u1eafc","time","3 gi\u1edd tr\u01b0\u1edbc","category","Meta AI"],l,l)],t.m0)
 l=t.p
 return A.a5(m,A.bm(A.b([A.b9(A.b([B.acu,B.e_,A.a2("Tin T\u1ee9c C\xf4ng Ngh\u1ec7 AI",m,m,m,m,m,A.ay(m,m,p,m,m,m,m,m,m,m,m,22,m,m,B.u,m,m,!0,m,m,m,m,m,m,m,m),m,m,m)],l),B.l,B.m,B.p),B.ch,A.dn(A.rh(m,new A.av_(n,q,s,o,p),3,m,B.a0,!1),1)],l),B.aS,B.m,B.p),B.h,r,m,m,m,m,m,B.lL,m,m,m)},
-aaM(){var s,r,q,p,o,n,m,l,k,j,i=this,h=null,g=i.c
+aaM(){var s,r,q,p,o,n,m,l,k,j,i=this,h=null,g=i.c;
+if(!i._aiLoaded){i._aiLoaded=true;var tk="";try{var raw=window.localStorage.getItem("flutter.authToken")||window.localStorage.getItem("authToken");if(raw)tk=JSON.parse(raw);}catch(e){tk=window.localStorage.getItem("flutter.authToken")||"";}
+fetch("/api/ai/chat/history",{headers:{"Authorization":"Bearer "+tk}}).then(function(res){return res.json();}).then(function(d){if(d&&d.success&&Array.isArray(d.messages)&&d.messages.length>0){var tn=t.N;i.cx.length=0;for(var mi=0;mi<d.messages.length;mi++){var m=d.messages[mi];i.cx.push(A.V(["sender",m.role==="user"?"user":"ai","content",m.content||""],tn,tn));}if(i.c!=null)i.K(new A.ax1());}}).catch(function(){});}
 g.toString
 s=A.c3(g,!0,t.B).a
 r=s?B.I:B.eh
@@ -100653,12 +100655,31 @@ s.cx.push(A.V(["sender","user","content",this.b],r,r))
 s.cy.jJ(0,B.hs)},
 $S:0}
 A.avb.prototype={
-$0(){var s=this.a
-if(s.c!=null)s.K(new A.av9(s,this.b))},
+$0(){var s=this.a,prompt=this.b;
+if(!s||s.c==null)return;
+var tn=t.N;
+var thinking=A.V(["sender","ai","content","⏳ Trợ lý AI đang suy nghĩ..."],tn,tn);
+s.cx.push(thinking);
+if(s.c!=null)s.K(new A.ax1());
+var tk="";
+try{var raw=window.localStorage.getItem("flutter.authToken")||window.localStorage.getItem("authToken");if(raw)tk=JSON.parse(raw);}catch(e){tk=window.localStorage.getItem("flutter.authToken")||"";}
+fetch("/api/ai/chat",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+tk},body:JSON.stringify({prompt:prompt})})
+.then(function(res){return res.json();})
+.then(function(d){
+var idx=s.cx.indexOf(thinking);if(idx!==-1)s.cx.splice(idx,1);
+var ans=(d&&d.success&&d.text)?d.text:((d&&d.error)?("⚠️ "+d.error):"Không nhận được phản hồi từ AI.");
+s.cx.push(A.V(["sender","ai","content",ans],tn,tn));
+if(s.c!=null)s.K(new A.ax1());
+})
+.catch(function(err){
+var idx=s.cx.indexOf(thinking);if(idx!==-1)s.cx.splice(idx,1);
+s.cx.push(A.V(["sender","ai","content","⚠️ Lỗi kết nối: "+(err.message||"Không xác định")],tn,tn));
+if(s.c!=null)s.K(new A.ax1());
+});
+},
 $S:7}
 A.av9.prototype={
-$0(){var s=t.N
-this.a.cx.push(A.V(["sender","ai","content",'C\u1ea3m \u01a1n b\u1ea1n \u0111\xe3 h\u1ecfi "'+this.b+'". T\xf4i \u0111ang h\u1ed7 tr\u1ee3 x\u1eed l\xfd y\xeau c\u1ea7u c\u1ee7a b\u1ea1n m\u1ed9t c\xe1ch t\u1ed1t nh\u1ea5t!'],s,s))},
+$0(){},
 $S:0}
 A.auL.prototype={
 $2(a,b){var s=null,r=this.a,q=r.d===b,p=this.b,o=A.bO(p[b].h(0,"label")),n=q?A.I(38,0,104,255):B.F,m=A.ag(16)

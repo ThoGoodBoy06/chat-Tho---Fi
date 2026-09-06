@@ -53,6 +53,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     {'sender': 'ai', 'content': 'Xin chào! Tôi là Trợ lý AI Chat Tho-Fi. Tôi có thể giúp gì cho bạn hôm nay?'}
   ];
   final _aiTextController = TextEditingController();
+  bool _isAiLoading = false;
+  bool _hasLoadedAiHistory = false;
+  final ScrollController _aiScrollController = ScrollController();
 
   bool _showScrollToBottomButton = false;
   Timer? _debounceTimer;
@@ -719,22 +722,58 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     );
   }
 
-  void _handleAiSend() {
+  Future<void> _loadAiHistory() async {
+    if (_hasLoadedAiHistory) return;
+    _hasLoadedAiHistory = true;
+    try {
+      final history = await ApiService.getAiHistory();
+      if (mounted && history.isNotEmpty) {
+        setState(() {
+          _aiMessages.clear();
+          _aiMessages.addAll(history);
+        });
+        _scrollAiToBottom();
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error _loadAiHistory: $e');
+    }
+  }
+
+  void _scrollAiToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_aiScrollController.hasClients) {
+        _aiScrollController.animateTo(
+          _aiScrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  Future<void> _handleAiSend() async {
     final text = _aiTextController.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty || _isAiLoading) return;
 
     setState(() {
       _aiMessages.add({'sender': 'user', 'content': text});
       _aiTextController.clear();
+      _isAiLoading = true;
     });
+    _scrollAiToBottom();
 
-    Future.delayed(const Duration(milliseconds: 600), () {
-      if (mounted) {
-        setState(() {
-          _aiMessages.add({'sender': 'ai', 'content': 'Cảm ơn bạn đã hỏi "$text". Tôi đang hỗ trợ xử lý yêu cầu của bạn một cách tốt nhất!'});
-        });
-      }
-    });
+    final response = await ApiService.sendAiMessage(text);
+    if (mounted) {
+      setState(() {
+        _isAiLoading = false;
+        if (response['success'] == true) {
+          _aiMessages.add({'sender': 'ai', 'content': response['text'] ?? ''});
+        } else {
+          _aiMessages.add({'sender': 'ai', 'content': '⚠️ ' + (response['error'] ?? 'Đã có lỗi xảy ra. Vui lòng thử lại!')});
+        }
+      });
+      _scrollAiToBottom();
+    }
   }
 
   String _formatTime(DateTime dt) {
@@ -3169,6 +3208,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   // TAB 3: Trợ lý AI
   Widget _buildAiAssistantTab() {
+    _loadAiHistory();
     final isDark = Provider.of<ThemeProvider>(context).isDarkMode;
     final bgColor = isDark ? const Color(0xFF0F172A) : const Color(0xFFF0F2F5);
     final cardBgColor = isDark ? const Color(0xFF1E293B) : Colors.white;
@@ -3182,13 +3222,64 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         children: [
           // Header
           Container(
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
             color: cardBgColor,
             child: Row(
               children: [
-                const Icon(Icons.smart_toy_rounded, color: Color(0xFF0068FF), size: 28),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0068FF).withOpacity(0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.smart_toy_rounded, color: Color(0xFF0068FF), size: 24),
+                ),
                 const SizedBox(width: 12),
-                Text('Trợ Lý AI Chat Tho-Fi', style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold)),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Trợ Lý AI Tho-Fi', style: TextStyle(color: textColor, fontSize: 17, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Container(width: 7, height: 7, decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle)),
+                          const SizedBox(width: 5),
+                          Text('Sẵn sàng hỗ trợ 24/7', style: TextStyle(color: subTextColor, fontSize: 12)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.delete_sweep_rounded, color: subTextColor, size: 22),
+                  tooltip: 'Xoá lịch sử chat',
+                  onPressed: () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        backgroundColor: cardBgColor,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        title: Text('Xóa lịch sử trò chuyện AI?', style: TextStyle(color: textColor)),
+                        content: Text('Tất cả tin nhắn giữa bạn và Trợ lý AI sẽ được làm mới.', style: TextStyle(color: subTextColor)),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: const Text('Xóa', style: TextStyle(color: Color(0xFFEF4444))),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirm == true) {
+                      await ApiService.resetAiHistory();
+                      setState(() {
+                        _aiMessages.clear();
+                        _aiMessages.add({'sender': 'ai', 'content': 'Đã làm mới cuộc hội thoại. Tôi có thể giúp gì cho bạn?'});
+                      });
+                    }
+                  },
+                ),
               ],
             ),
           ),
@@ -3196,9 +3287,37 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           // Messages
           Expanded(
             child: ListView.builder(
+              controller: _aiScrollController,
               padding: const EdgeInsets.all(16),
-              itemCount: _aiMessages.length,
+              itemCount: _aiMessages.length + (_isAiLoading ? 1 : 0),
               itemBuilder: (context, index) {
+                if (index == _aiMessages.length && _isAiLoading) {
+                  return Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: cardBgColor,
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.2 : 0.04), blurRadius: 6)],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0068FF)),
+                          ),
+                          const SizedBox(width: 10),
+                          Text('AI đang suy nghĩ...', style: TextStyle(color: subTextColor, fontSize: 14)),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
                 final msg = _aiMessages[index];
                 final isUser = msg['sender'] == 'user';
                 return Align(
@@ -3206,13 +3325,16 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                   child: Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     padding: const EdgeInsets.all(16),
-                    constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+                    constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
                     decoration: BoxDecoration(
                       color: isUser ? const Color(0xFF0068FF) : cardBgColor,
                       borderRadius: BorderRadius.circular(18),
                       boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.2 : 0.04), blurRadius: 6)],
                     ),
-                    child: Text(msg['content']!, style: TextStyle(color: isUser ? Colors.white : textColor, fontSize: 15, height: 1.3)),
+                    child: SelectableText(
+                      msg['content']!,
+                      style: TextStyle(color: isUser ? Colors.white : textColor, fontSize: 15, height: 1.35),
+                    ),
                   ),
                 );
               },
@@ -3229,20 +3351,28 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                   child: TextField(
                     controller: _aiTextController,
                     style: TextStyle(color: textColor),
+                    enabled: !_isAiLoading,
                     decoration: InputDecoration(
-                      hintText: 'Hỏi Trợ lý AI bất kỳ điều gì...',
+                      hintText: _isAiLoading ? 'Trợ lý AI đang phản hồi...' : 'Hỏi Trợ lý AI bất kỳ điều gì...',
                       hintStyle: TextStyle(color: subTextColor),
                       filled: true,
                       fillColor: inputBgColor,
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                     ),
                     onSubmitted: (_) => _handleAiSend(),
                   ),
                 ),
                 const SizedBox(width: 8),
                 IconButton(
-                  icon: const Icon(Icons.send_rounded, color: Color(0xFF0068FF)),
-                  onPressed: _handleAiSend,
+                  icon: _isAiLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0068FF)),
+                        )
+                      : const Icon(Icons.send_rounded, color: Color(0xFF0068FF)),
+                  onPressed: _isAiLoading ? null : _handleAiSend,
                 ),
               ],
             ),

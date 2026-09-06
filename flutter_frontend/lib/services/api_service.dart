@@ -717,4 +717,72 @@ class ApiService {
     }
     return null;
   }
+
+  // AI Assistant: Send question
+  static Future<Map<String, dynamic>> sendAiMessage(String prompt) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/ai/chat'),
+        headers: headers,
+        body: jsonEncode({'prompt': prompt}),
+      ).timeout(const Duration(seconds: 45));
+
+      final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+      if (response.statusCode == 200 && decoded['success'] == true) {
+        return {'success': true, 'text': decoded['text'] ?? ''};
+      }
+      return {'success': false, 'error': decoded['error'] ?? 'Lỗi kết nối tới Trợ lý AI'};
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.sendAiMessage: $e');
+      return {'success': false, 'error': 'Không thể kết nối máy chủ AI: $e'};
+    }
+  }
+
+  // AI Assistant: Get history
+  static Future<List<Map<String, String>>> getAiHistory() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/ai/chat/history'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        if (decoded['success'] == true && decoded['messages'] is List) {
+          final List<Map<String, String>> result = [];
+          for (var item in decoded['messages']) {
+            result.add({
+              'sender': item['role'] == 'user' ? 'user' : 'ai',
+              'content': item['content']?.toString() ?? '',
+            });
+          }
+          return result;
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.getAiHistory: $e');
+    }
+    return [];
+  }
+
+  // AI Assistant: Reset history
+  static Future<bool> resetAiHistory() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.delete(
+        Uri.parse('$baseUrl/ai/chat/history'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        return decoded['success'] == true;
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.resetAiHistory: $e');
+    }
+    return false;
+  }
 }

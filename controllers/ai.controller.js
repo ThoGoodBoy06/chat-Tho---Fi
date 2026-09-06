@@ -17,6 +17,7 @@ if (geminiApiKey) {
 // Khởi tạo OpenAI Client cho tính năng "Thanh tra gọt giũa"
 const openaiApiKey = process.env.OPENAI_API_KEY;
 let openai = null;
+let isOpenAiQuotaExhausted = false;
 if (openaiApiKey) {
     openai = new OpenAI({ apiKey: openaiApiKey });
 } else {
@@ -288,8 +289,8 @@ exports.chat = async (req, res) => {
             const geminiDraft = response.text || "";
             finalAiText = geminiDraft;
 
-            // 2. ChatGPT gọt giũa (Nếu có Key)
-            if (openai) {
+            // 2. ChatGPT gọt giũa (Nếu có Key và còn quota)
+            if (openai && !isOpenAiQuotaExhausted) {
                 try {
                     console.log(`🧠 [BƯỚC 2 - POLISH] Đẩy sang ChatGPT gọt giũa...`);
                     const chatGptResponse = await openai.chat.completions.create({
@@ -308,15 +309,21 @@ exports.chat = async (req, res) => {
                     });
                     finalAiText = chatGptResponse.choices[0].message.content;
                 } catch (openAiError) {
+                    if (openAiError.status === 429 || openAiError.message?.includes("credits") || openAiError.message?.includes("quota")) {
+                        isOpenAiQuotaExhausted = true;
+                    }
                     console.error("⚠️ Lỗi ChatGPT, kích hoạt khiên bất tử dùng bản nháp Gemini:", openAiError.message);
                 }
             }
         } catch (geminiError) {
             console.warn("⚠️ Gemini gặp sự cố, thử chuyển sang OpenAI làm dự phòng...", geminiError.message);
-            if (openai) {
+            if (openai && !isOpenAiQuotaExhausted) {
                 try {
                     finalAiText = await callOpenAi(userId, prompt.trim());
                 } catch (openaiError) {
+                    if (openaiError.status === 429 || openaiError.message?.includes("credits") || openaiError.message?.includes("quota")) {
+                        isOpenAiQuotaExhausted = true;
+                    }
                     console.error("❌ Cả Gemini và OpenAI đều thất bại:", openaiError.message);
                     throw geminiError;
                 }
