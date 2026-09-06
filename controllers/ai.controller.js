@@ -284,37 +284,9 @@ exports.chat = async (req, res) => {
 
         try {
             chat = await getOrCreateChatSession(userId);
-            console.log(`🤖 [BƯỚC 1 - DRAFT] Gemini đang xử lý cho user ${req.user?.username || "Unknown"}...`);
+            console.log(`🤖 Gemini đang xử lý cho user ${req.user?.username || "Unknown"}...`);
             const response = await callWithRetry(() => chat.sendMessage({ message: prompt.trim() }));
-            const geminiDraft = response.text || "";
-            finalAiText = geminiDraft;
-
-            // 2. ChatGPT gọt giũa (Nếu có Key và còn quota)
-            if (openai && !isOpenAiQuotaExhausted) {
-                try {
-                    console.log(`🧠 [BƯỚC 2 - POLISH] Đẩy sang ChatGPT gọt giũa...`);
-                    const chatGptResponse = await openai.chat.completions.create({
-                        model: "gpt-4o-mini",
-                        messages: [
-                            {
-                                role: "system",
-                                content: "Bạn là chuyên gia biên tập cấp cao. Nhiệm vụ: Nhận bản nháp từ AI khác, sửa lỗi hành văn cho tự nhiên, cấu trúc lại bằng Markdown (Heading, Bullet points). Tuyệt đối KHÔNG cắt xén dữ liệu hoặc thay đổi sự thật."
-                            },
-                            {
-                                role: "user",
-                                content: `Câu hỏi gốc: "${prompt}"\n\n--- BẢN NHÁP ---\n${geminiDraft}`
-                            }
-                        ],
-                        temperature: 0.7
-                    });
-                    finalAiText = chatGptResponse.choices[0].message.content;
-                } catch (openAiError) {
-                    if (openAiError.status === 429 || openAiError.message?.includes("credits") || openAiError.message?.includes("quota")) {
-                        isOpenAiQuotaExhausted = true;
-                    }
-                    console.error("⚠️ Lỗi ChatGPT, kích hoạt khiên bất tử dùng bản nháp Gemini:", openAiError.message);
-                }
-            }
+            finalAiText = response.text || "";
         } catch (geminiError) {
             console.warn("⚠️ Gemini gặp sự cố, thử chuyển sang OpenAI làm dự phòng...", geminiError.message);
             if (openai && !isOpenAiQuotaExhausted) {
