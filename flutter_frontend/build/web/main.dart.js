@@ -100658,7 +100658,7 @@ A.avb.prototype={
 $0(){var s=this.a,prompt=this.b;
 if(!s||s.c==null)return;
 var tn=t.N;
-var thinking=A.V(["sender","ai","content","⏳ Chat Tho-Fi đang trả lời..."],tn,tn);
+var thinking=A.V(["sender","ai","content","⏳ Chat AI Tho-Fi đang trả lời..."],tn,tn);
 s.cx.push(thinking);
 if(s.c!=null)s.K(new A.ax1());
 var tk="";
