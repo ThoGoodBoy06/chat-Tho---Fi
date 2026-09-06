@@ -1,7 +1,7 @@
 'use strict';
 const MANIFEST = 'flutter-app-manifest';
 const TEMP = 'flutter-temp-cache';
-const CACHE_NAME = 'flutter-app-cache';
+const CACHE_NAME = 'flutter-app-cache-v3';
 
 const RESOURCES = {"amthanhtinnhan.mp3": "bbab8183cb9cf2cb736b4f5ede0f2f58",
 "apple-touch-icon.png": "51dbc6ca9c68fa43b554e709aeeca753",
