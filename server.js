@@ -79,15 +79,15 @@ app.use(express.static(staticPath, {
     maxAge: "7d",
     setHeaders: (res, filePath) => {
         const basename = path.basename(filePath);
-        // HTML và Service Worker luôn cần revalidate để nhận diện bản build mới
-        if (basename === "index.html" || basename === "version.json" || basename.includes("service_worker") || basename.includes("sw.js")) {
+        // HTML, main.dart.js và Service Worker luôn cần revalidate để nhận diện bản build mới
+        if (basename === "index.html" || basename === "main.dart.js" || basename === "version.json" || basename.includes("service_worker") || basename.includes("sw.js")) {
             res.setHeader("Cache-Control", "no-cache, must-revalidate");
         } else if (filePath.match(/\.(wasm|js\.symbols)$/)) {
             // Canvaskit WASM (6.7MB), symbol maps: Cache cực mạnh + immutable (không bao giờ revalidate)
             res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-        } else if (filePath.match(/\.(js|otf|ttf|woff|woff2)$/)) {
-            // main.dart.js (3.1MB), Fonts: Cache mạnh 30 ngày + stale-while-revalidate
-            res.setHeader("Cache-Control", "public, max-age=2592000, stale-while-revalidate=86400");
+        } else if (filePath.match(/\.(otf|ttf|woff|woff2)$/)) {
+            // Fonts: Cache 7 ngày
+            res.setHeader("Cache-Control", "public, max-age=604800, stale-while-revalidate=86400");
         } else if (filePath.match(/\.(png|jpg|jpeg|svg|gif|webp|ico|mp3)$/)) {
             // Hình ảnh, âm thanh: Cache 7 ngày
             res.setHeader("Cache-Control", "public, max-age=604800, stale-while-revalidate=86400");
