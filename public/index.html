@@ -539,7 +539,7 @@
       width: 42px;
       height: 42px;
       border-radius: 12px;
-      display: none;
+      display: flex !important;
       align-items: center;
       justify-content: center;
       background: #ffffff;
@@ -850,11 +850,9 @@
       const isDark = document.body.classList.contains('dark') || (localStorage.getItem('flutter.isDarkMode') === 'true');
       if (isDark) btn.classList.add('dark'); else btn.classList.remove('dark');
 
-      const bodyText = document.body ? document.body.innerText : '';
-      const isAiActive = bodyText.includes('Trợ Lý AI') || bodyText.includes('Hỏi Trợ lý AI') || bodyText.includes('Chat AI');
       const panel = document.getElementById('ai-drawer-panel');
       const isDrawerOpen = panel && panel.classList.contains('active');
-      btn.style.display = (isAiActive && !isDrawerOpen) ? 'flex' : 'none';
+      btn.style.display = isDrawerOpen ? 'none' : 'flex';
     }
     setInterval(updateAiMenuButtonVisibility, 250);
 
