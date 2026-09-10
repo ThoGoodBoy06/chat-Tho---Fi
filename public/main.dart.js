@@ -99901,7 +99901,6 @@ VK(a,b,c,d){var s=A.Dh(a,t.N1)
 s.toString
 A.aNr(B.F,!0,"Dismiss",a,new A.awx(this,d,s,c,b,a),new A.awy(),B.qq,t.X)},
 ao8(a,b,c){A.aW8(B.f,new A.awI(c,b,a),a,B.anx,t.z)},
-openAiHistoryDrawer(){if(window.openAiHistory)window.openAiHistory();},
 SH(){var s=this,r=B.c.by(s.cy.a.a)
 if(r.length===0)return
 s.K(new A.ava(s,r))
@@ -100214,11 +100213,11 @@ p=s?B.f:B.I
 o=s?B.aC:B.af
 n=s?B.I:B.bg
 g=t.p
-m=A.a5(h,A.b9(A.b([A.c2(h,h,h,new A.aJ(B.rv,26,B.o,null,null),h,new A.au6(i),h,h,h,h),B.e_,B.abD,B.e_,A.a2("Tr\u1ee3 L\xfd AI Chat Tho-Fi",h,h,h,h,h,A.ay(h,h,p,h,h,h,h,h,h,h,h,18,h,h,B.u,h,h,!0,h,h,h,h,h,h,h,h),h,h,h)],g),B.l,B.m,B.p),B.h,q,h,h,h,h,h,B.L1,h,h,h)
+m=A.a5(h,A.b9(A.b([B.abD,B.e_,A.a2("Tr\u1ee3 L\xfd AI Chat Tho-Fi",h,h,h,h,h,A.ay(h,h,p,h,h,h,h,h,h,h,h,18,h,h,B.u,h,h,!0,h,h,h,h,h,h,h,h),h,h,h)],g),B.l,B.m,B.p),B.h,q,h,h,h,h,h,B.L1,h,h,h)
 l=A.dn(A.rh(h,new A.atx(i,q,s,p),i.cx.length,B.bO,B.a0,!1),1)
 k=A.ay(h,h,p,h,h,h,h,h,h,h,h,h,h,h,h,h,h,!0,h,h,h,h,h,h,h,h)
 j=A.ay(h,h,o,h,h,h,h,h,h,h,h,h,h,h,h,h,h,!0,h,h,h,h,h,h,h,h)
-return A.a5(h,A.bm(A.b([m,l,A.a5(h,A.b9(A.b([A.dn(A.jr(!1,i.cy,A.iz(h,new A.dH(4,A.ag(24),B.k),h,h,h,h,h,h,!0,h,h,h,h,h,h,n,!0,h,h,h,h,h,h,h,h,h,h,h,h,j,"H\u1ecfi Tr\u1ee3 l\xfd AI b\u1ea5t k\u1ef3 \u0111i\u1ec1u g\xec...",h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h),h,1,!1,h,new A.aty(i),h,k),1),B.aT,A.c2(h,h,h,B.abi,h,i.gaf5,h,h,h,h)],g),B.l,B.m,B.p),B.h,q,h,h,h,h,h,B.KS,h,h,h)],g),B.l,B.m,B.p),B.h,r,h,h,h,h,h,h,h,h,h)},
+return A.a5(h,A.bm(A.b([m,l,A.a5(h,A.b9(A.b([A.dn(A.jr(!1,i.cy,A.iz(h,new A.dH(4,A.ag(24),B.k),h,h,h,h,h,h,!0,h,h,h,h,h,h,n,!0,h,h,h,h,h,h,h,h,h,h,h,h,j,"H\u1ecfi Tr\u1ee3 l\xfd AI b\u1ea5t k\u1ef3 \u0111i\u1ec1u g\xec...",h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h),h,1,!1,h,new A.aty(i),h,k),1),B.aT,A.c2(h,h,h,B.abi,h,i.gaf5(),h,h,h,h)],g),B.l,B.m,B.p),B.h,q,h,h,h,h,h,B.KS,h,h,h)],g),B.l,B.m,B.p),B.h,r,h,h,h,h,h,h,h,h,h)},
 alV(a){var s,r=a.c
 if(r==null)return
 s=A.Q1("file")
@@ -100664,7 +100663,7 @@ s.cx.push(thinking);
 if(s.c!=null)s.K(new A.ax1());
 var tk="";
 try{var raw=window.localStorage.getItem("flutter.authToken")||window.localStorage.getItem("authToken");if(raw){if(raw.startsWith('"')&&raw.endsWith('"')){tk=JSON.parse(raw);}else{tk=raw;}}}catch(e){tk=window.localStorage.getItem("flutter.authToken")||window.localStorage.getItem("authToken")||"";}
-fetch("/api/ai/chat",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+tk},body:JSON.stringify({prompt:prompt,conversationId:window._currentAiConversationId})})
+fetch("/api/ai/chat",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+tk},body:JSON.stringify({prompt:prompt})})
 .then(function(res){return res.json();})
 .then(function(d){
 var idx=s.cx.indexOf(thinking);if(idx!==-1)s.cx.splice(idx,1);
@@ -100827,7 +100826,7 @@ $2(a,b){var s=t.Ni,r=A.ci(B.kI,b,null)
 return A.ano(A.Fa(new A.dO(b,!1,a,null),b),new A.aN(r,new A.aG(new A.k(this.a,this.b),B.i,s),s.i("aN<aH.T>")),null,!0)},
 $S:586}
 A.au6.prototype={
-$0(){if(this.a&&this.a.openAiHistoryDrawer)return this.a.openAiHistoryDrawer();if(this.a&&this.a.Yr)return this.a.Yr();},
+$0(){return this.a.Yr()},
 $S:0}
 A.au8.prototype={
 $0(){var s,r,q,p=null,o={},n=this.b
@@ -109144,7 +109143,6 @@ p(i,"gUb","Uc",0)
 p(i,"gaj0","aj1",0)
 p(i,"gan9","Vg",0)
 p(i,"gaf5","SH",0)
-p(i,"gaOpenAiDrawer","openAiHistoryDrawer",0)
 p(i,"gabw","abx",0)
 o(i=A.Kq.prototype,"gakc","akd",18)
 o(i,"gaka","akb",34)
