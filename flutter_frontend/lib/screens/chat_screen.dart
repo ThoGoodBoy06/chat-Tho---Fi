@@ -57,7 +57,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   bool _hasLoadedAiHistory = false;
   final ScrollController _aiScrollController = ScrollController();
   String? _aiCurrentConversationId;
-  String _aiCurrentConversationName = 'Trợ Lý AI Tho-Fi';
+  String _aiCurrentConversationName = 'Chat AI Tho-Fi';
   List<Map<String, dynamic>> _aiSessions = [];
   bool _isLoadingAiSessions = false;
 
@@ -3384,7 +3384,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _aiCurrentConversationName.isNotEmpty ? _aiCurrentConversationName : 'Trợ Lý AI Tho-Fi',
+                        _aiCurrentConversationName.isNotEmpty ? _aiCurrentConversationName : 'Chat AI Tho-Fi',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
@@ -3533,7 +3533,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                     style: TextStyle(color: textColor),
                     enabled: !_isAiLoading,
                     decoration: InputDecoration(
-                      hintText: _isAiLoading ? 'Chat AI đang trả lời...' : 'Hỏi Trợ lý AI bất kỳ điều gì...',
+                      hintText: _isAiLoading ? 'Chat AI đang trả lời...' : 'Hỏi AI Tho-Fi',
                       hintStyle: TextStyle(color: subTextColor),
                       filled: true,
                       fillColor: inputBgColor,

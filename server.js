@@ -903,15 +903,9 @@ server.listen(PORT, () => {
         }
     }
 
-    // Tải tin tức sau khi khởi động server 15 giây để tránh nghẽn Database Pool khi user load trang lần đầu
-    setTimeout(() => {
-        updateRealNews(null);
-    }, 15000);
-
-    // Định kỳ quét RSS sau mỗi 5 phút (300.000 ms) để tìm tin mới
-    setInterval(() => {
-        updateRealNews(io);
-    }, 5 * 60 * 1000);
+    // Tạm dừng cào tin ngầm tự động để không chiếm dụng Connection Pool của Database
+    // setTimeout(() => { updateRealNews(null); }, 120000);
+    // setInterval(() => { updateRealNews(io); }, 5 * 60 * 1000);
 });
 
 // Health check endpoint (dùng bởi self-ping)

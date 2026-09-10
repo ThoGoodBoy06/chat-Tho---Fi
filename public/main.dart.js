@@ -99742,7 +99742,7 @@ return s.x=!s.x},
 $S:0}
 A.AR.prototype={
 aa(){var s=null,r=$.aC(),q=A.Fg(s,s),p=A.Cj(!0,s,!0,!0,s,s,!1),o=t.N
-o=A.b([A.V(["sender","ai","content","Xin ch\xe0o! T\xf4i l\xe0 Tr\u1ee3 l\xfd AI Chat Tho-Fi. T\xf4i c\xf3 th\u1ec3 gi\xfap g\xec cho b\u1ea1n h\xf4m nay?"],o,o)],t.m0)
+o=A.b([],t.m0)
 return new A.Hg(new A.ef(B.bk,r),q,p,new A.ef(B.bk,r),new A.ef(B.bk,r),o,new A.ef(B.bk,r),A.b([],t.Lc),B.n)}}
 A.Hg.prototype={
 UO(a){var s,r,q
@@ -99925,6 +99925,7 @@ if(!n)s=!(r.d===0&&p.c!=null)
 else s=!1
 return A.hq(q,m,l,s?A.a5(q,r.ab_(),B.h,m,q,q,q,q,q,q,q,q,q):q,!1)},
 aaP(a,b){var s,r=this
+if(typeof window!=="undefined"){window._isAiTabActive=(r.d===3);if(window.updateAiMenuBtnState)window.updateAiMenuBtnState(r.d===3);if(window.updateAiWelcomeState)window.updateAiWelcomeState();}
 switch(r.d){case 0:if(b){s=r.c
 s.toString
 s=A.bP(s,null,t.w).w
@@ -100203,8 +100204,9 @@ n=A.b([A.V(["title","OpenAI ra m\u1eaft m\xf4 h\xecnh AI m\u1edbi n\xe2ng c\u1ea
 l=t.p
 return A.a5(m,A.bm(A.b([A.b9(A.b([B.acu,B.e_,A.a2("Tin T\u1ee9c C\xf4ng Ngh\u1ec7 AI",m,m,m,m,m,A.ay(m,m,p,m,m,m,m,m,m,m,m,22,m,m,B.u,m,m,!0,m,m,m,m,m,m,m,m),m,m,m)],l),B.l,B.m,B.p),B.ch,A.dn(A.rh(m,new A.av_(n,q,s,o,p),3,m,B.a0,!1),1)],l),B.aS,B.m,B.p),B.h,r,m,m,m,m,m,B.lL,m,m,m)},
 aaM(){var s,r,q,p,o,n,m,l,k,j,i=this,h=null,g=i.c;
+if(typeof window!=="undefined"){window._isAiTabActive=true;window._chatScreenState=i;window._dartMapHelper=function(sender,content){return A.V(["sender",sender,"content",content],t.N,t.N);};window._dartSetStateHelper=function(){return new A.ax1();};if(window.updateAiMenuBtnState)window.updateAiMenuBtnState(true);if(window.updateAiWelcomeState)window.updateAiWelcomeState();}
 if(!i._aiLoaded){i._aiLoaded=true;var tk="";try{var raw=window.localStorage.getItem("flutter.authToken")||window.localStorage.getItem("authToken");if(raw)tk=JSON.parse(raw);}catch(e){tk=window.localStorage.getItem("flutter.authToken")||"";}
-fetch("/api/ai/chat/history",{headers:{"Authorization":"Bearer "+tk}}).then(function(res){return res.json();}).then(function(d){if(d&&d.success&&Array.isArray(d.messages)&&d.messages.length>0){var tn=t.N;i.cx.length=0;for(var mi=0;mi<d.messages.length;mi++){var m=d.messages[mi];i.cx.push(A.V(["sender",m.role==="user"?"user":"ai","content",m.content||""],tn,tn));}if(i.c!=null)i.K(new A.ax1());}}).catch(function(){});}
+fetch("/api/ai/chat/history",{headers:{"Authorization":"Bearer "+tk}}).then(function(res){return res.json();}).then(function(d){if(d&&d.success){if(typeof window!=="undefined"&&d.conversationId)window._currentAiConversationId=d.conversationId;if(Array.isArray(d.messages)&&d.messages.length>0){var tn=t.N;i.cx.length=0;for(var mi=0;mi<d.messages.length;mi++){var m=d.messages[mi];i.cx.push(A.V(["sender",m.role==="user"?"user":"ai","content",m.content||""],tn,tn));}if(i.c!=null)i.K(new A.ax1());}}}).catch(function(){});}
 g.toString
 s=A.c3(g,!0,t.B).a
 r=s?B.I:B.eh
@@ -100213,11 +100215,11 @@ p=s?B.f:B.I
 o=s?B.aC:B.af
 n=s?B.I:B.bg
 g=t.p
-m=A.a5(h,A.b9(A.b([B.abD,B.e_,A.a2("Tr\u1ee3 L\xfd AI Chat Tho-Fi",h,h,h,h,h,A.ay(h,h,p,h,h,h,h,h,h,h,h,18,h,h,B.u,h,h,!0,h,h,h,h,h,h,h,h),h,h,h)],g),B.l,B.m,B.p),B.h,q,h,h,h,h,h,B.L1,h,h,h)
+m=A.a5(h,A.b9(A.b([A.c2(h,h,h,B.abD,h,new A.au6(i),h,h,h,h),B.aT,A.hO(h,new A.eY("/icon.png",1,h),h,22),B.aT,A.a2("Chat AI Tho-Fi",h,h,h,h,h,A.ay(h,h,p,h,h,h,h,h,h,h,h,18,h,h,B.u,h,h,!0,h,h,h,h,h,h,h,h),h,h,h)],g),B.l,B.m,B.p),B.h,q,h,h,h,h,h,B.L1,h,h,h)
 l=A.dn(A.rh(h,new A.atx(i,q,s,p),i.cx.length,B.bO,B.a0,!1),1)
 k=A.ay(h,h,p,h,h,h,h,h,h,h,h,h,h,h,h,h,h,!0,h,h,h,h,h,h,h,h)
 j=A.ay(h,h,o,h,h,h,h,h,h,h,h,h,h,h,h,h,h,!0,h,h,h,h,h,h,h,h)
-return A.a5(h,A.bm(A.b([m,l,A.a5(h,A.b9(A.b([A.dn(A.jr(!1,i.cy,A.iz(h,new A.dH(4,A.ag(24),B.k),h,h,h,h,h,h,!0,h,h,h,h,h,h,n,!0,h,h,h,h,h,h,h,h,h,h,h,h,j,"H\u1ecfi Tr\u1ee3 l\xfd AI b\u1ea5t k\u1ef3 \u0111i\u1ec1u g\xec...",h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h),h,1,!1,h,new A.aty(i),h,k),1),B.aT,A.c2(h,h,h,B.abi,h,i.gaf5(),h,h,h,h)],g),B.l,B.m,B.p),B.h,q,h,h,h,h,h,B.KS,h,h,h)],g),B.l,B.m,B.p),B.h,r,h,h,h,h,h,h,h,h,h)},
+return A.a5(h,A.bm(A.b([m,l,A.a5(h,A.b9(A.b([A.dn(A.jr(!1,i.cy,A.iz(h,new A.dH(4,A.ag(24),B.k),h,h,h,h,h,h,!0,h,h,h,h,h,h,n,!0,h,h,h,h,h,h,h,h,h,h,h,h,j,"H\u1ecfi AI Tho-Fi",h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h,h),h,1,!1,h,new A.aty(i),h,k),1),B.aT,A.c2(h,h,h,B.abi,h,i.gaf5(),h,h,h,h)],g),B.l,B.m,B.p),B.h,q,h,h,h,h,h,B.KS,h,h,h)],g),B.l,B.m,B.p),B.h,r,h,h,h,h,h,h,h,h,h)},
 alV(a){var s,r=a.c
 if(r==null)return
 s=A.Q1("file")
@@ -100659,13 +100661,14 @@ $0(){try{var s=this.a,prompt=this.b;
 if(!s||s.c==null)return;
 var tn=t.N;
 var thinking=A.V(["sender","ai","content","⏳ Chat AI đang trả lời..."],tn,tn);
-s.cx.push(thinking);
+s.cx.push(thinking);if(window.updateAiWelcomeState)window.updateAiWelcomeState();
 if(s.c!=null)s.K(new A.ax1());
 var tk="";
 try{var raw=window.localStorage.getItem("flutter.authToken")||window.localStorage.getItem("authToken");if(raw){if(raw.startsWith('"')&&raw.endsWith('"')){tk=JSON.parse(raw);}else{tk=raw;}}}catch(e){tk=window.localStorage.getItem("flutter.authToken")||window.localStorage.getItem("authToken")||"";}
-fetch("/api/ai/chat",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+tk},body:JSON.stringify({prompt:prompt})})
+fetch("/api/ai/chat",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+tk},body:JSON.stringify({prompt:prompt,conversationId:(typeof window!=="undefined"?window._currentAiConversationId:null)})})
 .then(function(res){return res.json();})
 .then(function(d){
+if(typeof window!=="undefined"&&d&&d.conversationId)window._currentAiConversationId=d.conversationId;
 var idx=s.cx.indexOf(thinking);if(idx!==-1)s.cx.splice(idx,1);
 var ans=(d&&d.success&&d.text)?d.text:((d&&(d.error||d.message))?("⚠️ "+(d.error||d.message)):"Không nhận được phản hồi từ AI.");
 s.cx.push(A.V(["sender","ai","content",ans],tn,tn));
@@ -100826,7 +100829,7 @@ $2(a,b){var s=t.Ni,r=A.ci(B.kI,b,null)
 return A.ano(A.Fa(new A.dO(b,!1,a,null),b),new A.aN(r,new A.aG(new A.k(this.a,this.b),B.i,s),s.i("aN<aH.T>")),null,!0)},
 $S:586}
 A.au6.prototype={
-$0(){return this.a.Yr()},
+$0(){if(this.a&&typeof this.a.Yr==="function"){return this.a.Yr();}console.log("🚀 Flutter 3-bar menu pressed!");if(typeof window!=="undefined"&&window.openAiHistory){window.openAiHistory();}},
 $S:0}
 A.au8.prototype={
 $0(){var s,r,q,p=null,o={},n=this.b
@@ -113285,7 +113288,7 @@ B.pO=new A.q(4287323382)
 B.abz=new A.aJ(B.aaB,22,B.pO,null,null)
 B.pV=new A.q(4292617766)
 B.abC=new A.aJ(B.rA,20,B.pV,null,null)
-B.abD=new A.aJ(B.rO,28,B.o,null,null)
+B.abD=new A.aJ(B.rv,26,B.o,null,null)
 B.abF=new A.aJ(B.rF,26,B.o,null,null)
 B.abG=new A.aJ(B.rM,18,B.o,null,null)
 B.abH=new A.aJ(B.dH,26,B.o,null,null)

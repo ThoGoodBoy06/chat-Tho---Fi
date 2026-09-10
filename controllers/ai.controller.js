@@ -319,13 +319,41 @@ exports.deleteSession = async (req, res) => {
             where: { conversationId: conversationId },
         });
         await prisma.conversations.deleteMany({
-            where: { id: conversationId, type: "ai", createdBy: userId },
+            where: { id: conversationId, type: "ai" },
         });
 
         return res.json({ success: true, message: "Đã xoá cuộc trò chuyện." });
     } catch (error) {
         console.error("❌ Lỗi xoá phiên AI:", error);
         return res.status(500).json({ success: false, error: "Không thể xoá cuộc trò chuyện." });
+    }
+};
+
+/**
+ * DELETE /api/ai/chat/sessions/all
+ * Xoá toàn bộ lịch sử trò chuyện AI của người dùng
+ */
+exports.deleteAllSessions = async (req, res) => {
+    try {
+        const userId = resolveUserId(req);
+        const aiConvs = await prisma.conversations.findMany({
+            where: { type: "ai", createdBy: userId },
+            select: { id: true },
+        });
+        const ids = aiConvs.map((c) => c.id);
+        if (ids.length > 0) {
+            ids.forEach((id) => sessions.delete(`${userId}_${id}`));
+            await prisma.messages.deleteMany({
+                where: { conversationId: { in: ids } },
+            });
+            await prisma.conversations.deleteMany({
+                where: { id: { in: ids } },
+            });
+        }
+        return res.json({ success: true, message: "Đã xoá toàn bộ lịch sử trò chuyện AI." });
+    } catch (error) {
+        console.error("❌ Lỗi xoá toàn bộ phiên AI:", error);
+        return res.status(500).json({ success: false, error: "Không thể xoá toàn bộ lịch sử." });
     }
 };
 

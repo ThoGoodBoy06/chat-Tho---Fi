@@ -361,6 +361,88 @@
       from { opacity: 0; transform: translateY(6px); }
       to { opacity: 1; transform: translateY(0); }
     }
+  
+    /* Màn Chào Mừng Phong Cách Google Gemini */
+    .ai-welcome-container {
+      position: fixed;
+      top: 60px;
+      bottom: 80px;
+      left: 0;
+      right: 0;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 10;
+      padding: 0 24px;
+      text-align: center;
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1), transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      background: transparent;
+    }
+    .ai-welcome-container.active {
+      display: flex;
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .ai-welcome-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 22px;
+      max-width: 440px;
+      margin: 0 auto;
+      transform: translateY(-24px);
+    }
+    .ai-welcome-logo-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ai-welcome-logo-wrapper::after {
+      content: '';
+      position: absolute;
+      width: 115px;
+      height: 115px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0, 104, 255, 0.25) 0%, rgba(147, 51, 234, 0.16) 55%, transparent 75%);
+      filter: blur(16px);
+      z-index: -1;
+      animation: aiGlowPulse 3.5s ease-in-out infinite alternate;
+    }
+    @keyframes aiGlowPulse {
+      0% { transform: scale(0.9); opacity: 0.5; }
+      100% { transform: scale(1.3); opacity: 1; }
+    }
+    .ai-welcome-logo {
+      width: 96px;
+      height: 96px;
+      object-fit: contain;
+      filter: drop-shadow(0 10px 22px rgba(0, 104, 255, 0.32));
+      animation: aiLogoFloat 3s ease-in-out infinite alternate;
+    }
+    @keyframes aiLogoFloat {
+      0% { transform: translateY(0px); }
+      100% { transform: translateY(-7px); }
+    }
+    .ai-welcome-title {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 26px;
+      font-weight: 600;
+      color: #0f172a;
+      letter-spacing: -0.4px;
+      line-height: 1.35;
+      text-align: center;
+      transition: color 0.2s;
+    }
+    body.dark .ai-welcome-title,
+    .dark .ai-welcome-title {
+      color: #f8fafc;
+    }
+
   </style>
 
   <script>
@@ -488,6 +570,8 @@
         } catch(e){}
       }
     };
+  </script>
+
   <!-- AI History Drawer & Typing Animation -->
   <style>
     .ai-drawer-backdrop {
@@ -565,6 +649,115 @@
     #ai-menu-button.dark:hover {
       background: #0068FF;
       color: #ffffff;
+    }
+    .ai-confirm-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+      z-index: 2147483647;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .ai-confirm-backdrop.active {
+      display: flex;
+    }
+    .ai-confirm-box {
+      background: #ffffff;
+      border-radius: 20px;
+      padding: 24px 22px 20px;
+      width: 100%;
+      max-width: 320px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.28);
+      animation: aiModalZoom 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    body.dark .ai-confirm-box,
+    .dark .ai-confirm-box {
+      background: #1e293b;
+      color: #ffffff;
+      border: 1px solid #334155;
+    }
+    @keyframes aiModalZoom {
+      from { transform: scale(0.9); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .ai-confirm-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: #fee2e2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 14px;
+    }
+    body.dark .ai-confirm-icon,
+    .dark .ai-confirm-icon {
+      background: #3f1d24;
+    }
+    .ai-confirm-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
+    body.dark .ai-confirm-title,
+    .dark .ai-confirm-title {
+      color: #f8fafc;
+    }
+    .ai-confirm-desc {
+      font-size: 13.5px;
+      color: #64748b;
+      line-height: 1.45;
+      margin-bottom: 20px;
+    }
+    body.dark .ai-confirm-desc,
+    .dark .ai-confirm-desc {
+      color: #94a3b8;
+    }
+    .ai-confirm-actions {
+      display: flex;
+      gap: 10px;
+    }
+    .ai-confirm-btn-cancel {
+      flex: 1;
+      padding: 10px;
+      border-radius: 10px;
+      background: #f1f5f9;
+      color: #475569;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    body.dark .ai-confirm-btn-cancel,
+    .dark .ai-confirm-btn-cancel {
+      background: #334155;
+      color: #cbd5e1;
+    }
+    .ai-confirm-btn-danger {
+      flex: 1;
+      padding: 10px;
+      border-radius: 10px;
+      background: #ef4444;
+      color: #ffffff;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+    }
+    .ai-confirm-btn-danger:hover {
+      background: #dc2626;
     }
     .ai-drawer-header {
       padding: 16px 18px 12px;
@@ -717,6 +910,123 @@
       font-size: 13px;
     }
 
+    /* Modal Xác Nhận Xóa Chat AI */
+    .ai-confirm-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 2147483647;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    .ai-confirm-backdrop.active {
+      display: flex;
+      opacity: 1;
+    }
+    .ai-confirm-box {
+      background: #ffffff;
+      width: 88%;
+      max-width: 340px;
+      border-radius: 18px;
+      padding: 24px 20px;
+      box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.25);
+      text-align: center;
+      transform: scale(0.92);
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      box-sizing: border-box;
+    }
+    body.dark .ai-confirm-box,
+    .dark .ai-confirm-box {
+      background: #1e293b;
+      border-color: #334155;
+      color: #f1f5f9;
+    }
+    .ai-confirm-backdrop.active .ai-confirm-box {
+      transform: scale(1);
+    }
+    .ai-confirm-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: #fee2e2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+    }
+    body.dark .ai-confirm-icon,
+    .dark .ai-confirm-icon {
+      background: rgba(239, 68, 68, 0.2);
+    }
+    .ai-confirm-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
+    body.dark .ai-confirm-title,
+    .dark .ai-confirm-title {
+      color: #f8fafc;
+    }
+    .ai-confirm-desc {
+      font-size: 13.5px;
+      color: #64748b;
+      line-height: 1.5;
+      margin-bottom: 22px;
+    }
+    body.dark .ai-confirm-desc,
+    .dark .ai-confirm-desc {
+      color: #94a3b8;
+    }
+    .ai-confirm-actions {
+      display: flex;
+      gap: 10px;
+    }
+    .ai-confirm-btn-cancel,
+    .ai-confirm-btn-danger {
+      flex: 1;
+      padding: 11px 16px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s;
+    }
+    .ai-confirm-btn-cancel {
+      background: #f1f5f9;
+      color: #475569;
+    }
+    .ai-confirm-btn-cancel:hover {
+      background: #e2e8f0;
+    }
+    body.dark .ai-confirm-btn-cancel,
+    .dark .ai-confirm-btn-cancel {
+      background: #334155;
+      color: #cbd5e1;
+    }
+    body.dark .ai-confirm-btn-cancel:hover,
+    .dark .ai-confirm-btn-cancel:hover {
+      background: #475569;
+    }
+    .ai-confirm-btn-danger {
+      background: #ef4444;
+      color: #ffffff;
+    }
+    .ai-confirm-btn-danger:hover {
+      background: #dc2626;
+    }
+
     /* Hiệu ứng 3 chấm nảy (Bouncing Dots Indicator) */
     .ai-typing-float {
       position: fixed;
@@ -790,22 +1100,46 @@
       </div>
       <button class="ai-drawer-close" onclick="window.closeAiHistory()">✕</button>
     </div>
-    <button class="ai-new-chat-btn" onclick="window.createNewAiSession()">
-      <span style="font-size:18px;line-height:1;">+</span>
-      <span>Cuộc trò chuyện mới</span>
-    </button>
+    <div style="display:flex; gap:8px; padding: 10px 14px 0;">
+      <button class="ai-new-chat-btn" style="flex:1; margin:0;" onclick="window.createNewAiSession()">
+        <span style="font-size:18px;line-height:1;">+</span>
+        <span>Cuộc trò chuyện mới</span>
+      </button>
+      <button onclick="window.deleteAllAiSessions()" style="background:#fee2e2; color:#ef4444; border:1px solid #fca5a5; border-radius:10px; padding:8px 12px; font-size:13px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:5px;" title="Xóa toàn bộ lịch sử">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+        <span>Xóa hết</span>
+      </button>
+    </div>
     <div class="ai-section-label">GẦN ĐÂY</div>
     <div id="ai-sessions-list" class="ai-sessions-list">
       <div class="ai-drawer-empty">Đang tải lịch sử...</div>
     </div>
   </div>
 
-  <div id="ai-menu-button" onclick="window.openAiHistory()" title="Lịch sử chat AI">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <line x1="3" y1="6" x2="21" y2="6"></line>
-      <line x1="3" y1="12" x2="21" y2="12"></line>
-      <line x1="3" y1="18" x2="21" y2="18"></line>
-    </svg>
+
+
+  <div id="ai-confirm-modal" class="ai-confirm-backdrop">
+    <div class="ai-confirm-box">
+      <div class="ai-confirm-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+      </div>
+      <div class="ai-confirm-title">Xóa cuộc trò chuyện?</div>
+      <div class="ai-confirm-desc">Bạn có chắc chắn muốn xóa cuộc trò chuyện này không? Thao tác này không thể hoàn tác.</div>
+      <div class="ai-confirm-actions">
+        <button class="ai-confirm-btn-cancel" onclick="window.closeAiConfirmModal()">Hủy</button>
+        <button id="ai-confirm-btn-ok" class="ai-confirm-btn-danger">Xóa</button>
+      </div>
+    </div>
+  </div>
+
+  
+  <div id="ai-welcome-view" class="ai-welcome-container">
+    <div class="ai-welcome-content">
+      <div class="ai-welcome-logo-wrapper">
+        <img src="/icon.png" class="ai-welcome-logo" alt="Chat AI Tho-Fi" />
+      </div>
+      <div id="ai-welcome-title" class="ai-welcome-title">Hôm nay bạn thế nào, Tho?</div>
+    </div>
   </div>
 
   <div id="ai-typing-float" class="ai-typing-float">
@@ -820,41 +1154,163 @@
   <script>
     window._currentAiConversationId = null;
     window._chatScreenState = null;
+    window._isAiTabActive = false;
+
+    const AI_GREETINGS = [
+      "Hôm nay bạn thế nào, {name}?",
+      "Tôi có thể giúp gì cho bạn hôm nay, {name}?",
+      "Chào {name}, bạn đang nghĩ gì thế?",
+      "Hôm nay bạn muốn cùng tôi tìm hiểu điều gì?",
+      "Rất vui được gặp lại {name}! Cần tôi hỗ trợ gì nào?",
+      "Bạn đã sẵn sàng khám phá những điều mới chưa, {name}?",
+      "Cần tôi hỗ trợ điều gì hôm nay không, {name}?"
+    ];
+
+    function getAiUserName() {
+      try {
+        const tk = getAiAuthToken();
+        if (tk && tk.includes('.')) {
+          const parts = tk.split('.');
+          if (parts.length > 1) {
+            const payload = JSON.parse(atob(parts[1]));
+            if (payload && payload.username) {
+              const u = payload.username.trim();
+              return u.charAt(0).toUpperCase() + u.slice(1);
+            }
+          }
+        }
+      } catch(e) {}
+      try {
+        const rawU = localStorage.getItem('flutter.username') || localStorage.getItem('username');
+        if (rawU) {
+          const u = rawU.replace(/"/g, '').trim();
+          if (u) return u.charAt(0).toUpperCase() + u.slice(1);
+        }
+      } catch(e) {}
+      return 'Tho';
+    }
+
+    window.pickRandomAiGreeting = function() {
+      const name = getAiUserName();
+      const template = AI_GREETINGS[Math.floor(Math.random() * AI_GREETINGS.length)];
+      return template.replace(/{name}/g, name);
+    };
+
+    window.updateAiWelcomeState = function() {
+      const el = document.getElementById('ai-welcome-view');
+      if (!el) return;
+
+      const isTabActive = !!window._isAiTabActive;
+      const s = window._chatScreenState;
+      const hasMessages = s && s.cx && s.cx.length > 0;
+
+      if (isTabActive && !hasMessages) {
+        const titleEl = document.getElementById('ai-welcome-title');
+        if (titleEl) {
+          titleEl.textContent = window.pickRandomAiGreeting();
+        }
+        el.classList.add('active');
+      } else {
+        el.classList.remove('active');
+      }
+    };
+
+
+    window.updateAiMenuBtnState = function(isActive) {
+      window._isAiTabActive = !!isActive;
+      if (typeof window.updateAiWelcomeState === 'function') {
+        window.updateAiWelcomeState();
+      }
+    };
+
+    window.showAiConfirm = function({ title, desc, onConfirm }) {
+      const modal = document.getElementById('ai-confirm-modal');
+      if (!modal) {
+        if (typeof onConfirm === 'function') onConfirm();
+        return;
+      }
+      if (title) modal.querySelector('.ai-confirm-title').textContent = title;
+      if (desc) modal.querySelector('.ai-confirm-desc').textContent = desc;
+      const okBtn = document.getElementById('ai-confirm-btn-ok');
+      okBtn.onclick = function() {
+        window.closeAiConfirmModal();
+        if (typeof onConfirm === 'function') onConfirm();
+      };
+      modal.classList.add('active');
+    };
+
+    window.closeAiConfirmModal = function() {
+      const modal = document.getElementById('ai-confirm-modal');
+      if (modal) modal.classList.remove('active');
+    };
+
+    window.clearCurrentAiChat = async function() {
+      console.log('🚀 Clearing current AI chat...');
+      try {
+        const tk = getAiAuthToken();
+        const convId = window._currentAiConversationId;
+        
+        if (convId) {
+          await fetch('/api/ai/chat/session/' + convId, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + tk }
+          });
+        } else {
+          await fetch('/api/ai/chat/history', {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + tk }
+          });
+        }
+
+        window._currentAiConversationId = null;
+
+        if (window._chatScreenState && window._chatScreenState.cx) {
+          const s = window._chatScreenState;
+          s.cx.length = 0;
+          if (window._dartMapHelper) {
+            s.cx.push(window._dartMapHelper('ai', 'Đã xoá cuộc trò chuyện thành công! Tôi có thể giúp gì cho bạn hôm nay?'));
+          }
+          if (s.c != null) s.K(new window._dartSetStateHelper());
+        }
+
+        if (typeof window.fetchAiSessions === 'function') {
+          window.fetchAiSessions();
+        }
+      } catch (err) {
+        console.error('Lỗi khi xóa cuộc trò chuyện:', err);
+      }
+    };
 
     window.openAiHistory = function() {
-      const isDark = document.body.classList.contains('dark') || (localStorage.getItem('flutter.isDarkMode') === 'true');
-      const panel = document.getElementById('ai-drawer-panel');
-      const backdrop = document.getElementById('ai-drawer-backdrop');
-      const btn = document.getElementById('ai-menu-button');
-      if (btn) btn.style.display = 'none';
-      if (panel && backdrop) {
-        if (isDark) panel.classList.add('dark'); else panel.classList.remove('dark');
-        panel.classList.add('active');
-        backdrop.classList.add('active');
-        window.fetchAiSessions();
+      console.log('🚀 openAiHistory called!');
+      try {
+        const isDark = (document.body && document.body.classList.contains('dark')) || (localStorage.getItem('flutter.isDarkMode') === 'true');
+        const panel = document.getElementById('ai-drawer-panel');
+        const backdrop = document.getElementById('ai-drawer-backdrop');
+        if (panel && backdrop) {
+          if (isDark) panel.classList.add('dark'); else panel.classList.remove('dark');
+          panel.classList.add('active');
+          backdrop.classList.add('active');
+          if (typeof window.fetchAiSessions === 'function') {
+            window.fetchAiSessions();
+          }
+        }
+      } catch (err) {
+        console.error('Error opening AI history drawer:', err);
       }
     };
 
     window.closeAiHistory = function() {
-      const panel = document.getElementById('ai-drawer-panel');
-      const backdrop = document.getElementById('ai-drawer-backdrop');
-      const btn = document.getElementById('ai-menu-button');
-      if (panel) panel.classList.remove('active');
-      if (backdrop) backdrop.classList.remove('active');
-      if (btn) btn.style.display = 'flex';
+      console.log('🚀 closeAiHistory called!');
+      try {
+        const panel = document.getElementById('ai-drawer-panel');
+        const backdrop = document.getElementById('ai-drawer-backdrop');
+        if (panel) panel.classList.remove('active');
+        if (backdrop) backdrop.classList.remove('active');
+      } catch (err) {
+        console.error('Error closing AI history drawer:', err);
+      }
     };
-
-    function updateAiMenuButtonVisibility() {
-      const btn = document.getElementById('ai-menu-button');
-      if (!btn) return;
-      const isDark = document.body.classList.contains('dark') || (localStorage.getItem('flutter.isDarkMode') === 'true');
-      if (isDark) btn.classList.add('dark'); else btn.classList.remove('dark');
-
-      const panel = document.getElementById('ai-drawer-panel');
-      const isDrawerOpen = panel && panel.classList.contains('active');
-      btn.style.display = isDrawerOpen ? 'none' : 'flex';
-    }
-    setInterval(updateAiMenuButtonVisibility, 250);
 
     function getAiAuthToken() {
       let tk = '';
@@ -927,10 +1383,13 @@
           if (window._chatScreenState && window._chatScreenState.cx) {
             const s = window._chatScreenState;
             s.cx.length = 0;
-            if (window._dartMapHelper) {
-              s.cx.push(window._dartMapHelper('ai', 'Cuộc trò chuyện mới đã sẵn sàng! Tôi có thể giúp gì cho bạn hôm nay?'));
-            }
             if (s.c != null) s.K(new window._dartSetStateHelper());
+          }
+          if (typeof window.updateAiWelcomeState === 'function') {
+            window.updateAiWelcomeState();
+          }
+          if (typeof window.fetchAiSessions === 'function') {
+            window.fetchAiSessions();
           }
         }
       } catch(e) {
@@ -950,12 +1409,19 @@
           if (window._chatScreenState && window._chatScreenState.cx) {
             const s = window._chatScreenState;
             s.cx.length = 0;
-            data.messages.forEach(function(m) {
-              if (window._dartMapHelper) {
-                s.cx.push(window._dartMapHelper(m.role === 'user' ? 'user' : 'ai', m.content || ''));
-              }
-            });
+            if (data.messages.length === 0) {
+              // Để trống để hiện màn chào mừng Gemini
+            } else {
+              data.messages.forEach(function(m) {
+                if (window._dartMapHelper) {
+                  s.cx.push(window._dartMapHelper(m.role === 'user' ? 'user' : 'ai', m.content || ''));
+                }
+              });
+            }
             if (s.c != null) s.K(new window._dartSetStateHelper());
+          }
+          if (typeof window.updateAiWelcomeState === 'function') {
+            window.updateAiWelcomeState();
           }
         }
       } catch(e) {
@@ -963,25 +1429,79 @@
       }
     };
 
-    window.deleteAiSession = async function(id, evt) {
-      if (evt) evt.stopPropagation();
-      if (!confirm('Bạn có chắc muốn xóa cuộc trò chuyện này không?')) return;
-      try {
-        const res = await fetch('/api/ai/chat/session/' + id, {
-          method: 'DELETE',
-          headers: { 'Authorization': 'Bearer ' + getAiAuthToken() }
-        });
-        const data = await res.json();
-        if (data && data.success) {
-          if (window._currentAiConversationId === id) {
-            window.createNewAiSession();
-          } else {
-            window.fetchAiSessions();
+    window.deleteAiSession = function(id, evt) {
+      if (evt) {
+        evt.stopPropagation();
+        evt.preventDefault();
+      }
+      window.showAiConfirm({
+        title: 'Xóa cuộc trò chuyện?',
+        desc: 'Bạn có chắc chắn muốn xóa cuộc trò chuyện này không? Thao tác này không thể hoàn tác.',
+        onConfirm: async function() {
+          console.log('🚀 Deleting session:', id);
+          try {
+            const res = await fetch('/api/ai/chat/session/' + id, {
+              method: 'DELETE',
+              headers: { 'Authorization': 'Bearer ' + getAiAuthToken() }
+            });
+            const data = await res.json();
+            console.log('🚀 Delete result:', data);
+            if (data && data.success) {
+              const wasCurrent = (!window._currentAiConversationId || window._currentAiConversationId === id);
+              if (wasCurrent) {
+                window._currentAiConversationId = null;
+                if (window._chatScreenState && window._chatScreenState.cx) {
+                  const s = window._chatScreenState;
+                  s.cx.length = 0;
+                  if (window._dartMapHelper) {
+                    s.cx.push(window._dartMapHelper('ai', 'Đã xoá cuộc trò chuyện thành công! Tôi có thể giúp gì cho bạn hôm nay?'));
+                  }
+                  if (s.c != null) s.K(new window._dartSetStateHelper());
+                }
+              }
+              await window.fetchAiSessions();
+            } else {
+              alert(data?.error || 'Không thể xóa cuộc trò chuyện.');
+            }
+          } catch(e) {
+            console.error('Lỗi xóa phiên chat:', e);
           }
         }
-      } catch(e) {
-        console.error('Lỗi xóa phiên chat:', e);
-      }
+      });
+    };
+
+    window.deleteAllAiSessions = function() {
+      window.showAiConfirm({
+        title: 'Xóa toàn bộ lịch sử?',
+        desc: 'Bạn có chắc chắn muốn xóa tất cả các cuộc trò chuyện AI không? Thao tác này không thể hoàn tác.',
+        onConfirm: async function() {
+          console.log('🚀 Deleting all AI sessions...');
+          try {
+            const res = await fetch('/api/ai/chat/sessions/all', {
+              method: 'DELETE',
+              headers: { 'Authorization': 'Bearer ' + getAiAuthToken() }
+            });
+            const data = await res.json();
+            console.log('🚀 Delete all result:', data);
+            if (data && data.success) {
+              window._currentAiConversationId = null;
+              if (window._chatScreenState && window._chatScreenState.cx) {
+                const s = window._chatScreenState;
+                s.cx.length = 0;
+                if (s.c != null) s.K(new window._dartSetStateHelper());
+              }
+              if (typeof window.updateAiWelcomeState === 'function') {
+                window.updateAiWelcomeState();
+              }
+              await window.fetchAiSessions();
+            } else {
+              alert(data?.error || 'Không thể xóa toàn bộ lịch sử.');
+            }
+          } catch(e) {
+            console.error('Lỗi xóa toàn bộ phiên chat:', e);
+          }
+        }
+      });
     };
 
     window.showAiThinking = function(show) {
@@ -1008,6 +1528,6 @@
       }
     } catch(e) {}
   </script>
-  <script src="flutter_bootstrap.js?v=20260910_2" async></script>
+  <script src="flutter_bootstrap.js?v=20260910_9" async></script>
 </body>
 </html>
