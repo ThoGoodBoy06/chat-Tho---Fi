@@ -1,4 +1,5 @@
 const prisma = require("../prisma");
+const { Prisma } = require("@prisma/client");
 
 const { v4: uuidv4 } = require("uuid");
 
@@ -41,13 +42,14 @@ if (!getApps().length) {
     }
 }
 
-// 1. Lấy danh sách đoạn chat của user hiện tại
+// 1. Lấy danh sách đoạn chat của user hiện tại (Tối ưu hóa song song & Index raw query)
 
 exports.getConversations = async(req, res) => {
     try {
         const userId = req.user.id; // Lấy từ Token thông qua authMiddleware
 
-        const conversations = await prisma.conversationMembers.findMany({
+        // Bước 1: Lấy các phòng chat người dùng đang tham gia
+        const myMemberships = await prisma.conversationMembers.findMany({
             where: { userId },
             select: {
                 id: true,
@@ -57,133 +59,163 @@ exports.getConversations = async(req, res) => {
                 nickname: true,
                 joinedAt: true,
                 deletedAt: true,
-                Conversations: {
-                    select: {
-                        id: true,
-                        type: true,
-                        name: true,
-                        avatar: true,
-                        createdBy: true,
-                        theme: true,
-                        createdAt: true,
-                        ConversationMembers: {
-                            select: {
-                                id: true,
-                                conversationId: true,
-                                userId: true,
-                                role: true,
-                                nickname: true,
-                                Users: {
-                                    select: {
-                                        id: true,
-                                        fullName: true,
-                                        avatar: true,
-                                        isOnline: true,
-                                        lastActive: true,
-                                    },
-                                },
-                            },
-                        },
-                        Messages: {
-                            where: {
-                                NOT: {
-                                    deletedBy: {
-                                        has: userId,
-                                    },
-                                },
-                            },
-                            select: {
-                                id: true,
-                                conversationId: true,
-                                senderId: true,
-                                type: true,
-                                content: true,
-                                imageUrl: true,
-                                videoUrl: true,
-                                audioUrl: true,
-                                fileUrl: true,
-                                isRecalled: true,
-                                isDeleted: true,
-                                isRead: true,
-                                isDelivered: true,
-                                createdAt: true,
-                            },
-                            orderBy: { createdAt: "desc" },
-                            take: 1,
-                        },
-                        _count: {
-                            select: {
-                                Messages: {
-                                    where: {
-                                        senderId: { not: userId },
-                                        isRead: false,
-                                    },
-                                },
-                            },
-                        },
-                    },
-                },
             },
         });
 
-        // Lọc bỏ các cuộc trò chuyện đã bị xóa ở phía người dùng hiện tại và chưa có tin nhắn mới hơn thời điểm xóa
-        const activeConversations = conversations.filter((item) => {
-            if (!item.Conversations) return false;
-            
-            // Nếu chưa từng xóa, hiển thị bình thường
-            if (!item.deletedAt) return true;
-            
-            // Nếu đã xóa, chỉ hiển thị lại nếu có ít nhất 1 tin nhắn mới được tạo sau thời điểm xóa
-            const latestMsg = item.Conversations.Messages[0];
-            if (latestMsg && new Date(latestMsg.createdAt) > new Date(item.deletedAt)) {
-                return true;
+        const convIds = myMemberships.map((m) => m.conversationId).filter(Boolean);
+
+        if (convIds.length === 0) {
+            return res.status(200).json({ success: true, data: [] });
+        }
+
+        // Bước 2: Chạy song song 4 truy vấn để tận dụng index tối đa, không bị nghẽn N+1
+        const [convs, allMembers, latestMessages, unreadCounts] = await Promise.all([
+            // 2a: Thông tin cơ bản các phòng chat
+            prisma.conversations.findMany({
+                where: { id: { in: convIds } },
+                select: {
+                    id: true,
+                    type: true,
+                    name: true,
+                    avatar: true,
+                    createdBy: true,
+                    theme: true,
+                    createdAt: true,
+                },
+            }),
+            // 2b: Thông tin tất cả thành viên trong các phòng chat này
+            prisma.conversationMembers.findMany({
+                where: { conversationId: { in: convIds } },
+                select: {
+                    id: true,
+                    conversationId: true,
+                    userId: true,
+                    role: true,
+                    nickname: true,
+                    Users: {
+                        select: {
+                            id: true,
+                            fullName: true,
+                            username: true,
+                            avatar: true,
+                            coverPhoto: true,
+                            bio: true,
+                            isOnline: true,
+                            lastActive: true,
+                        },
+                    },
+                },
+            }),
+            // 2c: Tin nhắn mới nhất của mỗi phòng (Dùng DISTINCT ON để tận dụng index [conversationId, createdAt DESC])
+            prisma.$queryRaw`
+                SELECT DISTINCT ON ("conversationId") 
+                    id, "conversationId", "senderId", type, content, 
+                    "imageUrl", "videoUrl", "audioUrl", "fileUrl", 
+                    "isRecalled", "isDeleted", "isRead", "isDelivered", "createdAt"
+                FROM "Messages"
+                WHERE "conversationId" IN (${Prisma.join(convIds)})
+                  AND ("deletedBy" IS NULL OR NOT (${userId} = ANY("deletedBy")))
+                ORDER BY "conversationId", "createdAt" DESC
+            `.catch((err) => {
+                console.warn("⚠️ Fallback latest messages query:", err.message);
+                return [];
+            }),
+            // 2d: Đếm số tin nhắn chưa đọc của mỗi phòng
+            prisma.$queryRaw`
+                SELECT "conversationId", COUNT(*)::int as "unreadCount"
+                FROM "Messages"
+                WHERE "conversationId" IN (${Prisma.join(convIds)})
+                  AND ("senderId" IS NULL OR "senderId" != ${userId})
+                  AND ("isRead" IS FALSE OR "isRead" IS NULL)
+                  AND ("deletedBy" IS NULL OR NOT (${userId} = ANY("deletedBy")))
+                GROUP BY "conversationId"
+            `.catch((err) => {
+                console.warn("⚠️ Fallback unread count query:", err.message);
+                return [];
+            }),
+        ]);
+
+        // Bước 3: Ghép dữ liệu bằng Map (O(1)) để phản hồi ngay lập tức
+        const convMap = new Map();
+        for (const c of convs) {
+            convMap.set(c.id, c);
+        }
+
+        const membersByConv = new Map();
+        for (const m of allMembers) {
+            if (!membersByConv.has(m.conversationId)) {
+                membersByConv.set(m.conversationId, []);
             }
-            
-            return false;
-        });
+            membersByConv.get(m.conversationId).push({
+                ...m,
+                Users: m.Users
+                    ? {
+                          ...m.Users,
+                          avatar: `/api/users/${m.Users.id}/avatar`,
+                      }
+                    : null,
+            });
+        }
+
+        const latestMsgByConv = new Map();
+        if (Array.isArray(latestMessages)) {
+            for (const msg of latestMessages) {
+                latestMsgByConv.set(msg.conversationId, msg);
+            }
+        }
+
+        const unreadCountByConv = new Map();
+        if (Array.isArray(unreadCounts)) {
+            for (const item of unreadCounts) {
+                unreadCountByConv.set(item.conversationId, Number(item.unreadCount || 0));
+            }
+        }
+
+        // Bước 4: Lọc và định dạng danh sách cuộc trò chuyện
+        const activeConversations = [];
+        for (const myMem of myMemberships) {
+            const conv = convMap.get(myMem.conversationId);
+            if (!conv) continue;
+
+            const latestMsg = latestMsgByConv.get(myMem.conversationId) || null;
+
+            // Nếu đã xóa cuộc trò chuyện và không có tin nhắn mới sau deletedAt thì ẩn
+            if (myMem.deletedAt) {
+                if (!latestMsg || new Date(latestMsg.createdAt) <= new Date(myMem.deletedAt)) {
+                    continue;
+                }
+            }
+
+            const members = membersByConv.get(myMem.conversationId) || [];
+            const unread = unreadCountByConv.get(myMem.conversationId) || 0;
+
+            activeConversations.push({
+                ...myMem,
+                Conversations: {
+                    ...conv,
+                    ConversationMembers: members,
+                    Messages: latestMsg ? [latestMsg] : [],
+                    _count: {
+                        Messages: unread,
+                    },
+                },
+            });
+        }
 
         // Sắp xếp cuộc trò chuyện có tin nhắn mới nhất lên trên cùng
         activeConversations.sort((a, b) => {
             const getLatestTime = (member) => {
                 const conv = member.Conversations;
-                if (!conv) return 0; // Tránh lỗi nếu dữ liệu phòng chat bị rỗng
-
-                // Lấy thời gian của tin nhắn mới nhất nếu có
-                if (
-                    conv.Messages &&
-                    conv.Messages.length > 0 &&
-                    conv.Messages[0].createdAt
-                ) {
+                if (!conv) return 0;
+                if (conv.Messages && conv.Messages.length > 0 && conv.Messages[0].createdAt) {
                     return new Date(conv.Messages[0].createdAt).getTime();
                 }
-                // Nếu không có tin nhắn, lấy thời gian lúc tạo phòng
                 return conv.createdAt ? new Date(conv.createdAt).getTime() : 0;
             };
-
             return getLatestTime(b) - getLatestTime(a);
         });
 
-        // Map avatar sang URL tĩnh mà không cần truy vấn DB lại
-        const mappedConversations = activeConversations.map((item) => {
-            if (!item.Conversations) return item;
-
-            const conv = { ...item.Conversations };
-
-            if (conv.ConversationMembers) {
-                conv.ConversationMembers.forEach((member) => {
-                    if (member.Users) {
-                        member.Users.avatar = `/api/users/${member.Users.id}/avatar`;
-                    }
-                });
-            }
-
-            return {
-                ...item,
-                Conversations: conv,
-            };
-        });
-
-        res.status(200).json({ success: true, data: mappedConversations });
+        res.status(200).json({ success: true, data: activeConversations });
     } catch (error) {
         console.error("!!! LỖI TẢI DANH SÁCH CUỘC TRÒ CHUYỆN:", error);
         res.status(500).json({ message: "Lỗi server", error: error.message });

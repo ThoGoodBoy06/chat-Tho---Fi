@@ -77,25 +77,31 @@ function buildChatConfig() {
 
 const userConvCache = new Map();
 
-async function getOrCreateAiConversation(userId) {
-    if (userConvCache.has(userId)) {
-        return userConvCache.get(userId);
+async function getOrCreateAiConversation(userId, conversationId = null) {
+    if (conversationId) {
+        const found = await prisma.conversations.findFirst({
+            where: { id: conversationId, type: "ai", createdBy: userId },
+        });
+        if (found) return found;
     }
+
+    // Tìm phiên trò chuyện AI gần nhất của người dùng
     let conversation = await prisma.conversations.findFirst({
         where: { type: "ai", createdBy: userId },
+        orderBy: { createdAt: "desc" },
     });
 
     if (!conversation) {
         conversation = await prisma.conversations.create({
-            data: { type: "ai", createdBy: userId, name: "Trợ lý AI Tho-Fi" },
+            data: { type: "ai", createdBy: userId, name: "Cuộc trò chuyện mới" },
         });
     }
-    userConvCache.set(userId, conversation);
     return conversation;
 }
 
-async function getOrCreateChatSession(userId) {
-    const existing = sessions.get(userId);
+async function getOrCreateChatSession(userId, conversationId) {
+    const sessionKey = `${userId}_${conversationId}`;
+    const existing = sessions.get(sessionKey);
     if (existing) {
         existing.lastActive = Date.now();
         return existing.chat;
@@ -103,9 +109,8 @@ async function getOrCreateChatSession(userId) {
 
     let history = [];
     try {
-        const conversation = await getOrCreateAiConversation(userId);
         const dbMessages = await prisma.messages.findMany({
-            where: { conversationId: conversation.id },
+            where: { conversationId: conversationId },
             orderBy: { createdAt: "asc" },
             take: 40,
         });
@@ -123,11 +128,12 @@ async function getOrCreateChatSession(userId) {
         history: history,
         config: buildChatConfig(),
     });
-    sessions.set(userId, { chat, lastActive: Date.now() });
+    sessions.set(sessionKey, { chat, lastActive: Date.now() });
     return chat;
 }
 
-function trimHistoryIfNeeded(userId, chat) {
+function trimHistoryIfNeeded(userId, conversationId, chat) {
+    const sessionKey = `${userId}_${conversationId}`;
     const history = chat.getHistory();
     const maxMessages = MAX_HISTORY_TURNS * 2;
     if (history.length > maxMessages) {
@@ -137,7 +143,7 @@ function trimHistoryIfNeeded(userId, chat) {
             history: trimmed,
             config: buildChatConfig(),
         });
-        sessions.set(userId, { chat: newChat, lastActive: Date.now() });
+        sessions.set(sessionKey, { chat: newChat, lastActive: Date.now() });
     }
 }
 
@@ -234,12 +240,103 @@ async function callOpenAiStream(userId, prompt, res) {
 }
 
 /**
+ * GET /api/ai/chat/sessions
+ * Lấy danh sách tất cả các phiên hội thoại AI của user
+ */
+exports.getSessions = async (req, res) => {
+    try {
+        const userId = resolveUserId(req);
+        const conversations = await prisma.conversations.findMany({
+            where: { type: "ai", createdBy: userId },
+            orderBy: { createdAt: "desc" },
+            include: {
+                _count: {
+                    select: { Messages: true },
+                },
+            },
+        });
+
+        return res.json({
+            success: true,
+            sessions: conversations.map((c) => ({
+                id: c.id,
+                name: c.name || "Cuộc trò chuyện mới",
+                createdAt: c.createdAt,
+                messageCount: c._count?.Messages || 0,
+            })),
+        });
+    } catch (error) {
+        console.error("❌ Lỗi lấy danh sách phiên AI:", error);
+        return res.status(500).json({ success: false, error: "Không thể tải danh sách cuộc trò chuyện." });
+    }
+};
+
+/**
+ * POST /api/ai/chat/session/new
+ * Tạo phiên hội thoại AI mới
+ */
+exports.createSession = async (req, res) => {
+    try {
+        const userId = resolveUserId(req);
+        const conversation = await prisma.conversations.create({
+            data: {
+                type: "ai",
+                createdBy: userId,
+                name: "Cuộc trò chuyện mới",
+            },
+        });
+        return res.json({
+            success: true,
+            session: {
+                id: conversation.id,
+                name: conversation.name,
+                createdAt: conversation.createdAt,
+                messageCount: 0,
+            },
+        });
+    } catch (error) {
+        console.error("❌ Lỗi tạo phiên AI mới:", error);
+        return res.status(500).json({ success: false, error: "Không thể tạo cuộc trò chuyện mới." });
+    }
+};
+
+/**
+ * DELETE /api/ai/chat/session/:id
+ * Xoá một phiên hội thoại AI cụ thể
+ */
+exports.deleteSession = async (req, res) => {
+    try {
+        const userId = resolveUserId(req);
+        const conversationId = req.params.id;
+        if (!conversationId) {
+            return res.status(400).json({ success: false, error: "Thiếu ID cuộc trò chuyện." });
+        }
+
+        const sessionKey = `${userId}_${conversationId}`;
+        sessions.delete(sessionKey);
+
+        await prisma.messages.deleteMany({
+            where: { conversationId: conversationId },
+        });
+        await prisma.conversations.deleteMany({
+            where: { id: conversationId, type: "ai", createdBy: userId },
+        });
+
+        return res.json({ success: true, message: "Đã xoá cuộc trò chuyện." });
+    } catch (error) {
+        console.error("❌ Lỗi xoá phiên AI:", error);
+        return res.status(500).json({ success: false, error: "Không thể xoá cuộc trò chuyện." });
+    }
+};
+
+/**
  * GET /api/ai/chat/history
  */
 exports.getHistory = async (req, res) => {
     try {
         const userId = resolveUserId(req);
-        const conversation = await getOrCreateAiConversation(userId);
+        const conversationId = req.query.conversationId || null;
+        const conversation = await getOrCreateAiConversation(userId, conversationId);
         const messages = await prisma.messages.findMany({
             where: { conversationId: conversation.id },
             orderBy: { createdAt: "asc" },
@@ -247,6 +344,8 @@ exports.getHistory = async (req, res) => {
 
         return res.json({
             success: true,
+            conversationId: conversation.id,
+            conversationName: conversation.name,
             messages: messages.map((msg) => ({
                 role: msg.senderId ? "user" : "model",
                 content: msg.content,
@@ -265,7 +364,7 @@ exports.getHistory = async (req, res) => {
  */
 exports.chat = async (req, res) => {
     try {
-        const { prompt } = req.body;
+        const { prompt, conversationId: reqConvId } = req.body;
 
         if (!prompt || typeof prompt !== "string" || prompt.trim() === "") {
             return res.status(400).json({ success: false, error: "Câu hỏi không được để trống." });
@@ -279,23 +378,33 @@ exports.chat = async (req, res) => {
 
         const userId = resolveUserId(req);
 
-        // Chạy song song: Bắt đầu lấy session và lưu câu hỏi vào DB cùng lúc
-        const convPromise = getOrCreateAiConversation(userId);
-        const chatPromise = getOrCreateChatSession(userId);
+        // Lấy hoặc tạo phiên hội thoại cụ thể
+        const conv = await getOrCreateAiConversation(userId, reqConvId);
+        const convId = conv.id;
+
+        // Tự động đặt tên tiêu đề gợi nhớ nếu là cuộc trò chuyện mới
+        if (conv.name === "Cuộc trò chuyện mới" || conv.name === "Trợ lý AI Tho-Fi") {
+            const cleanTitle = prompt.trim().replace(/[\r\n]+/g, " ");
+            const shortTitle = cleanTitle.length > 35 ? cleanTitle.substring(0, 35) + "..." : cleanTitle;
+            prisma.conversations.update({
+                where: { id: convId },
+                data: { name: shortTitle },
+            }).catch(() => {});
+        }
+
+        const chatPromise = getOrCreateChatSession(userId, convId);
 
         // Lưu câu hỏi người dùng ngầm (không chặn Gemini)
-        convPromise.then((conv) => {
-            prisma.messages.create({
-                data: { conversationId: conv.id, senderId: userId, content: prompt.trim() },
-            }).catch((e) => console.warn("Lỗi lưu câu hỏi người dùng:", e.message));
-        });
+        prisma.messages.create({
+            data: { conversationId: convId, senderId: userId, content: prompt.trim() },
+        }).catch((e) => console.warn("Lỗi lưu câu hỏi người dùng:", e.message));
 
         let finalAiText = "";
         let chat = null;
 
         try {
             chat = await chatPromise;
-            console.log(`🤖 Gemini đang xử lý cho user ${req.user?.username || "Unknown"}...`);
+            console.log(`🤖 Gemini đang xử lý cho user ${req.user?.username || "Unknown"} (Conv: ${convId})...`);
             const response = await callWithRetry(() => chat.sendMessage({ message: prompt.trim() }));
             finalAiText = response.text || "";
         } catch (geminiError) {
@@ -315,18 +424,17 @@ exports.chat = async (req, res) => {
             }
         }
 
-        // TRẢ KẾT QUẢ NGAY LẬP TỨC CHO CLIENT (không phải đợi DB ghi xong)
-        res.json({ success: true, text: finalAiText });
+        // TRẢ KẾT QUẢ NGAY LẬP TỨC CHO CLIENT (kèm conversationId)
+        res.json({ success: true, text: finalAiText, conversationId: convId });
 
         // Lưu câu trả lời của AI vào DB trong nền
         (async () => {
             try {
-                const conv = await convPromise;
                 await prisma.messages.create({
-                    data: { conversationId: conv.id, senderId: null, content: finalAiText },
+                    data: { conversationId: convId, senderId: null, content: finalAiText },
                 });
                 if (chat) {
-                    trimHistoryIfNeeded(userId, chat);
+                    trimHistoryIfNeeded(userId, convId, chat);
                 }
             } catch (saveErr) {
                 console.warn("Lỗi lưu câu trả lời AI vào DB:", saveErr.message);
@@ -425,9 +533,12 @@ exports.chatStream = async (req, res) => {
 exports.resetHistory = async (req, res) => {
     try {
         const userId = resolveUserId(req);
-        sessions.delete(userId);
+        const conversationId = req.query.conversationId || null;
+        const conversation = await getOrCreateAiConversation(userId, conversationId);
 
-        const conversation = await getOrCreateAiConversation(userId);
+        const sessionKey = `${userId}_${conversation.id}`;
+        sessions.delete(sessionKey);
+
         await prisma.messages.deleteMany({
             where: { conversationId: conversation.id },
         });

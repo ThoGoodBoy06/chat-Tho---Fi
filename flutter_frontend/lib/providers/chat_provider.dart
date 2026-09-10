@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
 import '../services/socket_service.dart';
@@ -339,8 +341,35 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> _loadCachedConversations() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedStr = prefs.getString('cached_conversations');
+      if (cachedStr != null && cachedStr.isNotEmpty && conversations.isEmpty) {
+        final decoded = jsonDecode(cachedStr);
+        if (decoded is List) {
+          conversations = decoded
+              .map((c) => ConversationModel.fromJson(c, currentUserId: currentUser?.id))
+              .toList();
+          notifyListeners();
+        }
+      }
+    } catch (_) {}
+  }
+
+  bool _isFetchingConversations = false;
+
   Future<void> fetchConversations({bool showLoading = true}) async {
-    if (showLoading) {
+    // Debounce: Nếu đang fetch thì bỏ qua lần gọi này để tránh chồng chéo truy vấn DB
+    if (_isFetchingConversations) return;
+    _isFetchingConversations = true;
+
+    // Tải cache cục bộ trước nếu chưa có dữ liệu để hiển thị tức thì không chờ đợi
+    if (conversations.isEmpty) {
+      await _loadCachedConversations();
+    }
+
+    if (showLoading && conversations.isEmpty) {
       isLoadingConversations = true;
       notifyListeners();
     }
@@ -357,12 +386,20 @@ class ChatProvider extends ChangeNotifier {
         SocketService.connect(userId: currentUser!.id);
       }
       final rawList = await ApiService.getConversations();
-      conversations = rawList
-          .map((c) => ConversationModel.fromJson(c, currentUserId: currentUser?.id))
-          .toList();
+      if (rawList != null) {
+        conversations = rawList
+            .map((c) => ConversationModel.fromJson(c, currentUserId: currentUser?.id))
+            .toList();
+        // Lưu cache offline
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('cached_conversations', jsonEncode(rawList));
+        } catch (_) {}
+      }
     } catch (e) {
       debugPrint('Error fetching conversations: $e');
     } finally {
+      _isFetchingConversations = false;
       isLoadingConversations = false;
       notifyListeners();
     }

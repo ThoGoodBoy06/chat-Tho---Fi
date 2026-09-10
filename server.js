@@ -52,22 +52,47 @@ app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-// Cấu hình Cache-Control linh hoạt: Chặn cache triệt để cho /api và các file giao diện static
-app.use((req, res, next) => {
+// Cấu hình Cache-Control linh hoạt:
+// Chặn cache đối với các API endpoints để luôn có dữ liệu mới nhất
+// NGOẠI TRỪ avatar và cover photo (ảnh tĩnh nên để browser cache)
+app.use("/api", (req, res, next) => {
+    const url = req.originalUrl || req.url;
+    // Cho phép browser cache ảnh avatar và cover photo (giảm tải rất nhiều)
+    if (url.match(/\/api\/users\/[^/]+\/(avatar|cover)/)) {
+        return next();
+    }
     res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0");
     res.setHeader("Pragma", "no-cache");
     res.setHeader("Expires", "0");
     next();
 });
 
-// Mở thư mục Flutter Web static 100% mới
+// Mở thư mục Flutter Web static
 const flutterWebPath = path.join(__dirname, "flutter_frontend", "build", "web");
 const staticPath = fs.existsSync(flutterWebPath) ? flutterWebPath : path.join(__dirname, "public");
 console.log(`📂 Đang serve giao diện từ: ${staticPath}`);
 
+// Phục vụ static file tối ưu với ETag, Last-Modified và Cache thông minh
 app.use(express.static(staticPath, {
-    etag: false,
-    lastModified: false,
+    etag: true,
+    lastModified: true,
+    maxAge: "7d",
+    setHeaders: (res, filePath) => {
+        const basename = path.basename(filePath);
+        // HTML và Service Worker luôn cần revalidate để nhận diện bản build mới
+        if (basename === "index.html" || basename === "version.json" || basename.includes("service_worker") || basename.includes("sw.js")) {
+            res.setHeader("Cache-Control", "no-cache, must-revalidate");
+        } else if (filePath.match(/\.(wasm|js\.symbols)$/)) {
+            // Canvaskit WASM (6.7MB), symbol maps: Cache cực mạnh + immutable (không bao giờ revalidate)
+            res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        } else if (filePath.match(/\.(js|otf|ttf|woff|woff2)$/)) {
+            // main.dart.js (3.1MB), Fonts: Cache mạnh 30 ngày + stale-while-revalidate
+            res.setHeader("Cache-Control", "public, max-age=2592000, stale-while-revalidate=86400");
+        } else if (filePath.match(/\.(png|jpg|jpeg|svg|gif|webp|ico|mp3)$/)) {
+            // Hình ảnh, âm thanh: Cache 7 ngày
+            res.setHeader("Cache-Control", "public, max-age=604800, stale-while-revalidate=86400");
+        }
+    }
 }));
 
 // Mở thư mục chứa file upload cục bộ
@@ -115,6 +140,7 @@ if (RENDER_PING_URL) {
 app.get("/", (req, res) => {
     const indexPath = path.join(staticPath, "index.html");
     if (fs.existsSync(indexPath)) {
+        res.setHeader("Cache-Control", "no-cache, must-revalidate");
         return res.sendFile(indexPath);
     }
     res.status(404).send("File index.html not found");

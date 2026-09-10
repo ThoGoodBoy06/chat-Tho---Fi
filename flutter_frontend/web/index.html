@@ -7,10 +7,11 @@
   <meta name="description" content="Chat Tho-Fi Application">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
   
-  <!-- Anti-Cache Meta Tags (Cache Busting for iOS Safari & PWA) -->
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
+  <!-- High Priority Preloads for Instant Native Startup -->
+  <link rel="preload" href="flutter_bootstrap.js" as="script">
+  <link rel="preload" href="main.dart.js" as="script">
+  <link rel="preload" href="canvaskit/canvaskit.wasm" as="fetch" crossorigin="anonymous">
+  <link rel="preload" href="/tho_fi_logo_transparent.png" as="image">
 
   <!-- PWA Standalone Meta Tags (iOS & Android) -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -31,11 +32,11 @@
   <link rel="manifest" href="/manifest.json">
 
   <!-- Firebase Web SDK (v10 compat) -->
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
 
   <!-- jsQR Library for Real-time Web QR Code Scanning -->
-  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
   <script>
     window.webQrScanner = {
       stream: null,
@@ -259,14 +260,21 @@
       bottom: 0;
       touch-action: manipulation;
       -webkit-text-size-adjust: 100%;
+      overscroll-behavior: none;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
-    flutter-view, flt-glass-pane {
+    flutter-view, flt-glass-pane, canvas {
       width: 100% !important;
       height: 100% !important;
       position: absolute !important;
       top: 0 !important;
       left: 0 !important;
+      outline: none !important;
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
     }
     #loading-screen {
       display: flex;
@@ -275,56 +283,107 @@
       justify-content: center;
       height: 100vh;
       width: 100vw;
-      background-color: #FFFFFF;
+      background: radial-gradient(circle at 50% 35%, #ffffff 0%, #f0f4f9 100%);
       position: fixed;
       top: 0;
       left: 0;
       z-index: 9999;
+      transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      user-select: none;
+      -webkit-user-select: none;
     }
-    .spinner {
-      width: 40px;
-      height: 40px;
-      border: 3px solid rgba(0, 122, 255, 0.15);
-      border-radius: 50%;
-      border-top-color: #007AFF;
-      animation: spin 0.8s ease-in-out infinite;
+    .splash-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      animation: splashFadeIn 0.4s ease-out;
     }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
+    .splash-logo-box {
+      width: 92px;
+      height: 92px;
+      border-radius: 22px;
+      background: #ffffff;
+      box-shadow: 0 10px 28px rgba(0, 122, 255, 0.16), 0 2px 8px rgba(0, 0, 0, 0.04);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 18px;
+      animation: logoPulse 2.2s infinite ease-in-out;
     }
-    .loading-text {
-      margin-top: 16px;
-      color: #007AFF;
-      font-size: 15px;
-      font-weight: 600;
-      letter-spacing: -0.2px;
+    .splash-logo {
+      width: 72px;
+      height: 72px;
+      object-fit: contain;
+    }
+    .splash-title {
+      font-size: 21px;
+      font-weight: 700;
+      color: #1a1f36;
+      letter-spacing: -0.3px;
+      margin-bottom: 4px;
+    }
+    .splash-subtitle {
+      font-size: 13px;
+      font-weight: 500;
+      color: #8792a2;
+      margin-bottom: 24px;
+      letter-spacing: -0.1px;
+    }
+    .splash-bar-wrap {
+      width: 110px;
+      height: 4px;
+      background: rgba(0, 122, 255, 0.12);
+      border-radius: 99px;
+      overflow: hidden;
+      position: relative;
+    }
+    .splash-bar-inner {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 40%;
+      background: linear-gradient(90deg, #007AFF, #00C6FF);
+      border-radius: 99px;
+      animation: splashSlide 1.2s infinite ease-in-out;
+    }
+    @keyframes splashSlide {
+      0% { left: -40%; width: 30%; }
+      50% { width: 50%; }
+      100% { left: 110%; width: 30%; }
+    }
+    @keyframes logoPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
+    @keyframes splashFadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
     }
   </style>
 
   <script>
-    // Force unregister all stale Flutter Service Workers (Giữ lại firebase-messaging-sw.js cho Web Push)
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(registrations) {
-        for (var registration of registrations) {
-          if (registration.active && registration.active.scriptURL.includes('firebase-messaging-sw.js')) {
-            continue;
-          }
-          registration.unregister();
-        }
-      });
-    }
-    if ('caches' in window) {
-      caches.keys().then(function(names) {
-        for (var name of names) {
-          caches.delete(name);
-        }
-      });
-    }
+    // Dismiss splash screen smoothly when Flutter first frame is rendered
+    window.dismissSplashScreen = function() {
+      var el = document.getElementById('loading-screen');
+      if (el && !el.dataset.dismissed) {
+        el.dataset.dismissed = 'true';
+        el.style.opacity = '0';
+        el.style.pointerEvents = 'none';
+        setTimeout(function() {
+          if (el && el.parentNode) el.parentNode.removeChild(el);
+        }, 360);
+      }
+    };
+
+    window.addEventListener('flutter-first-frame', function() {
+      window.dismissSplashScreen();
+    });
 
     // Safety auto-dismiss for splash loading screen after Flutter starts
     setTimeout(function() {
-      var el = document.getElementById('loading-screen');
-      if (el) el.remove();
+      window.dismissSplashScreen();
     }, 4500);
 
     // iOS Standalone Link Handling: Ngăn Safari mở tab mới khi bấm link/chuyển trang
@@ -346,7 +405,18 @@
   </script>
 </head>
 <body>
-  <div id="loading-screen" style="background-color: #FFFFFF; width: 100vw; height: 100vh; position: fixed; top: 0; left: 0; z-index: 9999;"></div>
+  <div id="loading-screen">
+    <div class="splash-container">
+      <div class="splash-logo-box">
+        <img src="/tho_fi_logo_transparent.png" alt="Chat Tho-Fi" class="splash-logo" onerror="this.src='/icon-192.png'">
+      </div>
+      <div class="splash-title">Chat Tho-Fi</div>
+      <div class="splash-subtitle">Kết nối tức thì • Siêu mượt mà</div>
+      <div class="splash-bar-wrap">
+        <div class="splash-bar-inner"></div>
+      </div>
+    </div>
+  </div>
 
   <audio id="remoteAudioPlayer" autoplay playsinline style="display:none;"></audio>
   <video id="remoteVideoPlayer" autoplay playsinline style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; object-fit:cover; z-index:2147483646; background:#090D1A;"></video>

@@ -7,10 +7,11 @@
   <meta name="description" content="Chat Tho-Fi Application">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
   
-  <!-- Anti-Cache Meta Tags (Cache Busting for iOS Safari & PWA) -->
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
+  <!-- High Priority Preloads for Instant Native Startup -->
+  <link rel="preload" href="flutter_bootstrap.js" as="script">
+  <link rel="preload" href="main.dart.js" as="script">
+  <link rel="preload" href="canvaskit/canvaskit.wasm" as="fetch" crossorigin="anonymous">
+  <link rel="preload" href="/tho_fi_logo_transparent.png" as="image">
 
   <!-- PWA Standalone Meta Tags (iOS & Android) -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -31,11 +32,11 @@
   <link rel="manifest" href="/manifest.json">
 
   <!-- Firebase Web SDK (v10 compat) -->
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
 
   <!-- jsQR Library for Real-time Web QR Code Scanning -->
-  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
   <script>
     window.webQrScanner = {
       stream: null,
@@ -259,14 +260,21 @@
       bottom: 0;
       touch-action: manipulation;
       -webkit-text-size-adjust: 100%;
+      overscroll-behavior: none;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
-    flutter-view, flt-glass-pane {
+    flutter-view, flt-glass-pane, canvas {
       width: 100% !important;
       height: 100% !important;
       position: absolute !important;
       top: 0 !important;
       left: 0 !important;
+      outline: none !important;
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
     }
     #loading-screen {
       display: flex;
@@ -275,56 +283,107 @@
       justify-content: center;
       height: 100vh;
       width: 100vw;
-      background-color: #FFFFFF;
+      background: radial-gradient(circle at 50% 35%, #ffffff 0%, #f0f4f9 100%);
       position: fixed;
       top: 0;
       left: 0;
       z-index: 9999;
+      transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      user-select: none;
+      -webkit-user-select: none;
     }
-    .spinner {
-      width: 40px;
-      height: 40px;
-      border: 3px solid rgba(0, 122, 255, 0.15);
-      border-radius: 50%;
-      border-top-color: #007AFF;
-      animation: spin 0.8s ease-in-out infinite;
+    .splash-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      animation: splashFadeIn 0.4s ease-out;
     }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
+    .splash-logo-box {
+      width: 92px;
+      height: 92px;
+      border-radius: 22px;
+      background: #ffffff;
+      box-shadow: 0 10px 28px rgba(0, 122, 255, 0.16), 0 2px 8px rgba(0, 0, 0, 0.04);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 18px;
+      animation: logoPulse 2.2s infinite ease-in-out;
     }
-    .loading-text {
-      margin-top: 16px;
-      color: #007AFF;
-      font-size: 15px;
-      font-weight: 600;
-      letter-spacing: -0.2px;
+    .splash-logo {
+      width: 72px;
+      height: 72px;
+      object-fit: contain;
+    }
+    .splash-title {
+      font-size: 21px;
+      font-weight: 700;
+      color: #1a1f36;
+      letter-spacing: -0.3px;
+      margin-bottom: 4px;
+    }
+    .splash-subtitle {
+      font-size: 13px;
+      font-weight: 500;
+      color: #8792a2;
+      margin-bottom: 24px;
+      letter-spacing: -0.1px;
+    }
+    .splash-bar-wrap {
+      width: 110px;
+      height: 4px;
+      background: rgba(0, 122, 255, 0.12);
+      border-radius: 99px;
+      overflow: hidden;
+      position: relative;
+    }
+    .splash-bar-inner {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 40%;
+      background: linear-gradient(90deg, #007AFF, #00C6FF);
+      border-radius: 99px;
+      animation: splashSlide 1.2s infinite ease-in-out;
+    }
+    @keyframes splashSlide {
+      0% { left: -40%; width: 30%; }
+      50% { width: 50%; }
+      100% { left: 110%; width: 30%; }
+    }
+    @keyframes logoPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
+    @keyframes splashFadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
     }
   </style>
 
   <script>
-    // Force unregister all stale Flutter Service Workers (Giữ lại firebase-messaging-sw.js cho Web Push)
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(registrations) {
-        for (var registration of registrations) {
-          if (registration.active && registration.active.scriptURL.includes('firebase-messaging-sw.js')) {
-            continue;
-          }
-          registration.unregister();
-        }
-      });
-    }
-    if ('caches' in window) {
-      caches.keys().then(function(names) {
-        for (var name of names) {
-          caches.delete(name);
-        }
-      });
-    }
+    // Dismiss splash screen smoothly when Flutter first frame is rendered
+    window.dismissSplashScreen = function() {
+      var el = document.getElementById('loading-screen');
+      if (el && !el.dataset.dismissed) {
+        el.dataset.dismissed = 'true';
+        el.style.opacity = '0';
+        el.style.pointerEvents = 'none';
+        setTimeout(function() {
+          if (el && el.parentNode) el.parentNode.removeChild(el);
+        }, 360);
+      }
+    };
+
+    window.addEventListener('flutter-first-frame', function() {
+      window.dismissSplashScreen();
+    });
 
     // Safety auto-dismiss for splash loading screen after Flutter starts
     setTimeout(function() {
-      var el = document.getElementById('loading-screen');
-      if (el) el.remove();
+      window.dismissSplashScreen();
     }, 4500);
 
     // iOS Standalone Link Handling: Ngăn Safari mở tab mới khi bấm link/chuyển trang
@@ -346,7 +405,18 @@
   </script>
 </head>
 <body>
-  <div id="loading-screen" style="background-color: #FFFFFF; width: 100vw; height: 100vh; position: fixed; top: 0; left: 0; z-index: 9999;"></div>
+  <div id="loading-screen">
+    <div class="splash-container">
+      <div class="splash-logo-box">
+        <img src="/tho_fi_logo_transparent.png" alt="Chat Tho-Fi" class="splash-logo" onerror="this.src='/icon-192.png'">
+      </div>
+      <div class="splash-title">Chat Tho-Fi</div>
+      <div class="splash-subtitle">Kết nối tức thì • Siêu mượt mà</div>
+      <div class="splash-bar-wrap">
+        <div class="splash-bar-inner"></div>
+      </div>
+    </div>
+  </div>
 
   <audio id="remoteAudioPlayer" autoplay playsinline style="display:none;"></audio>
   <video id="remoteVideoPlayer" autoplay playsinline style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; object-fit:cover; z-index:2147483646; background:#090D1A;"></video>
@@ -416,6 +486,459 @@
           osc.start(now);
           osc.stop(now + 0.09);
         } catch(e){}
+      }
+    };
+  <!-- AI History Drawer & Typing Animation -->
+  <style>
+    .ai-drawer-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 2147483646;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .ai-drawer-backdrop.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .ai-drawer-panel {
+      position: fixed;
+      top: 0;
+      left: -350px;
+      width: 320px;
+      max-width: 85vw;
+      height: 100vh;
+      background: #ffffff;
+      z-index: 2147483647;
+      box-shadow: 4px 0 24px rgba(0, 0, 0, 0.18);
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+      border-right: 1px solid rgba(0, 0, 0, 0.08);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .ai-drawer-panel.dark {
+      background: #1e293b;
+      color: #ffffff;
+      border-right: 1px solid #334155;
+    }
+    .ai-drawer-panel.active {
+      transform: translateX(350px);
+    }
+    .ai-drawer-header {
+      padding: 16px 18px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    }
+    .ai-drawer-panel.dark .ai-drawer-header {
+      border-bottom-color: #334155;
+    }
+    .ai-drawer-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 16px;
+      color: #0f172a;
+    }
+    .ai-drawer-panel.dark .ai-drawer-title {
+      color: #f8fafc;
+    }
+    .ai-drawer-close {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: #64748b;
+      padding: 6px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ai-drawer-close:hover {
+      background: rgba(0, 0, 0, 0.05);
+    }
+    .ai-new-chat-btn {
+      margin: 12px 16px;
+      padding: 11px 16px;
+      background: linear-gradient(135deg, #0068ff, #0091ff);
+      color: #ffffff;
+      border: none;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 104, 255, 0.28);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .ai-new-chat-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(0, 104, 255, 0.38);
+    }
+    .ai-new-chat-btn:active {
+      transform: scale(0.98);
+    }
+    .ai-section-label {
+      padding: 6px 18px 4px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      color: #94a3b8;
+      text-transform: uppercase;
+    }
+    .ai-sessions-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .ai-session-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      background: #f8fafc;
+      border: 1px solid #f1f5f9;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .ai-drawer-panel.dark .ai-session-item {
+      background: #0f172a;
+      border-color: #1e293b;
+    }
+    .ai-session-item:hover {
+      background: #eef2ff;
+      border-color: #c7d2fe;
+    }
+    .ai-drawer-panel.dark .ai-session-item:hover {
+      background: #1e293b;
+      border-color: #334155;
+    }
+    .ai-session-item.active {
+      background: #eff6ff;
+      border-color: #93c5fd;
+    }
+    .ai-drawer-panel.dark .ai-session-item.active {
+      background: #1e3a5f;
+      border-color: #0068ff;
+    }
+    .ai-session-info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .ai-session-name {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #1e293b;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ai-drawer-panel.dark .ai-session-name {
+      color: #f1f5f9;
+    }
+    .ai-session-time {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    .ai-session-delete-btn {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 6px;
+      opacity: 0.7;
+      transition: opacity 0.15s, color 0.15s;
+    }
+    .ai-session-delete-btn:hover {
+      opacity: 1;
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.1);
+    }
+    .ai-drawer-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: #94a3b8;
+      font-size: 13px;
+    }
+
+    /* Hiệu ứng 3 chấm nảy (Bouncing Dots Indicator) */
+    .ai-typing-float {
+      position: fixed;
+      bottom: 74px;
+      left: 18px;
+      z-index: 999;
+      display: none;
+      align-items: flex-end;
+      gap: 8px;
+      animation: aiFadeIn 0.25s ease-out;
+      pointer-events: none;
+    }
+    .ai-typing-float.active {
+      display: flex;
+    }
+    .ai-typing-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      object-fit: cover;
+      box-shadow: 0 2px 8px rgba(0, 104, 255, 0.25);
+      border: 1.5px solid #0068ff;
+      background: #ffffff;
+    }
+    .ai-typing-bubble {
+      background: #ffffff;
+      padding: 10px 16px;
+      border-radius: 18px 18px 18px 4px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    body.dark .ai-typing-bubble,
+    .dark .ai-typing-bubble {
+      background: #1e293b;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+    }
+    .ai-typing-dot {
+      width: 7px;
+      height: 7px;
+      background: #0068ff;
+      border-radius: 50%;
+      display: inline-block;
+      animation: aiDotBounce 1.2s infinite ease-in-out;
+    }
+    .ai-typing-dot:nth-child(1) { animation-delay: 0s; }
+    .ai-typing-dot:nth-child(2) { animation-delay: 0.18s; }
+    .ai-typing-dot:nth-child(3) { animation-delay: 0.36s; }
+
+    @keyframes aiDotBounce {
+      0%, 80%, 100% {
+        transform: translateY(0);
+      }
+      40% {
+        transform: translateY(-7px);
+      }
+    }
+    @keyframes aiFadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+
+  <div id="ai-drawer-backdrop" class="ai-drawer-backdrop" onclick="window.closeAiHistory()"></div>
+  <div id="ai-drawer-panel" class="ai-drawer-panel">
+    <div class="ai-drawer-header">
+      <div class="ai-drawer-title">
+        <img src="/icon.png" style="width:24px;height:24px;border-radius:50%;" />
+        <span>Lịch sử chat AI</span>
+      </div>
+      <button class="ai-drawer-close" onclick="window.closeAiHistory()">✕</button>
+    </div>
+    <button class="ai-new-chat-btn" onclick="window.createNewAiSession()">
+      <span style="font-size:18px;line-height:1;">+</span>
+      <span>Cuộc trò chuyện mới</span>
+    </button>
+    <div class="ai-section-label">GẦN ĐÂY</div>
+    <div id="ai-sessions-list" class="ai-sessions-list">
+      <div class="ai-drawer-empty">Đang tải lịch sử...</div>
+    </div>
+  </div>
+
+  <button id="ai-overlay-btn" onclick="window.openAiHistory()" style="display:block; position:fixed; top:8px; left:8px; width:52px; height:52px; z-index:2147483645; background:transparent; border:none; cursor:pointer;" title="Lịch sử chat AI"></button>
+
+  <div id="ai-typing-float" class="ai-typing-float">
+    <img src="/icon.png" class="ai-typing-avatar" />
+    <div class="ai-typing-bubble">
+      <span class="ai-typing-dot"></span>
+      <span class="ai-typing-dot"></span>
+      <span class="ai-typing-dot"></span>
+    </div>
+  </div>
+
+  <script>
+    window._currentAiConversationId = null;
+    window._chatScreenState = null;
+
+    window.openAiHistory = function() {
+      const isDark = document.body.classList.contains('dark') || (localStorage.getItem('flutter.isDarkMode') === 'true');
+      const panel = document.getElementById('ai-drawer-panel');
+      const backdrop = document.getElementById('ai-drawer-backdrop');
+      const btn = document.getElementById('ai-overlay-btn');
+      if (btn) btn.style.display = 'none';
+      if (panel && backdrop) {
+        if (isDark) panel.classList.add('dark'); else panel.classList.remove('dark');
+        panel.classList.add('active');
+        backdrop.classList.add('active');
+        window.fetchAiSessions();
+      }
+    };
+
+    window.closeAiHistory = function() {
+      const panel = document.getElementById('ai-drawer-panel');
+      const backdrop = document.getElementById('ai-drawer-backdrop');
+      const btn = document.getElementById('ai-overlay-btn');
+      if (panel) panel.classList.remove('active');
+      if (backdrop) backdrop.classList.remove('active');
+      if (btn) btn.style.display = 'block';
+    };
+
+    function getAiAuthToken() {
+      let tk = '';
+      try {
+        const raw = localStorage.getItem('flutter.authToken') || localStorage.getItem('authToken');
+        if (raw) {
+          if (raw.startsWith('"') && raw.endsWith('"')) tk = JSON.parse(raw);
+          else tk = raw;
+        }
+      } catch(e) {
+        tk = localStorage.getItem('flutter.authToken') || localStorage.getItem('authToken') || '';
+      }
+      return tk;
+    }
+
+    window.fetchAiSessions = async function() {
+      const container = document.getElementById('ai-sessions-list');
+      if (!container) return;
+      try {
+        const res = await fetch('/api/ai/chat/sessions', {
+          headers: { 'Authorization': 'Bearer ' + getAiAuthToken() }
+        });
+        const data = await res.json();
+        if (data && data.success && Array.isArray(data.sessions)) {
+          if (data.sessions.length === 0) {
+            container.innerHTML = '<div class="ai-drawer-empty">Chưa có cuộc trò chuyện nào.<br>Bấm "+ Cuộc trò chuyện mới" để bắt đầu!</div>';
+            return;
+          }
+          container.innerHTML = '';
+          data.sessions.forEach(function(s) {
+            const isActive = window._currentAiConversationId === s.id;
+            const item = document.createElement('div');
+            item.className = 'ai-session-item' + (isActive ? ' active' : '');
+            
+            const timeStr = s.createdAt ? new Date(s.createdAt).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '';
+            
+            item.innerHTML = `
+              <div class="ai-session-info" style="cursor:pointer;" onclick="window.selectAiSession('${s.id}')">
+                <div class="ai-session-name">${escapeAiHtml(s.name || 'Cuộc trò chuyện mới')}</div>
+                <div class="ai-session-time">${timeStr}</div>
+              </div>
+              <button class="ai-session-delete-btn" title="Xóa" onclick="window.deleteAiSession('${s.id}', event)">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              </button>
+            `;
+            container.appendChild(item);
+          });
+        }
+      } catch(e) {
+        container.innerHTML = '<div class="ai-drawer-empty">Không thể tải lịch sử trò chuyện.</div>';
+      }
+    };
+
+    function escapeAiHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    window.createNewAiSession = async function() {
+      try {
+        const res = await fetch('/api/ai/chat/session/new', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + getAiAuthToken(), 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (data && data.success && data.session) {
+          window._currentAiConversationId = data.session.id;
+          window.closeAiHistory();
+          if (window._chatScreenState && window._chatScreenState.cx) {
+            const s = window._chatScreenState;
+            s.cx.length = 0;
+            if (window._dartMapHelper) {
+              s.cx.push(window._dartMapHelper('ai', 'Cuộc trò chuyện mới đã sẵn sàng! Tôi có thể giúp gì cho bạn hôm nay?'));
+            }
+            if (s.c != null) s.K(new window._dartSetStateHelper());
+          }
+        }
+      } catch(e) {
+        console.error('Lỗi tạo phiên chat mới:', e);
+      }
+    };
+
+    window.selectAiSession = async function(id) {
+      try {
+        window._currentAiConversationId = id;
+        window.closeAiHistory();
+        const res = await fetch('/api/ai/chat/history?conversationId=' + id, {
+          headers: { 'Authorization': 'Bearer ' + getAiAuthToken() }
+        });
+        const data = await res.json();
+        if (data && data.success && Array.isArray(data.messages)) {
+          if (window._chatScreenState && window._chatScreenState.cx) {
+            const s = window._chatScreenState;
+            s.cx.length = 0;
+            data.messages.forEach(function(m) {
+              if (window._dartMapHelper) {
+                s.cx.push(window._dartMapHelper(m.role === 'user' ? 'user' : 'ai', m.content || ''));
+              }
+            });
+            if (s.c != null) s.K(new window._dartSetStateHelper());
+          }
+        }
+      } catch(e) {
+        console.error('Lỗi tải tin nhắn phiên chat:', e);
+      }
+    };
+
+    window.deleteAiSession = async function(id, evt) {
+      if (evt) evt.stopPropagation();
+      if (!confirm('Bạn có chắc muốn xóa cuộc trò chuyện này không?')) return;
+      try {
+        const res = await fetch('/api/ai/chat/session/' + id, {
+          method: 'DELETE',
+          headers: { 'Authorization': 'Bearer ' + getAiAuthToken() }
+        });
+        const data = await res.json();
+        if (data && data.success) {
+          if (window._currentAiConversationId === id) {
+            window.createNewAiSession();
+          } else {
+            window.fetchAiSessions();
+          }
+        }
+      } catch(e) {
+        console.error('Lỗi xóa phiên chat:', e);
+      }
+    };
+
+    window.showAiThinking = function(show) {
+      const el = document.getElementById('ai-typing-float');
+      if (!el) return;
+      if (show) {
+        el.classList.add('active');
+      } else {
+        el.classList.remove('active');
       }
     };
   </script>
