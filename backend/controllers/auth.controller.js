@@ -115,12 +115,6 @@ exports.login = async (req, res) => {
 
     console.log(`✅ [LOGIN SUCCESS] Đăng nhập thành công cho: "${user.username}" (${user.fullName})`);
 
-    // 3. Cập nhật trạng thái Online (chạy nền, không block việc phản hồi đăng nhập)
-    prisma.users.update({
-      where: { id: user.id },
-      data: { isOnline: true },
-    }).catch((err) => console.warn("Lỗi cập nhật isOnline đăng nhập:", err.message));
-
     // Map avatar và coverPhoto sang URL tĩnh để trả về cho client
     const mappedUser = {
       ...user,

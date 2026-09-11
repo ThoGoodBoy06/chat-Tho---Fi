@@ -715,8 +715,8 @@ server.listen(PORT, () => {
     // REAL-TIME NEWS SCRAPER (VIETNAMESE + SPECIALIZED TECH/AI RSS FEEDS)
     // ===================================================================
 
-    // Dọn dẹp database khi server khởi động
-    (async () => {
+    // Dọn dẹp database (chạy sau khi server đã khởi động và ổn định 2 phút)
+    setTimeout(async () => {
         try {
             // Xóa tin tiếng Anh cũ
             const result1 = await prisma.news.deleteMany({
@@ -751,7 +751,7 @@ server.listen(PORT, () => {
         } catch (err) {
             console.error("⚠️ Lỗi khi dọn dẹp database:", err.message);
         }
-    })();
+    }, 120000);
 
     const FEEDS = [
         // === TIN THẾ GIỚI ===

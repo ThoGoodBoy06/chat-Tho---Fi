@@ -52,17 +52,8 @@ module.exports = (io) => {
       }
     }).catch(() => {});
 
-    // Cập nhật isOnline với cache 60s
-    const lastUpdate = lastOnlineUpdateMap.get(userId) || 0;
-    const now = Date.now();
-    if (now - lastUpdate > 60000) {
-      lastOnlineUpdateMap.set(userId, now);
-      prisma.users.update({
-        where: { id: userId },
-        data: { isOnline: true },
-      }).catch(() => {});
-      io.emit("user_status_changed", { userId, isOnline: true });
-    }
+    // Báo trạng thái online cho mọi người ngay lập tức
+    io.emit("user_status_changed", { userId, isOnline: true });
   }
 
   io.on("connection", async (socket) => {
@@ -96,47 +87,29 @@ module.exports = (io) => {
     });
 
     // 1b. Lắng nghe khi người dùng chuyển ứng dụng chạy ngầm (go_offline)
-    socket.on("go_offline", async () => {
+    socket.on("go_offline", () => {
       if (!socket.userId) return;
-      try {
-        const lastActiveTime = new Date();
-        await prisma.users.update({
-          where: { id: socket.userId },
-          data: { isOnline: false, lastActive: lastActiveTime },
-        });
-
-        const payload = {
-          userId: socket.userId,
-          isOnline: false,
-          lastActive: lastActiveTime.toISOString()
-        };
-        io.emit("user_status_changed", payload);
-        io.emit("user_status_change", payload);
-        console.log(`👤 User ${socket.userId} chạy ngầm (Offline).`);
-      } catch (e) {
-        console.error("Lỗi khi cập nhật trạng thái offline chạy ngầm:", e);
-      }
+      const lastActiveTime = new Date();
+      const payload = {
+        userId: socket.userId,
+        isOnline: false,
+        lastActive: lastActiveTime.toISOString()
+      };
+      io.emit("user_status_changed", payload);
+      io.emit("user_status_change", payload);
+      console.log(`👤 User ${socket.userId} chạy ngầm (Offline).`);
     });
 
     // 1c. Lắng nghe khi người dùng mở lại app (go_online)
-    socket.on("go_online", async () => {
+    socket.on("go_online", () => {
       if (!socket.userId) return;
-      try {
-        await prisma.users.update({
-          where: { id: socket.userId },
-          data: { isOnline: true },
-        });
-
-        io.emit("user_status_changed", { userId: socket.userId, isOnline: true });
-        io.emit("user_status_change", { userId: socket.userId, isOnline: true });
-        console.log(`👤 User ${socket.userId} mở lại app (Online).`);
-      } catch (e) {
-        console.error("Lỗi khi cập nhật trạng thái online mở lại app:", e);
-      }
+      io.emit("user_status_changed", { userId: socket.userId, isOnline: true });
+      io.emit("user_status_change", { userId: socket.userId, isOnline: true });
+      console.log(`👤 User ${socket.userId} mở lại app (Online).`);
     });
 
     // 2. Lắng nghe khi người dùng tắt app hoặc mất mạng
-    socket.on("disconnect", async () => {
+    socket.on("disconnect", () => {
       console.log("🔴 Một thiết bị vừa ngắt kết nối: " + socket.id);
       if (socket.userId) {
         // Chỉ xóa khỏi map nếu socket.id đang ngắt kết nối là socket đang lưu trữ trong map
@@ -148,26 +121,16 @@ module.exports = (io) => {
         const userRoom = io.sockets.adapter.rooms.get(socket.userId);
         const hasRemainingSockets = userRoom && userRoom.size > 0;
 
-        // Chỉ cập nhật DB offline nếu người dùng không còn kết nối nào khác
+        // Báo cho mọi người biết ngay lập tức (In-Memory, siêu tốc 0ms)
         if (!hasRemainingSockets) {
-          try {
-            const lastActiveTime = new Date();
-            await prisma.users.update({
-              where: { id: socket.userId },
-              data: { isOnline: false, lastActive: lastActiveTime },
-            });
-
-            // Báo cho mọi người biết user này đã offline
-            const payload = {
-              userId: socket.userId,
-              isOnline: false,
-              lastActive: lastActiveTime.toISOString()
-            };
-            io.emit("user_status_changed", payload);
-            io.emit("user_status_change", payload);
-          } catch (e) {
-            console.error("Lỗi khi cập nhật trạng thái offline:", e);
-          }
+          const lastActiveTime = new Date();
+          const payload = {
+            userId: socket.userId,
+            isOnline: false,
+            lastActive: lastActiveTime.toISOString()
+          };
+          io.emit("user_status_changed", payload);
+          io.emit("user_status_change", payload);
         }
       }
     });

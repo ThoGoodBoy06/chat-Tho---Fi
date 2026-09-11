@@ -46,6 +46,8 @@ if (!getApps().length) {
 exports.getConversations = async(req, res) => {
     try {
         const userId = req.user.id; // Lấy từ Token thông qua authMiddleware
+        console.log(`📥 [getConversations] Bắt đầu tải danh sách chat cho user: ${userId}`);
+        const t0 = Date.now();
 
         const conversations = await prisma.conversationMembers.findMany({
             where: { userId },
@@ -186,6 +188,7 @@ exports.getConversations = async(req, res) => {
             };
         });
 
+        console.log(`📤 [getConversations] Hoàn thành trong ${Date.now() - t0} ms (tìm thấy ${mappedConversations.length} cuộc trò chuyện)`);
         res.status(200).json({ success: true, data: mappedConversations });
     } catch (error) {
         console.error("!!! LỖI TẢI DANH SÁCH CUỘC TRÒ CHUYỆN:", error);
@@ -236,8 +239,8 @@ exports.getMessages = async(req, res) => {
             }
         }
 
-        // ⚡ TỐI ƯU HÓA SONG SONG: Chạy song song tất cả các truy vấn DB độc lập bằng Promise.all để tăng tốc độ tải tin nhắn gấp 3 lần
-        const [conversation, messages, membersWithNicknames, otherMember] = await Promise.all([
+        // ⚡ TỐI ƯU HÓA SONG SONG: Chạy song song các truy vấn DB độc lập bằng Promise.all
+        const [conversation, messages, membersWithNicknames] = await Promise.all([
             prisma.conversations.findUnique({
                 where: { id: conversationId },
                 select: { theme: true },
@@ -256,14 +259,9 @@ exports.getMessages = async(req, res) => {
                 where: { conversationId },
                 select: { userId: true, nickname: true },
             }),
-            prisma.conversationMembers.findFirst({
-                where: {
-                    conversationId,
-                    userId: { not: req.user.id }
-                },
-                select: { userId: true }
-            })
         ]);
+
+        const otherMember = membersWithNicknames.find((m) => m.userId !== req.user.id);
 
         const theme = conversation ? conversation.theme : "default";
 

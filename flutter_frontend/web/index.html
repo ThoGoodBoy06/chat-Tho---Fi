@@ -1513,20 +1513,6 @@
         el.classList.remove('active');
       }
     };
-
-    // Tự động dọn dẹp Cache & Service Worker của Flutter Web để buộc trình duyệt nạp bản mới
-    try {
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(regs) {
-          for (let reg of regs) reg.unregister();
-        });
-      }
-      if ('caches' in window) {
-        caches.keys().then(function(names) {
-          for (let name of names) caches.delete(name);
-        });
-      }
-    } catch(e) {}
   </script>
   <script src="flutter_bootstrap.js?v=20260910_9" async></script>
 </body>
