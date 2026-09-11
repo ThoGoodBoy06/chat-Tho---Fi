@@ -29774,6 +29774,7 @@ n=p.gje(p)
 p=A.iT()
 m=p.gmj(p)
 if((n==="localhost"||n==="127.0.0.1")&&m!==3000)p=a0.a=(A.iT().gdQ().length===0?"http":A.iT().gdQ())+"://"+n+":3000"
+else if(n.includes("pages.dev")||n.includes("workers.dev")||n.includes("cloudflare")){p=a0.a="https://chat-tho-fi-vn-9s8u.onrender.com"}
 else{p=A.iT()
 p=a0.a=p.gtM(p)}o=t.N
 l=t.z
@@ -31865,6 +31866,7 @@ da(){var s,r=A.iT(),q=r.gje(r)
 r=A.iT()
 s=r.gmj(r)
 if((q==="localhost"||q==="127.0.0.1")&&s!==3000)return(A.iT().gdQ().length===0?"http":A.iT().gdQ())+"://"+q+":3000/api"
+if(q.includes("pages.dev")||q.includes("workers.dev")||q.includes("cloudflare"))return"https://chat-tho-fi-vn-9s8u.onrender.com/api"
 r=A.iT()
 return r.gtM(r)+"/api"},
 uN(){var s=0,r=A.x(t.T),q,p,o
@@ -98639,7 +98641,7 @@ return A.m(A.Ac(),$async$mI)
 case 9:l=b
 h=J.Z(l,"data")
 k=h==null?J.Z(l,"user"):h
-s=t.P.b(k)&&J.Z(k,"id")!=null?10:12
+s=k!=null&&J.Z(k,"id")!=null?10:12
 break
 case 10:j=J.ai(J.Z(k,"id"))
 g=n.c
@@ -98901,7 +98903,7 @@ return A.m(A.Ac(),$async$kT)
 case 8:m=c
 i=J.Z(m,"data")
 l=i==null?J.Z(m,"user"):i
-if(t.P.b(l))n.a=A.aqH(l)
+if(l!=null)n.a=A.aqH(l)
 case 7:h=n.a
 if(h!=null&&h.a.length!==0)A.tw(h.a)
 s=9
@@ -98991,7 +98993,7 @@ s=6
 return A.m(A.Mt(a),$async$o7)
 case 6:n=c
 m=J.Z(n,"data")
-s=t.P.b(m)?7:8
+s=m!=null?7:8
 break
 case 7:i=J.Z(m,"id")
 h=i==null?null:J.ai(i)
@@ -99049,7 +99051,7 @@ case 7:k=a6
 a0=J.Z(k,"data")
 if(a0==null)a0=J.e(J.Z(k,"success"),!0)?k:null
 j=a0
-if(t.P.b(j)){i=A.wf(j)
+if(j!=null){i=A.wf(j)
 h=B.b.h3(n.d,new A.a80(l))
 if(!J.e(h,-1))n.d[h]=i
 else if(!B.b.iY(n.d,new A.a81(i)))B.b.D(n.d,i)
@@ -102782,7 +102784,7 @@ case 15:k=A.c3(c,!1,t.c)
 f=J.Z(l,"data")
 j=f==null?J.Z(l,"user"):f
 i=null
-s=t.P.b(j)?17:18
+s=j!=null?17:18
 break
 case 17:c=J.Z(j,"id")
 i=c==null?null:J.ai(c)
@@ -102811,7 +102813,7 @@ case 26:g=A.c3(c,!1,t.c)
 j=J.Z(h,"data")
 f=j==null?J.Z(h,"user"):j
 e=null
-s=t.P.b(f)?28:29
+s=f!=null?28:29
 break
 case 28:c=J.Z(f,"id")
 e=c==null?null:J.ai(c)

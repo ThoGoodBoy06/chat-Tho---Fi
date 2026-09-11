@@ -726,8 +726,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     );
   }
 
-  Future<void> _loadAiHistory({String? conversationId}) async {
-    if (conversationId == null && _hasLoadedAiHistory) return;
+  Future<void> _loadAiHistory({String? conversationId, bool forceReload = false}) async {
+    if (conversationId == null && _hasLoadedAiHistory && !forceReload) return;
     if (conversationId == null) _hasLoadedAiHistory = true;
     try {
       final res = await ApiService.getAiHistory(conversationId: conversationId);
@@ -804,14 +804,20 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   }
 
   void _scrollAiToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    void doScroll() {
       if (_aiScrollController.hasClients) {
         _aiScrollController.animateTo(
           _aiScrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
+          duration: const Duration(milliseconds: 200),
           curve: Curves.easeOut,
         );
       }
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      doScroll();
+      Future.delayed(const Duration(milliseconds: 100), doScroll);
+      Future.delayed(const Duration(milliseconds: 250), doScroll);
     });
   }
 
@@ -979,7 +985,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 return Tooltip(
                   message: navItems[index]['label'] as String,
                   child: InkWell(
-                    onTap: () => setState(() => _currentTabIndex = index),
+                    onTap: () {
+                      setState(() => _currentTabIndex = index);
+                      if (index == 3) {
+                        _loadAiHistory(forceReload: true);
+                      }
+                    },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
@@ -5424,6 +5435,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 setState(() => _currentTabIndex = index);
                 if (index == 1) {
                   _fetchPendingRequestsCount();
+                } else if (index == 3) {
+                  _loadAiHistory(forceReload: true);
                 }
               },
               behavior: HitTestBehavior.opaque,

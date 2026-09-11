@@ -68,6 +68,7 @@ exports.login = async (req, res) => {
     }
 
     const cleanIdentifier = identifier.trim();
+    console.log(`🔑 [LOGIN] Đang thử đăng nhập với tài khoản: "${cleanIdentifier}"`);
 
     // 1. Tìm user (hỗ trợ tìm kiếm username không phân biệt hoa thường, email hoặc SĐT)
     const user = await prisma.users.findFirst({
@@ -86,6 +87,8 @@ exports.login = async (req, res) => {
         phone: true,
         password: true,
         bio: true,
+        role: true,
+        isBlocked: true,
         isOnline: true,
         lastActive: true,
         createdAt: true,
@@ -94,14 +97,23 @@ exports.login = async (req, res) => {
     });
 
     if (!user) {
+      console.log(`⚠️ [LOGIN FAILED] Tài khoản "${cleanIdentifier}" không tồn tại trong database`);
       return res.status(404).json({ message: "Tài khoản không tồn tại!" });
+    }
+
+    if (user.isBlocked) {
+      console.log(`⚠️ [LOGIN FAILED] Tài khoản "${cleanIdentifier}" đã bị khóa`);
+      return res.status(403).json({ message: "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Admin!" });
     }
 
     // 2. Kiểm tra mật khẩu
     const isMatch = await bcrypt.compare(password.trim(), user.password);
     if (!isMatch) {
+      console.log(`⚠️ [LOGIN FAILED] Mật khẩu không chính xác cho tài khoản "${cleanIdentifier}"`);
       return res.status(400).json({ message: "Mật khẩu không chính xác!" });
     }
+
+    console.log(`✅ [LOGIN SUCCESS] Đăng nhập thành công cho: "${user.username}" (${user.fullName})`);
 
     // 3. Cập nhật trạng thái Online (chạy nền, không block việc phản hồi đăng nhập)
     prisma.users.update({

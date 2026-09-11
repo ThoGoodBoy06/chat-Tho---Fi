@@ -756,10 +756,14 @@ exports.changeGroupAvatar = async (req, res) => {
         });
         const changerName = user ? user.fullName : "Thành viên";
 
+        // Tải avatar nhóm lên Supabase Storage
+        const storageService = require("../services/storage.service");
+        const publicAvatarUrl = await storageService.processUpload(avatar, "avatar", "group_avatar.jpg", conversationId);
+
         // Cập nhật avatar nhóm trong database
         await prisma.conversations.update({
             where: { id: conversationId },
-            data: { avatar }
+            data: { avatar: publicAvatarUrl }
         });
 
         // Tạo tin nhắn hệ thống thông báo đổi ảnh

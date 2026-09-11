@@ -3,33 +3,111 @@ const { v4: uuidv4 } = require("uuid");
 const path = require("path");
 const fs = require("fs");
 
-const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseUrl = (process.env.SUPABASE_URL || "")
+  .replace(/\/rest\/v1\/?$/, "")
+  .replace(/\/$/, "");
 const supabaseKey = process.env.SUPABASE_KEY;
 
 let supabase = null;
 
-if (supabaseUrl && supabaseKey) {
+function isConfigured() {
+  return !!(supabaseUrl && supabaseKey);
+}
+
+if (isConfigured()) {
   try {
     supabase = createClient(supabaseUrl, supabaseKey);
-    console.log("🟢 Supabase client initialized successfully!");
+    console.log("🟢 [Supabase] Khởi tạo Supabase client thành công!");
   } catch (e) {
-    console.warn("⚠️ Warning: Could not initialize Supabase client:", e.message);
+    console.warn("⚠️ [Supabase] Không thể khởi tạo Supabase client:", e.message);
   }
 } else {
   console.warn(
-    "⚠️ Warning: SUPABASE_URL or SUPABASE_KEY is missing in env. File upload will use local file storage."
+    "⚠️ [Supabase] Thiếu SUPABASE_URL hoặc SUPABASE_KEY trong .env. Sẽ dùng lưu trữ cục bộ."
   );
 }
 
 /**
- * Uploads a base64 string directly to Supabase Storage, with fallback to local file storage
- * @param {string} base64Str base64 encoded data (with or without data: URI prefix)
- * @param {string} type "image" | "audio" | "file"
- * @param {string} originalName Name of the file (optional)
- * @returns {Promise<string>} The public URL of the uploaded file
+ * Tải avatar (người dùng hoặc nhóm) lên Supabase Storage (Bucket: avatars)
+ * @param {string} base64Str 
+ * @param {string} entityId ID của user hoặc nhóm
+ * @returns {Promise<string>} Public URL của avatar
  */
-async function uploadBase64(base64Str, type, originalName = "") {
-  // 1. Thử tải lên Supabase Storage nếu có cấu hình
+async function uploadAvatar(base64Str, entityId = uuidv4()) {
+  if (supabase) {
+    try {
+      let mimeType = "image/jpeg";
+      let base64Data = base64Str;
+
+      if (base64Str.startsWith("data:")) {
+        const match = base64Str.match(/^data:(.*?);base64,/);
+        if (match) {
+          mimeType = match[1];
+          base64Data = base64Str.slice(match[0].length);
+        }
+      }
+
+      const buffer = Buffer.from(base64Data, "base64");
+      const ext = (mimeType.split("/")[1] || "jpg").split("+")[0];
+      const filePath = `avatars/${entityId}_${Date.now()}.${ext}`;
+
+      // Tải lên bucket avatars
+      const { data, error } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, buffer, {
+          contentType: mimeType,
+          upsert: true,
+        });
+
+      if (!error) {
+        const { data: publicUrlData } = supabase.storage
+          .from("avatars")
+          .getPublicUrl(filePath);
+
+        if (publicUrlData && publicUrlData.publicUrl) {
+          console.log(`✅ [Supabase Storage] Avatar tải lên thành công: ${publicUrlData.publicUrl}`);
+          return publicUrlData.publicUrl;
+        }
+      } else {
+        console.warn("⚠️ [Supabase Storage] Lỗi tải avatar:", error.message);
+      }
+    } catch (err) {
+      console.warn("⚠️ [Supabase Storage] Thất bại khi đẩy avatar:", err.message);
+    }
+  }
+
+  // Fallback: Lưu vào đĩa cục bộ public/avatars
+  try {
+    let mimeType = "image/jpeg";
+    let base64Data = base64Str;
+    if (base64Str.startsWith("data:")) {
+      const match = base64Str.match(/^data:(.*?);base64,/);
+      if (match) {
+        mimeType = match[1];
+        base64Data = base64Str.slice(match[0].length);
+      }
+    }
+    const buffer = Buffer.from(base64Data, "base64");
+    const ext = (mimeType.split("/")[1] || "jpg").split("+")[0];
+    const avatarDir = path.join(__dirname, "public", "avatars");
+    if (!fs.existsSync(avatarDir)) fs.mkdirSync(avatarDir, { recursive: true });
+
+    const fileName = `avatar_${entityId}_${Date.now()}.${ext}`;
+    fs.writeFileSync(path.join(avatarDir, fileName), buffer);
+    return `/avatars/${fileName}`;
+  } catch (e) {
+    return base64Str;
+  }
+}
+
+/**
+ * Tải file nhẹ hoặc âm thanh thoại ngắn lên Supabase Storage (Bucket: chat-media)
+ * @param {string} base64Str 
+ * @param {string} type "image" | "audio" | "file"
+ * @param {string} originalName 
+ * @returns {Promise<string>} Public URL của file
+ */
+async function uploadBase64(base64Str, type = "file", originalName = "") {
   if (supabase) {
     try {
       let mimeType = "";
@@ -50,11 +128,8 @@ async function uploadBase64(base64Str, type, originalName = "") {
       }
 
       const buffer = Buffer.from(base64Data, "base64");
-      let extension = mimeType.split("/")[1] || "";
-      if (extension.includes("+")) {
-        extension = extension.split("+")[0];
-      }
-      
+      let extension = (mimeType.split("/")[1] || "").split("+")[0];
+
       let cleanName = originalName.replace(/[^a-zA-Z0-9.\-_]/g, "_");
       if (!cleanName) {
         cleanName = `${uuidv4()}.${extension || "bin"}`;
@@ -78,18 +153,18 @@ async function uploadBase64(base64Str, type, originalName = "") {
           .getPublicUrl(filePath);
 
         if (publicUrlData && publicUrlData.publicUrl) {
-          console.log(`✅ Supabase upload success: ${publicUrlData.publicUrl}`);
+          console.log(`✅ [Supabase Storage] File nhẹ tải lên thành công: ${publicUrlData.publicUrl}`);
           return publicUrlData.publicUrl;
         }
       } else {
-        console.warn("⚠️ Supabase Storage upload error, falling back to local file storage:", error.message || error);
+        console.warn("⚠️ [Supabase Storage] Lỗi tải file nhẹ:", error.message || error);
       }
     } catch (e) {
-      console.warn("⚠️ Supabase Storage failed, falling back to local file storage:", e.message);
+      console.warn("⚠️ [Supabase Storage] Lỗi ngoại lệ:", e.message);
     }
   }
 
-  // 2. Fallback: Lưu file vào đĩa cục bộ thư mục uploads/ trên server
+  // Fallback cục bộ
   try {
     let mimeType = "";
     let base64Data = base64Str;
@@ -109,11 +184,8 @@ async function uploadBase64(base64Str, type, originalName = "") {
     }
 
     const buffer = Buffer.from(base64Data, "base64");
-    let extension = mimeType.split("/")[1] || "";
-    if (extension.includes("+")) {
-      extension = extension.split("+")[0];
-    }
-    
+    let extension = (mimeType.split("/")[1] || "").split("+")[0];
+
     let cleanName = originalName.replace(/[^a-zA-Z0-9.\-_]/g, "_");
     if (!cleanName) {
       cleanName = `${uuidv4()}.${extension || "bin"}`;
@@ -132,15 +204,17 @@ async function uploadBase64(base64Str, type, originalName = "") {
     fs.writeFileSync(fullPath, buffer);
 
     const localUrl = `/uploads/${dateStr}/${fileName}`;
-    console.log(`✅ Saved local upload success: ${localUrl}`);
+    console.log(`✅ [Local Fallback] Đã lưu file cục bộ: ${localUrl}`);
     return localUrl;
   } catch (fsErr) {
-    console.error("❌ Local file storage failed:", fsErr);
+    console.error("❌ Lưu file cục bộ thất bại:", fsErr);
     return base64Str;
   }
 }
 
 module.exports = {
   supabase,
+  isConfigured,
+  uploadAvatar,
   uploadBase64,
 };

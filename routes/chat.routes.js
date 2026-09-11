@@ -24,6 +24,7 @@ router.delete("/conversations/:conversationId", chatController.deleteConversatio
 router.get("/:conversationId/messages", chatController.getMessages);
 router.post("/:conversationId/messages", chatController.sendMessage);
 router.post("/:conversationId/upload-media", upload.single("file"), chatController.uploadMedia);
+router.get("/presigned-upload-url", chatController.getPresignedUploadUrl);
 
 // API cho các tính năng Big Update
 router.put("/messages/:messageId/recall", chatController.recallMessage);

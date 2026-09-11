@@ -291,9 +291,10 @@ class _LoginScreenState extends State<LoginScreen> {
             final provider = Provider.of<ChatProvider>(context, listen: false);
             final userObj = res['data'] ?? res['user'];
             String? userId;
-            if (userObj is Map<String, dynamic>) {
-              userId = userObj['id']?.toString();
-              await provider.setCurrentUser(userObj);
+            if (userObj is Map) {
+              final userMap = Map<String, dynamic>.from(userObj);
+              userId = userMap['id']?.toString();
+              await provider.setCurrentUser(userMap);
             }
             await SocketService.connect(userId: userId ?? '');
             widget.onLoginSuccess();
@@ -309,9 +310,10 @@ class _LoginScreenState extends State<LoginScreen> {
             final provider = Provider.of<ChatProvider>(context, listen: false);
             final userObj = res['data'] ?? res['user'];
             String? userId;
-            if (userObj is Map<String, dynamic>) {
-              userId = userObj['id']?.toString();
-              await provider.setCurrentUser(userObj);
+            if (userObj is Map) {
+              final userMap = Map<String, dynamic>.from(userObj);
+              userId = userMap['id']?.toString();
+              await provider.setCurrentUser(userMap);
             }
             await SocketService.connect(userId: userId ?? '');
             widget.onLoginSuccess();

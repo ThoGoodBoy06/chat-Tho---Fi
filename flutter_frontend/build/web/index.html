@@ -1216,8 +1216,88 @@
     };
 
 
+    window.scrollAiChatToBottom = function() {
+      setTimeout(function() {
+        const pane = document.querySelector('flt-glass-pane') || document.body;
+        const target = (pane && pane.shadowRoot) ? (pane.shadowRoot.querySelector('canvas') || pane.shadowRoot) : pane;
+        if (target) {
+          for (let k = 0; k < 12; k++) {
+            target.dispatchEvent(new WheelEvent('wheel', {
+              deltaY: 3000,
+              deltaMode: 0,
+              bubbles: true,
+              cancelable: true,
+              clientX: window.innerWidth / 2,
+              clientY: window.innerHeight / 2
+            }));
+          }
+        }
+      }, 150);
+      setTimeout(function() {
+        const pane = document.querySelector('flt-glass-pane') || document.body;
+        const target = (pane && pane.shadowRoot) ? (pane.shadowRoot.querySelector('canvas') || pane.shadowRoot) : pane;
+        if (target) {
+          for (let k = 0; k < 12; k++) {
+            target.dispatchEvent(new WheelEvent('wheel', {
+              deltaY: 3000,
+              deltaMode: 0,
+              bubbles: true,
+              cancelable: true,
+              clientX: window.innerWidth / 2,
+              clientY: window.innerHeight / 2
+            }));
+          }
+        }
+      }, 400);
+    };
+
+    let _lastAiRefreshTime = 0;
+    window.refreshAiTabHistory = async function() {
+      const now = Date.now();
+      if (now - _lastAiRefreshTime < 800) return;
+      _lastAiRefreshTime = now;
+      try {
+        const tk = getAiAuthToken();
+        if (!tk) return;
+        const res = await fetch('/api/ai/chat/history', {
+          headers: { 'Authorization': 'Bearer ' + tk }
+        });
+        const data = await res.json();
+        if (data && data.success) {
+          if (data.conversationId) {
+            window._currentAiConversationId = data.conversationId;
+          }
+          if (window._chatScreenState && window._chatScreenState.cx) {
+            const s = window._chatScreenState;
+            s.cx.length = 0;
+            if (Array.isArray(data.messages) && data.messages.length > 0) {
+              data.messages.forEach(function(m) {
+                if (window._dartMapHelper) {
+                  s.cx.push(window._dartMapHelper(m.role === 'user' ? 'user' : 'ai', m.content || ''));
+                }
+              });
+            }
+            if (s.c != null && typeof window._dartSetStateHelper === 'function') {
+              s.K(new window._dartSetStateHelper());
+            }
+            if (Array.isArray(data.messages) && data.messages.length > 0) {
+              window.scrollAiChatToBottom();
+            }
+          }
+          if (typeof window.updateAiWelcomeState === 'function') {
+            window.updateAiWelcomeState();
+          }
+        }
+      } catch (err) {
+        console.warn('Lỗi refresh AI history:', err);
+      }
+    };
+
     window.updateAiMenuBtnState = function(isActive) {
       window._isAiTabActive = !!isActive;
+      if (isActive) {
+        window.refreshAiTabHistory();
+      }
       if (typeof window.updateAiWelcomeState === 'function') {
         window.updateAiWelcomeState();
       }
@@ -1323,7 +1403,7 @@
       } catch(e) {
         tk = localStorage.getItem('flutter.authToken') || localStorage.getItem('authToken') || '';
       }
-      return tk;
+      return (tk || '').replace(/^"+|"+$/g, '').trim();
     }
 
     window.fetchAiSessions = async function() {
@@ -1528,6 +1608,6 @@
       }
     } catch(e) {}
   </script>
-  <script src="flutter_bootstrap.js?v=20260910_9" async></script>
+  <script src="flutter_bootstrap.js?v=20260911_v15" async></script>
 </body>
 </html>

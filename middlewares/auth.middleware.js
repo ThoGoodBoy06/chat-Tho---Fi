@@ -8,7 +8,10 @@ const authMiddleware = (req, res, next) => {
       .json({ message: "Không tìm thấy token. Truy cập bị từ chối!" });
   }
 
-  const token = authHeader.split(" ")[1];
+  let token = authHeader.substring(7).trim();
+  if (token.startsWith('"') && token.endsWith('"')) {
+    token = token.slice(1, -1).trim();
+  }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);

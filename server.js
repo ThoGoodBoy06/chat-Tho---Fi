@@ -580,14 +580,17 @@ app.post("/api/users/avatar", async(req, res) => {
         if (!avatar)
             return res.status(400).json({ message: "Vui lòng chọn ảnh đại diện" });
 
-        // Lưu thẳng Base64 string vào DB Neon
+        // Tải avatar lên Supabase Storage và lưu URL sạch vào Database
+        const storageService = require("./services/storage.service");
+        const publicAvatarUrl = await storageService.processUpload(avatar, "avatar", "avatar.jpg", decoded.id);
+
         clearUserImageCache(decoded.id);
         await prisma.users.update({
             where: { id: decoded.id },
-            data: { avatar: avatar },
+            data: { avatar: publicAvatarUrl },
         });
 
-        res.json({ success: true, avatarUrl: `/api/users/${decoded.id}/avatar?v=${Date.now()}` });
+        res.json({ success: true, avatarUrl: publicAvatarUrl });
     } catch (error) {
         console.error("Lỗi upload avatar:", error);
         res

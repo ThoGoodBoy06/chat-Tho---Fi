@@ -13,6 +13,9 @@ class ApiService {
         final scheme = Uri.base.scheme.isEmpty ? 'http' : Uri.base.scheme;
         return '$scheme://$host:3000/api';
       }
+      if (host.contains('pages.dev') || host.contains('cloudflare') || host.contains('web.app')) {
+        return 'https://chat-tho-fi-vn-9s8u.onrender.com/api';
+      }
       return '${Uri.base.origin}/api';
     }
     return 'https://chat-tho-fi-vn.onrender.com/api';

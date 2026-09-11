@@ -56,10 +56,11 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
       if (token != null && token.isNotEmpty) {
         final meRes = await ApiService.getMe();
         final userObj = meRes['data'] ?? meRes['user'];
-        if (userObj is Map<String, dynamic> && userObj['id'] != null) {
-          final userId = userObj['id'].toString();
+        if (userObj is Map && userObj['id'] != null) {
+          final userMap = Map<String, dynamic>.from(userObj);
+          final userId = userMap['id'].toString();
           if (mounted) {
-            await Provider.of<ChatProvider>(context, listen: false).setCurrentUser(userObj);
+            await Provider.of<ChatProvider>(context, listen: false).setCurrentUser(userMap);
             setState(() {
               _isLoggedIn = true;
             });

@@ -1970,9 +1970,9 @@ exports.uploadMedia = async (req, res) => {
             type = req.body.type;
         }
 
-        const { uploadBase64 } = require("../supabase");
+        const storageService = require("../services/storage.service");
         const base64Str = `data:${mimeType};base64,${buffer.toString("base64")}`;
-        const publicUrl = await uploadBase64(base64Str, type, originalName);
+        const publicUrl = await storageService.processUpload(base64Str, type, originalName, conversationId);
 
         const newMessage = await prisma.messages.create({
             data: {
@@ -1983,6 +1983,8 @@ exports.uploadMedia = async (req, res) => {
                 type: type,
                 imageUrl: type === "image" ? publicUrl : null,
                 audioUrl: type === "audio" ? publicUrl : null,
+                videoUrl: type === "video" ? publicUrl : null,
+                fileUrl: (type !== "image" && type !== "audio" && type !== "video") ? publicUrl : null,
             },
             include: {
                 Users: {
@@ -2008,6 +2010,25 @@ exports.uploadMedia = async (req, res) => {
     } catch (error) {
         console.error("❌ Lỗi uploadMedia:", error);
         res.status(500).json({ success: false, message: "Lỗi server", error: error.message });
+    }
+};
+
+// API lấy Presigned URL tải trực tiếp lên Cloudflare R2 (Băng thông 0đ)
+exports.getPresignedUploadUrl = async (req, res) => {
+    try {
+        const { fileName, contentType, category } = req.query;
+        if (!fileName || !contentType) {
+            return res.status(400).json({ success: false, message: "Thiếu fileName hoặc contentType" });
+        }
+        const storageService = require("../services/storage.service");
+        const result = await storageService.getDirectUploadUrl(fileName, contentType, category || "files");
+        if (!result) {
+            return res.status(501).json({ success: false, message: "Cloudflare R2 chưa được cấu hình hoặc không khả dụng." });
+        }
+        res.json({ success: true, data: result });
+    } catch (error) {
+        console.error("❌ Lỗi getPresignedUploadUrl:", error);
+        res.status(500).json({ success: false, message: "Lỗi tạo link upload", error: error.message });
     }
 };
 

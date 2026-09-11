@@ -6,27 +6,503 @@
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="Chat Tho-Fi Application">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+  
+  <!-- High Priority Preloads for Instant Native Startup -->
+  <link rel="preload" href="flutter_bootstrap.js" as="script">
+  <link rel="preload" href="main.dart.js" as="script">
+  <link rel="preload" href="canvaskit/canvaskit.wasm" as="fetch" crossorigin="anonymous">
+  <link rel="preload" href="/tho_fi_logo_transparent.png" as="image">
+
+  <!-- PWA Standalone Meta Tags (iOS & Android) -->
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Chat Tho-Fi">
+  <meta name="theme-color" content="#007AFF">
+  <meta name="application-name" content="Chat Tho-Fi">
+
+  <!-- Icons -->
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/icon.png">
+  <link rel="shortcut icon" href="/icon-192.png">
 
   <title>Chat Tho-Fi</title>
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="/manifest.json">
+
+  <!-- Firebase Web SDK (v10 compat) -->
+  <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+
+  <!-- jsQR Library for Real-time Web QR Code Scanning -->
+  <script defer src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <script>
+    window.webQrScanner = {
+      stream: null,
+      video: null,
+      animationFrameId: null,
+      isScanning: false,
+      start: async function(containerId) {
+        this.pause();
+        this.isScanning = true;
+        console.log('[WebQrScanner] Initializing camera for container:', containerId);
+
+        try {
+          let stream = this.stream;
+
+          // Reuse existing active stream if available to prevent browser permission prompt
+          if (!stream || !stream.active || !stream.getVideoTracks().some(t => t.readyState === 'live')) {
+            console.log('[WebQrScanner] Requesting new camera stream via getUserMedia...');
+            try {
+              stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: "environment" }
+              });
+            } catch(err1) {
+              console.warn('[WebQrScanner] FacingMode environment failed, trying simple video constraint:', err1);
+              stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            }
+            this.stream = stream;
+          } else {
+            console.log('[WebQrScanner] Reusing active camera stream (no permission dialog required)');
+          }
+
+          const container = document.getElementById(containerId);
+          if (!container) {
+            console.error('[WebQrScanner] Target container element not found in DOM:', containerId);
+            return false;
+          }
+
+          const video = document.createElement('video');
+          video.setAttribute("playsinline", "true");
+          video.autoplay = true;
+          video.muted = true;
+          video.style.width = '100%';
+          video.style.height = '100%';
+          video.style.objectFit = 'cover';
+          video.srcObject = stream;
+
+          container.innerHTML = '';
+          container.appendChild(video);
+          this.video = video;
+
+          await video.play().catch(e => console.error('[WebQrScanner] video.play() error:', e));
+
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+
+          const tick = () => {
+            if (!this.isScanning) return;
+
+            if (video && video.readyState === video.HAVE_ENOUGH_DATA) {
+              canvas.width = video.videoWidth;
+              canvas.height = video.videoHeight;
+              ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+              const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+              if (window.jsQR) {
+                const code = window.jsQR(imageData.data, imageData.width, imageData.height, {
+                  inversionAttempts: "dontInvert"
+                });
+
+                if (code && code.data && this.isScanning) {
+                  console.log('[WebQrScanner] QR Code detected:', code.data);
+                  const qrData = code.data;
+                  this.isScanning = false;
+
+                  // Pause video scanning loop but keep stream active for fast re-use
+                  this.pause();
+
+                  // Dispatch custom DOM event to Flutter
+                  window.dispatchEvent(new CustomEvent('qr-scanned', { detail: qrData }));
+                  return;
+                }
+              }
+            }
+
+            if (this.isScanning) {
+              this.animationFrameId = requestAnimationFrame(tick);
+            }
+          };
+
+          this.animationFrameId = requestAnimationFrame(tick);
+          return true;
+        } catch(err) {
+          console.error('[WebQrScanner] Error accessing camera (NotAllowedError/NotFoundError):', err);
+          return false;
+        }
+      },
+      scanImage: function(dataUrl) {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          if (window.jsQR) {
+            const code = window.jsQR(imageData.data, imageData.width, imageData.height, {
+              inversionAttempts: "dontInvert"
+            });
+            if (code && code.data) {
+              console.log('[WebQrScanner] Image QR Code detected:', code.data);
+              this.pause();
+              window.dispatchEvent(new CustomEvent('qr-scanned', { detail: code.data }));
+            } else {
+              window.dispatchEvent(new CustomEvent('qr-scan-failed', { detail: 'No QR code found in image' }));
+            }
+          }
+        };
+        img.src = dataUrl;
+      },
+      pause: function() {
+        this.isScanning = false;
+        if (this.animationFrameId) {
+          cancelAnimationFrame(this.animationFrameId);
+          this.animationFrameId = null;
+        }
+        if (this.video) {
+          try {
+            this.video.pause();
+            this.video.srcObject = null;
+            this.video.remove();
+          } catch(e) {}
+          this.video = null;
+        }
+      },
+      stop: function() {
+        this.pause();
+        if (this.stream) {
+          try {
+            this.stream.getTracks().forEach(track => {
+              track.stop();
+              console.log('[WebQrScanner] Camera track stopped:', track.label);
+            });
+          } catch(e) {
+            console.error('[WebQrScanner] Error stopping tracks:', e);
+          }
+          this.stream = null;
+        }
+      }
+    };
+  </script>
+  <script>
+    window.registerFCMAndGetToken = async function(vapidKey) {
+      if (!('serviceWorker' in navigator) || !('Notification' in window)) {
+        console.warn('[FCM Web] Service Worker hoặc Notification API không được hỗ trợ trên trình duyệt này.');
+        return null;
+      }
+      try {
+        if (!firebase.apps.length) {
+          const firebaseConfig = {
+            apiKey: "AIzaSyDk6fayVDs0YbbhwldYxgHcN4nnjnPwmRc",
+            authDomain: "chat-tho-fi.firebaseapp.com",
+            projectId: "chat-tho-fi",
+            storageBucket: "chat-tho-fi.firebasestorage.app",
+            messagingSenderId: "513501588929",
+            appId: "1:513501588929:web:54fd6c5fab227868bfd340",
+          };
+          firebase.initializeApp(firebaseConfig);
+        }
+
+        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' });
+        await registration.update();
+        await navigator.serviceWorker.ready;
+
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+          console.warn('[FCM Web] ⚠️ Quyền thông báo bị từ chối hoặc chưa được duyệt (Status: ' + permission + ').');
+          return null;
+        }
+
+        const effectiveVapidKey = vapidKey || 'BBtraQSvar7RExe_T8aVhoA3TebgLw0S-ucoMcuV-Oef-H7ULkJGWyBctnxfY5tLnawpWQ9Wn8Aihi-wJaLiGu0';
+
+        const messaging = firebase.messaging();
+        const token = await messaging.getToken({
+          vapidKey: effectiveVapidKey,
+          serviceWorkerRegistration: registration
+        });
+        if (token) {
+          console.log('[FCM Web] ✅ Lấy FCM Token thành công:', token.substring(0, 15) + '...');
+          return token;
+        }
+      } catch (err) {
+        console.error('[FCM Web] ❌ Lỗi đăng ký / lấy FCM Token:', err);
+      }
+      return null;
+    };
+
+    window.getWebDeviceId = function() {
+      let deviceId = localStorage.getItem('tho_fi_web_device_id');
+      if (!deviceId) {
+        deviceId = 'web_' + Math.random().toString(36).substring(2, 15) + '_' + Date.now();
+        localStorage.setItem('tho_fi_web_device_id', deviceId);
+      }
+      return deviceId;
+    };
+  </script>
 
   <style>
-    body {
-      background-color: #f0f2f5;
+    * {
+      box-sizing: border-box;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
       margin: 0;
       padding: 0;
       overflow: hidden;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
       touch-action: manipulation;
+      -webkit-text-size-adjust: 100%;
+      overscroll-behavior: none;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
+    flutter-view, flt-glass-pane, canvas {
+      width: 100% !important;
+      height: 100% !important;
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      outline: none !important;
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
+    }
+    #loading-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      width: 100vw;
+      background: radial-gradient(circle at 50% 35%, #ffffff 0%, #f0f4f9 100%);
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 9999;
+      transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .splash-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      animation: splashFadeIn 0.4s ease-out;
+    }
+    .splash-logo-box {
+      width: 92px;
+      height: 92px;
+      border-radius: 22px;
+      background: #ffffff;
+      box-shadow: 0 10px 28px rgba(0, 122, 255, 0.16), 0 2px 8px rgba(0, 0, 0, 0.04);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 18px;
+      animation: logoPulse 2.2s infinite ease-in-out;
+    }
+    .splash-logo {
+      width: 72px;
+      height: 72px;
+      object-fit: contain;
+    }
+    .splash-title {
+      font-size: 21px;
+      font-weight: 700;
+      color: #1a1f36;
+      letter-spacing: -0.3px;
+      margin-bottom: 4px;
+    }
+    .splash-subtitle {
+      font-size: 13px;
+      font-weight: 500;
+      color: #8792a2;
+      margin-bottom: 24px;
+      letter-spacing: -0.1px;
+    }
+    .splash-bar-wrap {
+      width: 110px;
+      height: 4px;
+      background: rgba(0, 122, 255, 0.12);
+      border-radius: 99px;
+      overflow: hidden;
+      position: relative;
+    }
+    .splash-bar-inner {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 40%;
+      background: linear-gradient(90deg, #007AFF, #00C6FF);
+      border-radius: 99px;
+      animation: splashSlide 1.2s infinite ease-in-out;
+    }
+    @keyframes splashSlide {
+      0% { left: -40%; width: 30%; }
+      50% { width: 50%; }
+      100% { left: 110%; width: 30%; }
+    }
+    @keyframes logoPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
+    @keyframes splashFadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  
+    /* Màn Chào Mừng Phong Cách Google Gemini */
+    .ai-welcome-container {
+      position: fixed;
+      top: 60px;
+      bottom: 80px;
+      left: 0;
+      right: 0;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 10;
+      padding: 0 24px;
+      text-align: center;
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1), transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      background: transparent;
+    }
+    .ai-welcome-container.active {
+      display: flex;
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .ai-welcome-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 22px;
+      max-width: 440px;
+      margin: 0 auto;
+      transform: translateY(-24px);
+    }
+    .ai-welcome-logo-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ai-welcome-logo-wrapper::after {
+      content: '';
+      position: absolute;
+      width: 115px;
+      height: 115px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0, 104, 255, 0.25) 0%, rgba(147, 51, 234, 0.16) 55%, transparent 75%);
+      filter: blur(16px);
+      z-index: -1;
+      animation: aiGlowPulse 3.5s ease-in-out infinite alternate;
+    }
+    @keyframes aiGlowPulse {
+      0% { transform: scale(0.9); opacity: 0.5; }
+      100% { transform: scale(1.3); opacity: 1; }
+    }
+    .ai-welcome-logo {
+      width: 96px;
+      height: 96px;
+      object-fit: contain;
+      filter: drop-shadow(0 10px 22px rgba(0, 104, 255, 0.32));
+      animation: aiLogoFloat 3s ease-in-out infinite alternate;
+    }
+    @keyframes aiLogoFloat {
+      0% { transform: translateY(0px); }
+      100% { transform: translateY(-7px); }
+    }
+    .ai-welcome-title {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 26px;
+      font-weight: 600;
+      color: #0f172a;
+      letter-spacing: -0.4px;
+      line-height: 1.35;
+      text-align: center;
+      transition: color 0.2s;
+    }
+    body.dark .ai-welcome-title,
+    .dark .ai-welcome-title {
+      color: #f8fafc;
+    }
+
   </style>
+
+  <script>
+    // Dismiss splash screen smoothly when Flutter first frame is rendered
+    window.dismissSplashScreen = function() {
+      var el = document.getElementById('loading-screen');
+      if (el && !el.dataset.dismissed) {
+        el.dataset.dismissed = 'true';
+        el.style.opacity = '0';
+        el.style.pointerEvents = 'none';
+        setTimeout(function() {
+          if (el && el.parentNode) el.parentNode.removeChild(el);
+        }, 360);
+      }
+    };
+
+    window.addEventListener('flutter-first-frame', function() {
+      window.dismissSplashScreen();
+    });
+
+    // Safety auto-dismiss for splash loading screen after Flutter starts
+    setTimeout(function() {
+      window.dismissSplashScreen();
+    }, 4500);
+
+    // iOS Standalone Link Handling: Ngăn Safari mở tab mới khi bấm link/chuyển trang
+    if (("standalone" in window.navigator) && window.navigator.standalone) {
+      document.addEventListener('click', function(e) {
+        var ctarget = e.target;
+        while (ctarget && ctarget.nodeName !== 'A') {
+          ctarget = ctarget.parentNode;
+        }
+        if (ctarget && ctarget.nodeName === 'A' && ctarget.getAttribute('href')) {
+          var href = ctarget.getAttribute('href');
+          if (href.indexOf('http') !== 0 || href.indexOf(window.location.host) !== -1) {
+            e.preventDefault();
+            window.location.href = href;
+          }
+        }
+      }, false);
+    }
+  </script>
 </head>
 <body>
+  <div id="loading-screen">
+    <div class="splash-container">
+      <div class="splash-logo-box">
+        <img src="/tho_fi_logo_transparent.png" alt="Chat Tho-Fi" class="splash-logo" onerror="this.src='/icon-192.png'">
+      </div>
+      <div class="splash-title">Chat Tho-Fi</div>
+      <div class="splash-subtitle">Kết nối tức thì • Siêu mượt mà</div>
+      <div class="splash-bar-wrap">
+        <div class="splash-bar-inner"></div>
+      </div>
+    </div>
+  </div>
+
   <audio id="remoteAudioPlayer" autoplay playsinline style="display:none;"></audio>
-  <video id="remoteVideoPlayer" autoplay playsinline style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; object-fit:cover; z-index:99998; background:#090D1A;"></video>
-  <video id="localVideoPlayer" autoplay playsinline muted style="display:none; position:fixed; top:24px; right:24px; width:130px; height:170px; object-fit:cover; z-index:99999; border-radius:16px; border:2px solid rgba(255,255,255,0.8); box-shadow:0 10px 30px rgba(0,0,0,0.6); transform: scaleX(-1);"></video>
+  <video id="remoteVideoPlayer" autoplay playsinline style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; object-fit:cover; z-index:2147483646; background:#090D1A;"></video>
+  <video id="localVideoPlayer" autoplay playsinline muted style="display:none; position:fixed; top:24px; right:24px; width:130px; height:170px; object-fit:cover; z-index:2147483647; border-radius:16px; border:2px solid rgba(255,255,255,0.8); box-shadow:0 10px 30px rgba(0,0,0,0.6); transform: scaleX(-1);"></video>
   <script>
     const ChatSounds = {
       _ctx: null,
@@ -94,23 +570,1044 @@
         } catch(e){}
       }
     };
-
-    // Tự động unregister Service Worker cũ gây trắng màn hình trên web/mobile
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(registrations) {
-        for (let registration of registrations) {
-          registration.unregister();
-        }
-      });
-    }
-    if (window.caches) {
-      caches.keys().then(function(names) {
-        for (let name of names) {
-          caches.delete(name);
-        }
-      });
-    }
   </script>
-  <script src="flutter_bootstrap.js" async></script>
+
+  <!-- AI History Drawer & Typing Animation -->
+  <style>
+    .ai-drawer-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 2147483646;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .ai-drawer-backdrop.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .ai-drawer-panel {
+      position: fixed;
+      top: 0;
+      left: -350px;
+      width: 320px;
+      max-width: 85vw;
+      height: 100vh;
+      background: #ffffff;
+      z-index: 2147483647;
+      box-shadow: 4px 0 24px rgba(0, 0, 0, 0.18);
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+      border-right: 1px solid rgba(0, 0, 0, 0.08);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .ai-drawer-panel.dark {
+      background: #1e293b;
+      color: #ffffff;
+      border-right: 1px solid #334155;
+    }
+    .ai-drawer-panel.active {
+      transform: translateX(350px);
+    }
+    #ai-menu-button {
+      position: fixed;
+      top: 10px;
+      left: 12px;
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      background: #ffffff;
+      color: #0068FF;
+      box-shadow: 0 2px 10px rgba(0, 104, 255, 0.2);
+      border: 1.5px solid rgba(0, 104, 255, 0.25);
+      cursor: pointer;
+      z-index: 2147483645;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #ai-menu-button:hover {
+      background: #0068FF;
+      color: #ffffff;
+      transform: scale(1.06);
+      box-shadow: 0 4px 14px rgba(0, 104, 255, 0.35);
+    }
+    #ai-menu-button.dark {
+      background: #1e293b;
+      color: #38bdf8;
+      border-color: #334155;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+    }
+    #ai-menu-button.dark:hover {
+      background: #0068FF;
+      color: #ffffff;
+    }
+    .ai-confirm-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+      z-index: 2147483647;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .ai-confirm-backdrop.active {
+      display: flex;
+    }
+    .ai-confirm-box {
+      background: #ffffff;
+      border-radius: 20px;
+      padding: 24px 22px 20px;
+      width: 100%;
+      max-width: 320px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.28);
+      animation: aiModalZoom 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    body.dark .ai-confirm-box,
+    .dark .ai-confirm-box {
+      background: #1e293b;
+      color: #ffffff;
+      border: 1px solid #334155;
+    }
+    @keyframes aiModalZoom {
+      from { transform: scale(0.9); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .ai-confirm-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: #fee2e2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 14px;
+    }
+    body.dark .ai-confirm-icon,
+    .dark .ai-confirm-icon {
+      background: #3f1d24;
+    }
+    .ai-confirm-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
+    body.dark .ai-confirm-title,
+    .dark .ai-confirm-title {
+      color: #f8fafc;
+    }
+    .ai-confirm-desc {
+      font-size: 13.5px;
+      color: #64748b;
+      line-height: 1.45;
+      margin-bottom: 20px;
+    }
+    body.dark .ai-confirm-desc,
+    .dark .ai-confirm-desc {
+      color: #94a3b8;
+    }
+    .ai-confirm-actions {
+      display: flex;
+      gap: 10px;
+    }
+    .ai-confirm-btn-cancel {
+      flex: 1;
+      padding: 10px;
+      border-radius: 10px;
+      background: #f1f5f9;
+      color: #475569;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    body.dark .ai-confirm-btn-cancel,
+    .dark .ai-confirm-btn-cancel {
+      background: #334155;
+      color: #cbd5e1;
+    }
+    .ai-confirm-btn-danger {
+      flex: 1;
+      padding: 10px;
+      border-radius: 10px;
+      background: #ef4444;
+      color: #ffffff;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+    }
+    .ai-confirm-btn-danger:hover {
+      background: #dc2626;
+    }
+    .ai-drawer-header {
+      padding: 16px 18px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    }
+    .ai-drawer-panel.dark .ai-drawer-header {
+      border-bottom-color: #334155;
+    }
+    .ai-drawer-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 16px;
+      color: #0f172a;
+    }
+    .ai-drawer-panel.dark .ai-drawer-title {
+      color: #f8fafc;
+    }
+    .ai-drawer-close {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: #64748b;
+      padding: 6px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ai-drawer-close:hover {
+      background: rgba(0, 0, 0, 0.05);
+    }
+    .ai-new-chat-btn {
+      margin: 12px 16px;
+      padding: 11px 16px;
+      background: linear-gradient(135deg, #0068ff, #0091ff);
+      color: #ffffff;
+      border: none;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 104, 255, 0.28);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .ai-new-chat-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(0, 104, 255, 0.38);
+    }
+    .ai-new-chat-btn:active {
+      transform: scale(0.98);
+    }
+    .ai-section-label {
+      padding: 6px 18px 4px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      color: #94a3b8;
+      text-transform: uppercase;
+    }
+    .ai-sessions-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .ai-session-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      background: #f8fafc;
+      border: 1px solid #f1f5f9;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .ai-drawer-panel.dark .ai-session-item {
+      background: #0f172a;
+      border-color: #1e293b;
+    }
+    .ai-session-item:hover {
+      background: #eef2ff;
+      border-color: #c7d2fe;
+    }
+    .ai-drawer-panel.dark .ai-session-item:hover {
+      background: #1e293b;
+      border-color: #334155;
+    }
+    .ai-session-item.active {
+      background: #eff6ff;
+      border-color: #93c5fd;
+    }
+    .ai-drawer-panel.dark .ai-session-item.active {
+      background: #1e3a5f;
+      border-color: #0068ff;
+    }
+    .ai-session-info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .ai-session-name {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #1e293b;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ai-drawer-panel.dark .ai-session-name {
+      color: #f1f5f9;
+    }
+    .ai-session-time {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    .ai-session-delete-btn {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 6px;
+      opacity: 0.7;
+      transition: opacity 0.15s, color 0.15s;
+    }
+    .ai-session-delete-btn:hover {
+      opacity: 1;
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.1);
+    }
+    .ai-drawer-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: #94a3b8;
+      font-size: 13px;
+    }
+
+    /* Modal Xác Nhận Xóa Chat AI */
+    .ai-confirm-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 2147483647;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    .ai-confirm-backdrop.active {
+      display: flex;
+      opacity: 1;
+    }
+    .ai-confirm-box {
+      background: #ffffff;
+      width: 88%;
+      max-width: 340px;
+      border-radius: 18px;
+      padding: 24px 20px;
+      box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.25);
+      text-align: center;
+      transform: scale(0.92);
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      box-sizing: border-box;
+    }
+    body.dark .ai-confirm-box,
+    .dark .ai-confirm-box {
+      background: #1e293b;
+      border-color: #334155;
+      color: #f1f5f9;
+    }
+    .ai-confirm-backdrop.active .ai-confirm-box {
+      transform: scale(1);
+    }
+    .ai-confirm-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: #fee2e2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+    }
+    body.dark .ai-confirm-icon,
+    .dark .ai-confirm-icon {
+      background: rgba(239, 68, 68, 0.2);
+    }
+    .ai-confirm-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
+    body.dark .ai-confirm-title,
+    .dark .ai-confirm-title {
+      color: #f8fafc;
+    }
+    .ai-confirm-desc {
+      font-size: 13.5px;
+      color: #64748b;
+      line-height: 1.5;
+      margin-bottom: 22px;
+    }
+    body.dark .ai-confirm-desc,
+    .dark .ai-confirm-desc {
+      color: #94a3b8;
+    }
+    .ai-confirm-actions {
+      display: flex;
+      gap: 10px;
+    }
+    .ai-confirm-btn-cancel,
+    .ai-confirm-btn-danger {
+      flex: 1;
+      padding: 11px 16px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s;
+    }
+    .ai-confirm-btn-cancel {
+      background: #f1f5f9;
+      color: #475569;
+    }
+    .ai-confirm-btn-cancel:hover {
+      background: #e2e8f0;
+    }
+    body.dark .ai-confirm-btn-cancel,
+    .dark .ai-confirm-btn-cancel {
+      background: #334155;
+      color: #cbd5e1;
+    }
+    body.dark .ai-confirm-btn-cancel:hover,
+    .dark .ai-confirm-btn-cancel:hover {
+      background: #475569;
+    }
+    .ai-confirm-btn-danger {
+      background: #ef4444;
+      color: #ffffff;
+    }
+    .ai-confirm-btn-danger:hover {
+      background: #dc2626;
+    }
+
+    /* Hiệu ứng 3 chấm nảy (Bouncing Dots Indicator) */
+    .ai-typing-float {
+      position: fixed;
+      bottom: 74px;
+      left: 18px;
+      z-index: 999;
+      display: none;
+      align-items: flex-end;
+      gap: 8px;
+      animation: aiFadeIn 0.25s ease-out;
+      pointer-events: none;
+    }
+    .ai-typing-float.active {
+      display: flex;
+    }
+    .ai-typing-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      object-fit: cover;
+      box-shadow: 0 2px 8px rgba(0, 104, 255, 0.25);
+      border: 1.5px solid #0068ff;
+      background: #ffffff;
+    }
+    .ai-typing-bubble {
+      background: #ffffff;
+      padding: 10px 16px;
+      border-radius: 18px 18px 18px 4px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    body.dark .ai-typing-bubble,
+    .dark .ai-typing-bubble {
+      background: #1e293b;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+    }
+    .ai-typing-dot {
+      width: 7px;
+      height: 7px;
+      background: #0068ff;
+      border-radius: 50%;
+      display: inline-block;
+      animation: aiDotBounce 1.2s infinite ease-in-out;
+    }
+    .ai-typing-dot:nth-child(1) { animation-delay: 0s; }
+    .ai-typing-dot:nth-child(2) { animation-delay: 0.18s; }
+    .ai-typing-dot:nth-child(3) { animation-delay: 0.36s; }
+
+    @keyframes aiDotBounce {
+      0%, 80%, 100% {
+        transform: translateY(0);
+      }
+      40% {
+        transform: translateY(-7px);
+      }
+    }
+    @keyframes aiFadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+
+  <div id="ai-drawer-backdrop" class="ai-drawer-backdrop" onclick="window.closeAiHistory()"></div>
+  <div id="ai-drawer-panel" class="ai-drawer-panel">
+    <div class="ai-drawer-header">
+      <div class="ai-drawer-title">
+        <img src="/icon.png" style="width:24px;height:24px;border-radius:50%;" />
+        <span>Lịch sử chat AI</span>
+      </div>
+      <button class="ai-drawer-close" onclick="window.closeAiHistory()">✕</button>
+    </div>
+    <div style="display:flex; gap:8px; padding: 10px 14px 0;">
+      <button class="ai-new-chat-btn" style="flex:1; margin:0;" onclick="window.createNewAiSession()">
+        <span style="font-size:18px;line-height:1;">+</span>
+        <span>Cuộc trò chuyện mới</span>
+      </button>
+      <button onclick="window.deleteAllAiSessions()" style="background:#fee2e2; color:#ef4444; border:1px solid #fca5a5; border-radius:10px; padding:8px 12px; font-size:13px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:5px;" title="Xóa toàn bộ lịch sử">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+        <span>Xóa hết</span>
+      </button>
+    </div>
+    <div class="ai-section-label">GẦN ĐÂY</div>
+    <div id="ai-sessions-list" class="ai-sessions-list">
+      <div class="ai-drawer-empty">Đang tải lịch sử...</div>
+    </div>
+  </div>
+
+
+
+  <div id="ai-confirm-modal" class="ai-confirm-backdrop">
+    <div class="ai-confirm-box">
+      <div class="ai-confirm-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+      </div>
+      <div class="ai-confirm-title">Xóa cuộc trò chuyện?</div>
+      <div class="ai-confirm-desc">Bạn có chắc chắn muốn xóa cuộc trò chuyện này không? Thao tác này không thể hoàn tác.</div>
+      <div class="ai-confirm-actions">
+        <button class="ai-confirm-btn-cancel" onclick="window.closeAiConfirmModal()">Hủy</button>
+        <button id="ai-confirm-btn-ok" class="ai-confirm-btn-danger">Xóa</button>
+      </div>
+    </div>
+  </div>
+
+  
+  <div id="ai-welcome-view" class="ai-welcome-container">
+    <div class="ai-welcome-content">
+      <div class="ai-welcome-logo-wrapper">
+        <img src="/icon.png" class="ai-welcome-logo" alt="Chat AI Tho-Fi" />
+      </div>
+      <div id="ai-welcome-title" class="ai-welcome-title">Hôm nay bạn thế nào, Tho?</div>
+    </div>
+  </div>
+
+  <div id="ai-typing-float" class="ai-typing-float">
+    <img src="/icon.png" class="ai-typing-avatar" />
+    <div class="ai-typing-bubble">
+      <span class="ai-typing-dot"></span>
+      <span class="ai-typing-dot"></span>
+      <span class="ai-typing-dot"></span>
+    </div>
+  </div>
+
+  <script>
+    window._currentAiConversationId = null;
+    window._chatScreenState = null;
+    window._isAiTabActive = false;
+
+    const AI_GREETINGS = [
+      "Hôm nay bạn thế nào, {name}?",
+      "Tôi có thể giúp gì cho bạn hôm nay, {name}?",
+      "Chào {name}, bạn đang nghĩ gì thế?",
+      "Hôm nay bạn muốn cùng tôi tìm hiểu điều gì?",
+      "Rất vui được gặp lại {name}! Cần tôi hỗ trợ gì nào?",
+      "Bạn đã sẵn sàng khám phá những điều mới chưa, {name}?",
+      "Cần tôi hỗ trợ điều gì hôm nay không, {name}?"
+    ];
+
+    function getAiUserName() {
+      try {
+        const tk = getAiAuthToken();
+        if (tk && tk.includes('.')) {
+          const parts = tk.split('.');
+          if (parts.length > 1) {
+            const payload = JSON.parse(atob(parts[1]));
+            if (payload && payload.username) {
+              const u = payload.username.trim();
+              return u.charAt(0).toUpperCase() + u.slice(1);
+            }
+          }
+        }
+      } catch(e) {}
+      try {
+        const rawU = localStorage.getItem('flutter.username') || localStorage.getItem('username');
+        if (rawU) {
+          const u = rawU.replace(/"/g, '').trim();
+          if (u) return u.charAt(0).toUpperCase() + u.slice(1);
+        }
+      } catch(e) {}
+      return 'Tho';
+    }
+
+    window.pickRandomAiGreeting = function() {
+      const name = getAiUserName();
+      const template = AI_GREETINGS[Math.floor(Math.random() * AI_GREETINGS.length)];
+      return template.replace(/{name}/g, name);
+    };
+
+    window.updateAiWelcomeState = function() {
+      const el = document.getElementById('ai-welcome-view');
+      if (!el) return;
+
+      const isTabActive = !!window._isAiTabActive;
+      const s = window._chatScreenState;
+      const hasMessages = s && s.cx && s.cx.length > 0;
+
+      if (isTabActive && !hasMessages) {
+        const titleEl = document.getElementById('ai-welcome-title');
+        if (titleEl) {
+          titleEl.textContent = window.pickRandomAiGreeting();
+        }
+        el.classList.add('active');
+      } else {
+        el.classList.remove('active');
+      }
+    };
+
+
+    window.scrollAiChatToBottom = function() {
+      setTimeout(function() {
+        const pane = document.querySelector('flt-glass-pane') || document.body;
+        const target = (pane && pane.shadowRoot) ? (pane.shadowRoot.querySelector('canvas') || pane.shadowRoot) : pane;
+        if (target) {
+          for (let k = 0; k < 12; k++) {
+            target.dispatchEvent(new WheelEvent('wheel', {
+              deltaY: 3000,
+              deltaMode: 0,
+              bubbles: true,
+              cancelable: true,
+              clientX: window.innerWidth / 2,
+              clientY: window.innerHeight / 2
+            }));
+          }
+        }
+      }, 150);
+      setTimeout(function() {
+        const pane = document.querySelector('flt-glass-pane') || document.body;
+        const target = (pane && pane.shadowRoot) ? (pane.shadowRoot.querySelector('canvas') || pane.shadowRoot) : pane;
+        if (target) {
+          for (let k = 0; k < 12; k++) {
+            target.dispatchEvent(new WheelEvent('wheel', {
+              deltaY: 3000,
+              deltaMode: 0,
+              bubbles: true,
+              cancelable: true,
+              clientX: window.innerWidth / 2,
+              clientY: window.innerHeight / 2
+            }));
+          }
+        }
+      }, 400);
+    };
+
+    let _lastAiRefreshTime = 0;
+    window.refreshAiTabHistory = async function() {
+      const now = Date.now();
+      if (now - _lastAiRefreshTime < 800) return;
+      _lastAiRefreshTime = now;
+      try {
+        const tk = getAiAuthToken();
+        if (!tk) return;
+        const res = await fetch('/api/ai/chat/history', {
+          headers: { 'Authorization': 'Bearer ' + tk }
+        });
+        const data = await res.json();
+        if (data && data.success) {
+          if (data.conversationId) {
+            window._currentAiConversationId = data.conversationId;
+          }
+          if (window._chatScreenState && window._chatScreenState.cx) {
+            const s = window._chatScreenState;
+            s.cx.length = 0;
+            if (Array.isArray(data.messages) && data.messages.length > 0) {
+              data.messages.forEach(function(m) {
+                if (window._dartMapHelper) {
+                  s.cx.push(window._dartMapHelper(m.role === 'user' ? 'user' : 'ai', m.content || ''));
+                }
+              });
+            }
+            if (s.c != null && typeof window._dartSetStateHelper === 'function') {
+              s.K(new window._dartSetStateHelper());
+            }
+            if (Array.isArray(data.messages) && data.messages.length > 0) {
+              window.scrollAiChatToBottom();
+            }
+          }
+          if (typeof window.updateAiWelcomeState === 'function') {
+            window.updateAiWelcomeState();
+          }
+        }
+      } catch (err) {
+        console.warn('Lỗi refresh AI history:', err);
+      }
+    };
+
+    window.updateAiMenuBtnState = function(isActive) {
+      window._isAiTabActive = !!isActive;
+      if (isActive) {
+        window.refreshAiTabHistory();
+      }
+      if (typeof window.updateAiWelcomeState === 'function') {
+        window.updateAiWelcomeState();
+      }
+    };
+
+    window.showAiConfirm = function({ title, desc, onConfirm }) {
+      const modal = document.getElementById('ai-confirm-modal');
+      if (!modal) {
+        if (typeof onConfirm === 'function') onConfirm();
+        return;
+      }
+      if (title) modal.querySelector('.ai-confirm-title').textContent = title;
+      if (desc) modal.querySelector('.ai-confirm-desc').textContent = desc;
+      const okBtn = document.getElementById('ai-confirm-btn-ok');
+      okBtn.onclick = function() {
+        window.closeAiConfirmModal();
+        if (typeof onConfirm === 'function') onConfirm();
+      };
+      modal.classList.add('active');
+    };
+
+    window.closeAiConfirmModal = function() {
+      const modal = document.getElementById('ai-confirm-modal');
+      if (modal) modal.classList.remove('active');
+    };
+
+    window.clearCurrentAiChat = async function() {
+      console.log('🚀 Clearing current AI chat...');
+      try {
+        const tk = getAiAuthToken();
+        const convId = window._currentAiConversationId;
+        
+        if (convId) {
+          await fetch('/api/ai/chat/session/' + convId, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + tk }
+          });
+        } else {
+          await fetch('/api/ai/chat/history', {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + tk }
+          });
+        }
+
+        window._currentAiConversationId = null;
+
+        if (window._chatScreenState && window._chatScreenState.cx) {
+          const s = window._chatScreenState;
+          s.cx.length = 0;
+          if (window._dartMapHelper) {
+            s.cx.push(window._dartMapHelper('ai', 'Đã xoá cuộc trò chuyện thành công! Tôi có thể giúp gì cho bạn hôm nay?'));
+          }
+          if (s.c != null) s.K(new window._dartSetStateHelper());
+        }
+
+        if (typeof window.fetchAiSessions === 'function') {
+          window.fetchAiSessions();
+        }
+      } catch (err) {
+        console.error('Lỗi khi xóa cuộc trò chuyện:', err);
+      }
+    };
+
+    window.openAiHistory = function() {
+      console.log('🚀 openAiHistory called!');
+      try {
+        const isDark = (document.body && document.body.classList.contains('dark')) || (localStorage.getItem('flutter.isDarkMode') === 'true');
+        const panel = document.getElementById('ai-drawer-panel');
+        const backdrop = document.getElementById('ai-drawer-backdrop');
+        if (panel && backdrop) {
+          if (isDark) panel.classList.add('dark'); else panel.classList.remove('dark');
+          panel.classList.add('active');
+          backdrop.classList.add('active');
+          if (typeof window.fetchAiSessions === 'function') {
+            window.fetchAiSessions();
+          }
+        }
+      } catch (err) {
+        console.error('Error opening AI history drawer:', err);
+      }
+    };
+
+    window.closeAiHistory = function() {
+      console.log('🚀 closeAiHistory called!');
+      try {
+        const panel = document.getElementById('ai-drawer-panel');
+        const backdrop = document.getElementById('ai-drawer-backdrop');
+        if (panel) panel.classList.remove('active');
+        if (backdrop) backdrop.classList.remove('active');
+      } catch (err) {
+        console.error('Error closing AI history drawer:', err);
+      }
+    };
+
+    function getAiAuthToken() {
+      let tk = '';
+      try {
+        const raw = localStorage.getItem('flutter.authToken') || localStorage.getItem('authToken');
+        if (raw) {
+          if (raw.startsWith('"') && raw.endsWith('"')) tk = JSON.parse(raw);
+          else tk = raw;
+        }
+      } catch(e) {
+        tk = localStorage.getItem('flutter.authToken') || localStorage.getItem('authToken') || '';
+      }
+      return (tk || '').replace(/^"+|"+$/g, '').trim();
+    }
+
+    window.fetchAiSessions = async function() {
+      const container = document.getElementById('ai-sessions-list');
+      if (!container) return;
+      try {
+        const res = await fetch('/api/ai/chat/sessions', {
+          headers: { 'Authorization': 'Bearer ' + getAiAuthToken() }
+        });
+        const data = await res.json();
+        if (data && data.success && Array.isArray(data.sessions)) {
+          if (data.sessions.length === 0) {
+            container.innerHTML = '<div class="ai-drawer-empty">Chưa có cuộc trò chuyện nào.<br>Bấm "+ Cuộc trò chuyện mới" để bắt đầu!</div>';
+            return;
+          }
+          container.innerHTML = '';
+          data.sessions.forEach(function(s) {
+            const isActive = window._currentAiConversationId === s.id;
+            const item = document.createElement('div');
+            item.className = 'ai-session-item' + (isActive ? ' active' : '');
+            
+            const timeStr = s.createdAt ? new Date(s.createdAt).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '';
+            
+            item.innerHTML = `
+              <div class="ai-session-info" style="cursor:pointer;" onclick="window.selectAiSession('${s.id}')">
+                <div class="ai-session-name">${escapeAiHtml(s.name || 'Cuộc trò chuyện mới')}</div>
+                <div class="ai-session-time">${timeStr}</div>
+              </div>
+              <button class="ai-session-delete-btn" title="Xóa" onclick="window.deleteAiSession('${s.id}', event)">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              </button>
+            `;
+            container.appendChild(item);
+          });
+        }
+      } catch(e) {
+        container.innerHTML = '<div class="ai-drawer-empty">Không thể tải lịch sử trò chuyện.</div>';
+      }
+    };
+
+    function escapeAiHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    window.createNewAiSession = async function() {
+      try {
+        const res = await fetch('/api/ai/chat/session/new', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + getAiAuthToken(), 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (data && data.success && data.session) {
+          window._currentAiConversationId = data.session.id;
+          window.closeAiHistory();
+          if (window._chatScreenState && window._chatScreenState.cx) {
+            const s = window._chatScreenState;
+            s.cx.length = 0;
+            if (s.c != null) s.K(new window._dartSetStateHelper());
+          }
+          if (typeof window.updateAiWelcomeState === 'function') {
+            window.updateAiWelcomeState();
+          }
+          if (typeof window.fetchAiSessions === 'function') {
+            window.fetchAiSessions();
+          }
+        }
+      } catch(e) {
+        console.error('Lỗi tạo phiên chat mới:', e);
+      }
+    };
+
+    window.selectAiSession = async function(id) {
+      try {
+        window._currentAiConversationId = id;
+        window.closeAiHistory();
+        const res = await fetch('/api/ai/chat/history?conversationId=' + id, {
+          headers: { 'Authorization': 'Bearer ' + getAiAuthToken() }
+        });
+        const data = await res.json();
+        if (data && data.success && Array.isArray(data.messages)) {
+          if (window._chatScreenState && window._chatScreenState.cx) {
+            const s = window._chatScreenState;
+            s.cx.length = 0;
+            if (data.messages.length === 0) {
+              // Để trống để hiện màn chào mừng Gemini
+            } else {
+              data.messages.forEach(function(m) {
+                if (window._dartMapHelper) {
+                  s.cx.push(window._dartMapHelper(m.role === 'user' ? 'user' : 'ai', m.content || ''));
+                }
+              });
+            }
+            if (s.c != null) s.K(new window._dartSetStateHelper());
+          }
+          if (typeof window.updateAiWelcomeState === 'function') {
+            window.updateAiWelcomeState();
+          }
+        }
+      } catch(e) {
+        console.error('Lỗi tải tin nhắn phiên chat:', e);
+      }
+    };
+
+    window.deleteAiSession = function(id, evt) {
+      if (evt) {
+        evt.stopPropagation();
+        evt.preventDefault();
+      }
+      window.showAiConfirm({
+        title: 'Xóa cuộc trò chuyện?',
+        desc: 'Bạn có chắc chắn muốn xóa cuộc trò chuyện này không? Thao tác này không thể hoàn tác.',
+        onConfirm: async function() {
+          console.log('🚀 Deleting session:', id);
+          try {
+            const res = await fetch('/api/ai/chat/session/' + id, {
+              method: 'DELETE',
+              headers: { 'Authorization': 'Bearer ' + getAiAuthToken() }
+            });
+            const data = await res.json();
+            console.log('🚀 Delete result:', data);
+            if (data && data.success) {
+              const wasCurrent = (!window._currentAiConversationId || window._currentAiConversationId === id);
+              if (wasCurrent) {
+                window._currentAiConversationId = null;
+                if (window._chatScreenState && window._chatScreenState.cx) {
+                  const s = window._chatScreenState;
+                  s.cx.length = 0;
+                  if (window._dartMapHelper) {
+                    s.cx.push(window._dartMapHelper('ai', 'Đã xoá cuộc trò chuyện thành công! Tôi có thể giúp gì cho bạn hôm nay?'));
+                  }
+                  if (s.c != null) s.K(new window._dartSetStateHelper());
+                }
+              }
+              await window.fetchAiSessions();
+            } else {
+              alert(data?.error || 'Không thể xóa cuộc trò chuyện.');
+            }
+          } catch(e) {
+            console.error('Lỗi xóa phiên chat:', e);
+          }
+        }
+      });
+    };
+
+    window.deleteAllAiSessions = function() {
+      window.showAiConfirm({
+        title: 'Xóa toàn bộ lịch sử?',
+        desc: 'Bạn có chắc chắn muốn xóa tất cả các cuộc trò chuyện AI không? Thao tác này không thể hoàn tác.',
+        onConfirm: async function() {
+          console.log('🚀 Deleting all AI sessions...');
+          try {
+            const res = await fetch('/api/ai/chat/sessions/all', {
+              method: 'DELETE',
+              headers: { 'Authorization': 'Bearer ' + getAiAuthToken() }
+            });
+            const data = await res.json();
+            console.log('🚀 Delete all result:', data);
+            if (data && data.success) {
+              window._currentAiConversationId = null;
+              if (window._chatScreenState && window._chatScreenState.cx) {
+                const s = window._chatScreenState;
+                s.cx.length = 0;
+                if (s.c != null) s.K(new window._dartSetStateHelper());
+              }
+              if (typeof window.updateAiWelcomeState === 'function') {
+                window.updateAiWelcomeState();
+              }
+              await window.fetchAiSessions();
+            } else {
+              alert(data?.error || 'Không thể xóa toàn bộ lịch sử.');
+            }
+          } catch(e) {
+            console.error('Lỗi xóa toàn bộ phiên chat:', e);
+          }
+        }
+      });
+    };
+
+    window.showAiThinking = function(show) {
+      const el = document.getElementById('ai-typing-float');
+      if (!el) return;
+      if (show) {
+        el.classList.add('active');
+      } else {
+        el.classList.remove('active');
+      }
+    };
+
+    // Tự động dọn dẹp Cache & Service Worker của Flutter Web để buộc trình duyệt nạp bản mới
+    try {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+          for (let reg of regs) reg.unregister();
+        });
+      }
+      if ('caches' in window) {
+        caches.keys().then(function(names) {
+          for (let name of names) caches.delete(name);
+        });
+      }
+    } catch(e) {}
+  </script>
+  <script src="flutter_bootstrap.js?v=20260911_v15" async></script>
 </body>
 </html>

@@ -85,12 +85,34 @@ async function getOrCreateAiConversation(userId, conversationId = null) {
         if (found) return found;
     }
 
-    // Tìm phiên trò chuyện AI gần nhất của người dùng
-    let conversation = await prisma.conversations.findFirst({
-        where: { type: "ai", createdBy: userId },
+    // 1. Tìm cuộc trò chuyện AI có tin nhắn mới nhất (hoạt động gần nhất) của người dùng
+    const latestMessage = await prisma.messages.findFirst({
+        where: {
+            Conversations: {
+                type: "ai",
+                createdBy: userId,
+            },
+        },
         orderBy: { createdAt: "desc" },
+        select: { conversationId: true },
     });
 
+    let conversation = null;
+    if (latestMessage && latestMessage.conversationId) {
+        conversation = await prisma.conversations.findFirst({
+            where: { id: latestMessage.conversationId, type: "ai", createdBy: userId },
+        });
+    }
+
+    // 2. Nếu không có tin nhắn nào trong bất kỳ cuộc trò chuyện nào, lấy cuộc trò chuyện tạo gần nhất
+    if (!conversation) {
+        conversation = await prisma.conversations.findFirst({
+            where: { type: "ai", createdBy: userId },
+            orderBy: { createdAt: "desc" },
+        });
+    }
+
+    // 3. Nếu chưa có cuộc trò chuyện nào, tạo mới
     if (!conversation) {
         conversation = await prisma.conversations.create({
             data: { type: "ai", createdBy: userId, name: "Cuộc trò chuyện mới" },
@@ -248,12 +270,23 @@ exports.getSessions = async (req, res) => {
         const userId = resolveUserId(req);
         const conversations = await prisma.conversations.findMany({
             where: { type: "ai", createdBy: userId },
-            orderBy: { createdAt: "desc" },
             include: {
                 _count: {
                     select: { Messages: true },
                 },
+                Messages: {
+                    orderBy: { createdAt: "desc" },
+                    take: 1,
+                    select: { createdAt: true, content: true },
+                },
             },
+        });
+
+        // Sắp xếp các phiên hội thoại: phiên nào có tin nhắn mới nhất sẽ lên đầu tiên
+        conversations.sort((a, b) => {
+            const timeA = a.Messages?.[0]?.createdAt ? new Date(a.Messages[0].createdAt).getTime() : new Date(a.createdAt).getTime();
+            const timeB = b.Messages?.[0]?.createdAt ? new Date(b.Messages[0].createdAt).getTime() : new Date(b.createdAt).getTime();
+            return timeB - timeA;
         });
 
         return res.json({
@@ -262,6 +295,8 @@ exports.getSessions = async (req, res) => {
                 id: c.id,
                 name: c.name || "Cuộc trò chuyện mới",
                 createdAt: c.createdAt,
+                lastActive: c.Messages?.[0]?.createdAt || c.createdAt,
+                lastMessage: c.Messages?.[0]?.content || "",
                 messageCount: c._count?.Messages || 0,
             })),
         });
@@ -364,6 +399,7 @@ exports.getHistory = async (req, res) => {
     try {
         const userId = resolveUserId(req);
         const conversationId = req.query.conversationId || null;
+        console.log(`📥 [GET /api/ai/chat/history] userId=${userId}, conversationId=${conversationId}`);
         const conversation = await getOrCreateAiConversation(userId, conversationId);
         const messages = await prisma.messages.findMany({
             where: { conversationId: conversation.id },

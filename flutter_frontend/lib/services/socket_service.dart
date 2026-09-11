@@ -79,6 +79,8 @@ class SocketService {
       if ((host == 'localhost' || host == '127.0.0.1') && port != 3000) {
         final scheme = Uri.base.scheme.isEmpty ? 'http' : Uri.base.scheme;
         serverUrl = '$scheme://$host:3000';
+      } else if (host.contains('pages.dev') || host.contains('cloudflare') || host.contains('web.app')) {
+        serverUrl = 'https://chat-tho-fi-vn-9s8u.onrender.com';
       } else {
         serverUrl = Uri.base.origin;
       }
