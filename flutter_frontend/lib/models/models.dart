@@ -176,7 +176,8 @@ class MessageModel {
     required this.createdAt,
   });
 
-  factory MessageModel.fromJson(Map<String, dynamic> json) {
+  factory MessageModel.fromJson(dynamic rawJson) {
+    final Map<dynamic, dynamic> json = rawJson is Map ? rawJson : {};
     String? img = json['imageUrl']?.toString();
     String? aud = json['audioUrl']?.toString();
     String msgType = json['type']?.toString() ?? 'text';

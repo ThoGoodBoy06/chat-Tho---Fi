@@ -2135,8 +2135,27 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
           // C. Messages List #messages
           Expanded(
-            child: provider.isLoadingMessages
-                ? const Center(child: CircularProgressIndicator(color: primaryColor))
+            child: (provider.isLoadingMessages && provider.messages.isEmpty)
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(
+                          width: 28,
+                          height: 28,
+                          child: CircularProgressIndicator(color: primaryColor, strokeWidth: 2.5),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Đang tải tin nhắn...',
+                          style: TextStyle(
+                            color: isDark ? Colors.white60 : Colors.black45,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
                 : Builder(
                     builder: (context) {
                       final lastSentMessageIndex = provider.messages.lastIndexWhere((m) => m.senderId == provider.currentUser?.id);

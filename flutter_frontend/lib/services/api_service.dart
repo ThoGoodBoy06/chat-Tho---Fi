@@ -113,7 +113,9 @@ class ApiService {
       headers: headers,
     ).timeout(const Duration(seconds: 15));
     if (response.statusCode == 200) {
-      return jsonDecode(response.body) as Map<String, dynamic>;
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
     }
     return {'data': []};
   }

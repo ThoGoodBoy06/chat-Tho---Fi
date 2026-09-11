@@ -32006,7 +32006,7 @@ case 3:p=c
 s=4
 return A.m(A.uq(A.c5(A.da()+"/chat/"+a+"/messages?limit=50",0,null),p).cY(0,B.co),$async$Mv)
 case 4:o=c
-if(o.b===200){q=t.P.a(B.R.e1(0,A.f5(A.f4(o.e)).ce(0,o.w),null))
+if(o.b===200){q=B.R.e1(0,A.f5(A.f4(o.e)).ce(0,o.w),null)
 s=1
 break}q=A.V(["data",[]],t.N,t.z)
 s=1
@@ -98960,7 +98960,7 @@ A.bQ("\ud83d\udce1 \u0110\xe3 emit join_room & join_conversation: "+j)}q=3
 s=6
 return A.m(A.Mv(j),$async$q9)
 case 6:m=a1
-d=t.kc.a(J.Z(m,"data"))
+d=(m!=null?J.Z(m,"data"):null)
 l=d==null?[]:d
 j=J.iZ(l,new A.a8_(),t.wh)
 n.d=A.ae(j,!0,j.$ti.i("aK.E"))
@@ -99363,7 +99363,7 @@ $1(a){},
 $S:2}
 A.a8_.prototype={
 $1(a){return A.wf(a)},
-$S:565}
+$S:2}
 A.a82.prototype={
 $1(a){return a.a===this.a},
 $S:54}

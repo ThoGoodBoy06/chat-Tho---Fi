@@ -11,6 +11,7 @@ class ChatProvider extends ChangeNotifier {
   List<ConversationModel> conversations = [];
   ConversationModel? selectedConversation;
   List<MessageModel> messages = [];
+  final Map<String, List<MessageModel>> _messagesCache = {};
   bool isLoadingConversations = false;
   bool isLoadingMessages = false;
   bool isPartnerTyping = false;
@@ -319,6 +320,21 @@ class ChatProvider extends ChangeNotifier {
       }
     }
 
+    // Đồng bộ cache tin nhắn
+    if (msg.conversationId != null && msg.conversationId!.isNotEmpty) {
+      final convId = msg.conversationId!;
+      if (!_messagesCache.containsKey(convId)) {
+        _messagesCache[convId] = [];
+      }
+      final cacheList = _messagesCache[convId]!;
+      final cIdx = cacheList.indexWhere((m) => m.id == msg.id);
+      if (cIdx != -1) {
+        cacheList[cIdx] = msg;
+      } else {
+        cacheList.add(msg);
+      }
+    }
+
     notifyListeners();
 
     // Gọi callback để UI cuộn xuống
@@ -443,8 +459,14 @@ class ChatProvider extends ChangeNotifier {
       }
     }
 
-    isLoadingMessages = true;
-    messages = [];
+    // ⚡ INSTANT DISPLAY: Nếu đã có cache tin nhắn của cuộc trò chuyện này, hiển thị ngay lập tức (0ms)
+    if (_messagesCache.containsKey(conv.id) && _messagesCache[conv.id]!.isNotEmpty) {
+      messages = List.from(_messagesCache[conv.id]!);
+      isLoadingMessages = false;
+    } else {
+      isLoadingMessages = true;
+      messages = [];
+    }
     notifyListeners();
 
     // Báo cho server socket & REST API biết người dùng đã xem tất cả tin nhắn trong cuộc trò chuyện này
@@ -459,7 +481,14 @@ class ChatProvider extends ChangeNotifier {
     try {
       final res = await ApiService.getMessages(conv.id);
       final rawData = res['data'] as List? ?? [];
-      messages = rawData.map((m) => MessageModel.fromJson(m)).toList();
+      final fetched = rawData.map((m) {
+        if (m is Map<String, dynamic>) return MessageModel.fromJson(m);
+        if (m is Map) return MessageModel.fromJson(Map<String, dynamic>.from(m));
+        return null;
+      }).whereType<MessageModel>().toList();
+
+      messages = fetched;
+      _messagesCache[conv.id] = fetched;
     } catch (e) {
       debugPrint('Error fetching messages: $e');
     } finally {
