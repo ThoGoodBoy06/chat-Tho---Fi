@@ -403,14 +403,26 @@ class ChatProvider extends ChangeNotifier {
       }
       final rawList = await ApiService.getConversations();
       if (rawList != null) {
-        conversations = rawList
-            .map((c) => ConversationModel.fromJson(c, currentUserId: currentUser?.id))
+        final parsed = rawList
+            .map((c) {
+              try {
+                return ConversationModel.fromJson(c, currentUserId: currentUser?.id);
+              } catch (err) {
+                debugPrint('Lỗi parse 1 conversation: $err');
+                return null;
+              }
+            })
+            .whereType<ConversationModel>()
             .toList();
-        // Lưu cache offline
-        try {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('cached_conversations', jsonEncode(rawList));
-        } catch (_) {}
+
+        // 🛡️ BẢO VỆ: Nếu đã có danh sách cuộc trò chuyện mà kết quả mới rỗng, không xóa mất giao diện của người dùng!
+        if (parsed.isNotEmpty || conversations.isEmpty) {
+          conversations = parsed;
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('cached_conversations', jsonEncode(rawList));
+          } catch (_) {}
+        }
       }
     } catch (e) {
       debugPrint('Error fetching conversations: $e');

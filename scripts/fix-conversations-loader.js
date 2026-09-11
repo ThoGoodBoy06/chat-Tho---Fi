@@ -33,8 +33,21 @@ for (const p of files) {
   if (content.includes(target2)) {
     content = content.replace(target2, replace2);
     console.log(`[${p}] Fix 2 applied: ConversationModel.fromJson Conversations extraction`);
+  }
+
+  // Fix 3: ConversationModel mapper closure signature from 564 to 2 (accept dynamic object)
+  const target3_1 = 'A.a7U.prototype={\r\n$1(a){var s=this.a.a\r\nreturn A.aPa(a,s==null?null:s.a)},\r\n$S:564}';
+  const target3_2 = 'A.a7U.prototype={\n$1(a){var s=this.a.a\nreturn A.aPa(a,s==null?null:s.a)},\n$S:564}';
+  const replace3 = 'A.a7U.prototype={\r\n$1(a){var s=this.a.a\r\nreturn A.aPa(a,s==null?null:s.a)},\r\n$S:2}';
+
+  if (content.includes(target3_1)) {
+    content = content.replace(target3_1, replace3);
+    console.log(`[${p}] Fix 3 applied (CRLF): ConversationModel mapper accepts dynamic object`);
+  } else if (content.includes(target3_2)) {
+    content = content.replace(target3_2, replace3);
+    console.log(`[${p}] Fix 3 applied (LF): ConversationModel mapper accepts dynamic object`);
   } else {
-    console.warn(`[${p}] Target 2 not found!`);
+    console.warn(`[${p}] Target 3 not found or already applied!`);
   }
 
   fs.writeFileSync(p, content, 'utf8');

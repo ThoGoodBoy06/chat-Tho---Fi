@@ -301,10 +301,10 @@ class ConversationModel {
     this.members = const [],
   });
 
-  factory ConversationModel.fromJson(Map<String, dynamic> rawJson, {String? currentUserId}) {
-    final json = (rawJson['Conversations'] != null)
-        ? rawJson['Conversations'] as Map<String, dynamic>
-        : rawJson;
+  factory ConversationModel.fromJson(dynamic rawData, {String? currentUserId}) {
+    final Map<dynamic, dynamic> rawJson = rawData is Map ? rawData : {};
+    final convObj = rawJson['Conversations'];
+    final Map<dynamic, dynamic> json = (convObj is Map) ? convObj : rawJson;
 
     String? lastMsgText;
     if (json['Messages'] is List && (json['Messages'] as List).isNotEmpty) {
