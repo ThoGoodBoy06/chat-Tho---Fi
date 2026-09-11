@@ -28668,7 +28668,7 @@ g=g==null?f:J.ai(g)
 if(d.h(a,e)!=null){d=A.a9d(J.ai(d.h(a,e)))
 if(d==null)d=new A.dN(Date.now(),!1)}else d=new A.dN(Date.now(),!1)
 return new A.k1(c,i,h,o,n,b,p,l,k,j,g,s,d)},
-aPa(c3,c4){var s,r,q,p,o,n,m,l,k,j,i,h,g,f,e,d,c,b,a,a0,a1,a2,a3,a4,a5="Conversations",a6=null,a7="Messages",a8="type",a9="data:image",b0="/uploads/",b1="\u0110\xe3 g\u1eedi m\u1ed9t h\xecnh \u1ea3nh",b2="data:audio",b3="\u0110\xe3 g\u1eedi m\u1ed9t tin nh\u1eafn tho\u1ea1i",b4='{"filename"',b5="\u0110\xe3 g\u1eedi m\u1ed9t t\u1ec7p \u0111\xednh k\xe8m",b6="ConversationMembers",b7="Users",b8="nickname",b9="createdAt",c0=J.ad(c3),c1=t.P,c2=c1.b(c0.h(c3,a5))?c1.a(c0.h(c3,a5)):c3
+aPa(c3,c4){var s,r,q,p,o,n,m,l,k,j,i,h,g,f,e,d,c,b,a,a0,a1,a2,a3,a4,a5="Conversations",a6=null,a7="Messages",a8="type",a9="data:image",b0="/uploads/",b1="\u0110\xe3 g\u1eedi m\u1ed9t h\xecnh \u1ea3nh",b2="data:audio",b3="\u0110\xe3 g\u1eedi m\u1ed9t tin nh\u1eafn tho\u1ea1i",b4='{"filename"',b5="\u0110\xe3 g\u1eedi m\u1ed9t t\u1ec7p \u0111\xednh k\xe8m",b6="ConversationMembers",b7="Users",b8="nickname",b9="createdAt",c0=J.ad(c3),c1=t.P,c2=c0.h(c3,a5)!=null?c0.h(c3,a5):c3
 c1=J.ad(c2)
 s=t.j
 if(s.b(c1.h(c2,a7))&&J.ip(s.a(c1.h(c2,a7)))){r=J.Z(s.a(c1.h(c2,a7)),0)
@@ -31966,7 +31966,7 @@ s=n.b===200?9:11
 break
 case 9:k=n
 m=B.R.e1(0,A.f5(A.f4(k.e)).ce(0,k.w),null)
-if(t.P.b(m)&&t.j.b(J.Z(m,"data"))){k=t.j.a(J.Z(m,"data"))
+if(m!=null&&t.j.b(J.Z(m,"data"))){k=t.j.a(J.Z(m,"data"))
 q=k
 s=1
 break}else if(t.j.b(m)){q=m

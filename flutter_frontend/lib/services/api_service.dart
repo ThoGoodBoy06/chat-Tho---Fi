@@ -87,7 +87,7 @@ class ApiService {
       ).timeout(const Duration(seconds: 25));
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
-        if (decoded is Map<String, dynamic> && decoded['data'] is List) {
+        if (decoded != null && decoded['data'] is List) {
           return decoded['data'] as List<dynamic>;
         } else if (decoded is List) {
           return decoded as List<dynamic>;

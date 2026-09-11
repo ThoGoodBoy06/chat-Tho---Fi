@@ -301,7 +301,7 @@ class ConversationModel {
   });
 
   factory ConversationModel.fromJson(Map<String, dynamic> rawJson, {String? currentUserId}) {
-    final json = (rawJson['Conversations'] is Map<String, dynamic>)
+    final json = (rawJson['Conversations'] != null)
         ? rawJson['Conversations'] as Map<String, dynamic>
         : rawJson;
 
