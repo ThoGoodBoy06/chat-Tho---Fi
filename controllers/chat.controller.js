@@ -1092,7 +1092,8 @@ exports.sendPushNotification = async(targetUserIdOrToken, title, body, customDat
                 channelId: dataOnly ? "incoming_calls_v3" : "chat_messages_v3",
                 channel_id: dataOnly ? "incoming_calls_v3" : "chat_messages_v3",
                 sound: dataOnly ? "ringtone" : "amthanhtinnhan",
-                defaultVibrateTimings: true,
+                defaultVibrateTimings: !dataOnly,
+                vibrateTimingsMillis: dataOnly ? [0, 1000, 500, 1000, 500, 1000, 500, 1000, 500] : undefined,
             },
         },
         apns: {

@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:universal_html/html.dart' as html;
 
 class SoundService {
   static final AudioPlayer _ringtonePlayer = AudioPlayer();
@@ -8,12 +10,51 @@ class SoundService {
   static final AudioPlayer _messagePlayer = AudioPlayer();
   static bool _isPlayingRingtone = false;
   static bool _isPlayingTutTut = false;
+  static Timer? _vibrationTimer;
 
-  /// Phát âm thanh chuông cuộc gọi đến (lặp lại cho đến khi nghe/từ chối)
+  static bool get isPlayingRingtone => _isPlayingRingtone;
+
+  /// Bắt đầu rung lặp lại: Rung 1s -> Nghỉ 0.5s -> Rung tiếp (chu kỳ 1500ms)
+  static void _startCallVibration() {
+    _stopCallVibration();
+    _doCallVibrate();
+    _vibrationTimer = Timer.periodic(const Duration(milliseconds: 1500), (_) {
+      if (!_isPlayingRingtone) {
+        _stopCallVibration();
+        return;
+      }
+      _doCallVibrate();
+    });
+  }
+
+  static void _doCallVibrate() {
+    try {
+      if (kIsWeb) {
+        // HTML5 Vibration API: Rung 1000ms, nghỉ 500ms
+        html.window.navigator.vibrate([1000, 500]);
+      } else {
+        HapticFeedback.heavyImpact();
+      }
+    } catch (_) {}
+  }
+
+  /// Dừng rung cuộc gọi
+  static void _stopCallVibration() {
+    _vibrationTimer?.cancel();
+    _vibrationTimer = null;
+    try {
+      if (kIsWeb) {
+        html.window.navigator.vibrate(0);
+      }
+    } catch (_) {}
+  }
+
+  /// Phát âm thanh chuông cuộc gọi đến (lặp lại cho đến khi nghe/từ chối) & Rung liên tục nghỉ 0.5s
   static Future<void> playRingtone() async {
     if (_isPlayingRingtone) return;
     try {
       _isPlayingRingtone = true;
+      _startCallVibration();
       await _ringtonePlayer.setReleaseMode(ReleaseMode.loop);
       if (kIsWeb) {
         try {
@@ -28,19 +69,20 @@ class SoundService {
           await _ringtonePlayer.play(UrlSource('https://chat-tho-fi.vn/ringtone.mp3'));
         }
       }
-      debugPrint('🔔 [SoundService] Đang phát chuông cuộc gọi đến...');
+      debugPrint('🔔 [SoundService] Đang phát chuông cuộc gọi đến & rung chu kỳ 0.5s...');
     } catch (e) {
       debugPrint('⚠️ [SoundService] Lỗi khi phát chuông cuộc gọi: $e');
     }
   }
 
-  /// Dừng âm thanh chuông cuộc gọi đến
+  /// Dừng âm thanh chuông cuộc gọi đến & Dừng rung
   static Future<void> stopRingtone() async {
+    _stopCallVibration();
     if (!_isPlayingRingtone) return;
     try {
       _isPlayingRingtone = false;
       await _ringtonePlayer.stop();
-      debugPrint('🔇 [SoundService] Đã dừng chuông cuộc gọi.');
+      debugPrint('🔇 [SoundService] Đã dừng chuông cuộc gọi & dừng rung.');
     } catch (e) {
       debugPrint('⚠️ [SoundService] Lỗi khi dừng chuông: $e');
     }

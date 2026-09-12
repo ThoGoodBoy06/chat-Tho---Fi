@@ -290,6 +290,21 @@ class ApiService {
     }
   }
 
+  // Gửi thông báo thử nghiệm đến thiết bị (Test Push)
+  static Future<Map<String, dynamic>> sendTestPushNotification() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/users/test-push'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 15));
+      return jsonDecode(response.body);
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.sendTestPushNotification: $e');
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
   // Change password API
   static Future<Map<String, dynamic>> changePassword(String currentPassword, String newPassword) async {
     try {

@@ -635,6 +635,30 @@ app.post("/api/users/fcm-token", async(req, res) => {
     }
 });
 
+// --- API GỬI THÔNG BÁO THỬ NGHIỆM ĐẾN THIẾT BỊ NGƯỜI DÙNG (TEST PUSH) ---
+app.post("/api/users/test-push", async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization;
+        const token = authHeader ? authHeader.split(" ")[1] : null;
+        if (!token) return res.status(401).json({ message: "Không có quyền truy cập" });
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const { sendPushNotification } = require("./controllers/chat.controller");
+
+        await sendPushNotification(
+            decoded.id,
+            "🔔 Chat Tho-Fi - Thông báo thử nghiệm",
+            "Chúc mừng! Hệ thống thông báo đẩy trên iPhone của bạn đang hoạt động 100% hoàn hảo.",
+            { type: "test_notification" }
+        );
+
+        res.json({ success: true, message: "Đã gửi thông báo thử nghiệm thành công" });
+    } catch (error) {
+        console.error("Lỗi gửi test-push:", error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 // Middleware xử lý lỗi chung (Global Error Handler)
 app.use((err, req, res, next) => {
     console.error("🔥 [Global Error] Lỗi Server:", err);
