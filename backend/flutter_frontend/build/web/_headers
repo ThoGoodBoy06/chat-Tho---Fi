@@ -1,0 +1,58 @@
+# Cloudflare Pages Caching Headers for Chat Tho-Fi
+
+# 1. HTML and version metadata: always revalidate to receive new app versions instantly
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/version.json
+  Cache-Control: public, max-age=0, must-revalidate
+
+/manifest.json
+  Cache-Control: public, max-age=86400
+
+# 2. Immutable assets (CanvasKit WASM 6.7MB, symbol maps)
+/canvaskit/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.wasm
+  Cache-Control: public, max-age=31536000, immutable
+
+# 3. Bundled scripts (main.dart.js and flutter_bootstrap.js with cache-busting params)
+/*.js
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+# 4. Media & Icons
+/*.png
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+
+/*.jpg
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+
+/*.jpeg
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+
+/*.ico
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+
+/*.mp3
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+
+# 5. Fonts
+/*.otf
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.ttf
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.woff
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.woff2
+  Cache-Control: public, max-age=31536000, immutable

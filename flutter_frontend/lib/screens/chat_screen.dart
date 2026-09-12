@@ -177,10 +177,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           _fetchPendingRequestsCount();
         }
         _refreshFriendsListSilently();
-        try {
-          final provider = Provider.of<ChatProvider>(context, listen: false);
-          provider.fetchConversations(showLoading: false);
-        } catch (_) {}
       }
     });
     _unfriendSub?.cancel();
@@ -380,13 +376,22 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       barrierDismissible: true,
       barrierLabel: 'Dismiss',
       barrierColor: Colors.transparent,
-      transitionDuration: const Duration(milliseconds: 220),
+      transitionDuration: const Duration(milliseconds: 250),
       transitionBuilder: (dialogCtx, anim1, anim2, child) {
-        final curved = CurvedAnimation(parent: anim1, curve: Curves.easeOutBack);
+        final curvedScale = CurvedAnimation(
+          parent: anim1,
+          curve: const Cubic(0.18, 1.0, 0.04, 1.0),
+          reverseCurve: Curves.easeInCubic,
+        );
+        final curvedFade = CurvedAnimation(
+          parent: anim1,
+          curve: Curves.easeOutCubic,
+          reverseCurve: Curves.easeInCubic,
+        );
         return ScaleTransition(
-          scale: curved,
+          scale: Tween<double>(begin: 0.88, end: 1.0).animate(curvedScale),
           child: FadeTransition(
-            opacity: anim1,
+            opacity: curvedFade,
             child: child,
           ),
         );
@@ -397,12 +402,15 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           body: Stack(
             children: [
               // Nền làm mờ toàn màn hình & Chạm để đóng
-              GestureDetector(
-                onTap: () => Navigator.pop(dialogContext),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                  child: Container(
-                    color: Colors.black.withOpacity(0.22),
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => Navigator.pop(dialogContext),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                    child: Container(
+                      color: Colors.black.withOpacity(0.22),
+                    ),
                   ),
                 ),
               ),
@@ -2159,12 +2167,77 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 : Builder(
                     builder: (context) {
                       final lastSentMessageIndex = provider.messages.lastIndexWhere((m) => m.senderId == provider.currentUser?.id);
+                      final typingUser = provider.getTypingUserForSelectedConversation();
+                      final hasTyping = typingUser != null && typingUser.isNotEmpty;
+
+                      if (hasTyping) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (_scrollController.hasClients) {
+                            final maxScroll = _scrollController.position.maxScrollExtent;
+                            final currentScroll = _scrollController.offset;
+                            if (maxScroll - currentScroll < 160) {
+                              _scrollController.animateTo(
+                                maxScroll,
+                                duration: const Duration(milliseconds: 150),
+                                curve: Curves.easeOut,
+                              );
+                            }
+                          }
+                        });
+                      }
 
                       return ListView.builder(
                         controller: _scrollController,
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        itemCount: provider.messages.length,
+                        itemCount: provider.messages.length + (hasTyping ? 1 : 0),
                         itemBuilder: (context, index) {
+                          if (index == provider.messages.length) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8, top: 4),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  CircleAvatar(
+                                    radius: 14,
+                                    backgroundColor: primaryColor,
+                                    backgroundImage: (conv.avatar != null && conv.avatar!.isNotEmpty)
+                                        ? NetworkImage(conv.avatar!)
+                                        : null,
+                                    child: (conv.avatar == null || conv.avatar!.isEmpty)
+                                        ? Text(
+                                            conv.name.isNotEmpty ? conv.name[0].toUpperCase() : 'U',
+                                            style: const TextStyle(fontSize: 10, color: Colors.white),
+                                          )
+                                        : null,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: isDark ? const Color(0xFF334155) : const Color(0xFFE4E6EB),
+                                      borderRadius: BorderRadius.circular(18),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          '$typingUser đang gõ ',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF65676B),
+                                            fontWeight: FontWeight.w500,
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        const BouncingDotsIndicator(),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
                           final msg = provider.messages[index];
                           final isMe = msg.senderId == provider.currentUser?.id;
                           final isLastSentMessage = (index == lastSentMessageIndex);
@@ -2434,46 +2507,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                   ),
           ),
 
-          // Typing Indicator Widget (Chuẩn Messenger: Bỏ icon phía trước, có chữ [Tên] đang gõ + 3 chấm chuyển động)
-          Consumer<ChatProvider>(
-            builder: (context, chatProv, child) {
-              final typingUser = chatProv.getTypingUserForSelectedConversation();
-              if (typingUser == null || typingUser.isEmpty) {
-                return const SizedBox.shrink();
-              }
-              return Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE4E6EB),
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            '$typingUser đang gõ ',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF65676B),
-                              fontWeight: FontWeight.w500,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          const BouncingDotsIndicator(),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
+          // Typing indicator moved inside ListView.builder as last item
 
           // Reply Quote Preview Bar
           Consumer<ChatProvider>(
@@ -5617,10 +5651,14 @@ class _SpringEmojiPickerItemState extends State<_SpringEmojiPickerItem> with Sin
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 220),
+      duration: const Duration(milliseconds: 180),
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.5).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.30).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Cubic(0.18, 1.0, 0.04, 1.0),
+        reverseCurve: Curves.easeInCubic,
+      ),
     );
   }
 
@@ -5645,22 +5683,26 @@ class _SpringEmojiPickerItemState extends State<_SpringEmojiPickerItem> with Sin
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: (_) => _controller.forward(),
-      onTapUp: (_) {
-        _controller.reverse();
-        _handleTap();
-      },
-      onTapCancel: () => _controller.reverse(),
-      child: AnimatedBuilder(
-        animation: _scaleAnimation,
-        builder: (context, child) {
-          return Transform.scale(
-            scale: _scaleAnimation.value,
-            child: child,
-          );
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => _controller.forward(),
+      onExit: (_) => _controller.reverse(),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (_) => _controller.forward(),
+        onTapUp: (_) {
+          _controller.reverse();
+          _handleTap();
         },
+        onTapCancel: () => _controller.reverse(),
+        child: AnimatedBuilder(
+          animation: _scaleAnimation,
+          builder: (context, child) {
+            return Transform.scale(
+              scale: _scaleAnimation.value,
+              child: child,
+            );
+          },
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
           child: Text(

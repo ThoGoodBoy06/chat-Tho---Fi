@@ -15,6 +15,10 @@ module.exports = (io) => {
 
   async function handleUserConnect(socket, userId) {
     if (!userId) return;
+    // Nếu socket này đã được thiết lập cho user này rồi thì không chạy lại để tránh loop
+    if (socket.userId === userId && userSockets.get(userId) === socket.id) {
+      return;
+    }
     userSockets.set(userId, socket.id);
     socket.userId = userId;
     socket.join(userId);
@@ -212,6 +216,63 @@ module.exports = (io) => {
         console.log(`🏷️ User ${actorId} đặt biệt danh cho ${userId} trong room ${conversationId}: ${nickToSet}`);
       } catch (e) {
         console.error("Lỗi socket change_nickname:", e);
+      }
+    });
+
+    // ⚡ PHÁT TIN NHẮN TỨC THÌ QUA SOCKET (<20ms) — Không chờ REST API/DB
+    // Client gửi send_message → Server relay ngay cho tất cả thành viên trong phòng chat
+    // REST API sẽ chạy song song để lưu DB + gửi FCM Push (không block tin nhắn real-time)
+    socket.on("send_message", (data) => {
+      try {
+        if (!data || !data.conversationId) return;
+        const { conversationId, content, type, tempId, senderId, senderName, replyMessageId, receiverId, memberIds } = data;
+        const uid = senderId || socket.userId;
+
+        // Tạo payload tin nhắn tạm (optimistic) để phát cho đối phương ngay lập tức
+        const realtimePayload = {
+          id: tempId || `rt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          conversationId,
+          senderId: uid,
+          content,
+          type: type || "text",
+          replyMessageId: replyMessageId || null,
+          isRead: false,
+          isDelivered: true,
+          isRecalled: false,
+          createdAt: new Date().toISOString(),
+          _isSocketRelay: true, // Đánh dấu đây là tin nhắn relay qua socket (chưa lưu DB)
+        };
+
+        // Phát tới TẤT CẢ các client trong phòng chat TRỪ người gửi
+        let broadcast = socket.to(conversationId);
+        if (receiverId && receiverId !== uid) {
+          broadcast = broadcast.to(receiverId);
+        }
+        if (Array.isArray(memberIds)) {
+          memberIds.forEach((mid) => {
+            if (mid && mid !== uid) broadcast = broadcast.to(mid);
+          });
+        }
+        broadcast.emit("receive_message", realtimePayload);
+
+        console.log(`⚡ [Socket Relay] Tin nhắn từ ${uid} → phòng ${conversationId} / receiver ${receiverId || 'all'} (${content?.substring(0, 30)}...)`);
+
+        // Fallback an toàn: Nếu không có receiverId và phòng chưa có đủ socket
+        if (!receiverId && (!memberIds || memberIds.length === 0)) {
+          const room = io.sockets.adapter.rooms.get(conversationId);
+          if (!room || room.size <= 1) {
+            prisma.conversationMembers.findMany({
+              where: { conversationId, userId: { not: uid } },
+              select: { userId: true },
+            }).then((otherMembers) => {
+              otherMembers.forEach((m) => {
+                socket.to(m.userId).emit("receive_message", realtimePayload);
+              });
+            }).catch(() => {});
+          }
+        }
+      } catch (err) {
+        console.error("Lỗi socket send_message relay:", err.message);
       }
     });
 

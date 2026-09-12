@@ -41,13 +41,25 @@ if (!getApps().length) {
     }
 }
 
+// Cache ngắn hạn 3s để bảo vệ Connection Pool khỏi bị bão request
+const conversationsCache = new Map();
+
 // 1. Lấy danh sách đoạn chat của user hiện tại
 
 exports.getConversations = async(req, res) => {
     try {
         const userId = req.user.id; // Lấy từ Token thông qua authMiddleware
+        
+        // Trả ngay kết quả từ cache nếu vừa được gọi trong vòng 3 giây
+        const cached = conversationsCache.get(userId);
+        if (cached && (Date.now() - cached.timestamp < 3000)) {
+            return res.status(200).json({ success: true, data: cached.data });
+        }
 
-        // ⚡ TỐI ƯU HÓA SIÊU TỐC: Tách truy vấn đa tầng thành 2 bước song song (giảm từ 21.7s xuống ~1.6s)
+        console.log(`📥 [getConversations] Bắt đầu tải danh sách chat cho user: ${userId}`);
+        const t0 = Date.now();
+
+        // ⚡ TỐI ƯU HÓA SIÊU TỐC & CHỐNG CHÁY CONNECTION POOL: Dùng 1 query duy nhất findMany
         const userMemberships = await prisma.conversationMembers.findMany({
             where: { userId },
             select: {
@@ -61,82 +73,85 @@ exports.getConversations = async(req, res) => {
             },
         });
 
-        const conversations = await Promise.all(
-            userMemberships.map(async (item) => {
-                const conv = await prisma.conversations.findUnique({
-                    where: { id: item.conversationId },
+        const convIds = userMemberships.map((m) => m.conversationId);
+        const conversationsList = await prisma.conversations.findMany({
+            where: { id: { in: convIds } },
+            select: {
+                id: true,
+                type: true,
+                name: true,
+                avatar: true,
+                createdBy: true,
+                theme: true,
+                createdAt: true,
+                ConversationMembers: {
                     select: {
                         id: true,
-                        type: true,
-                        name: true,
-                        avatar: true,
-                        createdBy: true,
-                        theme: true,
-                        createdAt: true,
-                        ConversationMembers: {
+                        conversationId: true,
+                        userId: true,
+                        role: true,
+                        nickname: true,
+                        Users: {
                             select: {
                                 id: true,
-                                conversationId: true,
-                                userId: true,
-                                role: true,
-                                nickname: true,
-                                Users: {
-                                    select: {
-                                        id: true,
-                                        fullName: true,
-                                        avatar: true,
-                                        isOnline: true,
-                                        lastActive: true,
-                                    },
-                                },
-                            },
-                        },
-                        Messages: {
-                            where: {
-                                NOT: {
-                                    deletedBy: {
-                                        has: userId,
-                                    },
-                                },
-                            },
-                            select: {
-                                id: true,
-                                conversationId: true,
-                                senderId: true,
-                                type: true,
-                                content: true,
-                                imageUrl: true,
-                                videoUrl: true,
-                                audioUrl: true,
-                                fileUrl: true,
-                                isRecalled: true,
-                                isDeleted: true,
-                                isRead: true,
-                                isDelivered: true,
-                                createdAt: true,
-                            },
-                            orderBy: { createdAt: "desc" },
-                            take: 1,
-                        },
-                        _count: {
-                            select: {
-                                Messages: {
-                                    where: {
-                                        senderId: { not: userId },
-                                        isRead: false,
-                                    },
-                                },
+                                fullName: true,
+                                username: true,
+                                avatar: true,
+                                coverPhoto: true,
+                                bio: true,
+                                isOnline: true,
+                                lastActive: true,
                             },
                         },
                     },
-                });
+                },
+                Messages: {
+                    where: {
+                        NOT: {
+                            deletedBy: {
+                                has: userId,
+                            },
+                        },
+                    },
+                    select: {
+                        id: true,
+                        conversationId: true,
+                        senderId: true,
+                        type: true,
+                        content: true,
+                        imageUrl: true,
+                        videoUrl: true,
+                        audioUrl: true,
+                        fileUrl: true,
+                        isRecalled: true,
+                        isDeleted: true,
+                        isRead: true,
+                        isDelivered: true,
+                        createdAt: true,
+                    },
+                    orderBy: { createdAt: "desc" },
+                    take: 1,
+                },
+                _count: {
+                    select: {
+                        Messages: {
+                            where: {
+                                senderId: { not: userId },
+                                isRead: false,
+                            },
+                        },
+                    },
+                },
+            },
+        });
 
-                return {
-                    ...item,
-                    Conversations: conv,
-                };
-            })
-        );
+        const convMap = new Map();
+        conversationsList.forEach((c) => convMap.set(c.id, c));
+
+        const conversations = userMemberships.map((item) => ({
+            ...item,
+            Conversations: convMap.get(item.conversationId) || null,
+        }));
 
         // Lọc bỏ các cuộc trò chuyện đã bị xóa ở phía người dùng hiện tại và chưa có tin nhắn mới hơn thời điểm xóa
         const activeConversations = conversations.filter((item) => {
@@ -195,6 +210,8 @@ exports.getConversations = async(req, res) => {
             };
         });
 
+        console.log(`📤 [getConversations] Hoàn thành trong ${Date.now() - t0} ms (tìm thấy ${mappedConversations.length} cuộc trò chuyện)`);
+        conversationsCache.set(userId, { data: mappedConversations, timestamp: Date.now() });
         res.status(200).json({ success: true, data: mappedConversations });
     } catch (error) {
         console.error("!!! LỖI TẢI DANH SÁCH CUỘC TRÒ CHUYỆN:", error);
@@ -212,7 +229,6 @@ exports.getMessages = async(req, res) => {
         const { conversationId } = req.params;
         const limit = Math.min(parseInt(req.query.limit) || 50, 100); // Giới hạn tối đa 100
         const before = req.query.before; // ID tin nhắn cursor (optional)
-
 
         // Cập nhật ngay trạng thái isRead & isDelivered vào DB cho tất cả tin nhắn trong phòng này do người khác gửi
         prisma.messages.updateMany({
@@ -447,6 +463,15 @@ exports.sendMessage = async(req, res) => {
         }
 
         // 1. Lưu tin nhắn vào Database
+        // Đánh dấu tất cả tin nhắn cũ trong cuộc trò chuyện này là đã đọc đối với sender
+        prisma.messages.updateMany({
+            where: {
+                conversationId,
+                NOT: { senderId },
+                isRead: false,
+            },
+            data: { isRead: true },
+        }).catch(() => {});
 
         const newMessage = await prisma.messages.create({
             data: {
@@ -514,11 +539,18 @@ exports.sendMessage = async(req, res) => {
         // Trả response ngay sau khi lưu DB xong (không đợi socket/FCM)
         res.status(201).json({ success: true, data: mappedMessage });
 
-        // 2. Lấy danh sách thành viên và phát tin nhắn real-time (sau khi đã respond xong)
+        // 2. Lấy danh sách thành viên và phát tin nhắn real-time
         const members = await prisma.conversationMembers.findMany({
             where: { conversationId },
             include: {
-                Users: { select: { fcmToken: true } }
+                Users: {
+                    select: {
+                        fcmToken: true,
+                        devices: {
+                            select: { fcmToken: true, platform: true }
+                        }
+                    }
+                }
             }
         });
 
@@ -526,17 +558,38 @@ exports.sendMessage = async(req, res) => {
         const io = req.app.get("io");
 
         if (io) {
-            io.to(conversationId).emit("receive_message", mappedMessage);
-            members.forEach((member) => {
-                if (member.userId) {
-                    io.to(member.userId).emit("receive_message", mappedMessage);
-                }
-            });
+            let broadcast = io.to(conversationId);
+            if (members && members.length > 0) {
+                members.forEach((member) => {
+                    if (member.userId !== senderId) {
+                        broadcast = broadcast.to(member.userId);
+                    }
+                });
+            }
+            broadcast.emit("receive_message", mappedMessage);
         }
 
+        // 4. Gửi Push Notification đến tất cả thiết bị của đối phương
         members.forEach((member) => {
-            // Chỉ gửi cho người nhận (đối phương) và khi họ đã có FCM Token
-            if (member.userId !== senderId && member.Users && member.Users.fcmToken) {
+            if (member.userId !== senderId && member.Users) {
+                // Gom tất cả FCM Token từ bảng UserDevices và Users
+                const tokenSet = new Set();
+                if (member.Users.devices && member.Users.devices.length > 0) {
+                    member.Users.devices.forEach((d) => {
+                        if (d.fcmToken) tokenSet.add(d.fcmToken);
+                    });
+                }
+                if (member.Users.fcmToken) {
+                    tokenSet.add(member.Users.fcmToken);
+                }
+
+                const recipientTokens = Array.from(tokenSet);
+                console.log(`🔍 [FCM Server] Tìm thấy ${recipientTokens.length} FCM Tokens cho người nhận User ${member.userId}`);
+                if (recipientTokens.length === 0) {
+                    console.warn(`⚠️ User ${member.userId} chưa có FCM Token nào được đăng ký trong hệ thống (UserDevices)!`);
+                    return;
+                }
+
                 let snippet = mappedMessage.content;
                 if (mappedMessage.type === "file") {
                     try {
@@ -559,15 +612,15 @@ exports.sendMessage = async(req, res) => {
                         `${BASE_HOST_URL}${senderAvatar}`;
                 } else {
                     avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-            (newMessage.Users && newMessage.Users.fullName) || "User"
-          )}&background=random`;
+                        (newMessage.Users && newMessage.Users.fullName) || "User"
+                    )}&background=random`;
                 }
 
                 const senderMember = members.find((m) => m.userId === senderId);
                 const senderDisplayName = (senderMember && senderMember.nickname) || (newMessage.Users && newMessage.Users.fullName) || "Tin nhắn mới";
 
                 const payload = {
-                    token: member.Users.fcmToken,
+                    tokens: recipientTokens,
                     notification: {
                         title: senderDisplayName,
                         body: snippet,
@@ -593,7 +646,7 @@ exports.sendMessage = async(req, res) => {
                                     title: senderDisplayName,
                                     body: snippet,
                                 },
-                                sound: "amthanhtinnhan.mp3",
+                                sound: "default",
                                 badge: 1,
                                 "content-available": 1,
                                 "mutable-content": 1,
@@ -603,28 +656,57 @@ exports.sendMessage = async(req, res) => {
                     webpush: {
                         headers: {
                             Urgency: "high",
+                            TTL: "86400",
                         },
                         notification: {
+                            title: senderDisplayName,
+                            body: snippet,
                             icon: avatarUrl,
                             badge: `${BASE_HOST_URL}/icon.png`,
-                            vibrate: [400, 100, 400, 100, 600],
-                            tag: String(conversationId),
+                            vibrate: [500, 250, 500, 250, 500],
+                            tag: `conv-${conversationId}`,
                             renotify: true,
+                            sound: "default",
                         },
+                        fcmOptions: {
+                            link: `${BASE_HOST_URL}/?conversationId=${conversationId}`
+                        }
                     },
                     data: {
                         conversationId: String(conversationId),
                         senderId: String(senderId),
                         messageId: String(newMessage.id),
+                        title: senderDisplayName,
+                        body: snippet,
+                        avatar: avatarUrl,
                         type: "chat_message",
                     },
                 };
 
-                // Gửi ngầm không cần await để tránh làm chậm tốc độ gửi tin nhắn (Chỉ gửi khi Firebase đã khởi tạo)
+                // Bắn multicast cho tất cả thiết bị của user
                 if (getApps().length > 0) {
-                    getMessaging().send(payload)
-                        .then(async () => {
-                            console.log(`📲 Đã bắn Push Notification cho User ${member.userId}`);
+                    getMessaging().sendEachForMulticast(payload)
+                        .then(async (response) => {
+                            console.log(`📲 Đã bắn Push Multicast cho User ${member.userId}: ${response.successCount}/${recipientTokens.length} thành công.`);
+                            
+                            // Xóa token hỏng
+                            if (response.failureCount > 0) {
+                                const failedTokens = [];
+                                response.responses.forEach((resp, idx) => {
+                                    if (!resp.success && resp.error) {
+                                        const code = resp.error.code;
+                                        if (code === 'messaging/invalid-registration-token' || code === 'messaging/registration-token-not-registered') {
+                                            failedTokens.push(recipientTokens[idx]);
+                                        }
+                                    }
+                                });
+                                if (failedTokens.length > 0) {
+                                    prisma.userDevices.deleteMany({
+                                        where: { fcmToken: { in: failedTokens } }
+                                    }).catch(() => {});
+                                }
+                            }
+
                             try {
                                 await prisma.messages.update({
                                     where: { id: newMessage.id },
@@ -644,7 +726,7 @@ exports.sendMessage = async(req, res) => {
                                 console.error("Lỗi cập nhật isDelivered từ Push:", e.message);
                             }
                         })
-                        .catch((err) => console.error(`❌ Lỗi gửi Push Notification:`, err.message));
+                        .catch((err) => console.error(`❌ Lỗi gửi Push Notification Multicast:`, err.message));
                 }
             }
         });
@@ -958,20 +1040,52 @@ exports.reactToMessage = async(req, res) => {
 };
 
 /**
- * Hàm gửi Push Notification sử dụng Firebase Admin SDK
- * @param {string} fcmToken - Token FCM của thiết bị nhận
+ * Hàm gửi Push Notification sử dụng Firebase Admin SDK (Hỗ trợ cả token đơn và userId đa thiết bị PWA/Mobile)
+ * @param {string} targetUserIdOrToken - Token FCM hoặc ID của người nhận
  * @param {string} title - Tiêu đề thông báo
  * @param {string} body - Nội dung thông báo
  * @param {object} customData - Dữ liệu tùy chỉnh gửi kèm
+ * @param {boolean} dataOnly - Chỉ gửi payload data (ví dụ cuộc gọi đến)
  */
-exports.sendPushNotification = async(fcmToken, title, body, customData = null, dataOnly = false) => {
+exports.sendPushNotification = async(targetUserIdOrToken, title, body, customData = null, dataOnly = false) => {
     if (getApps().length === 0) {
         console.warn("⚠️ Firebase Admin chưa được khởi tạo. Không thể gửi thông báo.");
         return;
     }
 
+    if (!targetUserIdOrToken) return;
+
+    let recipientTokens = [];
+
+    // 1. Kiểm tra nếu tham số truyền vào là Token đơn hay là UserId
+    if (typeof targetUserIdOrToken === "string" && (targetUserIdOrToken.includes(":") || targetUserIdOrToken.length > 50)) {
+        recipientTokens.push(targetUserIdOrToken);
+    } else {
+        // Tra cứu tất cả thiết bị của userId từ bảng UserDevices và Users
+        const devices = await prisma.userDevices.findMany({
+            where: { userId: targetUserIdOrToken },
+            select: { fcmToken: true }
+        });
+        devices.forEach(d => { if (d.fcmToken) recipientTokens.push(d.fcmToken); });
+
+        const user = await prisma.users.findUnique({
+            where: { id: targetUserIdOrToken },
+            select: { fcmToken: true }
+        });
+        if (user && user.fcmToken && !recipientTokens.includes(user.fcmToken)) {
+            recipientTokens.push(user.fcmToken);
+        }
+    }
+
+    if (recipientTokens.length === 0) {
+        console.warn(`⚠️ Không tìm thấy FCM Token nào cho target: ${targetUserIdOrToken}`);
+        return;
+    }
+
+    const conversationId = (customData && customData.conversationId) || "";
+
     const payload = {
-        token: fcmToken,
+        tokens: recipientTokens,
         android: {
             priority: "high",
             notification: {
@@ -988,11 +1102,8 @@ exports.sendPushNotification = async(fcmToken, title, body, customData = null, d
             },
             payload: {
                 aps: {
-                    alert: {
-                        title: title,
-                        body: body,
-                    },
-                    sound: dataOnly ? "ringtone.mp3" : "amthanhtinnhan.mp3",
+                    alert: { title: title, body: body },
+                    sound: "default",
                     badge: 1,
                     "content-available": 1,
                     "mutable-content": 1,
@@ -1001,13 +1112,29 @@ exports.sendPushNotification = async(fcmToken, title, body, customData = null, d
         },
         webpush: {
             headers: {
-                Urgency: "high"
+                Urgency: "high",
+                TTL: "86400",
+            },
+            notification: {
+                title: title,
+                body: body,
+                icon: `${BASE_HOST_URL}/icon.png`,
+                badge: `${BASE_HOST_URL}/icon.png`,
+                tag: conversationId ? `conv-${conversationId}` : "chat-notification",
+                renotify: true,
+                vibrate: dataOnly ? [1000, 500, 1000, 500] : [500, 250, 500, 250, 500],
+                requireInteraction: dataOnly ? true : false,
+                sound: "default",
+            },
+            fcmOptions: {
+                link: conversationId ? `${BASE_HOST_URL}/?conversationId=${conversationId}` : BASE_HOST_URL,
             }
         },
         data: {
             ...(customData || {}),
             title: title,
-            body: body
+            body: body,
+            type: (customData && customData.type) || (dataOnly ? "INCOMING_CALL" : "chat_message"),
         }
     };
 
@@ -1017,17 +1144,30 @@ exports.sendPushNotification = async(fcmToken, title, body, customData = null, d
             body: body,
             image: `${BASE_HOST_URL}/icon.png`
         };
-        payload.webpush.notification = {
-            icon: `${BASE_HOST_URL}/icon.png`,
-            badge: `${BASE_HOST_URL}/icon.png`,
-            vibrate: [1000, 500, 1000, 500, 1000],
-            requireInteraction: true
-        };
     }
 
     try {
-        const response = await getMessaging().send(payload);
-        console.log("📲 Đã gửi Push Notification thành công:", response);
+        const response = await getMessaging().sendEachForMulticast(payload);
+        console.log(`📲 Đã gửi Push Multicast thành công cho ${response.successCount}/${recipientTokens.length} thiết bị`);
+
+        // Dọn dẹp token bị hỏng
+        if (response.failureCount > 0) {
+            const failedTokens = [];
+            response.responses.forEach((resp, idx) => {
+                if (!resp.success && resp.error) {
+                    const code = resp.error.code;
+                    if (code === 'messaging/invalid-registration-token' || code === 'messaging/registration-token-not-registered') {
+                        failedTokens.push(recipientTokens[idx]);
+                    }
+                }
+            });
+            if (failedTokens.length > 0) {
+                prisma.userDevices.deleteMany({
+                    where: { fcmToken: { in: failedTokens } }
+                }).catch(() => {});
+            }
+        }
+
         return response;
     } catch (error) {
         console.error("❌ Lỗi gửi Push Notification qua Firebase Admin:", error.message);
@@ -1220,8 +1360,9 @@ exports.deleteConversation = async(req, res) => {
 exports.setNickname = async(req, res) => {
     try {
         const { conversationId } = req.params;
-        const { targetUserId, nickname } = req.body;
         const userId = req.user.id;
+        const targetUserId = req.body.targetUserId || req.body.userId || req.params.userId || userId;
+        const { nickname } = req.body;
 
         if (!targetUserId) {
             return res.status(400).json({ success: false, message: "Thiếu targetUserId." });
@@ -1259,30 +1400,26 @@ exports.setNickname = async(req, res) => {
             data: { nickname: cleanNickname },
         });
 
-        // 4. Lấy tên thật của người thực hiện và người được đặt biệt danh
-        const [actor, target] = await Promise.all([
+        // 4. Lấy tên hiển thị hiện tại (Biệt danh hoặc Tên thật) của người thực hiện và người được đặt biệt danh
+        const actorOldNickname = membership.nickname;
+        const targetOldNickname = targetMembership.nickname;
+
+        const [actorUser, targetUser] = await Promise.all([
             prisma.users.findUnique({ where: { id: userId }, select: { fullName: true } }),
             prisma.users.findUnique({ where: { id: targetUserId }, select: { fullName: true } }),
         ]);
 
-        const actorName = actor ? actor.fullName : "Người dùng";
-        const targetName = target ? target.fullName : "Người dùng";
+        const actorDisplayName = actorOldNickname || (actorUser ? actorUser.fullName : "Người dùng");
+        const targetDisplayName = targetOldNickname || (targetUser ? targetUser.fullName : "Người dùng");
 
-        // 5. Tạo tin nhắn hệ thống
-        let systemContent;
-        if (cleanNickname) {
-            if (targetUserId === userId) {
-                systemContent = `${actorName} đã đặt biệt danh của mình là ${cleanNickname}.`;
-            } else {
-                systemContent = `${actorName} đã đặt biệt danh cho ${targetName} là ${cleanNickname}.`;
-            }
-        } else {
-            if (targetUserId === userId) {
-                systemContent = `${actorName} đã xóa biệt danh của mình.`;
-            } else {
-                systemContent = `${actorName} đã xóa biệt danh của ${targetName}.`;
-            }
-        }
+        // 5. Tạo tin nhắn hệ thống dạng JSON Metadata
+        const systemPayload = {
+            action: "change_nickname",
+            actorId: userId,
+            targetId: targetUserId,
+            nickname: cleanNickname,
+        };
+        const systemContent = JSON.stringify(systemPayload);
 
         const systemMessage = await prisma.messages.create({
             data: {
@@ -1306,7 +1443,7 @@ exports.setNickname = async(req, res) => {
                 null,
         };
 
-        // 6. Phát socket event tới tất cả thành viên
+        // 6. Phát socket event tới tất cả thành viên và phòng chat
         const members = await prisma.conversationMembers.findMany({
             where: { conversationId },
             select: { userId: true, nickname: true },
@@ -1320,21 +1457,38 @@ exports.setNickname = async(req, res) => {
             if (m.nickname) nicknames[m.userId] = m.nickname;
         });
 
-        members.forEach((m) => {
-            io.to(m.userId).emit("nickname_changed", {
+        if (io) {
+            // Phát tin nhắn hệ thống vào khung chat real-time
+            io.to(conversationId).emit("receive_message", mappedSystemMessage);
+
+            // Cập nhật biệt danh trên giao diện cả 2 bên
+            io.to(conversationId).emit("nickname_changed", {
                 conversationId,
                 targetUserId,
+                userId: targetUserId,
                 nickname: cleanNickname,
                 nicknames,
                 systemMessage: mappedSystemMessage,
             });
-        });
+
+            members.forEach((m) => {
+                io.to(m.userId).emit("nickname_changed", {
+                    conversationId,
+                    targetUserId,
+                    userId: targetUserId,
+                    nickname: cleanNickname,
+                    nicknames,
+                    systemMessage: mappedSystemMessage,
+                });
+            });
+        }
 
         res.status(200).json({
             success: true,
             message: cleanNickname ? "Đặt biệt danh thành công." : "Đã xóa biệt danh.",
             nickname: cleanNickname,
             nicknames,
+            data: mappedSystemMessage,
         });
     } catch (error) {
         console.error("❌ Lỗi khi đặt biệt danh:", error);
@@ -1853,9 +2007,9 @@ exports.uploadMedia = async (req, res) => {
             type = req.body.type;
         }
 
-        const { uploadBase64 } = require("../supabase");
+        const storageService = require("../services/storage.service");
         const base64Str = `data:${mimeType};base64,${buffer.toString("base64")}`;
-        const publicUrl = await uploadBase64(base64Str, type, originalName);
+        const publicUrl = await storageService.processUpload(base64Str, type, originalName, conversationId);
 
         const newMessage = await prisma.messages.create({
             data: {
@@ -1866,6 +2020,8 @@ exports.uploadMedia = async (req, res) => {
                 type: type,
                 imageUrl: type === "image" ? publicUrl : null,
                 audioUrl: type === "audio" ? publicUrl : null,
+                videoUrl: type === "video" ? publicUrl : null,
+                fileUrl: (type !== "image" && type !== "audio" && type !== "video") ? publicUrl : null,
             },
             include: {
                 Users: {
@@ -1894,34 +2050,43 @@ exports.uploadMedia = async (req, res) => {
     }
 };
 
-// Thu hồi tin nhắn (Recall)
-exports.recallMessage = async (req, res) => {
+// API lấy Presigned URL tải trực tiếp lên Cloudflare R2 (Băng thông 0đ)
+exports.getPresignedUploadUrl = async (req, res) => {
     try {
-        const { messageId } = req.params;
+        const { fileName, contentType, category } = req.query;
+        if (!fileName || !contentType) {
+            return res.status(400).json({ success: false, message: "Thiếu fileName hoặc contentType" });
+        }
+        const storageService = require("../services/storage.service");
+        const result = await storageService.getDirectUploadUrl(fileName, contentType, category || "files");
+        if (!result) {
+            return res.status(501).json({ success: false, message: "Cloudflare R2 chưa được cấu hình hoặc không khả dụng." });
+        }
+        res.json({ success: true, data: result });
+    } catch (error) {
+        console.error("❌ Lỗi getPresignedUploadUrl:", error);
+        res.status(500).json({ success: false, message: "Lỗi tạo link upload", error: error.message });
+    }
+};
+
+exports.markAsRead = async(req, res) => {
+    try {
+        const { conversationId } = req.params;
         const userId = req.user.id;
 
-        const msg = await prisma.messages.findUnique({
-            where: { id: messageId },
-            select: { id: true, senderId: true, conversationId: true }
+        await prisma.messages.updateMany({
+            where: {
+                conversationId,
+                senderId: { not: userId },
+                isRead: false,
+            },
+            data: { isRead: true },
         });
 
-        if (!msg) {
-            return res.status(404).json({ success: false, message: "Tin nhắn không tồn tại" });
-        }
-
-        if (msg.senderId !== userId) {
-            return res.status(403).json({ success: false, message: "Chỉ người gửi mới có quyền thu hồi tin nhắn" });
-        }
-
-        await prisma.messages.update({
-            where: { id: messageId },
-            data: { isRecalled: true, content: "Tin nhắn đã bị thu hồi" },
-        });
-
-        return res.json({ success: true, message: "Đã thu hồi tin nhắn" });
+        return res.json({ success: true, message: "Đã đánh dấu tin nhắn là đã đọc trong DB" });
     } catch (error) {
-        console.error("Lỗi thu hồi tin nhắn:", error);
-        return res.status(500).json({ success: false, message: "Lỗi hệ thống khi thu hồi tin nhắn" });
+        console.error("Lỗi markAsRead:", error);
+        return res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -1967,35 +2132,48 @@ exports.markAsDelivered = async (req, res) => {
     }
 };
 
-// Xóa tin nhắn phía tôi (Delete for me)
-exports.deleteMessageForMe = async (req, res) => {
+exports.updateNickname = async (req, res) => {
     try {
-        const { messageId } = req.params;
-        const userId = req.user.id;
+        const { conversationId, userId } = req.params;
+        const { nickname } = req.body;
 
-        const msg = await prisma.messages.findUnique({
-            where: { id: messageId },
-            select: { id: true, deletedBy: true }
+        const targetUserId = userId || req.body.targetUserId || req.body.userId;
+        const nickToSet = (nickname && nickname.trim().length > 0) ? nickname.trim() : null;
+
+        const member = await prisma.conversationMembers.findFirst({
+            where: {
+                conversationId: conversationId,
+                userId: targetUserId,
+            },
         });
 
-        if (!msg) {
-            return res.status(404).json({ success: false, message: "Tin nhắn không tồn tại" });
+        if (!member) {
+            return res.status(404).json({ success: false, message: "Không tìm thấy thành viên trong phòng chat" });
         }
 
-        if (!msg.deletedBy.includes(userId)) {
-            await prisma.messages.update({
-                where: { id: messageId },
-                data: {
-                    deletedBy: {
-                        push: userId,
-                    },
-                },
+        await prisma.conversationMembers.update({
+            where: { id: member.id },
+            data: { nickname: nickToSet },
+        });
+
+        const io = req.app.get("io");
+        if (io) {
+            io.to(conversationId).emit("nickname_changed", {
+                conversationId,
+                userId: targetUserId,
+                nickname: nickToSet,
             });
         }
 
-        return res.json({ success: true, message: "Đã xóa tin nhắn phía tôi" });
+        return res.json({
+            success: true,
+            message: "Cập nhật biệt danh thành công",
+            data: { conversationId, userId: targetUserId, nickname: nickToSet },
+        });
     } catch (error) {
-        console.error("Lỗi xóa tin nhắn phía tôi:", error);
-        return res.status(500).json({ success: false, message: "Lỗi hệ thống khi xóa tin nhắn" });
+        console.error("❌ Lỗi updateNickname:", error);
+        return res.status(500).json({ success: false, message: "Lỗi server", error: error.message });
     }
 };
+
+exports.setNickname = exports.updateNickname;

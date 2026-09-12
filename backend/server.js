@@ -66,8 +66,30 @@ const staticPath = fs.existsSync(flutterWebPath) ? flutterWebPath : path.join(__
 console.log(`📂 Đang serve giao diện từ: ${staticPath}`);
 
 app.use(express.static(staticPath, {
-    etag: false,
-    lastModified: false,
+    etag: true,
+    lastModified: true,
+    maxAge: "7d",
+    setHeaders: (res, filePath) => {
+        const basename = path.basename(filePath);
+        // HTML, version.json và Service Worker luôn revalidate để nhận diện bản build mới ngay tức thì
+        if (basename === "index.html" || basename === "version.json" || basename.includes("service_worker") || basename.includes("sw.js") || basename.includes("main.dart") || basename.includes("flutter_bootstrap")) {
+            res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+            res.setHeader("Pragma", "no-cache");
+            res.setHeader("Expires", "0");
+        } else if (filePath.match(/\.(wasm|js\.symbols)$/)) {
+            // Canvaskit WASM (6.7MB), symbol maps: Cache vĩnh viễn + immutable
+            res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        } else if (filePath.match(/\.(otf|ttf|woff|woff2)$/)) {
+            // Fonts: Cache vĩnh viễn
+            res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        } else if (basename.endsWith(".js")) {
+            // Script có query version: Cache 1 ngày + stale-while-revalidate 7 ngày
+            res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
+        } else if (filePath.match(/\.(png|jpg|jpeg|svg|gif|webp|ico|mp3)$/)) {
+            // Hình ảnh, âm thanh: Cache 7 ngày
+            res.setHeader("Cache-Control", "public, max-age=604800, stale-while-revalidate=86400");
+        }
+    }
 }));
 
 // Import Routes

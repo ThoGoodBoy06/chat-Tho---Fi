@@ -10,6 +10,56 @@ module.exports = (io) => {
   // Gắn map vào instance 'io' để các route handler có thể truy cập
   io.userSockets = userSockets;
 
+  // Cache để tránh gọi DB update isOnline liên tục trong thời gian ngắn (Debounce 60 giây)
+  const lastOnlineUpdateMap = new Map();
+
+  async function handleUserConnect(socket, userId) {
+    if (!userId) return;
+    // Nếu socket này đã được thiết lập cho user này rồi thì không chạy lại để tránh loop
+    if (socket.userId === userId && userSockets.get(userId) === socket.id) {
+      return;
+    }
+    userSockets.set(userId, socket.id);
+    socket.userId = userId;
+    socket.join(userId);
+
+    // Chạy song song không block: Lấy conversations & pending friend requests
+    Promise.all([
+      prisma.conversationMembers.findMany({
+        where: { userId },
+        select: { conversationId: true },
+      }).catch(() => []),
+      prisma.friendRequests.findMany({
+        where: { receiverId: userId, status: "PENDING" },
+        select: {
+          id: true,
+          status: true,
+          createdAt: true,
+          requester: {
+            select: { id: true, fullName: true },
+          },
+        },
+      }).catch(() => []),
+    ]).then(([conversations, pendingRequests]) => {
+      conversations.forEach((conv) => {
+        socket.join(conv.conversationId);
+      });
+
+      if (pendingRequests && pendingRequests.length > 0) {
+        const mappedPending = pendingRequests.map((r) => {
+          if (r.requester) {
+            r.requester.avatar = `/api/users/${r.requester.id}/avatar`;
+          }
+          return r;
+        });
+        socket.emit("initial_friend_requests", mappedPending);
+      }
+    }).catch(() => {});
+
+    // Báo trạng thái online cho mọi người ngay lập tức
+    io.emit("user_status_changed", { userId, isOnline: true });
+  }
+
   io.on("connection", async (socket) => {
     console.log("⚡ Một thiết bị vừa kết nối với Socket: " + socket.id);
 
@@ -20,92 +70,24 @@ module.exports = (io) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET || "supersecretkey_chat_tho_fi");
         const userId = decoded.id || decoded.userId;
         if (userId) {
-          userSockets.set(userId, socket.id);
-          socket.userId = userId;
-          socket.join(userId);
-
-          const conversations = await prisma.conversationMembers.findMany({
-            where: { userId },
-            select: { conversationId: true },
-          });
-          conversations.forEach((conv) => {
-            socket.join(conv.conversationId);
-          });
-
-          await prisma.users.update({
-            where: { id: userId },
-            data: { isOnline: true },
-          }).catch(() => {});
-
-          io.emit("user_status_changed", { userId, isOnline: true });
-          console.log(`👤 Socket ${socket.id} tự động xác thực User ${userId} qua Token.`);
+          handleUserConnect(socket, userId);
         }
-      } catch (e) {
-        console.warn(`⚠️ Socket ${socket.id} token validation warning:`, e.message);
-      }
+      } catch (e) {}
     }
+
+    // 1. Lắng nghe khi người dùng đăng nhập app thành công
+    socket.on("user_connected", (userId) => {
+      handleUserConnect(socket, userId);
+    });
 
     // Lắng nghe khi client yêu cầu tham gia phòng trò chuyện (như khi được thêm vào nhóm)
     socket.on("join_conversation", (conversationId) => {
-        socket.join(conversationId);
-        console.log(`📡 Socket ${socket.id} đã vào phòng: ${conversationId}`);
+      socket.join(conversationId);
     });
 
     // Alias: join_room (cho Flutter Web client)
     socket.on("join_room", (roomId) => {
-        socket.join(roomId);
-        console.log(`📡 Socket ${socket.id} đã join_room: ${roomId}`);
-    });
-
-    // 1. Lắng nghe khi người dùng đăng nhập app thành công
-    socket.on("user_connected", async (userId) => {
-      try {
-        userSockets.set(userId, socket.id);
-        socket.userId = userId;
-
-        // Đưa user vào một "phòng" có tên là ID của họ để dễ dàng gửi tin nhắn cá nhân
-        socket.join(userId);
-
-        // Tự động join vào các phòng chat mà user này là thành viên
-        const conversations = await prisma.conversationMembers.findMany({
-          where: { userId },
-          select: { conversationId: true },
-        });
-        conversations.forEach((conv) => {
-          socket.join(conv.conversationId);
-        });
-
-        // Lấy danh sách lời mời kết bạn đang chờ và gửi cho client
-        try {
-          const pendingRequests = await prisma.friendRequests.findMany({
-            where: { receiverId: userId, status: "PENDING" },
-            include: {
-              requester: {
-                select: { id: true, fullName: true },
-              },
-            },
-          });
-
-          // Map avatar sang URL tĩnh
-          const mappedPending = pendingRequests.map(r => {
-            if (r.requester) {
-              r.requester.avatar = `/api/users/${r.requester.id}/avatar`;
-            }
-            return r;
-          });
-
-          socket.emit("initial_friend_requests", mappedPending);
-        } catch (e) {
-          console.error("Lỗi khi lấy danh sách lời mời kết bạn:", e);
-        }
-
-        // Báo cho mọi người khác biết user này vừa online (cả 2 dạng sự kiện để tương thích)
-        io.emit("user_status_changed", { userId, isOnline: true });
-        io.emit("user_status_change", { userId, isOnline: true });
-        console.log(`👤 User ${userId} đã kết nối.`);
-      } catch (err) {
-        console.error("❌ Lỗi trong sự kiện user_connected:", err);
-      }
+      socket.join(roomId);
     });
 
     // 1b. Lắng nghe khi người dùng chuyển ứng dụng chạy ngầm (go_offline)
@@ -158,6 +140,142 @@ module.exports = (io) => {
     });
 
     // 3. Lắng nghe trạng thái Đang gõ... (Typing indicator)
+    socket.on("change_nickname", async (data) => {
+      if (!data) return;
+      const { conversationId, userId, nickname } = data;
+      if (!conversationId || !userId) return;
+
+      try {
+        const actorId = socket.userId || userId;
+        const actorMember = await prisma.conversationMembers.findFirst({
+          where: { conversationId, userId: actorId },
+        });
+        const targetMember = await prisma.conversationMembers.findFirst({
+          where: { conversationId, userId },
+        });
+
+        const actorOldNickname = actorMember ? actorMember.nickname : null;
+        const targetOldNickname = targetMember ? targetMember.nickname : null;
+
+        if (targetMember) {
+          await prisma.conversationMembers.update({
+            where: { id: targetMember.id },
+            data: { nickname: nickToSet },
+          });
+        }
+
+        // Lấy tên thật của người thực hiện và người được đặt biệt danh
+        const [actorUser, targetUser] = await Promise.all([
+          prisma.users.findUnique({ where: { id: actorId }, select: { fullName: true } }),
+          prisma.users.findUnique({ where: { id: userId }, select: { fullName: true } }),
+        ]);
+
+        const actorDisplayName = actorOldNickname || (actorUser ? actorUser.fullName : "Người dùng");
+        const targetDisplayName = targetOldNickname || (targetUser ? targetUser.fullName : "Người dùng");
+
+        const systemPayload = {
+          action: "change_nickname",
+          actorId,
+          targetId: userId,
+          nickname: nickToSet,
+        };
+        const systemContent = JSON.stringify(systemPayload);
+
+        const systemMessage = await prisma.messages.create({
+          data: {
+            id: uuidv4(),
+            conversationId,
+            senderId: actorId,
+            content: systemContent,
+            type: "system",
+          },
+          include: {
+            Users: {
+              select: { id: true, fullName: true },
+            },
+          },
+        });
+
+        const mappedSystemMessage = {
+          ...systemMessage,
+          Users: systemMessage.Users ?
+            { ...systemMessage.Users, avatar: `/api/users/${systemMessage.Users.id}/avatar` } :
+            null,
+        };
+
+        const payload = {
+          conversationId,
+          targetUserId: userId,
+          userId,
+          nickname: nickToSet,
+          systemMessage: mappedSystemMessage,
+        };
+
+        io.to(conversationId).emit("receive_message", mappedSystemMessage);
+        io.to(conversationId).emit("nickname_changed", payload);
+        console.log(`🏷️ User ${actorId} đặt biệt danh cho ${userId} trong room ${conversationId}: ${nickToSet}`);
+      } catch (e) {
+        console.error("Lỗi socket change_nickname:", e);
+      }
+    });
+
+    // ⚡ PHÁT TIN NHẮN TỨC THÌ QUA SOCKET (<20ms) — Không chờ REST API/DB
+    // Client gửi send_message → Server relay ngay cho tất cả thành viên trong phòng chat
+    // REST API sẽ chạy song song để lưu DB + gửi FCM Push (không block tin nhắn real-time)
+    socket.on("send_message", (data) => {
+      try {
+        if (!data || !data.conversationId) return;
+        const { conversationId, content, type, tempId, senderId, senderName, replyMessageId, receiverId, memberIds } = data;
+        const uid = senderId || socket.userId;
+
+        // Tạo payload tin nhắn tạm (optimistic) để phát cho đối phương ngay lập tức
+        const realtimePayload = {
+          id: tempId || `rt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          conversationId,
+          senderId: uid,
+          content,
+          type: type || "text",
+          replyMessageId: replyMessageId || null,
+          isRead: false,
+          isDelivered: true,
+          isRecalled: false,
+          createdAt: new Date().toISOString(),
+          _isSocketRelay: true, // Đánh dấu đây là tin nhắn relay qua socket (chưa lưu DB)
+        };
+
+        // Phát tới TẤT CẢ các client trong phòng chat TRỪ người gửi
+        let broadcast = socket.to(conversationId);
+        if (receiverId && receiverId !== uid) {
+          broadcast = broadcast.to(receiverId);
+        }
+        if (Array.isArray(memberIds)) {
+          memberIds.forEach((mid) => {
+            if (mid && mid !== uid) broadcast = broadcast.to(mid);
+          });
+        }
+        broadcast.emit("receive_message", realtimePayload);
+
+        console.log(`⚡ [Socket Relay] Tin nhắn từ ${uid} → phòng ${conversationId} / receiver ${receiverId || 'all'} (${content?.substring(0, 30)}...)`);
+
+        // Fallback an toàn: Nếu không có receiverId và phòng chưa có đủ socket
+        if (!receiverId && (!memberIds || memberIds.length === 0)) {
+          const room = io.sockets.adapter.rooms.get(conversationId);
+          if (!room || room.size <= 1) {
+            prisma.conversationMembers.findMany({
+              where: { conversationId, userId: { not: uid } },
+              select: { userId: true },
+            }).then((otherMembers) => {
+              otherMembers.forEach((m) => {
+                socket.to(m.userId).emit("receive_message", realtimePayload);
+              });
+            }).catch(() => {});
+          }
+        }
+      } catch (err) {
+        console.error("Lỗi socket send_message relay:", err.message);
+      }
+    });
+
     socket.on("typing", async (payload) => {
       if (!payload) return;
       const { conversationId, userId, nickname, senderId, senderName } = payload;
@@ -235,104 +353,78 @@ module.exports = (io) => {
       }
     });
 
-    // 4.4 Lắng nghe sự kiện Đã nhận tin nhắn (mark_as_delivered)
+    // 4.4 Lắng nghe sự kiện Đã nhận tin nhắn (Delivered)
     socket.on("mark_as_delivered", async ({ messageId, conversationId }) => {
       try {
         if (!messageId) return;
         const msg = await prisma.messages.findUnique({
           where: { id: messageId },
-          select: { id: true, conversationId: true, senderId: true, isDelivered: true }
-        });
-        if (!msg || msg.isDelivered) return;
-
-        await prisma.messages.update({
-          where: { id: messageId },
-          data: { isDelivered: true },
-        });
-
-        const convId = conversationId || msg.conversationId;
-        const payload = { messageId: msg.id, conversationId: convId, isDelivered: true };
-
-        if (msg.senderId) {
-          io.to(msg.senderId).emit("message_delivered", payload);
-        }
-        if (convId) {
-          io.to(convId).emit("message_delivered", payload);
-        }
-      } catch (error) {
-        console.error("Lỗi cập nhật trạng thái đã nhận:", error);
-      }
-    });
-
-    // 4.6 Thu hồi tin nhắn (recall_message)
-    socket.on("recall_message", async ({ messageId, conversationId }) => {
-      try {
-        if (!messageId) return;
-        const msg = await prisma.messages.findUnique({
-          where: { id: messageId },
-          select: { id: true, conversationId: true, senderId: true }
+          select: { id: true, senderId: true, conversationId: true, isDelivered: true },
         });
         if (!msg) return;
 
-        if (msg.senderId !== socket.userId) return;
-
-        await prisma.messages.update({
-          where: { id: messageId },
-          data: { isRecalled: true, content: "Tin nhắn đã bị thu hồi" },
-        });
-
-        const convId = conversationId || msg.conversationId;
-        const payload = { messageId: msg.id, conversationId: convId, isRecalled: true };
-
-        if (convId) {
-          io.to(convId).emit("message_recalled", payload);
-          socket.emit("message_recalled", payload);
+        if (!msg.isDelivered) {
+          await prisma.messages.update({
+            where: { id: messageId },
+            data: { isDelivered: true },
+          });
         }
-      } catch (error) {
-        console.error("Lỗi thu hồi tin nhắn:", error);
+
+        const targetConvId = conversationId || msg.conversationId;
+        if (msg.senderId) {
+          io.to(msg.senderId).emit("message_delivered", {
+            messageId,
+            conversationId: targetConvId,
+          });
+        }
+        if (targetConvId) {
+          io.to(targetConvId).emit("message_delivered", {
+            messageId,
+            conversationId: targetConvId,
+          });
+        }
+      } catch (err) {
+        console.error("Lỗi khi xử lý mark_as_delivered:", err.message);
       }
     });
 
-    // 4.5 Lắng nghe sự kiện Đã xem tin nhắn (mark_as_read)
+    // 4.5.1 Lắng nghe sự kiện Đã xem 1 tin nhắn cụ thể (mark_as_read)
     socket.on("mark_as_read", async ({ messageId, conversationId }) => {
       try {
+        if (!messageId && !conversationId) return;
         const readerId = socket.userId;
-        if (!conversationId || !readerId) return;
 
-        const unreadMessages = await prisma.messages.findMany({
-          where: {
-            conversationId,
-            senderId: { not: readerId },
-            isRead: false,
-          },
-          select: { id: true, senderId: true },
-        });
-
-        if (unreadMessages.length > 0) {
-          await prisma.messages.updateMany({
-            where: {
-              conversationId,
-              senderId: { not: readerId },
-              id: { in: unreadMessages.map((m) => m.id) },
-            },
-            data: { isRead: true, isDelivered: true },
+        if (messageId) {
+          const msg = await prisma.messages.findUnique({
+            where: { id: messageId },
+            select: { id: true, senderId: true, conversationId: true },
           });
-
-          const lastMsgId = messageId || unreadMessages[unreadMessages.length - 1].id;
-          const payload = { messageId: lastMsgId, conversationId, isRead: true, isDelivered: true, readerId };
-
-          const senders = new Set(unreadMessages.map((m) => m.senderId).filter(Boolean));
-          senders.forEach((sId) => {
-            io.to(sId).emit("message_read", payload);
-          });
-          io.to(conversationId).emit("message_read", payload);
+          if (msg) {
+            await prisma.messages.update({
+              where: { id: messageId },
+              data: { isRead: true, isDelivered: true },
+            });
+            const targetConvId = conversationId || msg.conversationId;
+            if (msg.senderId) {
+              io.to(msg.senderId).emit("message_read", {
+                messageId,
+                conversationId: targetConvId,
+                readBy: readerId,
+              });
+              io.to(msg.senderId).emit("messages_read", {
+                conversationId: targetConvId,
+                readBy: readerId,
+                lastReadMessageId: messageId,
+              });
+            }
+          }
         }
-      } catch (error) {
-        console.error("Lỗi cập nhật trạng thái đã xem:", error);
+      } catch (err) {
+        console.error("Lỗi khi xử lý mark_as_read:", err.message);
       }
     });
 
-    // 4.6 Lắng nghe sự kiện Đã xem tin nhắn (mark_messages_read legacy)
+    // 4.5 Lắng nghe sự kiện Đã xem tin nhắn
     socket.on("mark_messages_read", async ({ conversationId, userId }) => {
       try {
         const readerId = socket.userId || userId;
@@ -342,55 +434,44 @@ module.exports = (io) => {
           `👀 User ${readerId} đang đánh dấu Đã xem phòng chat: ${conversationId}`,
         );
 
-        const unreadMessages = await prisma.messages.findMany({
+        // 1. Tìm tin nhắn mới nhất do người khác gửi trong cuộc trò chuyện này
+        const lastMsgFromOther = await prisma.messages.findFirst({
+          where: {
+            conversationId,
+            NOT: { senderId: readerId },
+          },
+          orderBy: { createdAt: "desc" },
+          select: { id: true, senderId: true },
+        });
+
+        // 2. Cập nhật tất cả tin nhắn do người khác gửi sang isRead: true
+        await prisma.messages.updateMany({
           where: {
             conversationId,
             senderId: { not: readerId },
             isRead: false,
           },
-          orderBy: { createdAt: "asc" },
-          select: { id: true, senderId: true },
-        });
-
-        if (unreadMessages.length === 0) return;
-
-        const lastReadBySender = new Map();
-        unreadMessages.forEach((message) => {
-          if (message.senderId) {
-            lastReadBySender.set(message.senderId, message.id);
-          }
-        });
-
-        const readAt = new Date().toISOString();
-        lastReadBySender.forEach((lastReadMessageId, senderId) => {
-          console.log(
-            `-> Phát tín hiệu Đã xem tin nhắn ${lastReadMessageId} về cho User ${senderId}`,
-          );
-          io.to(senderId).emit("messages_read", {
-            conversationId,
-            readBy: readerId,
-            lastReadMessageId,
-            readAt,
-          });
-          io.to(senderId).emit("message_read", {
-            messageId: lastReadMessageId,
-            conversationId,
-            isRead: true,
-            isDelivered: true,
-            readerId,
-          });
-        });
-
-        await prisma.messages.updateMany({
-          where: {
-            conversationId,
-            senderId: { not: readerId },
-            id: { in: unreadMessages.map((m) => m.id) },
-          },
           data: { isRead: true, isDelivered: true },
         });
+
+        // 3. Bắn tín hiệu socket real-time về cho người gửi và toàn bộ phòng chat
+        const readAt = new Date().toISOString();
+        const lastReadMessageId = lastMsgFromOther ? lastMsgFromOther.id : null;
+
+        const payload = {
+          conversationId,
+          readBy: readerId,
+          lastReadMessageId,
+          readAt,
+        };
+
+        if (lastMsgFromOther && lastMsgFromOther.senderId) {
+          io.to(lastMsgFromOther.senderId).emit("messages_read", payload);
+        }
+        io.to(conversationId).emit("messages_read", payload);
+
         console.log(
-          `✅ Đã lưu trạng thái isRead: true cho ${unreadMessages.length} tin nhắn vào DB!`,
+          `✅ Đã phát tín hiệu Đã xem cho phòng ${conversationId}!`,
         );
 
         // ── TỰ HỦY TIN NHẮN ──
@@ -398,7 +479,8 @@ module.exports = (io) => {
         try {
           const selfDestructMsgs = await prisma.messages.findMany({
             where: {
-              id: { in: unreadMessages.map((m) => m.id) },
+              conversationId,
+              senderId: { not: readerId },
               selfDestructDuration: { not: null },
               expiresAt: null,
             },
@@ -770,6 +852,15 @@ module.exports = (io) => {
       }
     });
 
+    // 13.5 User A hoặc User B xóa bạn bè
+    socket.on("unfriend_user", ({ friendId }) => {
+      const userId = socket.userId;
+      if (!userId || !friendId) return;
+      io.to(friendId).emit("user_unfriended", { userId });
+      io.to(friendId).emit("unfriended", { unfriendedBy: userId });
+      console.log(`❌ Socket unfriend_user: User ${userId} unfriended ${friendId}`);
+    });
+
     // ══════════════════════════════════════════════════════
     // 14. GHIM TIN NHẮN QUA SOCKET (Pin/Unpin Message)
     // ══════════════════════════════════════════════════════
@@ -817,6 +908,62 @@ module.exports = (io) => {
         }
       } catch (error) {
         console.error("Lỗi khi ghim/bỏ ghim tin nhắn:", error);
+      }
+    });
+
+    // ══════════════════════════════════════════════════════
+    // 15. THẢ CẢM XÚC TIN NHẮN QUA SOCKET (React Message)
+    // ══════════════════════════════════════════════════════
+    socket.on("react_message", async (data) => {
+      try {
+        const userId = socket.userId;
+        const { messageId, conversationId, emoji } = data || {};
+        if (!messageId || !emoji || !userId) return;
+
+        const message = await prisma.messages.findUnique({
+          where: { id: messageId },
+        });
+        if (!message) return;
+
+        let currentReactions = message.reactions;
+        if (typeof currentReactions === "string") {
+          try {
+            currentReactions = JSON.parse(currentReactions);
+          } catch (e) {}
+        }
+        currentReactions =
+          typeof currentReactions === "object" && currentReactions !== null
+            ? currentReactions
+            : {};
+
+        const isRemoved = currentReactions[userId] === emoji;
+        if (isRemoved) {
+          delete currentReactions[userId];
+        } else {
+          currentReactions[userId] = emoji;
+        }
+
+        const updatedMessage = await prisma.messages.update({
+          where: { id: messageId },
+          data: { reactions: JSON.stringify(currentReactions) },
+        });
+
+        const targetConvId = conversationId || message.conversationId;
+
+        // Phát tín hiệu tới tất cả client trong phòng chat
+        io.to(targetConvId).emit("message_reacted", {
+          messageId: messageId,
+          conversationId: targetConvId,
+          reactions: currentReactions,
+          reaction: emoji,
+          userId: userId,
+          isRemoved: isRemoved,
+          data: updatedMessage,
+        });
+
+        console.log(`❤️ User ${userId} đã thả cảm xúc '${emoji}' vào tin nhắn: ${messageId}`);
+      } catch (error) {
+        console.error("Lỗi khi thả cảm xúc qua socket:", error);
       }
     });
 

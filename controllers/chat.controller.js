@@ -41,15 +41,25 @@ if (!getApps().length) {
     }
 }
 
+// Cache ngắn hạn 3s để bảo vệ Connection Pool khỏi bị bão request
+const conversationsCache = new Map();
+
 // 1. Lấy danh sách đoạn chat của user hiện tại
 
 exports.getConversations = async(req, res) => {
     try {
         const userId = req.user.id; // Lấy từ Token thông qua authMiddleware
+        
+        // Trả ngay kết quả từ cache nếu vừa được gọi trong vòng 3 giây
+        const cached = conversationsCache.get(userId);
+        if (cached && (Date.now() - cached.timestamp < 3000)) {
+            return res.status(200).json({ success: true, data: cached.data });
+        }
+
         console.log(`📥 [getConversations] Bắt đầu tải danh sách chat cho user: ${userId}`);
         const t0 = Date.now();
 
-        // ⚡ TỐI ƯU HÓA SIÊU TỐC: Tách truy vấn đa tầng thành 2 bước song song (giảm từ 21.7s xuống ~1.6s)
+        // ⚡ TỐI ƯU HÓA SIÊU TỐC & CHỐNG CHÁY CONNECTION POOL: Dùng 1 query duy nhất findMany
         const userMemberships = await prisma.conversationMembers.findMany({
             where: { userId },
             select: {
@@ -63,85 +73,85 @@ exports.getConversations = async(req, res) => {
             },
         });
 
-        const conversations = await Promise.all(
-            userMemberships.map(async (item) => {
-                const conv = await prisma.conversations.findUnique({
-                    where: { id: item.conversationId },
+        const convIds = userMemberships.map((m) => m.conversationId);
+        const conversationsList = await prisma.conversations.findMany({
+            where: { id: { in: convIds } },
+            select: {
+                id: true,
+                type: true,
+                name: true,
+                avatar: true,
+                createdBy: true,
+                theme: true,
+                createdAt: true,
+                ConversationMembers: {
                     select: {
                         id: true,
-                        type: true,
-                        name: true,
-                        avatar: true,
-                        createdBy: true,
-                        theme: true,
-                        createdAt: true,
-                        ConversationMembers: {
+                        conversationId: true,
+                        userId: true,
+                        role: true,
+                        nickname: true,
+                        Users: {
                             select: {
                                 id: true,
-                                conversationId: true,
-                                userId: true,
-                                role: true,
-                                nickname: true,
-                                Users: {
-                                    select: {
-                                        id: true,
-                                        fullName: true,
-                                        username: true,
-                                        avatar: true,
-                                        coverPhoto: true,
-                                        bio: true,
-                                        isOnline: true,
-                                        lastActive: true,
-                                    },
-                                },
-                            },
-                        },
-                        Messages: {
-                            where: {
-                                NOT: {
-                                    deletedBy: {
-                                        has: userId,
-                                    },
-                                },
-                            },
-                            select: {
-                                id: true,
-                                conversationId: true,
-                                senderId: true,
-                                type: true,
-                                content: true,
-                                imageUrl: true,
-                                videoUrl: true,
-                                audioUrl: true,
-                                fileUrl: true,
-                                isRecalled: true,
-                                isDeleted: true,
-                                isRead: true,
-                                isDelivered: true,
-                                createdAt: true,
-                            },
-                            orderBy: { createdAt: "desc" },
-                            take: 1,
-                        },
-                        _count: {
-                            select: {
-                                Messages: {
-                                    where: {
-                                        NOT: { senderId: userId },
-                                        NOT: { isRead: true },
-                                    },
-                                },
+                                fullName: true,
+                                username: true,
+                                avatar: true,
+                                coverPhoto: true,
+                                bio: true,
+                                isOnline: true,
+                                lastActive: true,
                             },
                         },
                     },
-                });
+                },
+                Messages: {
+                    where: {
+                        NOT: {
+                            deletedBy: {
+                                has: userId,
+                            },
+                        },
+                    },
+                    select: {
+                        id: true,
+                        conversationId: true,
+                        senderId: true,
+                        type: true,
+                        content: true,
+                        imageUrl: true,
+                        videoUrl: true,
+                        audioUrl: true,
+                        fileUrl: true,
+                        isRecalled: true,
+                        isDeleted: true,
+                        isRead: true,
+                        isDelivered: true,
+                        createdAt: true,
+                    },
+                    orderBy: { createdAt: "desc" },
+                    take: 1,
+                },
+                _count: {
+                    select: {
+                        Messages: {
+                            where: {
+                                senderId: { not: userId },
+                                isRead: false,
+                            },
+                        },
+                    },
+                },
+            },
+        });
 
-                return {
-                    ...item,
-                    Conversations: conv,
-                };
-            })
-        );
+        const convMap = new Map();
+        conversationsList.forEach((c) => convMap.set(c.id, c));
+
+        const conversations = userMemberships.map((item) => ({
+            ...item,
+            Conversations: convMap.get(item.conversationId) || null,
+        }));
 
         // Lọc bỏ các cuộc trò chuyện đã bị xóa ở phía người dùng hiện tại và chưa có tin nhắn mới hơn thời điểm xóa
         const activeConversations = conversations.filter((item) => {
@@ -201,6 +211,7 @@ exports.getConversations = async(req, res) => {
         });
 
         console.log(`📤 [getConversations] Hoàn thành trong ${Date.now() - t0} ms (tìm thấy ${mappedConversations.length} cuộc trò chuyện)`);
+        conversationsCache.set(userId, { data: mappedConversations, timestamp: Date.now() });
         res.status(200).json({ success: true, data: mappedConversations });
     } catch (error) {
         console.error("!!! LỖI TẢI DANH SÁCH CUỘC TRÒ CHUYỆN:", error);
@@ -543,11 +554,19 @@ exports.sendMessage = async(req, res) => {
             }
         });
 
-        // 3. Lấy Socket.IO instance và phát tin nhắn Real-time đến phòng conversationId
+        // 3. Lấy Socket.IO instance và phát tin nhắn Real-time đến phòng conversationId và từng thành viên
         const io = req.app.get("io");
 
         if (io) {
-            io.to(conversationId).emit("receive_message", mappedMessage);
+            let broadcast = io.to(conversationId);
+            if (members && members.length > 0) {
+                members.forEach((member) => {
+                    if (member.userId !== senderId) {
+                        broadcast = broadcast.to(member.userId);
+                    }
+                });
+            }
+            broadcast.emit("receive_message", mappedMessage);
         }
 
         // 4. Gửi Push Notification đến tất cả thiết bị của đối phương

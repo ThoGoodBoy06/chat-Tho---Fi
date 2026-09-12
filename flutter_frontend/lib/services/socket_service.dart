@@ -61,16 +61,18 @@ class SocketService {
 
   static Future<void> connect({required String userId}) async {
     final token = await ApiService.getToken();
-    _currentUserId = userId;
-
     if (socket != null && socket!.connected) {
-      socket?.emit('user_connected', userId);
+      if (_currentUserId != userId) {
+        _currentUserId = userId;
+        socket?.emit('user_connected', userId);
+      }
       if (_currentRoomId != null) {
         socket?.emit('join_room', _currentRoomId);
         socket?.emit('join_conversation', _currentRoomId);
       }
       return;
     }
+    _currentUserId = userId;
 
     String serverUrl;
     if (kIsWeb) {

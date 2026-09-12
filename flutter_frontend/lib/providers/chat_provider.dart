@@ -71,6 +71,7 @@ class ChatProvider extends ChangeNotifier {
         typingUsers[convId] = nickname;
         if (selectedConversation != null && selectedConversation!.id == convId) {
           isPartnerTyping = true;
+          onNewMessageReceived?.call();
         }
         notifyListeners();
       }
@@ -302,19 +303,19 @@ class ChatProvider extends ChangeNotifier {
       return;
     }
 
-    // Kiểm tra trùng lặp (bao gồm cả optimistic message)
+    // Kiểm tra trùng lặp (bao gồm cả optimistic message và socket relay message)
     final existingIdx = messages.indexWhere((m) => m.id == msg.id);
     if (existingIdx != -1) {
-      // Cập nhật tin nhắn đã có (thay thế optimistic bằng real)
+      // Cập nhật tin nhắn đã có (thay thế optimistic/relay bằng real)
       messages[existingIdx] = msg;
     } else {
-      // Kiểm tra xem có phải tin nhắn do chính mình gửi và đã có optimistic chưa
-      final optimisticIdx = messages.indexWhere((m) =>
-          m.id.startsWith('optimistic-') &&
+      // Kiểm tra xem có phải tin nhắn đã có dạng tạm (optimistic-* hoặc rt-*)
+      final tempIdx = messages.indexWhere((m) =>
+          (m.id.startsWith('optimistic-') || m.id.startsWith('rt-')) &&
           m.content == msg.content &&
           m.senderId == msg.senderId);
-      if (optimisticIdx != -1) {
-        messages[optimisticIdx] = msg;
+      if (tempIdx != -1) {
+        messages[tempIdx] = msg;
       } else {
         messages.add(msg);
       }
@@ -374,10 +375,15 @@ class ChatProvider extends ChangeNotifier {
   }
 
   bool _isFetchingConversations = false;
+  DateTime? _lastFetchTime;
 
   Future<void> fetchConversations({bool showLoading = true}) async {
-    // Debounce: Nếu đang fetch thì bỏ qua lần gọi này để tránh chồng chéo truy vấn DB
+    // Debounce: Nếu đang fetch hoặc vừa fetch trong vòng 2.5s thì bỏ qua
     if (_isFetchingConversations) return;
+    if (_lastFetchTime != null && DateTime.now().difference(_lastFetchTime!).inMilliseconds < 2500) {
+      return;
+    }
+    _lastFetchTime = DateTime.now();
     _isFetchingConversations = true;
 
     // Tải cache cục bộ trước nếu chưa có dữ liệu để hiển thị tức thì không chờ đợi
@@ -397,9 +403,6 @@ class ChatProvider extends ChangeNotifier {
         if (userObj is Map<String, dynamic>) {
           currentUser = UserModel.fromJson(userObj);
         }
-      }
-      if (currentUser != null && currentUser!.id.isNotEmpty) {
-        SocketService.connect(userId: currentUser!.id);
       }
       final rawList = await ApiService.getConversations();
       if (rawList != null) {
@@ -575,6 +578,8 @@ class ChatProvider extends ChangeNotifier {
         'senderId': currentUser?.id,
         'senderName': currentUser?.fullName,
         'replyMessageId': replyId,
+        'receiverId': selectedConversation!.targetUserId,
+        'memberIds': selectedConversation!.members.map((m) => m.id).toList(),
       });
     }
 

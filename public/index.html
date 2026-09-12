@@ -7,9 +7,15 @@
   <meta name="description" content="Chat Tho-Fi Application">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
   
+  <!-- Fast CDN Preconnects -->
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+
   <!-- High Priority Preloads for Instant Native Startup -->
-  <link rel="preload" href="flutter_bootstrap.js" as="script">
-  <link rel="preload" href="main.dart.js" as="script">
+  <link rel="preload" href="flutter_bootstrap.js?v=1789222357203" as="script">
+  <link rel="preload" href="main.dart.js?v=1789222357203" as="script">
   <link rel="preload" href="canvaskit/canvaskit.wasm" as="fetch" crossorigin="anonymous">
   <link rel="preload" href="/tho_fi_logo_transparent.png" as="image">
 
@@ -244,6 +250,15 @@
   </script>
 
   <style>
+    /* Universal Frosted Glass & Backdrop Blur for iOS Safari & All Browsers */
+    flt-backdrop, flt-backdrop-interior, flt-backdrop-filter, [style*="backdrop-filter"], [style*="-webkit-backdrop-filter"] {
+      -webkit-backdrop-filter: blur(14px) !important;
+      backdrop-filter: blur(14px) !important;
+      background-color: rgba(0, 0, 0, 0.22) !important;
+      -webkit-transform: translateZ(0);
+      transform: translateZ(0);
+    }
+
     * {
       box-sizing: border-box;
     }
@@ -1593,21 +1608,10 @@
         el.classList.remove('active');
       }
     };
-
-    // Tự động dọn dẹp Cache & Service Worker của Flutter Web để buộc trình duyệt nạp bản mới
-    try {
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(regs) {
-          for (let reg of regs) reg.unregister();
-        });
-      }
-      if ('caches' in window) {
-        caches.keys().then(function(names) {
-          for (let name of names) caches.delete(name);
-        });
-      }
-    } catch(e) {}
   </script>
-  <script src="flutter_bootstrap.js?v=20260911_v15" async></script>
+  <script>
+    window.flutterWebRenderer = "canvaskit";
+  </script>
+  <script src="flutter_bootstrap.js?v=1789222357203" async></script>
 </body>
 </html>
