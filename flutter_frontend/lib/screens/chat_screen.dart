@@ -1453,7 +1453,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                               : null,
                                           image: (conv.avatar != null && conv.avatar!.isNotEmpty)
                                               ? DecorationImage(
-                                                  image: NetworkImage(conv.avatar!),
+                                                  image: NetworkImage(ApiService.formatImageUrl(conv.avatar!)),
                                                   fit: BoxFit.cover,
                                                 )
                                               : null,

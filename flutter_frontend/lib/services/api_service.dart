@@ -13,12 +13,22 @@ class ApiService {
         final scheme = Uri.base.scheme.isEmpty ? 'http' : Uri.base.scheme;
         return '$scheme://$host:3000/api';
       }
-      if (host.contains('pages.dev') || host.contains('cloudflare') || host.contains('web.app')) {
+      if (host.contains('pages.dev') || host.contains('workers.dev') || host.contains('cloudflare') || host.contains('web.app')) {
         return 'https://chat-tho-fi-vn-9s8u.onrender.com/api';
       }
       return '${Uri.base.origin}/api';
     }
     return 'https://chat-tho-fi-vn.onrender.com/api';
+  }
+
+  static String formatImageUrl(String? url) {
+    if (url == null || url.isEmpty) return '';
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('blob:')) {
+      return url;
+    }
+    final cleanBase = baseUrl.replaceAll('/api', '');
+    final cleanPath = url.startsWith('/') ? url : '/$url';
+    return '$cleanBase$cleanPath';
   }
 
   static Future<String?> getToken() async {

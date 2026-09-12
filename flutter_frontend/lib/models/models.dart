@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../services/api_service.dart';
 
 class UserModel {
   final String id;
@@ -35,6 +36,8 @@ class UserModel {
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    final rawAvatar = json['avatar']?.toString();
+    final rawCover = json['coverImage']?.toString() ?? json['coverPhoto']?.toString() ?? json['cover_image']?.toString() ?? json['cover_photo']?.toString();
     return UserModel(
       id: json['id']?.toString() ?? '',
       username: json['username']?.toString() ?? '',
@@ -42,8 +45,8 @@ class UserModel {
       nickname: json['nickname']?.toString(),
       email: json['email']?.toString(),
       phone: json['phone']?.toString(),
-      avatar: json['avatar']?.toString(),
-      coverImage: json['coverImage']?.toString() ?? json['coverPhoto']?.toString() ?? json['cover_image']?.toString() ?? json['cover_photo']?.toString(),
+      avatar: (rawAvatar != null && rawAvatar.isNotEmpty) ? ApiService.formatImageUrl(rawAvatar) : null,
+      coverImage: (rawCover != null && rawCover.isNotEmpty) ? ApiService.formatImageUrl(rawCover) : null,
       bio: json['bio']?.toString(),
       role: json['role']?.toString() ?? 'USER',
       isBlocked: json['isBlocked'] == true,
@@ -398,7 +401,7 @@ class ConversationModel {
     return ConversationModel(
       id: json['id']?.toString() ?? rawJson['conversationId']?.toString() ?? '',
       name: convName,
-      avatar: convAvatar,
+      avatar: (convAvatar != null && convAvatar.isNotEmpty) ? ApiService.formatImageUrl(convAvatar) : null,
       type: json['type']?.toString() ?? 'private',
       lastMessage: finalLastMsg,
       unreadCount: json['_count']?['Messages'] is int ? json['_count']['Messages'] : 0,

@@ -17797,7 +17797,7 @@ _.d=d
 _.e=e},
 a3g:function a3g(){},
 b8x(){return new self.XMLHttpRequest()},
-eY:function eY(a,b,c){this.a=a
+eY:function eY(a,b,c){if(typeof a==="string"&&!a.startsWith("http://")&&!a.startsWith("https://")&&!a.startsWith("data:")&&!a.startsWith("blob:")){try{var _b=A.da().replace(/\/api\/?$/,"");a=_b+(a.startsWith("/")?a:"/"+a)}catch(e){}}this.a=a
 this.b=b
 this.c=c},
 ahY:function ahY(a,b,c){this.a=a
