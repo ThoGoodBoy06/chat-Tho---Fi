@@ -73,6 +73,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   List<html.Blob> _audioChunks = [];
 
   int _pendingFriendRequestsCount = 0;
+  final Set<String> _expandedTimestampMessageIds = {};
   Future<List<dynamic>>? _contactsFuture;
   Timer? _pendingRefreshTimer;
 
@@ -245,6 +246,34 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     super.dispose();
   }
 
+  static const Map<String, String> reactionEmojiAssets = {
+    '❤️': 'assets/emojis/2764-fe0f.png',
+    '😆': 'assets/emojis/1f606.png',
+    '😮': 'assets/emojis/1f62e.png',
+    '😢': 'assets/emojis/1f622.png',
+    '😡': 'assets/emojis/1f621.png',
+    '👍': 'assets/emojis/1f44d.png',
+  };
+
+  static Widget buildEmojiImage(String emoji, {double size = 28, Key? key}) {
+    final asset = reactionEmojiAssets[emoji];
+    if (asset != null) {
+      return Image.asset(
+        asset,
+        key: key,
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => Text(emoji, key: key, style: TextStyle(fontSize: size * 0.9)),
+      );
+    }
+    return Text(
+      emoji,
+      key: key,
+      style: TextStyle(fontSize: size * 0.9),
+    );
+  }
+
   Map<String, int> _aggregateReactions(Map<String, String> reactions) {
     final counts = <String, int>{};
     for (final emoji in reactions.values) {
@@ -279,7 +308,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(e.key, style: TextStyle(fontSize: fontSize + 2)),
+                buildEmojiImage(e.key, size: fontSize + 5),
                 if (e.value > 1)
                   Padding(
                     padding: const EdgeInsets.only(left: 1),
@@ -860,6 +889,16 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   String _formatTime(DateTime dt) {
     return DateFormat('HH:mm').format(dt);
+  }
+
+  String _formatMessageTimestamp(DateTime dt) {
+    final now = DateTime.now();
+    final isToday = dt.year == now.year && dt.month == now.month && dt.day == now.day;
+    if (isToday) {
+      return DateFormat('HH:mm').format(dt);
+    } else {
+      return DateFormat('HH:mm, dd/MM/yyyy').format(dt);
+    }
   }
 
   String _formatLastActive(DateTime? lastActive, bool isOnline) {
@@ -2341,6 +2380,15 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                   ],
                                   Flexible(
                                     child: GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          if (_expandedTimestampMessageIds.contains(msg.id)) {
+                                            _expandedTimestampMessageIds.remove(msg.id);
+                                          } else {
+                                            _expandedTimestampMessageIds.add(msg.id);
+                                          }
+                                        });
+                                      },
                                       onLongPress: () => _showMessengerStyleContextMenu(context, msg, provider, isMe),
                                       onSecondaryTapDown: (details) => _showMessengerStyleContextMenu(context, msg, provider, isMe),
                                       onDoubleTapDown: (details) {
@@ -2487,6 +2535,19 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                                 ),
                                             ],
                                           ),
+                                          if (_expandedTimestampMessageIds.contains(msg.id)) ...[
+                                            Padding(
+                                              padding: const EdgeInsets.only(top: 3, bottom: 2, left: 4, right: 4),
+                                              child: Text(
+                                                _formatMessageTimestamp(msg.createdAt),
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w400,
+                                                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF65676B),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                           if (isMe) ...[
                                             const SizedBox(height: 4),
                                             _buildMessageStatusIndicator(msg, conv, isLastSentMessage),
@@ -2761,6 +2822,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         },
         config: emoji.Config(
           height: 320,
+          emojiTextStyle: const TextStyle(
+            fontFamily: 'Noto Color Emoji',
+            fontFamilyFallback: ['Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji'],
+            inherit: true,
+          ),
           emojiViewConfig: emoji.EmojiViewConfig(
             columns: 8,
             emojiSizeMax: 28,
@@ -5704,11 +5770,11 @@ class _SpringEmojiPickerItemState extends State<_SpringEmojiPickerItem> with Sin
             );
           },
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-          child: Text(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          child: _ChatScreenState.buildEmojiImage(
             widget.emoji,
             key: _key,
-            style: const TextStyle(fontSize: 27),
+            size: 32,
           ),
         ),
       ),
@@ -5836,12 +5902,9 @@ class _FlyingEmojiWidgetState extends State<_FlyingEmojiWidget> with SingleTicke
                   scale: scale,
                   child: Opacity(
                     opacity: opacity,
-                    child: Text(
+                    child: _ChatScreenState.buildEmojiImage(
                       widget.emoji,
-                      style: TextStyle(
-                        fontSize: p.fontSize,
-                        decoration: TextDecoration.none,
-                      ),
+                      size: p.fontSize,
                     ),
                   ),
                 ),
