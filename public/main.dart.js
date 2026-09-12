@@ -28739,7 +28739,7 @@ s=s==null?a6:J.ai(s)
 if(s==null)s="private"
 q=c1.h(c2,"_count")
 q=A.ii(q==null?a6:J.Z(q,a7))?J.Z(c1.h(c2,"_count"),a7):0
-return new A.fo(c0,k,j,s,a4,q,c1.h(c2,b9)!=null?A.a9d(J.ai(c1.h(c2,b9))):a6,a,h)},
+var _th=c1.h(c2,"theme");var _parsedTh=(_th==null?null:J.ai(_th))||"classic";var _conv=new A.fo(c0,k,j,s,a4,q,c1.h(c2,b9)!=null?A.a9d(J.ai(c1.h(c2,b9))):a6,a,h);_conv.theme=_parsedTh;if(!$._convThemes)$._convThemes={};if(c0){$._convThemes[c0]=_parsedTh;if(typeof localStorage!=="undefined")localStorage.setItem("chat_theme_"+c0,_parsedTh);}return _conv},
 kr:function kr(a,b,c,d,e,f,g,h,i,j,k,l,m){var _=this
 _.a=a
 _.b=b
@@ -29820,6 +29820,7 @@ a0=$.bj
 if(a0!=null)a0.f.c6(0,"error",new A.anE())
 a0=$.bj
 if(a0!=null)a0.c6(0,"receive_message",new A.anP())
+if(a0!=null)a0.c6(0,"conversation_theme_updated",new A.atThemeSocketHandler())
 a0=$.bj
 if(a0!=null)a0.c6(0,"incoming_call",new A.ao_())
 a0=$.bj

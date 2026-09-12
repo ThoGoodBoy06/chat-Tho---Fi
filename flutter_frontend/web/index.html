@@ -14,8 +14,8 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
   <!-- High Priority Preloads for Instant Native Startup -->
-  <link rel="preload" href="flutter_bootstrap.js?v=1789236929173_v2" as="script">
-  <link rel="preload" href="main.dart.js?v=1789236929173_v2" as="script">
+  <link rel="preload" href="flutter_bootstrap.js?v=1789237512757_v2" as="script">
+  <link rel="preload" href="main.dart.js?v=1789237512757_v2" as="script">
   <link rel="preload" href="canvaskit/canvaskit.wasm" as="fetch" crossorigin="anonymous">
   <link rel="preload" href="/tho_fi_logo_transparent.png" as="image">
   <!-- Official Messenger Reaction Emoji Preloads -->
@@ -1538,12 +1538,23 @@
       }
     };
   </script>
-  <script src="flutter_bootstrap.js?v=1789236929173_v2" async></script>
+  <script src="flutter_bootstrap.js?v=1789237512757_v2" async></script>
 
 <script id="messenger-theme-picker-script">
 window._openMessengerThemePicker = function(convId, convName) {
   var oldOverlay = document.getElementById('messenger-theme-picker-overlay');
   if (oldOverlay) oldOverlay.remove();
+
+  // Đảm bảo luôn lấy được convId chính xác
+  if (!convId && window.$ && window.$._currentActiveChatConvId) {
+    convId = window.$._currentActiveChatConvId;
+  }
+  if (!convId && window.$ && window.$._activeChatScreenState && window.$._activeChatScreenState._activeChatConvId) {
+    convId = window.$._activeChatScreenState._activeChatConvId;
+  }
+  if (!convId && typeof localStorage !== 'undefined') {
+    convId = localStorage.getItem('last_active_conv_id') || '';
+  }
 
   var themes = [
     { id: 'classic', name: 'Mặc định (Classic)', color1: '#0084FF', color2: '#0068FF' },
@@ -1553,14 +1564,14 @@ window._openMessengerThemePicker = function(convId, convName) {
     { id: 'emerald', name: 'Ngọc bích (Emerald)', color1: '#11998E', color2: '#38EF7D' }
   ];
 
-  // 1. Xác định currentTheme chuẩn xác từ nhiều nguồn, ưu tiên theme đã lưu
+  // 1. Xác định currentTheme chuẩn xác
   var savedLocal = (convId && localStorage.getItem('chat_theme_' + convId)) || localStorage.getItem('chat_current_theme');
   var currentTheme = (window.$ && window.$._convThemes && window.$._convThemes[convId]) ||
                      (window.$ && window.$._currentActiveChatTheme) ||
                      savedLocal ||
                      'classic';
   if (currentTheme === 'default' || !currentTheme) currentTheme = 'classic';
-  console.log('🔍 [Theme Modal] currentTheme hiện tại:', currentTheme, 'cho phòng:', convId);
+  console.log('🔍 [Theme Modal] convId:', convId, 'currentTheme:', currentTheme);
 
   var overlay = document.createElement('div');
   overlay.id = 'messenger-theme-picker-overlay';
@@ -1574,7 +1585,7 @@ window._openMessengerThemePicker = function(convId, convName) {
   html += '<h3 style="margin:0;font-size:18px;font-weight:700;color:#0F172A;">Chủ đề đoạn chat</h3>';
   html += '<button id="close-theme-btn" style="border:none;background:#F1F5F9;width:32px;height:32px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#64748B;font-size:16px;font-weight:bold;">✕</button>';
   html += '</div>';
-  html += '<p style="margin:0 0 16px;font-size:13px;color:#64748B;">Chọn màu chủ đề để áp dụng ngay lập tức cho đoạn chat</p>';
+  html += '<p style="margin:0 0 16px;font-size:13px;color:#64748B;">Chọn màu chủ đề để áp dụng ngay lập tức cho cả hai bên</p>';
   html += '<div style="display:flex;flex-direction:column;gap:8px;">';
 
   themes.forEach(function(t) {
@@ -1617,7 +1628,7 @@ window._openMessengerThemePicker = function(convId, convName) {
   rows.forEach(function(row) {
     row.addEventListener('click', function() {
       var selectedTheme = this.getAttribute('data-theme');
-      console.log('🎯 [Client] Đã chọn theme:', selectedTheme, 'cho phòng:', convId);
+      console.log('🎯 [Client] Chọn theme:', selectedTheme, 'cho conversationId:', convId);
 
       // 1. Lưu ngay vào localStorage
       if (convId) {
@@ -1632,30 +1643,33 @@ window._openMessengerThemePicker = function(convId, convName) {
         window.$._currentActiveChatTheme = selectedTheme;
 
         // Kích hoạt setState trên Flutter ChatScreen
-        // TUYỆT ĐỐI KHÔNG gọi aoW() vì aoW() là toggle Emoji Picker!
         if (window.$._activeChatScreenState) {
-          window.$._activeChatScreenState.Q = false; // Đảm bảo đóng bảng icon/emoji
+          window.$._activeChatScreenState.Q = false; // Đảm bảo đóng emoji
           if (typeof window.$._activeChatScreenState.K === 'function' && window.A && window.A.ax1) {
             try {
               window.$._activeChatScreenState.K(new window.A.ax1());
-              console.log('✅ Đã gọi Flutter ChatScreen setState (K) thành công!');
-            } catch(e) {
-              console.error('Lỗi khi gọi K setState:', e);
-            }
+            } catch(e) {}
           }
         }
+      }
 
-        // 3. Phát socket realtime
-        if (window.$.bj && typeof window.$.bj.cn === 'function') {
-          try {
-            window.$.bj.cn("update_conversation_theme", {
-              conversationId: convId,
-              theme: selectedTheme
-            });
-            console.log('⚡ Đã gửi socket update_conversation_theme!');
-          } catch(e) {
-            console.error('Lỗi phát socket theme:', e);
-          }
+      // 3. Phát socket realtime cho cả hai bên
+      var socketPayload = null;
+      if (window.A && typeof window.A.V === 'function' && window.t && window.t.N) {
+        try {
+          socketPayload = window.A.V(["conversationId", convId, "theme", selectedTheme], window.t.N, window.t.N);
+        } catch(e) {}
+      }
+      if (!socketPayload) {
+        socketPayload = { conversationId: convId, theme: selectedTheme };
+      }
+
+      if (window.$ && window.$.bj && typeof window.$.bj.cn === 'function') {
+        try {
+          window.$.bj.cn("update_conversation_theme", socketPayload);
+          console.log('⚡ [Client] Đã phát socket update_conversation_theme thành công!');
+        } catch(e) {
+          console.error('Lỗi phát socket theme:', e);
         }
       }
 
@@ -1666,12 +1680,17 @@ window._openMessengerThemePicker = function(convId, convName) {
                        localStorage.getItem('flutter.token') || 
                        localStorage.getItem('token') || '';
         var cleanToken = rawToken;
-        if (cleanToken.startsWith('"') && cleanToken.endsWith('"')) {
-          cleanToken = cleanToken.slice(1, -1);
+        try {
+          cleanToken = JSON.parse(rawToken);
+        } catch(e) {
+          if (cleanToken.startsWith('"') && cleanToken.endsWith('"')) {
+            cleanToken = cleanToken.slice(1, -1);
+          }
         }
 
         if (cleanToken && convId) {
-          fetch('/api/chat/conversations/' + convId + '/theme', {
+          var backendUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? '' : 'https://chat-tho-fi-vn-9s8u.onrender.com';
+        fetch(backendUrl + '/api/chat/conversations/' + convId + '/theme', {
             method: 'PATCH',
             headers: {
               'Content-Type': 'application/json',
