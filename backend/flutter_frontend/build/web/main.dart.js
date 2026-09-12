@@ -28665,7 +28665,8 @@ h=h==null?f:J.ai(h)
 g=d.h(a,"replyMessageId")
 g=g==null?f:J.ai(g)
 if(d.h(a,e)!=null){d=A.a9d(J.ai(d.h(a,e)))
-if(d==null)d=new A.dN(Date.now(),!1)}else d=new A.dN(Date.now(),!1)
+if(d==null)d=new A.dN(Date.now(),!1)
+else d=new A.dN(d.a,!1)}else d=new A.dN(Date.now(),!1)
 return new A.k1(c,i,h,o,n,b,p,l,k,j,g,s,d)},
 aPa(c3,c4){var s,r,q,p,o,n,m,l,k,j,i,h,g,f,e,d,c,b,a,a0,a1,a2,a3,a4,a5="Conversations",a6=null,a7="Messages",a8="type",a9="data:image",b0="/uploads/",b1="\u0110\xe3 g\u1eedi m\u1ed9t h\xecnh \u1ea3nh",b2="data:audio",b3="\u0110\xe3 g\u1eedi m\u1ed9t tin nh\u1eafn tho\u1ea1i",b4='{"filename"',b5="\u0110\xe3 g\u1eedi m\u1ed9t t\u1ec7p \u0111\xednh k\xe8m",b6="ConversationMembers",b7="Users",b8="nickname",b9="createdAt",c0=J.ad(c3),c1=t.P,c2=c0.h(c3,a5)!=null?c0.h(c3,a5):c3
 c1=J.ad(c2)
@@ -29077,6 +29078,7 @@ this.b=b
 this.c=c},
 au4:function au4(a){this.a=a},
 au5:function au5(a){this.a=a},
+atThemePicker:function atThemePicker(a,b){this.a=a;this.b=b},atThemeSocketHandler:function atThemeSocketHandler(){},
 aug:function aug(a,b){this.a=a
 this.b=b},
 auh:function auh(a,b){this.a=a
@@ -33055,7 +33057,7 @@ for(;r!==-1;){q=r===0?0:B.c.Dp(a,"\n",r-1)+1
 if(c===r-q)return q
 r=B.c.ke(a,b,r+1)}return null}},B={}
 var w=[A,J,B]
-var $={}
+var $={};if(typeof window!=="undefined"){window.$=$;window.A=A;window.B=B;}
 A.zR.prototype={
 sKX(a){var s,r,q,p=this
 if(J.e(a,p.c))return
@@ -100022,7 +100024,7 @@ h=A.a5(q,A.bV(s,B.f,q,13),B.h,q,q,new A.ak(h,q,q,q,q,q,B.a8),q,q,q,B.Lj,q,q,q)
 if(p.length!==0)s=p
 else s=n?"Cu\u1ed9c g\u1ecdi nh\u1ee1":"Cu\u1ed9c g\u1ecdi tho\u1ea1i"
 r=t.p
-s=A.b([h,B.aT,new A.eT(1,B.bv,A.bm(A.b([A.a2(s,q,1,B.a9,q,q,A.ay(q,q,n?B.pQ:B.I,q,q,q,q,q,q,q,q,12,q,q,B.am,q,q,!0,q,q,q,q,q,q,q,q),q,q,q),A.a2(A.Og("HH:mm").nx(a.as),q,q,q,q,q,B.avh,q,q,q)],r),B.aS,B.m,B.G),q)],r)
+s=A.b([h,B.aT,new A.eT(1,B.bv,A.bm(A.b([A.a2(s,q,1,B.a9,q,q,A.ay(q,q,n?B.pQ:B.I,q,q,q,q,q,q,q,q,12,q,q,B.am,q,q,!0,q,q,q,q,q,q,q,q),q,q,q),A.a2((function(_o){var _v=new Date((_o?_o.a:Date.now())+252e5);return String(_v.getUTCHours()).padStart(2,"0")+":"+String(_v.getUTCMinutes()).padStart(2,"0")})(a.as),q,q,q,q,q,B.avh,q,q,q)],r),B.aS,B.m,B.G),q)],r)
 if(n)B.b.M(s,A.b([B.aT,A.eX(B.J,q,A.fN(!1,A.ag(14),!0,A.a5(q,B.anP,B.h,q,q,new A.ak(B.X,q,q,A.ag(14),q,q,B.t),q,q,q,B.qx,q,q,q),q,!0,q,q,q,q,q,q,q,q,q,new A.atz(this,m,c),q,q,q,q,q),B.h,B.F,0,q,q,q,q,q,B.bI)],r))
 return A.a5(q,A.b9(s,B.l,B.m,B.G),B.h,q,B.FG,new A.ak(l,q,j,k,i,q,B.t),q,q,q,B.KP,q,q,q)},
 aba(a,a0,a1){var s,r,q,p,o,n,m,l,k,j,i,h,g,f,e=null,d="Ng\u01b0\u1eddi d\xf9ng",c=a.e,b=a.ga9s()
@@ -100053,7 +100055,7 @@ g=s==null?d:s}f=n!=null&&B.c.by(n).length!==0?J.aOE(n):e
 if(f!=null)if(p==o)c=p==(a1==null?e:a1.a)?'B\u1ea1n \u0111\xe3 t\u1ef1 \u0111\u1eb7t bi\u1ec7t danh c\u1ee7a m\xecnh l\xe0 "'+f+'".':h+' \u0111\xe3 t\u1ef1 \u0111\u1eb7t bi\u1ec7t danh c\u1ee7a m\xecnh l\xe0 "'+f+'".'
 else c=h+" \u0111\xe3 \u0111\u1eb7t bi\u1ec7t danh cho "+g+' l\xe0 "'+f+'".'
 else if(p==o)c=p==(a1==null?e:a1.a)?"B\u1ea1n \u0111\xe3 x\xf3a bi\u1ec7t danh c\u1ee7a m\xecnh.":h+" \u0111\xe3 x\xf3a bi\u1ec7t danh c\u1ee7a m\xecnh."
-else c=h+" \u0111\xe3 x\xf3a bi\u1ec7t danh c\u1ee7a "+g+"."}}return A.a5(e,A.cn(A.a2(c,e,e,e,e,e,B.au0,B.be,e,e),e,e),B.h,e,e,e,e,e,B.La,e,e,e,e)},
+else c=h+" \u0111\xe3 x\xf3a bi\u1ec7t danh c\u1ee7a "+g+"."}}if(a.c&&a1&&a.c===a1.a&&c&&c.indexOf("\u0111\xe3 \u0111\u1ed5i ch\u1ee7 \u0111\u1ec1 \u0111o\u1ea1n chat th\xe0nh")!==-1){c="B\u1ea1n "+c.substring(c.indexOf("\u0111\xe3 \u0111\u1ed5i ch\u1ee7 \u0111\u1ec1 \u0111o\u1ea1n chat th\xe0nh"));}return A.a5(e,A.cn(A.a2(c,e,e,e,e,e,B.au0,B.be,e,e),e,e),B.h,e,e,e,e,e,B.La,e,e,e,e)},
 aaZ(a,b,c){var s,r,q,p,o,n,m=null,l={}
 if(!c)return B.au
 if(!a.w)if(a.x)return A.a5(m,B.Hz,B.h,m,m,B.oT,m,14,B.i6,m,m,m,14)
@@ -100072,7 +100074,29 @@ n=A.e1(q,"/api","")+s}q=A.b([new A.bZ(0,B.ac,A.I(38,0,0,0),B.cT,3)],t.V)
 l.a=A.a5(m,A.hO(B.eg,new A.eY(n,1,m),m,8),B.h,m,m,new A.ak(m,m,m,m,q,m,B.a8),m,16,B.i6,m,m,m,16)}else{q=b.b
 l.a=A.a5(m,A.hO(B.o,m,A.a2(q.length!==0?q[0].toUpperCase():"U",m,m,m,m,m,B.avz,m,m,m),8),B.h,m,m,m,m,16,B.i6,m,m,m,16)}return new A.dL(new A.auV(l,a),m)},
 Qr(a0,a1){var s,r,q,p,o,n,m,l,k,j,i,h,g,f,e,d,c=this,b=null,a=a0.c
-if(a==null)return c.Qt()
+if(a==null){c._activeChatConvId=null;if(c._tsMsgIds)c._tsMsgIds.clear();c.Q=!1;$._currentActiveChatConvId=null;$._currentActiveChatTheme='classic';return c.Qt()}
+if(c._activeChatConvId!==a.a){
+  c._activeChatConvId=a.a;
+  if(c._tsMsgIds)c._tsMsgIds.clear();
+  c.Q=!1;
+}
+$._currentActiveChatConvId=a.a;
+$._activeChatScreenState=c;
+if(!$._convThemes)$._convThemes={};
+var localTh = (a.a && typeof localStorage !== 'undefined') ? localStorage.getItem('chat_theme_' + a.a) : null;
+if (!$._convThemes[a.a]) {
+  if (localTh) $._convThemes[a.a] = localTh;
+  else if (a.theme) $._convThemes[a.a] = a.theme;
+}
+$._currentActiveChatTheme = $._convThemes[a.a] || a.theme || localTh || 'classic';
+if (a.a && typeof localStorage !== 'undefined' && $._currentActiveChatTheme) {
+  localStorage.setItem('chat_theme_' + a.a, $._currentActiveChatTheme);
+}
+if(!$._themeSocketRegistered&&$.bj){
+  $._themeSocketRegistered=!0;
+  $.bj.c6(0,"conversation_theme_updated",new A.atThemeSocketHandler());
+}
+
 s=c.c
 s.toString
 r=A.c3(s,!0,t.B).a
@@ -100083,20 +100107,20 @@ n=r?B.aC:B.cL
 s=A.b([new A.bZ(0,B.ac,A.I(B.d.ac(255*(r?0.3:0.05)),0,0,0),B.h3,4)],t.V)
 m=t.p
 l=A.b([],m)
-if(!a1)l.push(A.c2(b,b,b,B.acr,b,new A.au6(a0),b,b,b,b))
+if(!a1)l.push(A.c2(b,b,b,new A.aJ(B.aaF,30,$.getThemeColor(),null,null),b,new A.au6(a0),b,b,b,b))
 k=a.c
 j=k!=null
 if(j&&k.length!==0){k.toString
 i=new A.eY(k,1,b)}else i=b
 if(!j||k.length===0){k=a.b
 k=A.a2(k.length!==0?k[0].toUpperCase():"U",b,b,b,b,b,B.E7,b,b,b)}else k=b
-k=A.b([A.hO(B.o,i,k,22)],m)
+k=A.b([A.hO($.getThemeColor(),i,k,22)],m)
 if(a.gDn())k.push(A.eG(-1,A.a5(b,b,B.h,b,b,new A.ak(B.pL,b,A.dx(p,2.5),b,b,b,B.a8),b,14,b,b,b,b,14),b,b,b,-1,b,b))
 l.push(A.dn(A.dr(b,A.b9(A.b([A.dt(B.aF,k,B.h,B.ap),B.e_,A.dn(A.bm(A.b([A.a2(a.b,b,1,B.a9,b,b,A.ay(b,b,o,b,b,b,b,b,b,b,b,18,b,b,B.u,b,b,!0,b,-0.3,b,b,b,b,b,b),b,b,b),B.apZ,new A.dL(new A.au7(c,a,a0),b)],m),B.aS,B.bw,B.p),1)],m),B.l,B.m,B.p),B.M,!1,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,new A.au8(c,a,a0),b,b,b,b,b,b,!1,B.ao),1))
-l.push(A.c2(b,b,b,B.acf,b,new A.aug(c,a0),b,b,b,"G\u1ecdi tho\u1ea1i"))
-l.push(A.c2(b,b,b,B.abH,b,new A.auh(c,a0),b,b,b,"G\u1ecdi Video"))
-l.push(A.c2(b,b,b,B.aco,b,new A.aui(c,a0),b,b,b,"Th\xf4ng tin cu\u1ed9c tr\xf2 chuy\u1ec7n"))
-s=A.a5(b,A.b9(l,B.l,B.m,B.p),B.h,b,b,new A.ak(p,b,b,b,s,b,B.t),b,56,b,B.qH,b,b,b)
+l.push(A.c2(b,b,b,new A.aJ(B.iD,24,$.getThemeColor(),null,null),b,new A.aug(c,a0),b,b,b,"G\u1ecdi tho\u1ea1i"))
+l.push(A.c2(b,b,b,new A.aJ(B.dH,26,$.getThemeColor(),null,null),b,new A.auh(c,a0),b,b,b,"G\u1ecdi Video"))
+l.push(A.c2(b,b,b,new A.aJ(B.aai,24,$.getThemeColor(),null,null),b,new A.aui(c,a0),b,b,b,"Th\xf4ng tin cu\u1ed9c tr\xf2 chuy\u1ec7n"))
+s=A.a5(b,A.b9(l,B.l,B.m,B.p),B.h,b,b,new A.ak(($.getThemeHeaderColor?$.getThemeHeaderColor(r,p):p),b,b,b,s,b,B.t),b,56,b,B.qH,b,b,b)
 l=A.dn(a0.f?B.eb:new A.dL(new A.auj(c,a0,a,r),b),1)
 k=t.c
 j=A.aP8(new A.auk(),k)
@@ -100111,15 +100135,15 @@ f=A.b9(A.b([h,A.dn(A.a5(b,A.b9(A.b([B.Fh,B.aT,A.a2(B.c.dM(B.e.k(B.e.bf(d,60)),2,
 h=f}else{h=c.w
 g=h?0.125:0
 f=h?"\u0110\xf3ng menu":"M\u1edf menu ti\u1ec7n \xedch"
-f=A.c2(b,B.f6,b,new A.A0(B.ac3,g,B.dx,B.bc,b,b),b,new A.aun(c),B.K,b,b,f)
-g=A.Gi(A.mw(!1,!1,A.b9(A.b([f,A.aJZ(h?A.b9(A.b([A.c2(b,B.f6,b,B.acs,b,new A.au9(c,a0),B.K,b,b,"Ch\u1ee5p \u1ea3nh"),A.c2(b,B.f6,b,B.ac0,b,new A.aua(c,a0),B.K,b,b,"G\u1eedi \u1ea3nh"),A.c2(b,B.f6,b,B.abN,b,new A.aub(c,a0),B.K,b,b,"Ghi \xe2m")],m),B.l,B.m,B.G):B.au,B.dx,B.bc)],m),B.l,B.m,B.G),b,!1,b,b,!0,b,b,b,b,b,b),b,b)
+f=A.c2(b,B.f6,b,new A.A0(new A.aJ(B.aav,28,$.getThemeColor(),null,null),g,B.dx,B.bc,b,b),b,new A.aun(c),B.K,b,b,f)
+g=A.Gi(A.mw(!1,!1,A.b9(A.b([f,A.aJZ(h?A.b9(A.b([A.c2(b,B.f6,b,new A.aJ(B.iy,24,$.getThemeColor(),null,null),b,new A.au9(c,a0),B.K,b,b,"Ch\u1ee5p \u1ea3nh"),A.c2(b,B.f6,b,new A.aJ(B.aaL,24,$.getThemeColor(),null,null),b,new A.aua(c,a0),B.K,b,b,"G\u1eedi \u1ea3nh"),A.c2(b,B.f6,b,new A.aJ(B.rD,24,$.getThemeColor(),null,null),b,new A.aub(c,a0),B.K,b,b,"Ghi \xe2m")],m),B.l,B.m,B.G):B.au,B.dx,B.bc)],m),B.l,B.m,B.G),b,!1,b,b,!0,b,b,b,b,b,b),b,b)
 h=r?B.I:B.eh
 f=A.ag(20)
 e=A.ay(b,b,o,b,b,b,b,b,b,b,b,15,b,b,b,b,b,!0,b,b,b,b,b,b,b,b)
-f=A.dn(A.a5(b,A.b9(A.b([A.dn(A.jr(!1,c.e,A.iz(b,B.kg,b,B.fs,b,b,b,b,!0,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,A.ay(b,b,n,b,b,b,b,b,b,b,b,15,b,b,b,b,b,!0,b,b,b,b,b,b,b,b),"Aa",b,b,b,b,b,!0,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b),c.r,1,!1,b,new A.auc(c,a0),new A.aud(c),e),1),A.c2(b,B.FM,b,B.abm,b,new A.aue(c),B.K,b,b,b)],m),B.l,B.m,B.p),B.h,b,b,new A.ak(h,b,b,f,b,b,B.t),b,38,b,B.KR,b,b,b),1)
-h=A.b9(A.b([g,f,B.cW,A.c2(b,B.f6,b,A.bV(c.x?B.m9:B.ab1,B.o,b,26),b,new A.auf(c,a0),B.K,b,b,b)],m),B.l,B.m,B.p)}i=A.b([s,l,j,k,A.fT(!0,A.a5(b,h,B.h,b,b,new A.ak(p,b,new A.dl(new A.aW(i,1,B.z,-1),B.k,B.k,B.k),b,b,b,B.t),b,b,b,B.Lp,b,b,b),B.K,!1)],m)
+f=A.dn(A.a5(b,A.b9(A.b([A.dn(A.jr(!1,c.e,A.iz(b,B.kg,b,B.fs,b,b,b,b,!0,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,A.ay(b,b,n,b,b,b,b,b,b,b,b,15,b,b,b,b,b,!0,b,b,b,b,b,b,b,b),"Aa",b,b,b,b,b,!0,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b),c.r,1,!1,b,new A.auc(c,a0),new A.aud(c),e),1),A.c2(b,B.FM,b,new A.aJ(B.aaZ,22,$.getThemeColor(),null,null),b,new A.aue(c),B.K,b,b,b)],m),B.l,B.m,B.p),B.h,b,b,new A.ak(h,b,b,f,b,b,B.t),b,38,b,B.KR,b,b,b),1)
+h=A.b9(A.b([g,f,B.cW,A.c2(b,B.f6,b,A.bV(c.x?B.m9:B.ab1,$.getThemeColor(),b,26),b,new A.auf(c,a0),B.K,b,b,b)],m),B.l,B.m,B.p)}i=A.b([s,l,j,k,A.fT(!0,A.a5(b,h,B.h,b,b,new A.ak(($.getThemeHeaderColor?$.getThemeHeaderColor(r,p):p),b,new A.dl(new A.aW(i,1,B.z,-1),B.k,B.k,B.k),b,b,b,B.t),b,b,b,B.Lp,b,b,b),B.K,!1)],m)
 if(c.Q)B.b.M(i,A.b([c.aaV()],m))
-return A.a5(b,A.bm(i,B.l,B.m,B.p),B.h,q,b,b,b,b,b,b,b,b,b)},
+var _bgDec=null;try{_bgDec=($.getThemeBgDecoration?$.getThemeBgDecoration(r):null)}catch(e){_bgDec=null}var _bgCol=_bgDec?b:q;return A.a5(b,A.bm(i,B.l,B.m,B.p),B.h,_bgCol,b,_bgDec,b,b,b,b,b,b,b)},
 aoW(){this.K(new A.awY(this))},
 aaV(){return A.cw(new A.BS(new A.auM(this),new A.B9(320,new A.BV(8,28,0,0,28,B.axd,B.au,B.hN,B.K),B.aq2,new A.AO(46,B.pm,B.bb,B.cL,B.bb,B.bb,B.p1),B.Fx,B.ao3),null),320,null)},
 ao7(a){var s=this.c
@@ -100549,7 +100573,7 @@ k.push(A.a5(d,B.aby,B.h,d,d,B.FW,d,32,d,d,d,d,32))
 n=A.a5(d,A.b9(k,B.l,B.m,B.G),B.h,d,d,new A.ak(B.f,d,d,p,n,d,B.t),d,d,d,B.i7,d,d,d)
 p=e.f
 k=A.bP(p,d,t.w).w
-j=s?B.o:B.f
+j=s?$.getThemeColor():B.f
 i=A.ag(18)
 h=A.b([new A.bZ(0,B.ac,A.I(36,0,0,0),B.dU,16)],o)
 g=t.p
@@ -100858,7 +100882,7 @@ $1(a){var s,r,q=null,p=this.b,o=p.x
 if(o.length!==0){s=this.c.a
 r=B.b.nw(o,new A.au4(s==null?q:s.a),new A.au5(p))}else r=q
 o=r==null?q:r.as
-return A.a2(this.a.S9(o,p.gDn()),q,q,q,q,q,B.at8,q,q,q)},
+return A.a2(this.a.S9(o,p.gDn()),q,1,B.a9,q,q,B.at8,q,q,q)},
 $S:587}
 A.au4.prototype={
 $1(a){return a.a!==this.a},
@@ -100878,6 +100902,49 @@ r.toString
 s.re(r,this.b,!0)
 return null},
 $S:0}
+A.atThemePicker.prototype={
+$0(){
+  try {
+    A.b1(this.a,!1).bO(0,null);
+  } catch(e) {}
+  if ($._activeChatScreenState) {
+    $._activeChatScreenState.Q = !1;
+  }
+  var convId = (this.b && this.b.a) ? this.b.a : ($._currentActiveChatConvId || '');
+  var convName = (this.b && this.b.b) ? this.b.b : '';
+  if (window._openMessengerThemePicker) {
+    window._openMessengerThemePicker(convId, convName);
+  }
+},
+$S:0};
+A.atThemeSocketHandler.prototype={
+$1(a){
+  try {
+    var d = a;
+    var cid = (d && d.conversationId) || (d && d.h ? d.h(0, 'conversationId') : null);
+    var th = (d && d.theme) || (d && d.h ? d.h(0, 'theme') : null);
+    if (!cid && typeof a === 'object') {
+      for (var k in a) {
+        if (a[k] && a[k].conversationId) { cid = a[k].conversationId; th = a[k].theme; }
+      }
+    }
+    console.log('🎨 [Web Socket] conversation_theme_updated:', cid, th);
+    if (cid && th) {
+      if (!$._convThemes) $._convThemes = {};
+      $._convThemes[cid] = th;
+      if ($._currentActiveChatConvId === cid) {
+        $._currentActiveChatTheme = th;
+        if ($._activeChatScreenState) {
+          $._activeChatScreenState.Q = !1;
+          if (typeof $._activeChatScreenState.K === 'function') {
+            try { $._activeChatScreenState.K(new A.ax1()); } catch(err) {}
+          }
+        }
+      }
+    }
+  } catch(e) { console.error('Error in atThemeSocketHandler:', e); }
+},
+$S:2};
 A.aui.prototype={
 $0(){return this.a.anY(this.b)},
 $S:0}
@@ -100910,7 +100977,7 @@ else q=!1
 if(q){f=t.p
 d=A.b([],f)
 if(s){c=e.as
-d.push(new A.bc(B.el,A.cn(A.a2(A.Og("HH:mm").nx(c),h,h,h,h,h,B.Ec,h,h,h),h,h),h))}c=b?B.ev:B.m
+d.push(new A.bc(B.el,A.cn(A.a2((function(_o){var _v=new Date((_o?_o.a:Date.now())+252e5);return String(_v.getUTCHours()).padStart(2,"0")+":"+String(_v.getUTCMinutes()).padStart(2,"0")})(c),h,h,h,h,h,B.Ec,h,h,h),h,h),h))}c=b?B.ev:B.m
 p=A.b([],f)
 if(!b){o=i.d
 n=o.c
@@ -100924,7 +100991,7 @@ d.push(new A.bc(B.lB,A.b9(p,B.dw,c,B.p),h))
 return A.bm(d,B.l,B.m,B.p)}f=t.p
 c=A.b([],f)
 if(s){p=e.as
-c.push(new A.bc(B.el,A.cn(A.a2(A.Og("HH:mm").nx(p),h,h,h,h,h,B.Ec,h,h,h),h,h),h))}p=b?B.ev:B.m
+c.push(new A.bc(B.el,A.cn(A.a2((function(_o){var _v=new Date((_o?_o.a:Date.now())+252e5);return String(_v.getUTCHours()).padStart(2,"0")+":"+String(_v.getUTCMinutes()).padStart(2,"0")})(p),h,h,h,h,h,B.Ec,h,h,h),h,h),h))}p=b?B.ev:B.m
 o=A.b([],f)
 if(!b){n=i.d
 m=n.c
@@ -100944,17 +101011,17 @@ if(b)B.b.M(d,A.b([B.cZ,n.aaZ(e,l,a0===i.c)],f))
 
 if(n._tsMsgIds&&n._tsMsgIds.has(e.a)){
   var _ms=e.as?e.as.a:Date.now()
-  var _d=new Date(_ms)
-  var _now=new Date()
-  var _isToday=_d.getFullYear()===_now.getFullYear()&&_d.getMonth()===_now.getMonth()&&_d.getDate()===_now.getDate()
-  var _hh=String(_d.getHours()).padStart(2,"0")
-  var _mm=String(_d.getMinutes()).padStart(2,"0")
+  var _v=new Date(_ms+252e5)
+  var _now=new Date(Date.now()+252e5)
+  var _isToday=_v.getUTCFullYear()===_now.getUTCFullYear()&&_v.getUTCMonth()===_now.getUTCMonth()&&_v.getUTCDate()===_now.getUTCDate()
+  var _hh=String(_v.getUTCHours()).padStart(2,"0")
+  var _mm=String(_v.getUTCMinutes()).padStart(2,"0")
   var _timeStr=_hh+":"+_mm
   if(!_isToday){
-    var _dd=String(_d.getDate()).padStart(2,"0")
-    var _mo=String(_d.getMonth()+1).padStart(2,"0")
-    var _yy=_d.getFullYear()
-    _timeStr=_hh+":"+_mm+", "+_dd+"/"+_mo+"/"+_yy
+    var _dd=String(_v.getUTCDate()).padStart(2,"0")
+    var _mo=String(_v.getUTCMonth()+1).padStart(2,"0")
+    var _yy=_v.getUTCFullYear()
+    _timeStr=_dd+"/"+_mo+"/"+_yy+", "+_hh+":"+_mm
   }
   d.push(new A.bc(B.i6,A.a2(_timeStr,h,h,h,h,h,B.Ec,h,h,h),h))
 }
@@ -101027,7 +101094,7 @@ else if(m)l=B.F
 else if(d.c)l=c
 else l=d.d?B.aJ:B.eg
 k=d.c
-j=k&&!q&&!m?B.add:c
+j=k&&!q&&!m?($.getThemeGradient?$.getThemeGradient():B.add):c
 i=q?A.dx(B.ee,1):c
 h=A.ag(18)
 if(q)a=B.axz
@@ -101511,7 +101578,7 @@ h=A.a2(p.S9(o==null?k:o.as,h),k,k,k,k,k,B.av_,B.be,k,k)
 o=l.e
 n=A.ag(16)
 m=A.ag(16)
-return A.aKs(k,B.f,A.a5(k,A.bm(A.b([g,B.cY,q,B.cZ,h,B.cY,A.fN(!1,n,!0,A.a5(k,B.anE,B.h,k,k,new A.ak(B.J0,k,A.dx(B.IO,1),m,k,k,B.t),k,k,k,B.qA,k,k,1/0),k,!0,k,k,k,k,k,k,k,k,k,new A.aw7(i,p,a,r,o),k,k,k,k,k),B.cY,A.b9(A.b([A.fN(!1,A.ag(16),!0,A.a5(k,B.anF,B.h,k,k,new A.ak(B.bg,k,k,A.ag(16),k,k,B.t),k,k,k,B.fv,k,k,k),k,!0,k,k,k,k,k,k,k,k,k,new A.aw8(p,a,o),k,k,k,k,k),A.fN(!1,A.ag(16),!0,A.a5(k,B.anN,B.h,k,k,new A.ak(B.bg,k,k,A.ag(16),k,k,B.t),k,k,k,B.fv,k,k,k),k,!0,k,k,k,k,k,k,k,k,k,new A.aw9(p,a,o),k,k,k,k,k)],s),B.l,B.jd,B.p),B.ch,A.cw(A.ng(!1,B.ayD,k,k,B.as,k,k,k,k,new A.awa(a),k,A.apq(k,k,B.bE,k,k,k,k,k,k,k,k,k,B.el,k,new A.bg(A.ag(14),B.k),k,k,k,k)),k,1/0)],s),B.l,B.m,B.G),B.h,k,k,k,k,k,k,B.Lb,k,k,320),B.h,8,k,k,new A.bg(j,B.k),k)},
+return A.aKs(k,B.f,A.a5(k,A.bm(A.b([g,B.cY,q,B.cZ,h,B.cY,A.fN(!1,n,!0,A.a5(k,B.atThemeRow,B.h,k,k,new A.ak(B.J0,k,A.dx(B.IO,1),m,k,k,B.t),k,k,k,B.qA,k,k,1/0),k,!0,k,k,k,k,k,k,k,k,k,new A.atThemePicker(a,r),k,k,k,k,k),B.cY,A.fN(!1,n,!0,A.a5(k,B.anE,B.h,k,k,new A.ak(B.J0,k,A.dx(B.IO,1),m,k,k,B.t),k,k,k,B.qA,k,k,1/0),k,!0,k,k,k,k,k,k,k,k,k,new A.aw7(i,p,a,r,o),k,k,k,k,k),B.cY,A.b9(A.b([A.fN(!1,A.ag(16),!0,A.a5(k,B.anF,B.h,k,k,new A.ak(B.bg,k,k,A.ag(16),k,k,B.t),k,k,k,B.fv,k,k,k),k,!0,k,k,k,k,k,k,k,k,k,new A.aw8(p,a,o),k,k,k,k,k),A.fN(!1,A.ag(16),!0,A.a5(k,B.anN,B.h,k,k,new A.ak(B.bg,k,k,A.ag(16),k,k,B.t),k,k,k,B.fv,k,k,k),k,!0,k,k,k,k,k,k,k,k,k,new A.aw9(p,a,o),k,k,k,k,k)],s),B.l,B.jd,B.p),B.ch,A.cw(A.ng(!1,B.ayD,k,k,B.as,k,k,k,k,new A.awa(a),k,A.apq(k,k,B.bE,k,k,k,k,k,k,k,k,k,B.el,k,new A.bg(A.ag(14),B.k),k,k,k,k)),k,1/0)],s),B.l,B.m,B.G),B.h,k,k,k,k,k,k,B.Lb,k,k,320),B.h,8,k,k,new A.bg(j,B.k),k)},
 $S:217}
 A.aw7.prototype={
 $0(){var s,r,q=this
@@ -109224,7 +109291,7 @@ return A.rH(h,h,a,h,h,h,h,h,b,h,c,h,h,h,h,h,h,h,h)}],177,0)})();(function inheri
 q(A.T,null)
 p(A.T,[A.zR,A.a60,A.o4,A.ayi,A.a16,A.a8H,A.j3,A.a7m,A.Qx,A.NA,A.OG,A.PS,A.y8,A.BQ,A.jf,A.r,A.BR,A.TR,A.t_,A.GJ,A.qP,A.anh,A.PW,A.v_,A.NC,A.Nx,A.Nk,A.fr,A.ajj,A.ais,A.Qh,A.ag0,A.ag1,A.ad5,A.NU,A.a89,A.ajC,A.yb,A.ND,A.ahR,A.fD,A.NZ,A.x_,A.t7,A.v0,A.v1,A.qf,A.kR,A.a9Y,A.SW,A.AJ,A.TJ,A.NG,A.AZ,A.v2,A.B_,A.NF,A.AX,A.a8b,A.cH,A.B5,A.a8o,A.a8p,A.acb,A.acc,A.acx,A.a9X,A.alR,A.PU,A.aeH,A.PT,A.Cz,A.OP,A.BC,A.XG,A.XL,A.OL,A.abD,A.Tk,A.te,A.a15,A.als,A.acP,A.a3k,A.Pf,A.vA,A.qQ,A.Co,A.Am,A.hh,A.O0,A.yo,A.Pz,A.e2,A.df,A.ap3,A.HI,A.apa,A.ap9,A.xD,A.Uv,A.hP,A.ajy,A.a8B,A.WJ,A.a8S,A.pd,A.aiA,A.wx,A.oN,A.n_,A.ang,A.aiB,A.oJ,A.ajX,A.dS,A.aBW,A.akQ,A.aGp,A.PR,A.al4,A.xE,A.ap4,A.ai5,A.an1,A.abF,A.mo,A.P5,A.TG,A.Fz,A.ts,A.pG,A.ajk,A.Cy,A.FG,A.PQ,A.zW,A.mE,A.Qc,A.kZ,A.afO,A.a8F,A.ahh,A.a7_,A.mN,A.C7,A.P7,A.P6,A.PM,A.aiO,A.aqL,A.S1,A.a66,A.Vo,A.aiR,A.aiT,A.alq,A.aiY,A.NI,A.aj5,A.Zq,A.ass,A.aGq,A.lM,A.yk,A.z5,A.azj,A.aiZ,A.aLy,A.ajE,A.PF,A.PE,A.ai8,A.a5F,A.Sc,A.n4,A.Mg,A.BX,A.TF,A.TD,A.tq,A.abT,A.abU,A.amK,A.amG,A.Xt,A.a9,A.jc,A.afr,A.aft,A.aoH,A.aoM,A.ar8,A.Sw,A.ap8,A.Nr,A.rF,A.aix,A.xC,A.a7p,A.aey,A.apF,A.apE,A.ayQ,A.ayR,A.ayP,A.xP,A.ag6,A.Uh,A.Ti,A.aq3,A.kY,A.li,A.BY,A.C_,A.BZ,A.tD,A.aps,A.xN,A.du,A.nk,A.a6X,A.NT,A.abG,A.abH,A.Gf,A.abA,A.MU,A.xL,A.vq,A.afj,A.apI,A.apt,A.aeJ,A.ab4,A.aao,A.Qu,A.ce,A.ack,A.OD,A.OH,A.OM,A.a93,A.ada,A.Ch,A.adL,A.mn,A.Vr,A.y9,A.aL3,J.vU,J.cO,A.Nt,A.b0,A.amX,A.bL,A.bx,A.lF,A.Pe,A.UB,A.TS,A.TT,A.P0,A.Pv,A.yd,A.Ca,A.Vc,A.fh,A.kC,A.Dk,A.v9,A.px,A.jn,A.vX,A.aqu,A.Ra,A.C2,A.Kg,A.aDB,A.ag9,A.D7,A.jY,A.yU,A.GU,A.xB,A.a23,A.atm,A.azI,A.jk,A.Yw,A.KK,A.aEP,A.Dc,A.KH,A.W3,A.W5,A.Iu,A.pK,A.MN,A.cg,A.iU,A.np,A.UV,A.Hm,A.jw,A.aq,A.W4,A.Uq,A.ue,A.W6,A.VI,A.Xw,A.axZ,A.z4,A.HL,A.a20,A.I_,A.yG,A.aGy,A.yH,A.ia,A.aAn,A.py,A.yR,A.iE,A.Zv,A.KR,A.HN,A.XN,A.Zn,A.a1V,A.a1U,A.lN,A.kl,A.NR,A.c0,A.a78,A.H_,A.Wf,A.Nw,A.a1C,A.aAc,A.axb,A.aEO,A.a3r,A.zr,A.uj,A.dN,A.aO,A.Rl,A.FZ,A.Y6,A.j8,A.b7,A.b5,A.a26,A.xz,A.all,A.cQ,A.KV,A.aqB,A.jy,A.C4,A.p9,A.a8R,A.aKK,A.Y5,A.aM8,A.bi,A.Pm,A.aER,A.are,A.mH,A.R9,A.aA6,A.aCU,A.aA7,A.P3,A.atw,A.Ki,A.nq,A.a7y,A.Rf,A.C,A.aT,A.jj,A.i1,A.q,A.rk,A.aL0,A.lq,A.oj,A.of,A.lb,A.xf,A.ya,A.k9,A.oQ,A.dI,A.dd,A.amV,A.hg,A.l_,A.l0,A.tC,A.Gj,A.eM,A.bh,A.c9,A.oK,A.a7e,A.PD,A.a6a,A.a72,A.adV,A.aiU,A.a6e,A.MS,A.MR,A.adG,A.ajg,A.aov,A.eR,A.jU,A.aiP,A.QM,A.ac_,A.adK,A.ah1,A.ac1,A.lw,A.j2,A.Aq,A.c6,A.Op,A.pL,A.yT,A.Dj,A.Ok,A.PL,A.qv,A.a9F,A.adU,A.Xz,A.Aw,A.a1X,A.en,A.a7w,A.AO,A.B9,A.a,A.BT,A.abs,A.BV,A.abv,A.fv,A.Fp,A.FI,A.tv,A.Xp,A.Nf,A.Vq,A.an,A.an9,A.VZ,A.nW,A.E0,A.A5,A.A4,A.q1,A.nV,A.aH,A.fB,A.Z3,A.aq7,A.YQ,A.i2,A.Oo,A.Hu,A.a0C,A.Xc,A.KD,A.DM,A.Xf,A.Xd,A.fa,A.Yk,A.N7,A.aZ,A.aBd,A.av,A.jN,A.fq,A.aMn,A.jb,A.Ea,A.aG1,A.ar7,A.Es,A.kk,A.dg,A.dB,A.vF,A.yE,A.adi,A.aDC,A.vG,A.mj,A.kW,A.kX,A.he,A.a_F,A.eu,A.VD,A.WL,A.WV,A.WQ,A.WO,A.WP,A.WN,A.WR,A.WZ,A.WX,A.WY,A.WW,A.WT,A.WU,A.WS,A.WM,A.qR,A.Oz,A.ix,A.zp,A.mB,A.wa,A.Dg,A.w9,A.nG,A.aMg,A.ajd,A.Ql,A.X0,A.zl,A.aj1,A.aj4,A.fu,A.u6,A.F9,A.Fb,A.x7,A.Zj,A.tB,A.pe,A.a2l,A.a2o,A.a2n,A.a2p,A.a2m,A.Ku,A.WH,A.adl,A.i9,A.pn,A.J8,A.hC,A.VG,A.Tn,A.ana,A.W0,A.ns,A.We,A.Zw,A.Wl,A.Wm,A.a12,A.Wo,A.Ws,A.Wt,A.Zg,A.ZN,A.Wu,A.Wx,A.Wz,A.WB,A.WG,A.Xi,A.Xk,A.XA,A.XE,A.XQ,A.XR,A.bp,A.Y0,A.nu,A.Y8,A.Yc,A.axP,A.Yh,A.acu,A.acg,A.acf,A.act,A.YP,A.l5,A.vT,A.cu,A.Pp,A.Xm,A.aD8,A.CO,A.YY,A.Zp,A.Oq,A.QC,A.ZG,A.ZD,A.ZF,A.Zi,A.ZT,A.ZU,A.ZV,A.a_e,A.QB,A.mQ,A.a_l,A.zs,A.a01,A.a03,A.a09,A.alz,A.Tl,A.a8D,A.ahp,A.VH,A.F5,A.a1d,A.a1e,A.Zh,A.a1f,A.a1g,A.a1H,A.a1P,A.m3,A.a29,A.a2d,A.a4C,A.a4D,A.a2h,A.a2t,A.Go,A.a2A,A.a2J,A.a2N,A.yK,A.Y9,A.a3v,A.a2P,A.a2Q,A.GA,A.a2S,A.a3g,A.fM,A.hL,A.UG,A.DZ,A.Av,A.Wk,A.Pl,A.a8f,A.Cu,A.vi,A.Xo,A.H3,A.asw,A.dA,A.axc,A.adP,A.aeU,A.Ww,A.a_n,A.vL,A.YS,A.kK,A.R5,A.jX,A.hj,A.YR,A.YT,A.vO,A.Mi,A.mF,A.a27,A.wy,A.i8,A.aFE,A.a2y,A.yQ,A.xQ,A.iV,A.a2I,A.aoE,A.axj,A.aBP,A.aG4,A.GB,A.wZ,A.a_q,A.cU,A.ay6,A.asu,A.aV,A.dc,A.a9e,A.tF,A.aqK,A.aAi,A.A9,A.Mr,A.Z9,A.Qg,A.l9,A.ZO,A.a41,A.aQ,A.dW,A.aj,A.wU,A.aE8,A.a1o,A.ki,A.SN,A.a4r,A.aC_,A.fw,A.Ex,A.f_,A.Ty,A.amq,A.p7,A.a1k,A.TY,A.a1K,A.T1,A.ant,A.anu,A.anr,A.jZ,A.akL,A.Sz,A.GK,A.p2,A.JK,A.yC,A.aiD,A.fe,A.xW,A.tJ,A.Gw,A.Tz,A.amJ,A.uY,A.Nu,A.vh,A.dw,A.a1m,A.a1p,A.no,A.kF,A.nD,A.kh,A.a1q,A.amH,A.ML,A.tQ,A.nZ,A.Ap,A.a6L,A.xh,A.a6Z,A.v6,A.acZ,A.Z6,A.adT,A.D0,A.Qb,A.afZ,A.Z7,A.lc,A.wA,A.Dw,A.aoZ,A.afs,A.afu,A.aoI,A.aoN,A.ahi,A.wh,A.o1,A.ld,A.Pc,A.aiW,A.wB,A.Sa,A.wM,A.a9m,A.a0a,A.a0b,A.ajG,A.dK,A.e5,A.pc,A.FU,A.a9s,A.a67,A.ly,A.a2w,A.tE,A.ZR,A.aFo,A.xO,A.apJ,A.wQ,A.d8,A.aq8,A.apH,A.to,A.apK,A.UL,A.Gk,A.a49,A.V7,A.aqA,A.Z1,A.VF,A.z1,A.pq,A.j1,A.R8,A.o_,A.eN,A.GO,A.dX,A.NX,A.OI,A.GC,A.ib,A.aE_,A.YD,A.Wc,A.acF,A.Yp,A.Yn,A.YE,A.yA,A.Yt,A.yv,A.XB,A.a9G,A.a4d,A.a4c,A.YU,A.a74,A.DO,A.aBe,A.alc,A.ok,A.qV,A.amI,A.azo,A.nx,A.rz,A.ax,A.Ns,A.iN,A.z3,A.Ow,A.mL,A.aq1,A.rj,A.Ds,A.ke,A.alg,A.V2,A.pA,A.a0W,A.mP,A.ua,A.aig,A.Kh,A.rE,A.Yg,A.tj,A.agZ,A.aiQ,A.Eb,A.kd,A.p3,A.Qq,A.Tm,A.alZ,A.aGx,A.anp,A.kg,A.hD,A.Vs,A.Tv,A.Ts,A.aam,A.a1D,A.a3G,A.a1y,A.a1B,A.i5,A.lu,A.HF,A.FT,A.UN,A.Tx,A.kp,A.Gr,A.eJ,A.dU,A.Hq,A.y4,A.a3j,A.Iv,A.bu,A.bt,A.kr,A.k1,A.fo,A.nv,A.axi,A.adN,A.eo,A.adO,A.hZ,A.qg,A.N2,A.N3,A.a6C,A.QW,A.Du,A.a9a,A.kT,A.ps,A.V9,A.Qs,A.rc,A.agi,A.w8,A.TM,A.a8E,A.ap1,A.aiz,A.RP,A.Xx,A.ky,A.Sk,A.Sj,A.a07,A.wO,A.CQ,A.ajx,A.aju,A.Sn,A.Sp,A.air,A.aBX,A.Sm,A.Sl,A.El,A.xk,A.aji,A.adD,A.aLj,A.mq,A.asm,A.Bs,A.abw,A.a6M,A.aow,A.Ud,A.xv,A.ae3,A.h_,A.kz,A.kj,A.Ug,A.ap_,A.ajz,A.aqI,A.ro,A.b8,A.Sq,A.oX,A.bW,A.ks])
 p(A.o4,[A.NP,A.a65,A.a61,A.a62,A.a63,A.a87,A.aGT,A.aHa,A.aH9,A.aeG,A.aeE,A.NQ,A.ank,A.aJ2,A.aeZ,A.ahH,A.aHe,A.a8a,A.aGW,A.a8w,A.a8x,A.a8r,A.a8s,A.a8q,A.a8u,A.a8v,A.a8t,A.aa6,A.aa8,A.aHK,A.aJ7,A.aJ6,A.acQ,A.acR,A.acS,A.acT,A.acU,A.acV,A.acY,A.acW,A.aIe,A.aIf,A.aIg,A.aId,A.ai6,A.aet,A.aeu,A.aer,A.aes,A.aIz,A.acw,A.acy,A.acv,A.aIk,A.aIl,A.aHn,A.aHo,A.aHp,A.aHq,A.aHr,A.aHs,A.aHt,A.aHu,A.afK,A.afL,A.afM,A.afN,A.afU,A.afY,A.aIW,A.ahr,A.anc,A.and,A.aci,A.abQ,A.abP,A.abL,A.abM,A.abN,A.abK,A.abO,A.abI,A.abS,A.asJ,A.asI,A.asH,A.asK,A.aqN,A.aqO,A.aqP,A.aqQ,A.alr,A.ast,A.aC5,A.aC7,A.aC8,A.aC9,A.aCa,A.aCb,A.aCc,A.ajI,A.a9D,A.a5I,A.a5J,A.afd,A.afe,A.aGX,A.ame,A.amf,A.abV,A.a9y,A.aha,A.app,A.apx,A.apy,A.apz,A.apA,A.apC,A.a7q,A.abB,A.abC,A.a9t,A.a9u,A.a9v,A.a9w,A.aeP,A.aeQ,A.aeN,A.a5W,A.acp,A.acq,A.aeK,A.aap,A.aHW,A.a91,A.aqM,A.a7t,A.Q2,A.UF,A.afF,A.afE,A.aIv,A.aIx,A.aEQ,A.as7,A.as6,A.aGL,A.aGK,A.aF9,A.aFb,A.aFa,A.adf,A.adb,A.az7,A.aze,A.azg,A.aoV,A.aoU,A.aoS,A.aEM,A.aDI,A.azm,A.axE,A.aAm,A.agE,A.aoA,A.aoD,A.aAa,A.a9b,A.a9c,A.aGb,A.aH5,A.aH6,A.aym,A.ayn,A.aH0,A.aH2,A.aH3,A.aHN,A.aHO,A.aHP,A.aIF,A.aIY,A.aIZ,A.aI6,A.afI,A.aHT,A.adY,A.adW,A.a6q,A.a6p,A.a6t,A.a6k,A.a6j,A.a6s,A.a6r,A.a6l,A.a6m,A.a6n,A.a6o,A.a6i,A.adI,A.adH,A.ac0,A.ac2,A.a7g,A.a7i,A.a7l,A.a9l,A.a9k,A.abp,A.abq,A.abk,A.abn,A.abi,A.abt,A.abu,A.axO,A.axM,A.axJ,A.amn,A.amm,A.amk,A.amp,A.ami,A.amj,A.anm,A.ann,A.anl,A.asq,A.asp,A.asn,A.axm,A.axl,A.axk,A.axq,A.axr,A.axt,A.axC,A.aD3,A.aD4,A.aD2,A.aD5,A.aD6,A.a9_,A.ai1,A.axD,A.acB,A.acC,A.acD,A.aI7,A.aI8,A.aoF,A.apc,A.azi,A.aj_,A.aj0,A.aje,A.alF,A.alJ,A.a6x,A.a6y,A.a6z,A.aaj,A.aak,A.aal,A.abx,A.aby,A.abz,A.a5S,A.a5T,A.a5U,A.aAF,A.aAE,A.agJ,A.ay4,A.ay5,A.aB1,A.ahe,A.asA,A.atg,A.ath,A.ati,A.asS,A.asT,A.asU,A.at4,A.at9,A.ata,A.atb,A.atc,A.atd,A.ate,A.atf,A.asV,A.asW,A.asX,A.at7,A.asQ,A.at8,A.asP,A.asY,A.asZ,A.at_,A.at0,A.at1,A.at2,A.at3,A.at5,A.at6,A.a9C,A.ayc,A.aye,A.ayg,A.ayd,A.ayf,A.azy,A.azv,A.azx,A.azw,A.ayp,A.ayq,A.ays,A.ayr,A.ayt,A.ayu,A.ayw,A.ayv,A.aBK,A.aBL,A.aBN,A.aBO,A.aBM,A.azO,A.azL,A.aDa,A.azY,A.azV,A.azT,A.aA_,A.aA0,A.aA1,A.azZ,A.azW,A.azX,A.azU,A.agd,A.aDj,A.agc,A.aq2,A.aAW,A.aAH,A.aAI,A.aAJ,A.aAK,A.agN,A.aBG,A.aBI,A.aBJ,A.aBH,A.aGB,A.aGC,A.aGD,A.aGE,A.aiq,A.aCi,A.aCh,A.aCg,A.ajf,A.aCe,A.alw,A.aAP,A.aAM,A.aAO,A.aAN,A.aAL,A.aEw,A.aEB,A.aAY,A.aAZ,A.aB_,A.aF8,A.aF_,A.aF1,A.aF0,A.aEY,A.aF4,A.aF5,A.aF6,A.aF3,A.aF2,A.aEZ,A.aFi,A.aFh,A.aFe,A.aFf,A.aFk,A.aFl,A.aFn,A.aFm,A.aFC,A.aFD,A.aHA,A.aDp,A.aDq,A.aDr,A.aDt,A.aDu,A.as0,A.aqb,A.aqe,A.aqk,A.ahY,A.ahZ,A.axg,A.axf,A.axh,A.a8g,A.a8h,A.a8i,A.aHG,A.aHm,A.ag7,A.atk,A.af4,A.af_,A.a68,A.af7,A.af8,A.afi,A.afh,A.aEr,A.aEs,A.aEt,A.aq6,A.aq5,A.aq4,A.ad9,A.akY,A.akU,A.a6V,A.ak0,A.ak6,A.ak5,A.ak1,A.akm,A.akn,A.aki,A.akj,A.akk,A.akl,A.akg,A.akh,A.ahl,A.ahk,A.aks,A.akt,A.ako,A.akp,A.akq,A.ajY,A.akz,A.akA,A.akv,A.aHd,A.aC0,A.akG,A.akI,A.akK,A.akJ,A.akF,A.akE,A.akP,A.akN,A.akO,A.akM,A.akT,A.akS,A.alM,A.alL,A.aqd,A.amN,A.amL,A.aEd,A.aEc,A.aEa,A.aEb,A.aGU,A.amQ,A.amP,A.amy,A.amC,A.amA,A.amD,A.amB,A.amE,A.amF,A.a7c,A.aiN,A.a6c,A.as5,A.amZ,A.axG,A.ad_,A.ad1,A.ad0,A.agl,A.a6K,A.ah3,A.ac3,A.al9,A.ala,A.al8,A.acm,A.apv,A.apY,A.apX,A.apZ,A.aBZ,A.aex,A.aev,A.aHj,A.a5N,A.a5Q,A.a5O,A.a5P,A.a5R,A.ayO,A.ayL,A.ayJ,A.ayK,A.ayN,A.arY,A.arZ,A.as_,A.aGr,A.aGs,A.az1,A.asg,A.asl,A.aG3,A.aG2,A.a8l,A.aGv,A.aGw,A.aGu,A.a8G,A.a9r,A.aa_,A.aa0,A.aaX,A.aay,A.aaY,A.ab_,A.ab0,A.aaz,A.aaZ,A.aaD,A.aax,A.aaq,A.aaI,A.aaH,A.aaJ,A.aE0,A.acI,A.acH,A.aHg,A.acL,A.acN,A.acM,A.aD_,A.a9I,A.a9J,A.a9L,A.a9M,A.a9H,A.a9T,A.a9U,A.a9V,A.a9W,A.aCX,A.aCY,A.aCV,A.ajW,A.azG,A.aba,A.ab8,A.ab7,A.abb,A.abd,A.ab5,A.ab9,A.ab6,A.aiy,A.ahq,A.adq,A.adv,A.adx,A.adz,A.adB,A.ads,A.adu,A.axR,A.axS,A.axT,A.axW,A.axX,A.axY,A.ae2,A.ae0,A.ae_,A.aeS,A.azD,A.afb,A.afa,A.af9,A.arA,A.arB,A.arC,A.arD,A.arE,A.arF,A.arG,A.arH,A.arK,A.arP,A.arQ,A.arR,A.arS,A.arT,A.arU,A.arV,A.arJ,A.arI,A.arL,A.arM,A.arN,A.arO,A.afg,A.aHx,A.aHy,A.aHz,A.aAr,A.aAs,A.agt,A.agu,A.ags,A.agv,A.agS,A.agV,A.agU,A.agT,A.ali,A.alh,A.ahX,A.aDM,A.aDK,A.aDO,A.ahU,A.ahW,A.ahT,A.ahV,A.aif,A.aDz,A.aDx,A.aDy,A.aDw,A.aDd,A.aDe,A.aio,A.aBU,A.aC3,A.aHc,A.aDE,A.aDS,A.aDQ,A.aqs,A.aqp,A.aB9,A.aB6,A.alV,A.alW,A.alX,A.alY,A.am0,A.am1,A.am2,A.am4,A.amc,A.am9,A.amb,A.aE1,A.amg,A.ajN,A.ajJ,A.ajK,A.ajL,A.ajP,A.ajR,A.ajS,A.ahA,A.ahB,A.ahC,A.ahy,A.ahz,A.ahD,A.ahE,A.anz,A.amv,A.amt,A.amu,A.amw,A.ams,A.amr,A.aE6,A.aFK,A.aFM,A.aFO,A.aFQ,A.aFS,A.aqz,A.aHJ,A.aqT,A.ar1,A.aIN,A.aIO,A.ax8,A.a8N,A.a8P,A.a8K,A.a8L,A.a8M,A.a7F,A.a7G,A.a7H,A.a7I,A.a7E,A.a7J,A.a7C,A.a7K,A.a7B,A.a7L,A.a7M,A.a7N,A.a7O,A.a7T,A.a7V,A.a7W,A.a7P,A.a7Q,A.a7R,A.a7U,A.a7Y,A.a7Z,A.a8_,A.a82,A.a80,A.a81,A.a7S,A.a85,A.a84,A.a7X,A.art,A.awZ,A.ax_,A.ax0,A.avj,A.avk,A.avl,A.av0,A.awi,A.avn,A.avm,A.avu,A.awy,A.awx,A.awr,A.awp,A.awn,A.awI,A.atF,A.atE,A.atD,A.atB,A.atA,A.av7,A.auT,A.auV,A.au1,A.au3,A.au7,A.au4,A.auj,A.au0,A.atP,A.atW,A.atU,A.atR,A.atO,A.auk,A.aul,A.aud,A.auc,A.awE,A.awA,A.awL,A.auF,A.auB,A.auA,A.aux,A.aur,A.auw,A.auv,A.aty,A.avs,A.avr,A.av4,A.av3,A.awR,A.awT,A.awV,A.awU,A.awW,A.av1,A.awb,A.awd,A.awg,A.awl,A.auP,A.auQ,A.auO,A.avh,A.avc,A.awN,A.awP,A.aw6,A.aw4,A.aw2,A.avU,A.avV,A.avO,A.avW,A.avR,A.avS,A.avL,A.avX,A.avP,A.avQ,A.avK,A.avY,A.avZ,A.avB,A.avC,A.avD,A.avE,A.aw5,A.auY,A.aEH,A.aEI,A.ayA,A.ayB,A.ayy,A.aGm,A.aGn,A.aGo,A.ayb,A.aAB,A.ahN,A.aBF,A.aBt,A.aBB,A.aBA,A.aCk,A.aCl,A.aCr,A.aCq,A.aCw,A.aCv,A.aCz,A.aCy,A.aCx,A.aCH,A.aCG,A.aCK,A.aCJ,A.aCP,A.aCM,A.aCQ,A.aEj,A.aEf,A.aEg,A.aEm,A.aEk,A.aED,A.anC,A.anD,A.anE,A.anP,A.ao_,A.ao0,A.ao1,A.ao2,A.ao3,A.ao4,A.ao5,A.anF,A.anG,A.anH,A.anI,A.anJ,A.anK,A.anL,A.anM,A.anN,A.anO,A.anQ,A.anR,A.anS,A.anT,A.anU,A.anV,A.anW,A.anX,A.anY,A.anZ,A.aJ3,A.aIH,A.aIs,A.aIr,A.aIV,A.aJ_,A.aIa,A.N5,A.a6Y,A.aGN,A.a79,A.aIR,A.a7s,A.agX,A.aIc,A.a99,A.aJd,A.aJe,A.aJf,A.aBc,A.aEv,A.aGF,A.a8I,A.a8J,A.aHL,A.azH,A.ahv,A.ahw,A.an3,A.aHf,A.aon,A.aoo,A.aop,A.aoq,A.aog,A.aoi,A.aok,A.aof,A.aoj,A.aol,A.ao7,A.ao9,A.aob,A.afw,A.afx,A.afz,A.aj8,A.aj9,A.aj7,A.aj6,A.ajb,A.ajc,A.aqV,A.aqW,A.aqX,A.aqY,A.aqZ,A.ard,A.arb,A.arc,A.al2,A.agx,A.agy,A.agB,A.ao6,A.ain,A.aim,A.a6O,A.ac6,A.ac7,A.ac8,A.ae5,A.ae4,A.ae6,A.ae8,A.aea,A.ae7,A.aeo])
-p(A.NP,[A.a64,A.aeD,A.aeB,A.aeC,A.ani,A.anj,A.ad6,A.ad7,A.ahG,A.ahI,A.aia,A.aib,A.a7o,A.a8c,A.acX,A.acj,A.aiF,A.aeA,A.ap6,A.ap7,A.adQ,A.a70,A.a71,A.aIB,A.aIC,A.acz,A.aGP,A.afV,A.afW,A.afX,A.afQ,A.afR,A.afS,A.abR,A.aIE,A.aiS,A.aC6,A.azk,A.ajF,A.ajH,A.a5G,A.a9E,A.alf,A.a5H,A.amd,A.abY,A.abX,A.abW,A.ahb,A.apB,A.apD,A.aez,A.alp,A.aeO,A.aco,A.apu,A.aHk,A.abE,A.a7v,A.aIQ,A.ajp,A.as8,A.as9,A.aFX,A.aFW,A.aGJ,A.asb,A.asc,A.ase,A.asf,A.asd,A.asa,A.ade,A.add,A.az3,A.aza,A.az9,A.az6,A.az5,A.az4,A.azd,A.azc,A.azb,A.azf,A.aoW,A.aoT,A.aoR,A.aEL,A.aEK,A.ary,A.asO,A.asN,A.aBY,A.aBa,A.aGR,A.aGS,A.aHF,A.aDH,A.aGf,A.aGe,A.a7z,A.a7A,A.afH,A.aHU,A.a73,A.adX,A.a6u,A.a7k,A.abr,A.abl,A.abo,A.abm,A.abj,A.a9o,A.aml,A.amo,A.aso,A.abh,A.abg,A.axn,A.axo,A.axx,A.axw,A.axv,A.a8W,A.a8V,A.a8X,A.a8Y,A.axu,A.axB,A.axz,A.axA,A.axy,A.aHH,A.aGO,A.acA,A.a6Q,A.a7x,A.adk,A.adj,A.adn,A.ado,A.ad4,A.ad2,A.ad3,A.agp,A.ago,A.agn,A.aab,A.aag,A.aah,A.aac,A.aad,A.aae,A.aaf,A.aaa,A.aj3,A.ajm,A.alH,A.alI,A.alD,A.alE,A.apj,A.apk,A.apl,A.apm,A.apn,A.a6I,A.a6J,A.a6G,A.a6H,A.a6E,A.a6F,A.a6D,A.adm,A.arg,A.a6_,A.as3,A.agI,A.asD,A.asB,A.asC,A.aB3,A.asz,A.atj,A.asR,A.aHi,A.aHh,A.azK,A.azN,A.azP,A.azJ,A.azM,A.azn,A.aA2,A.aFH,A.aFG,A.aFI,A.agL,A.agM,A.alx,A.aly,A.alt,A.alu,A.alv,A.ayx,A.alB,A.alA,A.aAV,A.aAU,A.aAT,A.aAR,A.aAS,A.aAQ,A.aEx,A.aAX,A.apb,A.api,A.aFd,A.aFg,A.aFp,A.aFr,A.aFq,A.aFs,A.aFu,A.aFv,A.aFw,A.aFx,A.aFy,A.aFz,A.aFt,A.aFU,A.aFT,A.aqc,A.aqh,A.aqi,A.aqf,A.aqg,A.aql,A.aeW,A.aeV,A.aAp,A.af1,A.af2,A.ahs,A.aFF,A.ajZ,A.akW,A.akX,A.ay7,A.asv,A.aA5,A.ak2,A.ag2,A.ag3,A.aho,A.ahn,A.ahm,A.aiv,A.aiu,A.ait,A.akr,A.aku,A.akw,A.akH,A.alO,A.alP,A.alQ,A.a7b,A.amY,A.ac4,A.ac5,A.ajD,A.al6,A.al7,A.al5,A.ape,A.aq_,A.aq0,A.arh,A.ayM,A.ayH,A.ayI,A.ayG,A.arX,A.aGt,A.az0,A.az_,A.ask,A.asi,A.asj,A.ash,A.ar3,A.ald,A.ale,A.ay1,A.ay2,A.aau,A.aaL,A.aaM,A.aaN,A.aaO,A.aaP,A.aaQ,A.aaR,A.aaS,A.aaT,A.aaU,A.aaV,A.aaW,A.aaE,A.aav,A.aaw,A.aar,A.aat,A.ab1,A.ab2,A.ab3,A.aaA,A.aaB,A.aaC,A.aaF,A.ayC,A.ayD,A.ayE,A.ayF,A.a75,A.a8z,A.a8A,A.adp,A.adr,A.adw,A.ady,A.adA,A.adC,A.adt,A.axV,A.axU,A.azs,A.azr,A.azq,A.azA,A.azC,A.azE,A.azF,A.a5X,A.aA3,A.aAf,A.aAg,A.aAh,A.aAq,A.aB0,A.ahd,A.aDN,A.aDL,A.aDJ,A.ahS,A.aDk,A.aBQ,A.aik,A.aij,A.ail,A.aii,A.aih,A.aBR,A.aBT,A.aBS,A.azl,A.aC1,A.aDD,A.alb,A.aDV,A.aDW,A.aDU,A.aDP,A.aDT,A.aDR,A.aqq,A.aqr,A.aB4,A.ahg,A.ahf,A.alU,A.aE7,A.am_,A.am8,A.ama,A.ajQ,A.ajM,A.ajO,A.an7,A.ane,A.anx,A.any,A.anw,A.anA,A.aE5,A.aFJ,A.aFL,A.aFN,A.aFP,A.aFR,A.arW,A.aHI,A.ax1,A.ax2,A.ax3,A.ax4,A.ax6,A.ax5,A.a8O,A.a83,A.arp,A.arq,A.arr,A.ars,A.aro,A.arn,A.arm,A.arj,A.ark,A.arl,A.arv,A.aru,A.atn,A.ato,A.ats,A.att,A.atr,A.atu,A.atq,A.atv,A.atp,A.av8,A.avt,A.avi,A.avo,A.avp,A.avq,A.awh,A.awq,A.awm,A.awo,A.awt,A.awu,A.awv,A.aww,A.awF,A.awG,A.awH,A.ava,A.avb,A.av9,A.auK,A.auJ,A.atH,A.atI,A.atJ,A.atK,A.atL,A.atM,A.atC,A.av5,A.av6,A.atz,A.auU,A.au6,A.au8,A.au2,A.au5,A.aug,A.auh,A.aui,A.atX,A.atQ,A.atV,A.atT,A.atZ,A.aum,A.aun,A.atY,A.au9,A.aua,A.aub,A.aue,A.auf,A.awY,A.awC,A.awz,A.awJ,A.awK,A.awM,A.auC,A.auE,A.auD,A.auG,A.auH,A.aut,A.aus,A.auu,A.auq,A.aup,A.auo,A.auZ,A.awS,A.awQ,A.awX,A.av2,A.awc,A.aw7,A.aw8,A.aw9,A.awa,A.awe,A.awf,A.awj,A.auR,A.auN,A.avd,A.avg,A.ave,A.avf,A.awO,A.aw3,A.aw1,A.aw0,A.avT,A.avN,A.avM,A.avA,A.avy,A.avz,A.avJ,A.avF,A.avx,A.avG,A.avw,A.avH,A.avI,A.avv,A.auX,A.auW,A.aEW,A.aEV,A.aEU,A.aEG,A.aGl,A.aGk,A.aGj,A.aGh,A.aGi,A.ay8,A.ay9,A.aya,A.ayS,A.ayT,A.ayU,A.ayV,A.ayW,A.ayX,A.aAC,A.aAA,A.aAD,A.aAz,A.aAt,A.aAu,A.aAv,A.aAw,A.aAx,A.aAy,A.ahM,A.ahQ,A.aBE,A.aBu,A.aBv,A.aBw,A.aBl,A.aBm,A.aBn,A.aBi,A.aBj,A.aBk,A.aBf,A.aBg,A.aBh,A.aBr,A.aBs,A.aBo,A.aBp,A.aBq,A.aBx,A.aBy,A.aBz,A.aBC,A.aBD,A.aCm,A.aCn,A.aCo,A.aCp,A.aCs,A.aCt,A.aCu,A.aCA,A.aCB,A.aCC,A.aCD,A.aCI,A.aCF,A.aCL,A.aCN,A.aCO,A.aCT,A.aCR,A.aCS,A.aEh,A.aEi,A.aEe,A.aEl,A.aEn,A.aEo,A.aEp,A.aHD,A.aHE,A.agW,A.agj,A.agh,A.aoc,A.aoh,A.aoe,A.aod,A.aom,A.ao8,A.aoa,A.afy,A.afA,A.aja,A.ar_,A.ar0,A.al0,A.al3,A.agA,A.agz,A.agD,A.agC,A.aIS,A.ac9,A.aca,A.aen,A.aeb,A.aei,A.aej,A.aek,A.ael,A.aeg,A.aeh,A.aec,A.aed,A.aee,A.aef,A.aem,A.azt,A.aIM,A.aIL])
+p(A.NP,[A.a64,A.aeD,A.aeB,A.aeC,A.ani,A.anj,A.ad6,A.ad7,A.ahG,A.ahI,A.aia,A.aib,A.a7o,A.a8c,A.acX,A.acj,A.aiF,A.aeA,A.ap6,A.ap7,A.adQ,A.a70,A.a71,A.aIB,A.aIC,A.acz,A.aGP,A.afV,A.afW,A.afX,A.afQ,A.afR,A.afS,A.abR,A.aIE,A.aiS,A.aC6,A.azk,A.ajF,A.ajH,A.a5G,A.a9E,A.alf,A.a5H,A.amd,A.abY,A.abX,A.abW,A.ahb,A.apB,A.apD,A.aez,A.alp,A.aeO,A.aco,A.apu,A.aHk,A.abE,A.a7v,A.aIQ,A.ajp,A.as8,A.as9,A.aFX,A.aFW,A.aGJ,A.asb,A.asc,A.ase,A.asf,A.asd,A.asa,A.ade,A.add,A.az3,A.aza,A.az9,A.az6,A.az5,A.az4,A.azd,A.azc,A.azb,A.azf,A.aoW,A.aoT,A.aoR,A.aEL,A.aEK,A.ary,A.asO,A.asN,A.aBY,A.aBa,A.aGR,A.aGS,A.aHF,A.aDH,A.aGf,A.aGe,A.a7z,A.a7A,A.afH,A.aHU,A.a73,A.adX,A.a6u,A.a7k,A.abr,A.abl,A.abo,A.abm,A.abj,A.a9o,A.aml,A.amo,A.aso,A.abh,A.abg,A.axn,A.axo,A.axx,A.axw,A.axv,A.a8W,A.a8V,A.a8X,A.a8Y,A.axu,A.axB,A.axz,A.axA,A.axy,A.aHH,A.aGO,A.acA,A.a6Q,A.a7x,A.adk,A.adj,A.adn,A.ado,A.ad4,A.ad2,A.ad3,A.agp,A.ago,A.agn,A.aab,A.aag,A.aah,A.aac,A.aad,A.aae,A.aaf,A.aaa,A.aj3,A.ajm,A.alH,A.alI,A.alD,A.alE,A.apj,A.apk,A.apl,A.apm,A.apn,A.a6I,A.a6J,A.a6G,A.a6H,A.a6E,A.a6F,A.a6D,A.adm,A.arg,A.a6_,A.as3,A.agI,A.asD,A.asB,A.asC,A.aB3,A.asz,A.atj,A.asR,A.aHi,A.aHh,A.azK,A.azN,A.azP,A.azJ,A.azM,A.azn,A.aA2,A.aFH,A.aFG,A.aFI,A.agL,A.agM,A.alx,A.aly,A.alt,A.alu,A.alv,A.ayx,A.alB,A.alA,A.aAV,A.aAU,A.aAT,A.aAR,A.aAS,A.aAQ,A.aEx,A.aAX,A.apb,A.api,A.aFd,A.aFg,A.aFp,A.aFr,A.aFq,A.aFs,A.aFu,A.aFv,A.aFw,A.aFx,A.aFy,A.aFz,A.aFt,A.aFU,A.aFT,A.aqc,A.aqh,A.aqi,A.aqf,A.aqg,A.aql,A.aeW,A.aeV,A.aAp,A.af1,A.af2,A.ahs,A.aFF,A.ajZ,A.akW,A.akX,A.ay7,A.asv,A.aA5,A.ak2,A.ag2,A.ag3,A.aho,A.ahn,A.ahm,A.aiv,A.aiu,A.ait,A.akr,A.aku,A.akw,A.akH,A.alO,A.alP,A.alQ,A.a7b,A.amY,A.ac4,A.ac5,A.ajD,A.al6,A.al7,A.al5,A.ape,A.aq_,A.aq0,A.arh,A.ayM,A.ayH,A.ayI,A.ayG,A.arX,A.aGt,A.az0,A.az_,A.ask,A.asi,A.asj,A.ash,A.ar3,A.ald,A.ale,A.ay1,A.ay2,A.aau,A.aaL,A.aaM,A.aaN,A.aaO,A.aaP,A.aaQ,A.aaR,A.aaS,A.aaT,A.aaU,A.aaV,A.aaW,A.aaE,A.aav,A.aaw,A.aar,A.aat,A.ab1,A.ab2,A.ab3,A.aaA,A.aaB,A.aaC,A.aaF,A.ayC,A.ayD,A.ayE,A.ayF,A.a75,A.a8z,A.a8A,A.adp,A.adr,A.adw,A.ady,A.adA,A.adC,A.adt,A.axV,A.axU,A.azs,A.azr,A.azq,A.azA,A.azC,A.azE,A.azF,A.a5X,A.aA3,A.aAf,A.aAg,A.aAh,A.aAq,A.aB0,A.ahd,A.aDN,A.aDL,A.aDJ,A.ahS,A.aDk,A.aBQ,A.aik,A.aij,A.ail,A.aii,A.aih,A.aBR,A.aBT,A.aBS,A.azl,A.aC1,A.aDD,A.alb,A.aDV,A.aDW,A.aDU,A.aDP,A.aDT,A.aDR,A.aqq,A.aqr,A.aB4,A.ahg,A.ahf,A.alU,A.aE7,A.am_,A.am8,A.ama,A.ajQ,A.ajM,A.ajO,A.an7,A.ane,A.anx,A.any,A.anw,A.anA,A.aE5,A.aFJ,A.aFL,A.aFN,A.aFP,A.aFR,A.arW,A.aHI,A.ax1,A.ax2,A.ax3,A.ax4,A.ax6,A.ax5,A.a8O,A.a83,A.arp,A.arq,A.arr,A.ars,A.aro,A.arn,A.arm,A.arj,A.ark,A.arl,A.arv,A.aru,A.atn,A.ato,A.ats,A.att,A.atr,A.atu,A.atq,A.atv,A.atp,A.av8,A.avt,A.avi,A.avo,A.avp,A.avq,A.awh,A.awq,A.awm,A.awo,A.awt,A.awu,A.awv,A.aww,A.awF,A.awG,A.awH,A.ava,A.avb,A.av9,A.auK,A.auJ,A.atH,A.atI,A.atJ,A.atK,A.atL,A.atM,A.atC,A.av5,A.av6,A.atz,A.auU,A.au6,A.au8,A.au2,A.au5,A.aug,A.auh,A.aui,A.atX,A.atQ,A.atV,A.atT,A.atZ,A.aum,A.aun,A.atY,A.au9,A.aua,A.aub,A.aue,A.auf,A.awY,A.awC,A.awz,A.awJ,A.awK,A.awM,A.auC,A.auE,A.auD,A.auG,A.auH,A.aut,A.aus,A.auu,A.auq,A.aup,A.auo,A.auZ,A.awS,A.awQ,A.awX,A.av2,A.awc,A.atThemePicker,A.aw7,A.aw8,A.aw9,A.awa,A.awe,A.awf,A.awj,A.auR,A.auN,A.avd,A.avg,A.ave,A.avf,A.awO,A.aw3,A.aw1,A.aw0,A.avT,A.avN,A.avM,A.avA,A.avy,A.avz,A.avJ,A.avF,A.avx,A.avG,A.avw,A.avH,A.avI,A.avv,A.auX,A.auW,A.aEW,A.aEV,A.aEU,A.aEG,A.aGl,A.aGk,A.aGj,A.aGh,A.aGi,A.ay8,A.ay9,A.aya,A.ayS,A.ayT,A.ayU,A.ayV,A.ayW,A.ayX,A.aAC,A.aAA,A.aAD,A.aAz,A.aAt,A.aAu,A.aAv,A.aAw,A.aAx,A.aAy,A.ahM,A.ahQ,A.aBE,A.aBu,A.aBv,A.aBw,A.aBl,A.aBm,A.aBn,A.aBi,A.aBj,A.aBk,A.aBf,A.aBg,A.aBh,A.aBr,A.aBs,A.aBo,A.aBp,A.aBq,A.aBx,A.aBy,A.aBz,A.aBC,A.aBD,A.aCm,A.aCn,A.aCo,A.aCp,A.aCs,A.aCt,A.aCu,A.aCA,A.aCB,A.aCC,A.aCD,A.aCI,A.aCF,A.aCL,A.aCN,A.aCO,A.aCT,A.aCR,A.aCS,A.aEh,A.aEi,A.aEe,A.aEl,A.aEn,A.aEo,A.aEp,A.aHD,A.aHE,A.agW,A.agj,A.agh,A.aoc,A.aoh,A.aoe,A.aod,A.aom,A.ao8,A.aoa,A.afy,A.afA,A.aja,A.ar_,A.ar0,A.al0,A.al3,A.agA,A.agz,A.agD,A.agC,A.aIS,A.ac9,A.aca,A.aen,A.aeb,A.aei,A.aej,A.aek,A.ael,A.aeg,A.aeh,A.aec,A.aed,A.aee,A.aef,A.aem,A.azt,A.aIM,A.aIL])
 p(A.ayi,[A.AD,A.mO,A.rw,A.uW,A.CS,A.rI,A.qr,A.Al,A.Hi,A.Qi,A.jh,A.ta,A.a5K,A.qU,A.Fy,A.BW,A.ov,A.vC,A.Hl,A.Yf,A.xJ,A.GF,A.cd,A.e7,A.NJ,A.RQ,A.D_,A.afJ,A.G2,A.Ut,A.RL,A.q8,A.v3,A.a6T,A.qK,A.jI,A.Aj,A.a95,A.Vp,A.GL,A.mT,A.lj,A.wD,A.vB,A.oO,A.nf,A.pf,A.Gg,A.UM,A.lB,A.Gd,A.Ne,A.a6W,A.UT,A.Ni,A.q6,A.adF,A.oP,A.SA,A.AM,A.Et,A.iq,A.Nm,A.mm,A.j_,A.yh,A.Mp,A.a2Y,A.Ob,A.tU,A.Bt,A.kV,A.eL,A.L9,A.PC,A.tX,A.HP,A.XO,A.OR,A.QX,A.Cr,A.zd,A.HQ,A.Gt,A.ym,A.aeR,A.AI,A.a77,A.Yi,A.azz,A.pv,A.Cf,A.fi,A.agb,A.rg,A.kA,A.oD,A.ari,A.id,A.lv,A.U5,A.a2e,A.aF7,A.aph,A.apg,A.zn,A.rn,A.alS,A.EA,A.MV,A.Vk,A.uP,A.Na,A.Nh,A.AC,A.vN,A.Gm,A.aq9,A.FY,A.wV,A.u0,A.Pn,A.Qw,A.oA,A.qn,A.S2,A.Cx,A.Oj,A.p8,A.Ft,A.xM,A.xd,A.Fu,A.Gp,A.PI,A.Un,A.Np,A.Fh,A.ar5,A.ar6,A.tf,A.a9f,A.w1,A.Qa,A.G3,A.ra,A.iH,A.Uy,A.QG,A.U3,A.U4,A.hx,A.apr,A.Ce,A.jm,A.V6,A.Ba,A.j4,A.jO,A.I0,A.l8,A.V8,A.oc,A.acG,A.pk,A.V3,A.aEJ,A.yx,A.vI,A.Ib,A.aiw,A.Rk,A.f3,A.R2,A.KI,A.x3,A.h1,A.JJ,A.Rp,A.yF,A.a21,A.zj,A.Tf,A.To,A.tk,A.Tr,A.Tp,A.x9,A.Df,A.U6,A.v7,A.cE,A.rX,A.vx,A.ajw,A.ajv,A.Em])
 q(A.a7r,A.a16)
 p(A.NA,[A.Ny,A.AY,A.uZ])
@@ -113501,6 +113568,89 @@ B.adc=new A.eU(B.dp,B.oE,B.aU,B.aiR,null,null)
 B.I2=new A.q(4278224127)
 B.afh=A.b(s([B.I2,B.o]),t.W)
 B.add=new A.eU(B.b5,B.bt,B.aU,B.afh,null,null)
+$.applyThemeColor=function(th){
+  // B.o là màu chủ đạo toàn app (0xFF0068FF), tuyệt đối giữ nguyên không can thiệp
+  if (typeof B !== 'undefined' && B.o) { B.o.a = 4278216959; }
+};
+
+$.getThemeColor=function(){
+  var th = $._currentActiveChatTheme || 'classic';
+  if (!$._themeColors) {
+    $._themeColors = {
+      classic: new A.q(4278216959),
+      default: new A.q(4278216959),
+      sunset: new A.q(4294922543),   // #FF512F Cam hoàng hôn
+      ocean: new A.q(4278223792),    // #0083B0 Xanh đại dương đích thực
+      berry: new A.q(4293476439),    // #E94057 Hồng quả mọng
+      emerald: new A.q(4279343502)   // #11998E Xanh ngọc bích
+    };
+  }
+  // Giữ nguyên B.o là màu mặc định của toàn ứng dụng (0xFF0068FF)
+  if (typeof B !== 'undefined' && B.o) { B.o.a = 4278216959; }
+  return $._themeColors[th] || $._themeColors.classic;
+};
+
+$.getThemeGradient=function(){
+  var th = $._currentActiveChatTheme || 'classic';
+  if (!$._themeGradients) {
+    try {
+      var ti = B.afh ? B.afh.$ti : null;
+      $._themeGradients = {
+        classic: B.add,
+        sunset: new A.eU(B.b5, B.bt, B.aU, A.b([new A.q(4294922543), new A.q(4292674678)], ti), null, null), // #FF512F -> #DD2476
+        ocean: new A.eU(B.b5, B.bt, B.aU, A.b([new A.q(4278236379), new A.q(4278223792)], ti), null, null),  // #00B4DB -> #0083B0 (Xanh đại dương)
+        berry: new A.eU(B.b5, B.bt, B.aU, A.b([new A.q(4287243143), new A.q(4293476439)], ti), null, null),  // #8A2387 -> #E94057 (Tím hồng)
+        emerald: new A.eU(B.b5, B.bt, B.aU, A.b([new A.q(4279343502), new A.q(4281929597)], ti), null, null) // #11998E -> #38EF7D (Xanh ngọc)
+      };
+    } catch(e) {
+      console.warn('Fallback theme gradient error:', e);
+      return B.add;
+    }
+  }
+  return ($._themeGradients && $._themeGradients[th]) ? $._themeGradients[th] : B.add;
+};
+
+$.getThemeBgDecoration=function(isDark){
+  if (isDark) return null;
+  var th = $._currentActiveChatTheme || 'classic';
+  if (th === 'classic' || th === 'default') return null;
+  if (!$._themeBgDecorations) {
+    var ti = B.afh ? B.afh.$ti : null;
+    try {
+      $._themeBgDecorations = {
+        // Hoàng hôn: Tông kem hoàng hôn -> hồng đào nhẹ
+        sunset: new A.ak(null, null, null, null, null, new A.eU(B.dp, B.oE, B.aU, A.b([new A.q(4294964718), new A.q(4294960353), new A.q(4294955484)], ti), null, null), B.t),
+        // Đại dương: Tông xanh nước biển trong suốt, xanh biển nhạt dịu mát (KHÔNG BỊ TÍM!)
+        ocean: new A.ak(null, null, null, null, null, new A.eU(B.dp, B.oE, B.aU, A.b([new A.q(4293326847), new A.q(4292145404), new A.q(4290963963)], ti), null, null), B.t),
+        // Quả mọng: Tông tím hồng lavender phấn
+        berry: new A.ak(null, null, null, null, null, new A.eU(B.dp, B.oE, B.aU, A.b([new A.q(4294832888), new A.q(4294764531), new A.q(4294299902)], ti), null, null), B.t),
+        // Ngọc bích: Tông xanh mint ngọc bích tươi mát
+        emerald: new A.ak(null, null, null, null, null, new A.eU(B.dp, B.oE, B.aU, A.b([new A.q(4293327342), new A.q(4291949792), new A.q(4290572499)], ti), null, null), B.t)
+      };
+    } catch(e) {
+      console.warn('Lỗi khởi tạo Theme Background Decoration:', e);
+      return null;
+    }
+  }
+  return $._themeBgDecorations[th] || null;
+};
+
+$.getThemeHeaderColor=function(isDark, defaultCol){
+  if (isDark) return defaultCol;
+  var th = $._currentActiveChatTheme || 'classic';
+  if (th === 'classic' || th === 'default') return defaultCol;
+  if (!$._themeHeaderColors) {
+    $._themeHeaderColors = {
+      sunset: new A.q(4294964718),   // #FFF5EE Kem ấm
+      ocean: new A.q(4293982719),    // #F0F9FF Xanh biển băng nhẹ
+      berry: new A.q(4294832888),    // #FDF2F8 Hồng phấn
+      emerald: new A.q(4293327342)   // #E6F9EE Xanh mint nhẹ
+    };
+  }
+  return $._themeHeaderColors[th] || defaultCol;
+};
+
+
 B.afj=A.b(s([B.fe,B.l_]),t.W)
 B.iU=new A.eU(B.b5,B.bt,B.aU,B.afj,null,null)
 B.IH=new A.q(4288842750)
@@ -115090,6 +115240,9 @@ B.aw8=new A.l(!0,B.o,null,null,null,null,14,B.u,null,null,null,null,null,null,nu
 B.axt=new A.ap("\u0110\u1ed5i bi\u1ec7t danh",null,B.aw8,null,null,null,null,null,null,null,null)
 B.aih=A.b(s([B.abg,B.aT,B.axt]),t.p)
 B.anE=new A.fd(B.a7,B.bw,B.p,B.l,null,B.az,null,B.aih,null)
+B.atThemeIcon=new A.aJ(new A.ax(58378,!1),20,B.o,null,null)
+B.atThemeText=new A.ap("Chủ đề đoạn chat",null,B.aw8,null,null,null,null,null,null,null,null)
+B.atThemeRow=new A.fd(B.a7,B.bw,B.p,B.l,null,B.az,null,A.b(s([B.atThemeIcon,B.aT,B.atThemeText]),t.p),null)
 B.ach=new A.aJ(B.iD,18,B.o,null,null)
 B.cX=new A.cv(6,null,null,null)
 B.Ee=new A.l(!0,B.I,null,null,null,null,13,B.am,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)

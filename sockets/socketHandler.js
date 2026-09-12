@@ -219,6 +219,84 @@ module.exports = (io) => {
       }
     });
 
+    // 3b. Lắng nghe đổi chủ đề phòng chat (update_conversation_theme)
+    socket.on("update_conversation_theme", async (data) => {
+      if (!data) return;
+      let d = data;
+      if (typeof d === "string") {
+        try { d = JSON.parse(d); } catch (e) {}
+      }
+      const conversationId = d.conversationId || d.conversation_id;
+      const theme = d.theme;
+      if (!conversationId || !theme) return;
+
+      const validThemes = ['classic', 'sunset', 'ocean', 'berry', 'emerald', 'default'];
+      const themeToSet = validThemes.includes(theme) ? theme : 'classic';
+
+      try {
+        await prisma.conversations.update({
+          where: { id: conversationId },
+          data: { theme: themeToSet },
+        });
+
+        // Xóa cache danh sách chat
+        try {
+          const chatCtrl = require("../controllers/chat.controller");
+          if (chatCtrl.conversationsCache) chatCtrl.conversationsCache.clear();
+        } catch (e) {}
+
+        io.to(conversationId).emit("conversation_theme_updated", {
+          conversationId,
+          theme: themeToSet,
+        });
+        console.log(`🎨 Phòng chat ${conversationId} đã đổi chủ đề sang: ${themeToSet}`);
+
+        // Gửi tin nhắn hệ thống giống Messenger thông báo cho cả 2 bên
+        try {
+          const themeLabels = {
+            classic: "Mặc định (Classic)",
+            default: "Mặc định (Classic)",
+            sunset: "Hoàng hôn (Sunset)",
+            ocean: "Đại dương (Ocean)",
+            berry: "Quả mọng (Berry)",
+            emerald: "Ngọc bích (Emerald)"
+          };
+          const themeLabel = themeLabels[themeToSet] || themeToSet;
+
+          let actorName = "Người dùng";
+          const actorId = socket.userId || d.userId;
+          if (actorId) {
+            const u = await prisma.users.findUnique({ where: { id: actorId }, select: { fullName: true } });
+            if (u && u.fullName) actorName = u.fullName;
+          }
+
+          const systemContent = `${actorName} đã đổi chủ đề đoạn chat thành ${themeLabel}.`;
+          const sysMsg = await prisma.messages.create({
+            data: {
+              id: uuidv4(),
+              conversationId,
+              senderId: actorId || null,
+              content: systemContent,
+              type: "system",
+            },
+            include: {
+              Users: { select: { id: true, fullName: true } },
+            },
+          });
+
+          const mappedSysMsg = {
+            ...sysMsg,
+            Users: sysMsg.Users ? { ...sysMsg.Users, avatar: `/api/users/${sysMsg.Users.id}/avatar` } : null,
+          };
+          io.to(conversationId).emit("receive_message", mappedSysMsg);
+        } catch (sysErr) {
+          console.error("Lỗi tạo systemMessage cho theme:", sysErr.message);
+        }
+      } catch (err) {
+        console.error("❌ Lỗi socket update_conversation_theme:", err.message);
+      }
+    });
+
     // ⚡ PHÁT TIN NHẮN TỨC THÌ QUA SOCKET (<20ms) — Không chờ REST API/DB
     // Client gửi send_message → Server relay ngay cho tất cả thành viên trong phòng chat
     // REST API sẽ chạy song song để lưu DB + gửi FCM Push (không block tin nhắn real-time)

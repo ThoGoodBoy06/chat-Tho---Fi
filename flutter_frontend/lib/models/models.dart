@@ -228,7 +228,7 @@ class MessageModel {
       replyMessageId: json['replyMessageId']?.toString(),
       reactions: parsedReactions,
       createdAt: json['createdAt'] != null
-          ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
+          ? (DateTime.tryParse(json['createdAt'].toString())?.toLocal() ?? DateTime.now())
           : DateTime.now(),
     );
   }
@@ -276,6 +276,7 @@ class ConversationModel {
   final DateTime? updatedAt;
   final String? targetUserId;
   final List<UserModel> members;
+  final String theme;
 
   bool get isGroup => type == 'group';
   int get memberCount => members.length;
@@ -302,6 +303,7 @@ class ConversationModel {
     this.updatedAt,
     this.targetUserId,
     this.members = const [],
+    this.theme = 'classic',
   });
 
   factory ConversationModel.fromJson(dynamic rawData, {String? currentUserId}) {
@@ -398,6 +400,9 @@ class ConversationModel {
       }
     }
 
+    final rawTheme = json['theme']?.toString() ?? rawJson['theme']?.toString();
+    final parsedTheme = (rawTheme != null && rawTheme.isNotEmpty && rawTheme != 'default') ? rawTheme : 'classic';
+
     return ConversationModel(
       id: json['id']?.toString() ?? rawJson['conversationId']?.toString() ?? '',
       name: convName,
@@ -408,6 +413,33 @@ class ConversationModel {
       updatedAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt'].toString()) : null,
       targetUserId: partnerUserId,
       members: parsedMembers,
+      theme: parsedTheme,
+    );
+  }
+
+  ConversationModel copyWith({
+    String? id,
+    String? name,
+    String? avatar,
+    String? type,
+    String? lastMessage,
+    int? unreadCount,
+    DateTime? updatedAt,
+    String? targetUserId,
+    List<UserModel>? members,
+    String? theme,
+  }) {
+    return ConversationModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      avatar: avatar ?? this.avatar,
+      type: type ?? this.type,
+      lastMessage: lastMessage ?? this.lastMessage,
+      unreadCount: unreadCount ?? this.unreadCount,
+      updatedAt: updatedAt ?? this.updatedAt,
+      targetUserId: targetUserId ?? this.targetUserId,
+      members: members ?? this.members,
+      theme: theme ?? this.theme,
     );
   }
 }

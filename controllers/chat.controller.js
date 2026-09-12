@@ -2177,3 +2177,94 @@ exports.updateNickname = async (req, res) => {
 };
 
 exports.setNickname = exports.updateNickname;
+
+exports.changeConversationTheme = async (req, res) => {
+    try {
+        const { conversationId } = req.params;
+        const { theme } = req.body;
+        const validThemes = ['classic', 'sunset', 'ocean', 'berry', 'emerald', 'default'];
+        const themeToSet = (theme && validThemes.includes(theme)) ? theme : 'classic';
+
+        await prisma.conversations.update({
+            where: { id: conversationId },
+            data: { theme: themeToSet },
+        });
+
+        // Xóa cache danh sách chat để dữ liệu luôn tươi mới
+        if (typeof conversationsCache !== 'undefined') {
+            conversationsCache.clear();
+        }
+
+        const io = req.app.get("io");
+        if (io) {
+            io.to(conversationId).emit("conversation_theme_updated", {
+                conversationId,
+                theme: themeToSet,
+            });
+        }
+
+        // Tạo tin nhắn hệ thống ghi nhận đổi chủ đề cho cả 2 bên thấy
+        try {
+            const recentThemeMsg = await prisma.messages.findFirst({
+                where: {
+                    conversationId,
+                    type: "system",
+                    content: { contains: "đổi chủ đề đoạn chat thành" },
+                    createdAt: { gte: new Date(Date.now() - 5000) }
+                }
+            });
+
+            if (!recentThemeMsg) {
+                const themeLabels = {
+                    classic: "Mặc định (Classic)",
+                    default: "Mặc định (Classic)",
+                    sunset: "Hoàng hôn (Sunset)",
+                    ocean: "Đại dương (Ocean)",
+                    berry: "Quả mọng (Berry)",
+                    emerald: "Ngọc bích (Emerald)"
+                };
+                const themeLabel = themeLabels[themeToSet] || themeToSet;
+
+                const actorId = req.user ? req.user.id : null;
+                let actorName = "Người dùng";
+                if (actorId) {
+                    const u = await prisma.users.findUnique({ where: { id: actorId }, select: { fullName: true } });
+                    if (u && u.fullName) actorName = u.fullName;
+                }
+
+                const systemContent = `${actorName} đã đổi chủ đề đoạn chat thành ${themeLabel}.`;
+                const sysMsg = await prisma.messages.create({
+                    data: {
+                        id: uuidv4(),
+                        conversationId,
+                        senderId: actorId,
+                        content: systemContent,
+                        type: "system",
+                    },
+                    include: {
+                        Users: { select: { id: true, fullName: true } },
+                    },
+                });
+
+                const mappedSysMsg = {
+                    ...sysMsg,
+                    Users: sysMsg.Users ? { ...sysMsg.Users, avatar: `/api/users/${sysMsg.Users.id}/avatar` } : null,
+                };
+                if (io) {
+                    io.to(conversationId).emit("receive_message", mappedSysMsg);
+                }
+            }
+        } catch (sysErr) {
+            console.error("Lỗi tạo system message trong REST theme:", sysErr.message);
+        }
+
+        return res.json({
+            success: true,
+            message: "Cập nhật chủ đề thành công",
+            data: { conversationId, theme: themeToSet },
+        });
+    } catch (error) {
+        console.error("❌ Lỗi changeConversationTheme:", error);
+        return res.status(500).json({ success: false, message: "Lỗi server", error: error.message });
+    }
+};

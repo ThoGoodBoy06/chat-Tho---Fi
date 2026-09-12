@@ -11,6 +11,7 @@ import 'package:universal_html/html.dart' as html;
 import 'package:audioplayers/audioplayers.dart' as audioplayers;
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart' as emoji;
 import '../models/models.dart';
+import '../models/chat_theme.dart';
 import '../providers/chat_provider.dart';
 import '../providers/theme_provider.dart';
 import '../services/socket_service.dart';
@@ -74,6 +75,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   int _pendingFriendRequestsCount = 0;
   final Set<String> _expandedTimestampMessageIds = {};
+  String? _lastOpenedConversationId;
   Future<List<dynamic>>? _contactsFuture;
   Timer? _pendingRefreshTimer;
 
@@ -887,17 +889,25 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     }
   }
 
+  DateTime _toVietnamTime(DateTime dt) {
+    // Luôn quy đổi sang múi giờ Việt Nam (UTC+7) chuẩn xác bất kể múi giờ của thiết bị người dùng
+    return DateTime.fromMillisecondsSinceEpoch(dt.millisecondsSinceEpoch, isUtc: true)
+        .add(const Duration(hours: 7));
+  }
+
   String _formatTime(DateTime dt) {
-    return DateFormat('HH:mm').format(dt);
+    final vnDt = _toVietnamTime(dt);
+    return DateFormat('HH:mm').format(vnDt);
   }
 
   String _formatMessageTimestamp(DateTime dt) {
-    final now = DateTime.now();
-    final isToday = dt.year == now.year && dt.month == now.month && dt.day == now.day;
+    final vnDt = _toVietnamTime(dt);
+    final nowVn = _toVietnamTime(DateTime.now());
+    final isToday = vnDt.year == nowVn.year && vnDt.month == nowVn.month && vnDt.day == nowVn.day;
     if (isToday) {
-      return DateFormat('HH:mm').format(dt);
+      return DateFormat('HH:mm').format(vnDt);
     } else {
-      return DateFormat('HH:mm, dd/MM/yyyy').format(dt);
+      return DateFormat('dd/MM/yyyy, HH:mm').format(vnDt);
     }
   }
 
@@ -1139,6 +1149,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildChatList(ChatProvider provider) {
+    if (_lastOpenedConversationId != null) {
+      _lastOpenedConversationId = null;
+      _expandedTimestampMessageIds.clear();
+      _showEmojiPicker = false;
+    }
     final isDark = Provider.of<ThemeProvider>(context).isDarkMode;
     final bgColor = isDark ? const Color(0xFF0F172A) : Colors.white;
     final headerBgColor = isDark ? const Color(0xFF1E293B) : Colors.white;
@@ -1166,7 +1181,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             height: 56,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
-              color: headerBgColor,
+              color: resolvedHeaderBgColor,
               border: Border(bottom: BorderSide(color: borderColor, width: 1)),
             ),
             child: Row(
@@ -1865,6 +1880,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       }
     }
 
+    if (msg.senderId != null && currentUser != null && msg.senderId == currentUser.id && displayText.contains('đã đổi chủ đề đoạn chat thành')) {
+      final idx = displayText.indexOf('đã đổi chủ đề đoạn chat thành');
+      displayText = 'Bạn ' + displayText.substring(idx);
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 24),
       child: Center(
@@ -2021,18 +2041,41 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   Widget _buildChatWindow(ChatProvider provider, {required bool isDesktop}) {
     final conv = provider.selectedConversation;
-    if (conv == null) return _buildEmptyChatPlaceholder();
+    if (conv == null) {
+      if (_lastOpenedConversationId != null) {
+        _lastOpenedConversationId = null;
+        _expandedTimestampMessageIds.clear();
+        _showEmojiPicker = false;
+      }
+      return _buildEmptyChatPlaceholder();
+    }
+
+    if (_lastOpenedConversationId != conv.id) {
+      _lastOpenedConversationId = conv.id;
+      _expandedTimestampMessageIds.clear();
+      _showEmojiPicker = false;
+    }
 
     final isDark = Provider.of<ThemeProvider>(context).isDarkMode;
-    final bgColor = isDark ? const Color(0xFF0F172A) : Colors.white;
-    final headerBgColor = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final defaultBgColor = isDark ? const Color(0xFF0F172A) : Colors.white;
+    final defaultHeaderBgColor = isDark ? const Color(0xFF1E293B) : Colors.white;
     final textColor = isDark ? Colors.white : const Color(0xFF050505);
     final subTextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF65676B);
 
-    const primaryColor = Color(0xFF0068FF);
+    final activeTheme = ChatThemes.getTheme(conv.theme);
+    final primaryColor = activeTheme.primaryColor;
+    final bubbleGradient = activeTheme.gradient;
+    final bgDecoration = (isDark || activeTheme.backgroundGradient == null)
+        ? null
+        : BoxDecoration(gradient: activeTheme.backgroundGradient);
+    final resolvedBgColor = bgDecoration != null ? null : defaultBgColor;
+    final resolvedHeaderBgColor = (isDark || activeTheme.headerColor == null)
+        ? defaultHeaderBgColor
+        : activeTheme.headerColor!;
 
     return Container(
-      color: bgColor,
+      color: resolvedBgColor,
+      decoration: bgDecoration,
       child: Column(
         children: [
           // A. Header Chat (56px, white/slate, shadow) - Filled Call & Video icons matching Messenger
@@ -2053,8 +2096,17 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               children: [
                 if (!isDesktop)
                   IconButton(
-                    icon: const Icon(Icons.chevron_left_rounded, color: primaryColor, size: 30),
-                    onPressed: () => provider.clearSelectedConversation(),
+                    icon: const Icon(Icons.chevron_left_rounded, color: primaryColor, size: 28),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                    onPressed: () {
+                      setState(() {
+                        _lastOpenedConversationId = null;
+                        _expandedTimestampMessageIds.clear();
+                        _showEmojiPicker = false;
+                      });
+                      provider.clearSelectedConversation();
+                    },
                   ),
                 Expanded(
                   child: GestureDetector(
@@ -2088,7 +2140,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                           clipBehavior: Clip.none,
                           children: [
                             CircleAvatar(
-                              radius: 22,
+                              radius: 20,
                               backgroundColor: primaryColor,
                               backgroundImage: (conv.avatar != null && conv.avatar!.isNotEmpty)
                                   ? NetworkImage(conv.avatar!)
@@ -2096,7 +2148,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                               child: (conv.avatar == null || conv.avatar!.isEmpty)
                                   ? Text(
                                       conv.name.isNotEmpty ? conv.name[0].toUpperCase() : 'U',
-                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                                     )
                                   : null,
                             ),
@@ -2105,18 +2157,18 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                 right: -1,
                                 bottom: -1,
                                 child: Container(
-                                  width: 14,
-                                  height: 14,
+                                  width: 13,
+                                  height: 13,
                                   decoration: BoxDecoration(
                                     color: const Color(0xFF31A24C),
                                     shape: BoxShape.circle,
-                                    border: Border.all(color: headerBgColor, width: 2.5),
+                                    border: Border.all(color: headerBgColor, width: 2),
                                   ),
                                 ),
                               ),
                           ],
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -2129,7 +2181,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                 style: TextStyle(
                                   color: textColor,
                                   fontWeight: FontWeight.w700,
-                                  fontSize: 18,
+                                  fontSize: 16,
                                   letterSpacing: -0.3,
                                 ),
                               ),
@@ -2146,9 +2198,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                   }
                                   return Text(
                                     _formatLastActive(partner?.lastActive, conv.isOnline),
-                                    style: const TextStyle(
-                                      color: Color(0xFF65676B),
-                                      fontSize: 13.5,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: subTextColor,
+                                      fontSize: 12,
                                       fontWeight: FontWeight.normal,
                                     ),
                                   );
@@ -2162,17 +2216,23 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.phone_rounded, color: primaryColor, size: 24),
+                  icon: const Icon(Icons.phone_rounded, color: primaryColor, size: 22),
+                  padding: const EdgeInsets.all(6),
+                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                   onPressed: () => _startVoiceCall(provider),
                   tooltip: 'Gọi thoại',
                 ),
                 IconButton(
-                  icon: const Icon(Icons.videocam_rounded, color: primaryColor, size: 26),
+                  icon: const Icon(Icons.videocam_rounded, color: primaryColor, size: 24),
+                  padding: const EdgeInsets.all(6),
+                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                   onPressed: () => _startVideoCall(provider),
                   tooltip: 'Gọi Video',
                 ),
                 IconButton(
-                  icon: const Icon(Icons.info_outline, color: primaryColor, size: 24),
+                  icon: const Icon(Icons.info_outline, color: primaryColor, size: 22),
+                  padding: const EdgeInsets.all(6),
+                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                   onPressed: () => _showChatInfo(provider),
                   tooltip: 'Thông tin cuộc trò chuyện',
                 ),
@@ -2435,7 +2495,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                                               ? Colors.transparent
                                                               : (isMe ? null : (isDark ? const Color(0xFF1E293B) : const Color(0xFFE4E6EB)))),
                                                       gradient: (isMe && !msg.isRecalled && !isPureImage)
-                                                          ? const LinearGradient(colors: [Color(0xFF0084FF), Color(0xFF0068FF)])
+                                                          ? bubbleGradient
                                                           : null,
                                                       border: msg.isRecalled
                                                           ? Border.all(color: const Color(0xFFCBD5E1), width: 1)
@@ -4233,7 +4293,79 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 ),
                 const SizedBox(height: 16),
 
-                // 4. Nút Đổi Biệt Danh (Đặt trong menu i)
+                // 4a. Nút Đổi Chủ Đề (Chat Theme)
+                Builder(
+                  builder: (ctx) {
+                    final currentTheme = ChatThemes.getTheme(conv.theme);
+                    return InkWell(
+                      onTap: () {
+                        Navigator.pop(context);
+                        _showThemePickerBottomSheet(provider, conv);
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 22,
+                                  height: 22,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: currentTheme.gradient,
+                                    border: Border.all(color: Colors.white, width: 2),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: currentTheme.primaryColor.withOpacity(0.4),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 1),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                const Text(
+                                  'Chủ đề đoạn chat',
+                                  style: TextStyle(
+                                    color: Color(0xFF0F172A),
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                Text(
+                                  currentTheme.name.split(' (')[0],
+                                  style: TextStyle(
+                                    color: currentTheme.primaryColor,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(Icons.chevron_right_rounded, color: Color(0xFF94A3B8), size: 20),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 10),
+
+                // 4b. Nút Đổi Biệt Danh (Đặt trong menu i)
                 InkWell(
                   onTap: () {
                     Navigator.pop(context);
@@ -4339,6 +4471,118 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                       'Đóng',
                       style: TextStyle(color: Color(0xFF64748B), fontSize: 14, fontWeight: FontWeight.w600),
                     ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showThemePickerBottomSheet(ChatProvider provider, ConversationModel conv) {
+    final isDark = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+    final bgColor = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final subTextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: bgColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (modalCtx) {
+        final currentThemeId = conv.theme;
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white24 : Colors.black12,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Chủ đề cuộc trò chuyện',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Chọn chủ đề màu sắc để áp dụng cho cả hai bên',
+                  style: TextStyle(fontSize: 13, color: subTextColor),
+                ),
+                const SizedBox(height: 16),
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: ChatThemes.allThemes.length,
+                    separatorBuilder: (_, __) => Divider(height: 1, color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9), indent: 56),
+                    itemBuilder: (ctx, index) {
+                      final themeItem = ChatThemes.allThemes[index];
+                      final isSelected = (themeItem.id == currentThemeId) ||
+                          ((currentThemeId == 'default' || currentThemeId.isEmpty) && themeItem.id == 'classic');
+
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                        leading: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: themeItem.gradient,
+                            boxShadow: [
+                              BoxShadow(
+                                color: themeItem.primaryColor.withOpacity(0.35),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                            border: Border.all(
+                              color: isSelected ? Colors.white : Colors.transparent,
+                              width: 2.5,
+                            ),
+                          ),
+                        ),
+                        title: Text(
+                          themeItem.name,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                            color: textColor,
+                          ),
+                        ),
+                        trailing: isSelected
+                            ? Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: themeItem.primaryColor,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.check, color: Colors.white, size: 16),
+                              )
+                            : null,
+                        onTap: () {
+                          Navigator.pop(modalCtx);
+                          provider.updateConversationTheme(conv.id, themeItem.id);
+                        },
+                      );
+                    },
                   ),
                 ),
               ],

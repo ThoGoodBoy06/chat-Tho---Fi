@@ -27,6 +27,7 @@ class ChatProvider extends ChangeNotifier {
   StreamSubscription? _userStatusSubscription;
   StreamSubscription? _nicknameSubscription;
   StreamSubscription? _profileUpdatedSubscription;
+  StreamSubscription? _themeSubscription;
 
   /// Callback để thông báo cho UI cuộn xuống khi có tin nhắn mới
   VoidCallback? onNewMessageReceived;
@@ -189,6 +190,40 @@ class ChatProvider extends ChangeNotifier {
       fetchConversations(showLoading: false);
       notifyListeners();
     });
+
+    _themeSubscription = SocketService.onConversationThemeUpdated.listen((data) {
+      final convId = data['conversationId']?.toString();
+      final theme = data['theme']?.toString();
+      if (convId != null && theme != null) {
+        _updateConversationThemeLocally(convId, theme);
+      }
+    });
+  }
+
+  void _updateConversationThemeLocally(String convId, String theme) {
+    final idx = conversations.indexWhere((c) => c.id == convId);
+    if (idx != -1) {
+      conversations[idx] = conversations[idx].copyWith(theme: theme);
+    }
+    if (selectedConversation != null && selectedConversation!.id == convId) {
+      selectedConversation = selectedConversation!.copyWith(theme: theme);
+    }
+    notifyListeners();
+  }
+
+  Future<void> updateConversationTheme(String conversationId, String theme) async {
+    // 1. Phản hồi tức thời trên giao diện (Optimistic UI)
+    _updateConversationThemeLocally(conversationId, theme);
+
+    // 2. Phát socket event cho đối phương
+    SocketService.emitUpdateConversationTheme(conversationId, theme);
+
+    // 3. Ghi vào database qua REST API
+    try {
+      await ApiService.updateConversationTheme(conversationId, theme);
+    } catch (e) {
+      debugPrint('⚠️ Error updating theme via API: $e');
+    }
   }
 
   void deleteMessage(String messageId) {
@@ -756,6 +791,7 @@ class ChatProvider extends ChangeNotifier {
     _userStatusSubscription?.cancel();
     _nicknameSubscription?.cancel();
     _profileUpdatedSubscription?.cancel();
+    _themeSubscription?.cancel();
     super.dispose();
   }
 }

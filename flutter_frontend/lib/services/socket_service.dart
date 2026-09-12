@@ -27,6 +27,7 @@ class SocketService {
   static final _friendRequestController = StreamController<Map<String, dynamic>>.broadcast();
   static final _unfriendController = StreamController<Map<String, dynamic>>.broadcast();
   static final _profileUpdatedController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _themeController = StreamController<Map<String, dynamic>>.broadcast();
 
   static Stream<Map<String, dynamic>> get onMessageReceived => _messageController.stream;
   static Stream<Map<String, dynamic>> get onMessageRecalled => _recalledController.stream;
@@ -45,6 +46,7 @@ class SocketService {
   static Stream<Map<String, dynamic>> get onFriendRequestReceived => _friendRequestController.stream;
   static Stream<Map<String, dynamic>> get onUserUnfriended => _unfriendController.stream;
   static Stream<Map<String, dynamic>> get onUserProfileUpdated => _profileUpdatedController.stream;
+  static Stream<Map<String, dynamic>> get onConversationThemeUpdated => _themeController.stream;
 
   // --- AUDIO API SYNTHETIC SOUND GENERATOR ---
   static void playSendSound() {
@@ -300,7 +302,24 @@ class SocketService {
       }
     });
 
+    socket?.on('conversation_theme_updated', (data) {
+      print('🎨 Socket conversation_theme_updated: $data');
+      if (data is Map) {
+        _themeController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
     socket?.onDisconnect((_) => print('🔴 Socket disconnected'));
+  }
+
+  static void emitUpdateConversationTheme(String conversationId, String theme) {
+    if (socket != null && socket!.connected) {
+      socket!.emit('update_conversation_theme', {
+        'conversationId': conversationId,
+        'theme': theme,
+      });
+      print('🎨 Emitted update_conversation_theme: $theme to $conversationId');
+    }
   }
 
   static void emitSendFriendRequest(String receiverId) {

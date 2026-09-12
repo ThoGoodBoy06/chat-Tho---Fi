@@ -2165,6 +2165,47 @@ exports.updateNickname = async (req, res) => {
             });
         }
 
+        // Tạo tin nhắn hệ thống ghi nhận đổi biệt danh cho cả 2 bên thấy
+        try {
+            const actorId = req.user ? (req.user.id || req.user.userId) : req.userId;
+            let actorName = "Người dùng";
+            if (actorId) {
+                const u = await prisma.users.findUnique({ where: { id: actorId }, select: { fullName: true } });
+                if (u && u.fullName) actorName = u.fullName;
+            }
+
+            let targetName = "Người dùng";
+            const targetUser = await prisma.users.findUnique({ where: { id: targetUserId }, select: { fullName: true } });
+            if (targetUser && targetUser.fullName) targetName = targetUser.fullName;
+
+            const systemContent = nickToSet 
+                ? `${actorName} đã đặt biệt danh cho ${targetName} thành "${nickToSet}".`
+                : `${actorName} đã xóa biệt danh của ${targetName}.`;
+
+            const sysMsg = await prisma.messages.create({
+                data: {
+                    id: uuidv4(),
+                    conversationId,
+                    senderId: actorId || null,
+                    content: systemContent,
+                    type: "system",
+                },
+                include: {
+                    Users: { select: { id: true, fullName: true } },
+                },
+            });
+
+            const mappedSysMsg = {
+                ...sysMsg,
+                Users: sysMsg.Users ? { ...sysMsg.Users, avatar: `/api/users/${sysMsg.Users.id}/avatar` } : null,
+            };
+            if (io) {
+                io.to(conversationId).emit("receive_message", mappedSysMsg);
+            }
+        } catch (sysErr) {
+            console.error("Lỗi tạo system message trong updateNickname:", sysErr.message);
+        }
+
         return res.json({
             success: true,
             message: "Cập nhật biệt danh thành công",

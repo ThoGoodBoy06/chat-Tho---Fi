@@ -879,4 +879,21 @@ class ApiService {
     }
     return false;
   }
+
+  // Cập nhật chủ đề cuộc trò chuyện (Chat Theme)
+  static Future<Map<String, dynamic>> updateConversationTheme(String conversationId, String theme) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.patch(
+        Uri.parse('$baseUrl/chat/conversations/$conversationId/theme'),
+        headers: headers,
+        body: jsonEncode({'theme': theme}),
+      ).timeout(const Duration(seconds: 15));
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.updateConversationTheme: $e');
+      return {'success': false, 'message': e.toString()};
+    }
+  }
 }

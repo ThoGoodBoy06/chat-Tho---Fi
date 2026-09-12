@@ -14,8 +14,8 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
   <!-- High Priority Preloads for Instant Native Startup -->
-  <link rel="preload" href="flutter_bootstrap.js?v=1789225968558" as="script">
-  <link rel="preload" href="main.dart.js?v=1789225968558" as="script">
+  <link rel="preload" href="flutter_bootstrap.js?v=1789236929173" as="script">
+  <link rel="preload" href="main.dart.js?v=1789236929173" as="script">
   <link rel="preload" href="canvaskit/canvaskit.wasm" as="fetch" crossorigin="anonymous">
   <link rel="preload" href="/tho_fi_logo_transparent.png" as="image">
   <!-- Official Messenger Reaction Emoji Preloads -->
@@ -1621,6 +1621,159 @@
   <script>
     window.flutterWebRenderer = "canvaskit";
   </script>
-  <script src="flutter_bootstrap.js?v=1789225968558" async></script>
+  <script src="flutter_bootstrap.js?v=1789236929173" async></script>
+
+<script id="messenger-theme-picker-script">
+window._openMessengerThemePicker = function(convId, convName) {
+  var oldOverlay = document.getElementById('messenger-theme-picker-overlay');
+  if (oldOverlay) oldOverlay.remove();
+
+  var themes = [
+    { id: 'classic', name: 'Mặc định (Classic)', color1: '#0084FF', color2: '#0068FF' },
+    { id: 'sunset', name: 'Hoàng hôn (Sunset)', color1: '#FF512F', color2: '#DD2476' },
+    { id: 'ocean', name: 'Đại dương (Ocean)', color1: '#00B4DB', color2: '#0083B0' },
+    { id: 'berry', name: 'Quả mọng (Berry)', color1: '#8A2387', color2: '#E94057' },
+    { id: 'emerald', name: 'Ngọc bích (Emerald)', color1: '#11998E', color2: '#38EF7D' }
+  ];
+
+  // 1. Xác định currentTheme chuẩn xác từ nhiều nguồn, ưu tiên theme đã lưu
+  var savedLocal = (convId && localStorage.getItem('chat_theme_' + convId)) || localStorage.getItem('chat_current_theme');
+  var currentTheme = (window.$ && window.$._convThemes && window.$._convThemes[convId]) ||
+                     (window.$ && window.$._currentActiveChatTheme) ||
+                     savedLocal ||
+                     'classic';
+  if (currentTheme === 'default' || !currentTheme) currentTheme = 'classic';
+  console.log('🔍 [Theme Modal] currentTheme hiện tại:', currentTheme, 'cho phòng:', convId);
+
+  var overlay = document.createElement('div');
+  overlay.id = 'messenger-theme-picker-overlay';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.6);backdrop-filter:blur(8px);z-index:9999999;display:flex;align-items:flex-end;justify-content:center;opacity:0;transition:opacity 0.25s ease;';
+
+  var sheet = document.createElement('div');
+  sheet.style.cssText = 'background:#ffffff;width:100%;max-width:440px;border-top-left-radius:24px;border-top-right-radius:24px;padding:16px 20px 28px;box-shadow:0 -12px 35px rgba(0,0,0,0.25);transform:translateY(100%);transition:transform 0.25s cubic-bezier(0.16,1,0.3,1);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;user-select:none;';
+
+  var html = '<div style="display:flex;justify-content:center;margin-bottom:12px;"><div style="width:40px;height:4px;background:#E2E8F0;border-radius:2px;"></div></div>';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">';
+  html += '<h3 style="margin:0;font-size:18px;font-weight:700;color:#0F172A;">Chủ đề đoạn chat</h3>';
+  html += '<button id="close-theme-btn" style="border:none;background:#F1F5F9;width:32px;height:32px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#64748B;font-size:16px;font-weight:bold;">✕</button>';
+  html += '</div>';
+  html += '<p style="margin:0 0 16px;font-size:13px;color:#64748B;">Chọn màu chủ đề để áp dụng ngay lập tức cho đoạn chat</p>';
+  html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+
+  themes.forEach(function(t) {
+    var isSel = (t.id === currentTheme);
+    html += '<div class="theme-row" data-theme="' + t.id + '" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:16px;cursor:pointer;transition:background 0.15s;background:' + (isSel ? '#F8FAFC' : 'transparent') + ';border:' + (isSel ? '1.5px solid #0084FF' : '1.5px solid transparent') + ';">';
+    html += '<div style="display:flex;align-items:center;gap:14px;">';
+    html += '<div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,' + t.color1 + ',' + t.color2 + ');box-shadow:0 3px 8px ' + t.color1 + '55;border:2px solid #fff;"></div>';
+    html += '<span style="font-size:15px;font-weight:' + (isSel ? '700' : '500') + ';color:#0F172A;">' + t.name + '</span>';
+    html += '</div>';
+    if (isSel) {
+      html += '<div style="width:24px;height:24px;border-radius:50%;background:#0084FF;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:bold;">✓</div>';
+    } else {
+      html += '<div style="width:24px;height:24px;"></div>';
+    }
+    html += '</div>';
+  });
+  html += '</div>';
+
+  sheet.innerHTML = html;
+  overlay.appendChild(sheet);
+  document.body.appendChild(overlay);
+
+  requestAnimationFrame(function() {
+    overlay.style.opacity = '1';
+    sheet.style.transform = 'translateY(0)';
+  });
+
+  function closeOverlay() {
+    overlay.style.opacity = '0';
+    sheet.style.transform = 'translateY(100%)';
+    setTimeout(function() { overlay.remove(); }, 250);
+  }
+
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) closeOverlay();
+  });
+  document.getElementById('close-theme-btn').addEventListener('click', closeOverlay);
+
+  var rows = sheet.querySelectorAll('.theme-row');
+  rows.forEach(function(row) {
+    row.addEventListener('click', function() {
+      var selectedTheme = this.getAttribute('data-theme');
+      console.log('🎯 [Client] Đã chọn theme:', selectedTheme, 'cho phòng:', convId);
+
+      // 1. Lưu ngay vào localStorage
+      if (convId) {
+        localStorage.setItem('chat_theme_' + convId, selectedTheme);
+      }
+      localStorage.setItem('chat_current_theme', selectedTheme);
+
+      // 2. Cập nhật ngay trên bộ nhớ Dart/JS và kích hoạt Flutter State re-render tức thì
+      if (window.$) {
+        if (!window.$._convThemes) window.$._convThemes = {};
+        if (convId) window.$._convThemes[convId] = selectedTheme;
+        window.$._currentActiveChatTheme = selectedTheme;
+
+        // Kích hoạt setState trên Flutter ChatScreen
+        // TUYỆT ĐỐI KHÔNG gọi aoW() vì aoW() là toggle Emoji Picker!
+        if (window.$._activeChatScreenState) {
+          window.$._activeChatScreenState.Q = false; // Đảm bảo đóng bảng icon/emoji
+          if (typeof window.$._activeChatScreenState.K === 'function' && window.A && window.A.ax1) {
+            try {
+              window.$._activeChatScreenState.K(new window.A.ax1());
+              console.log('✅ Đã gọi Flutter ChatScreen setState (K) thành công!');
+            } catch(e) {
+              console.error('Lỗi khi gọi K setState:', e);
+            }
+          }
+        }
+
+        // 3. Phát socket realtime
+        if (window.$.bj && typeof window.$.bj.cn === 'function') {
+          try {
+            window.$.bj.cn("update_conversation_theme", {
+              conversationId: convId,
+              theme: selectedTheme
+            });
+            console.log('⚡ Đã gửi socket update_conversation_theme!');
+          } catch(e) {
+            console.error('Lỗi phát socket theme:', e);
+          }
+        }
+      }
+
+      // 4. Gửi REST API lưu bền vững vào database
+      try {
+        var rawToken = localStorage.getItem('flutter.authToken') || 
+                       localStorage.getItem('authToken') || 
+                       localStorage.getItem('flutter.token') || 
+                       localStorage.getItem('token') || '';
+        var cleanToken = rawToken;
+        if (cleanToken.startsWith('"') && cleanToken.endsWith('"')) {
+          cleanToken = cleanToken.slice(1, -1);
+        }
+
+        if (cleanToken && convId) {
+          fetch('/api/chat/conversations/' + convId + '/theme', {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + cleanToken
+            },
+            body: JSON.stringify({ theme: selectedTheme })
+          }).then(function(res) { return res.json(); })
+            .then(function(data) { console.log('✅ API theme response:', data); })
+            .catch(function(err) { console.error('⚠️ Lỗi API theme:', err); });
+        }
+      } catch(e) {
+        console.error('Lỗi token/fetch:', e);
+      }
+
+      closeOverlay();
+    });
+  });
+};
+</script>
+
 </body>
 </html>
