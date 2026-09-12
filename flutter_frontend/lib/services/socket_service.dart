@@ -24,6 +24,7 @@ class SocketService {
   static final _deliveredController = StreamController<Map<String, dynamic>>.broadcast();
   static final _userStatusController = StreamController<Map<String, dynamic>>.broadcast();
   static final _nicknameController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _conversationNicknamesController = StreamController<Map<String, dynamic>>.broadcast();
   static final _friendRequestController = StreamController<Map<String, dynamic>>.broadcast();
   static final _unfriendController = StreamController<Map<String, dynamic>>.broadcast();
   static final _profileUpdatedController = StreamController<Map<String, dynamic>>.broadcast();
@@ -43,6 +44,7 @@ class SocketService {
   static Stream<Map<String, dynamic>> get onMessageDelivered => _deliveredController.stream;
   static Stream<Map<String, dynamic>> get onUserStatusChanged => _userStatusController.stream;
   static Stream<Map<String, dynamic>> get onNicknameChanged => _nicknameController.stream;
+  static Stream<Map<String, dynamic>> get onConversationNicknamesUpdated => _conversationNicknamesController.stream;
   static Stream<Map<String, dynamic>> get onFriendRequestReceived => _friendRequestController.stream;
   static Stream<Map<String, dynamic>> get onUserUnfriended => _unfriendController.stream;
   static Stream<Map<String, dynamic>> get onUserProfileUpdated => _profileUpdatedController.stream;
@@ -263,6 +265,13 @@ class SocketService {
       }
     });
 
+    socket?.on('conversation_nicknames_updated', (data) {
+      print('🏷️ Socket conversation_nicknames_updated: $data');
+      if (data is Map) {
+        _conversationNicknamesController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
     socket?.on('new_friend_request', (data) {
       print('📩 Socket new_friend_request: $data');
       _friendRequestController.add(data is Map ? Map<String, dynamic>.from(data) : {'data': data});
@@ -337,12 +346,21 @@ class SocketService {
   }
 
   static void emitChangeNickname(String conversationId, String userId, String? nickname) {
+    emitUpdateNickname(conversationId, userId, nickname);
+  }
+
+  static void emitUpdateNickname(String conversationId, String targetUserId, String? newNickname) {
     if (socket != null && socket!.connected) {
-      socket!.emit('change_nickname', {
+      final payload = {
         'conversationId': conversationId,
-        'userId': userId,
-        'nickname': nickname,
-      });
+        'targetUserId': targetUserId,
+        'userId': targetUserId,
+        'newNickname': newNickname,
+        'nickname': newNickname,
+      };
+      socket!.emit('update_nickname', payload);
+      socket!.emit('change_nickname', payload);
+      print('🏷️ Emitted update_nickname for $targetUserId in $conversationId: $newNickname');
     }
   }
 

@@ -277,6 +277,7 @@ class ConversationModel {
   final String? targetUserId;
   final List<UserModel> members;
   final String theme;
+  final Map<String, String>? nicknames;
 
   bool get isGroup => type == 'group';
   int get memberCount => members.length;
@@ -293,6 +294,22 @@ class ConversationModel {
   }
   DateTime? get lastMessageAt => updatedAt;
 
+  String getDisplayName(String? userId) {
+    if (userId == null) return name;
+    if (nicknames != null && nicknames!.containsKey(userId) && nicknames![userId] != null && nicknames![userId]!.trim().isNotEmpty) {
+      return nicknames![userId]!.trim();
+    }
+    for (final m in members) {
+      if (m.id == userId) {
+        if (m.nickname != null && m.nickname!.trim().isNotEmpty) {
+          return m.nickname!.trim();
+        }
+        return m.fullName.isNotEmpty ? m.fullName : m.username;
+      }
+    }
+    return 'Người dùng';
+  }
+
   ConversationModel({
     required this.id,
     required this.name,
@@ -304,6 +321,7 @@ class ConversationModel {
     this.targetUserId,
     this.members = const [],
     this.theme = 'classic',
+    this.nicknames,
   });
 
   factory ConversationModel.fromJson(dynamic rawData, {String? currentUserId}) {
@@ -383,6 +401,36 @@ class ConversationModel {
       }
     }
 
+    Map<String, String> parsedNicknames = {};
+    final rawNicknames = json['nicknames'] ?? rawJson['nicknames'];
+    if (rawNicknames is Map) {
+      rawNicknames.forEach((k, v) {
+        if (v != null && v.toString().trim().isNotEmpty) {
+          parsedNicknames[k.toString()] = v.toString().trim();
+        }
+      });
+    } else if (rawNicknames is String && rawNicknames.isNotEmpty && rawNicknames != '{}') {
+      try {
+        final decoded = jsonDecode(rawNicknames);
+        if (decoded is Map) {
+          decoded.forEach((k, v) {
+            if (v != null && v.toString().trim().isNotEmpty) {
+              parsedNicknames[k.toString()] = v.toString().trim();
+            }
+          });
+        }
+      } catch (_) {}
+    }
+    for (final m in parsedMembers) {
+      if (m.nickname != null && m.nickname!.trim().isNotEmpty && !parsedNicknames.containsKey(m.id)) {
+        parsedNicknames[m.id] = m.nickname!.trim();
+      }
+    }
+
+    if (!isGroup && partnerUserId != null && parsedNicknames.containsKey(partnerUserId)) {
+      convName = parsedNicknames[partnerUserId]!;
+    }
+
     if (convName.isEmpty) convName = 'Cuộc trò chuyện';
 
     String? rawLast = lastMsgText ?? json['lastMessage']?.toString();
@@ -414,6 +462,7 @@ class ConversationModel {
       targetUserId: partnerUserId,
       members: parsedMembers,
       theme: parsedTheme,
+      nicknames: parsedNicknames.isNotEmpty ? parsedNicknames : null,
     );
   }
 
@@ -428,6 +477,7 @@ class ConversationModel {
     String? targetUserId,
     List<UserModel>? members,
     String? theme,
+    Map<String, String>? nicknames,
   }) {
     return ConversationModel(
       id: id ?? this.id,
@@ -440,6 +490,7 @@ class ConversationModel {
       targetUserId: targetUserId ?? this.targetUserId,
       members: members ?? this.members,
       theme: theme ?? this.theme,
+      nicknames: nicknames ?? this.nicknames,
     );
   }
 }

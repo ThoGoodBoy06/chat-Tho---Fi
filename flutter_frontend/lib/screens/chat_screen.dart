@@ -48,6 +48,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   String _contactSearchQuery = '';
   StreamSubscription? _incomingCallSub;
   StreamSubscription? _visibilitySub;
+  bool _isIncomingCallShowing = false;
+  bool _isStartingCall = false;
 
   // AI Assistant Chat state
   final List<Map<String, String>> _aiMessages = [
@@ -1853,10 +1855,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
         final actorName = (actorId != null && actorId == currentUser?.id)
             ? 'Bạn'
-            : (actorUser?.displayName ?? 'Người dùng');
+            : (actorUser != null ? conv?.getDisplayName(actorUser.id) ?? actorUser.displayName : 'Người dùng');
         final targetName = (targetId != null && targetId == currentUser?.id)
             ? 'bạn'
-            : (targetUser?.displayName ?? 'Người dùng');
+            : (targetUser != null ? conv?.getDisplayName(targetUser.id) ?? targetUser.displayName : 'Người dùng');
 
         final cleanNick = (nickname != null && nickname.trim().isNotEmpty) ? nickname.trim() : null;
 
@@ -1885,17 +1887,39 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       displayText = 'Bạn ' + displayText.substring(idx);
     }
 
+    if (msg.senderId != null && currentUser != null && msg.senderId == currentUser.id) {
+      if (displayText.contains('đã đổi chủ đề đoạn chat thành')) {
+        final idx = displayText.indexOf('đã đổi chủ đề đoạn chat thành');
+        displayText = 'Bạn ' + displayText.substring(idx);
+      } else if (displayText.contains('đã đặt biệt danh cho')) {
+        final idx = displayText.indexOf('đã đặt biệt danh cho');
+        displayText = 'Bạn ' + displayText.substring(idx);
+      } else if (displayText.contains('đã tự đặt biệt danh của mình')) {
+        final idx = displayText.indexOf('đã tự đặt biệt danh của mình');
+        displayText = 'Bạn ' + displayText.substring(idx);
+      } else if (displayText.contains('đã xóa biệt danh của')) {
+        final idx = displayText.indexOf('đã xóa biệt danh của');
+        displayText = 'Bạn ' + displayText.substring(idx);
+      }
+    }
+
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 24),
+      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 24),
       child: Center(
-        child: Text(
-          displayText,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Color(0xFF8A8D91),
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            fontStyle: FontStyle.italic,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 14),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.04),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            displayText,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFF64748B),
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
       ),
@@ -4369,11 +4393,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 InkWell(
                   onTap: () {
                     Navigator.pop(context);
-                    if (conv.type == 'group') {
-                      _showGroupNicknameSelectionSheet(provider, conv);
-                    } else if (partnerUser != null) {
-                      _showEditNicknameDialog(provider, conv, partnerUser);
-                    }
+                    _showNicknameSelectionSheet(provider, conv);
                   },
                   borderRadius: BorderRadius.circular(16),
                   child: Container(
@@ -4594,7 +4614,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   }
 
   void _showEditNicknameDialog(ChatProvider provider, ConversationModel conv, UserModel member) {
-    final controller = TextEditingController(text: member.nickname ?? '');
+    final currentNick = conv.nicknames?[member.id] ?? member.nickname ?? '';
+    final controller = TextEditingController(text: currentNick);
+    final isMe = member.id == provider.currentUser?.id;
     showDialog(
       context: context,
       builder: (dialogCtx) {
@@ -4605,32 +4627,36 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             'Đặt biệt danh',
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF0F172A)),
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Đặt biệt danh cho ${member.fullName}:',
-                style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: controller,
-                autofocus: true,
-                decoration: InputDecoration(
-                  hintText: 'Nhập biệt danh hoặc để trống để gỡ...',
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: const BorderSide(color: Color(0xFF0068FF), width: 2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: const BorderSide(color: Color(0xFFCBD5E1), width: 1.5),
-                    borderRadius: BorderRadius.circular(12),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isMe
+                      ? 'Đặt biệt danh cho chính bạn:'
+                      : 'Đặt biệt danh cho ${member.fullName}:',
+                  style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText: 'Nhập biệt danh hoặc để trống để gỡ...',
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: const BorderSide(color: Color(0xFF0068FF), width: 2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: const BorderSide(color: Color(0xFFCBD5E1), width: 1.5),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -4641,7 +4667,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               onPressed: () async {
                 final newNick = controller.text.trim();
                 Navigator.pop(dialogCtx);
-                await provider.updateNickname(conv.id, member.id, newNick);
+                await provider.updateNickname(conv.id, member.id, newNick.isEmpty ? null : newNick);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0068FF),
@@ -4657,7 +4683,26 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     );
   }
 
-  void _showGroupNicknameSelectionSheet(ChatProvider provider, ConversationModel conv) {
+  void _showNicknameSelectionSheet(ChatProvider provider, ConversationModel conv) {
+    final currentUserId = provider.currentUser?.id;
+    final List<UserModel> participants = [];
+
+    // Luôn đưa tài khoản hiện tại vào danh sách đầu tiên
+    if (provider.currentUser != null) {
+      final meInConv = conv.members.firstWhere(
+        (m) => m.id == currentUserId,
+        orElse: () => provider.currentUser!,
+      );
+      participants.add(meInConv);
+    }
+
+    // Đưa các thành viên khác vào
+    for (final m in conv.members) {
+      if (m.id != currentUserId && !participants.any((p) => p.id == m.id)) {
+        participants.add(m);
+      }
+    }
+
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -4678,9 +4723,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               Flexible(
                 child: ListView.builder(
                   shrinkWrap: true,
-                  itemCount: conv.members.length,
+                  itemCount: participants.length,
                   itemBuilder: (ctx, idx) {
-                    final member = conv.members[idx];
+                    final member = participants[idx];
+                    final isMe = member.id == currentUserId;
+                    final displayName = conv.getDisplayName(member.id);
+                    final hasCustomNick = conv.nicknames != null && conv.nicknames!.containsKey(member.id) && conv.nicknames![member.id]!.isNotEmpty;
+
                     return ListTile(
                       leading: CircleAvatar(
                         backgroundColor: const Color(0xFF0068FF),
@@ -4688,13 +4737,34 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                             ? NetworkImage(member.avatar!)
                             : null,
                         child: (member.avatar == null || member.avatar!.isEmpty)
-                            ? Text(member.displayName[0].toUpperCase(), style: const TextStyle(color: Colors.white))
+                            ? Text(displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U', style: const TextStyle(color: Colors.white))
                             : null,
                       ),
-                      title: Text(member.displayName, style: const TextStyle(fontWeight: FontWeight.w600)),
-                      subtitle: member.nickname != null && member.nickname!.isNotEmpty
+                      title: Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              displayName,
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (isMe) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE2E8F0),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text('Bạn', style: TextStyle(fontSize: 11, color: Color(0xFF475569), fontWeight: FontWeight.bold)),
+                            ),
+                          ],
+                        ],
+                      ),
+                      subtitle: hasCustomNick
                           ? Text('Tên gốc: ${member.fullName}', style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)))
-                          : null,
+                          : const Text('Đặt biệt danh', style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
                       trailing: const Icon(Icons.edit_outlined, color: Color(0xFF0068FF), size: 20),
                       onTap: () {
                         Navigator.pop(modalCtx);
@@ -4709,6 +4779,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         );
       },
     );
+  }
+
+  void _showGroupNicknameSelectionSheet(ChatProvider provider, ConversationModel conv) {
+    _showNicknameSelectionSheet(provider, conv);
   }
 
   Widget _buildMessageBubbleContent(MessageModel msg, bool isMe) {
@@ -4860,21 +4934,46 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   }
 
   void _handleIncomingCall(Map<String, dynamic> data) {
+    if (_isIncomingCallShowing) return;
+    _isIncomingCallShowing = true;
+
     final callerId = data['callerId']?.toString();
     final callerName = data['callerName']?.toString() ?? 'Người dùng';
     final callType = data['callType']?.toString() ?? 'audio';
     final isVideo = callType == 'video';
 
-    if (callerId == null || callerId.isEmpty) return;
+    if (callerId == null || callerId.isEmpty) {
+      _isIncomingCallShowing = false;
+      return;
+    }
 
     Timer? autoRejectTimer;
+    StreamSubscription? incomingEndSub;
 
     showGeneralDialog(
       context: context,
       barrierDismissible: false,
       barrierLabel: 'IncomingCall',
       pageBuilder: (dialogContext, anim1, anim2) {
+        // Tự động tắt màn hình đổ chuông khi người gọi ngắt máy trước khi nghe
+        incomingEndSub?.cancel();
+        incomingEndSub = SocketService.onCallEnded.listen((_) {
+          print('🔴 Người gọi đã tắt máy -> Đóng màn hình cuộc gọi đến!');
+          autoRejectTimer?.cancel();
+          incomingEndSub?.cancel();
+          _isIncomingCallShowing = false;
+          try {
+            Navigator.of(dialogContext, rootNavigator: true).pop();
+          } catch (_) {
+            try {
+              Navigator.of(context, rootNavigator: true).pop();
+            } catch (_) {}
+          }
+        });
+
         autoRejectTimer = Timer(const Duration(seconds: 30), () {
+          incomingEndSub?.cancel();
+          _isIncomingCallShowing = false;
           SocketService.socket?.emit('reject_call', {
             'callerId': callerId,
             'callType': callType,
@@ -4983,7 +5082,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                   ),
                                   icon: const Icon(Icons.call_end_rounded, color: Colors.white),
                                   onPressed: () {
+                                    _isIncomingCallShowing = false;
                                     autoRejectTimer?.cancel();
+                                    incomingEndSub?.cancel();
                                     SocketService.socket?.emit('reject_call', {
                                       'callerId': callerId,
                                       'callType': callType,
@@ -5011,7 +5112,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                   ),
                                   icon: const Icon(Icons.call_rounded, color: Colors.white),
                                   onPressed: () {
+                                    _isIncomingCallShowing = false;
                                     autoRejectTimer?.cancel();
+                                    incomingEndSub?.cancel();
                                     final audioPlayer = html.document.getElementById('remoteAudioPlayer') as html.AudioElement?;
                                     audioPlayer?.muted = false;
                                     audioPlayer?.volume = 1.0;
@@ -5043,12 +5146,21 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               ),
             ),
           ),
-        );
       },
-    );
+    ).then((_) {
+      autoRejectTimer?.cancel();
+      incomingEndSub?.cancel();
+      _isIncomingCallShowing = false;
+    });
   }
 
   void _startCall(BuildContext context, ChatProvider provider, {required bool isVideo}) {
+    if (_isStartingCall) return;
+    _isStartingCall = true;
+    Future.delayed(const Duration(seconds: 3), () {
+      _isStartingCall = false;
+    });
+
     final conv = provider.selectedConversation;
     if (conv == null) return;
 
@@ -5179,11 +5291,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           localVideo.pause();
           localVideo.srcObject = null;
           localVideo.style.display = 'none';
+          try { localVideo.remove(); } catch (_) {}
         }
         if (remoteVideo != null) {
           remoteVideo.pause();
           remoteVideo.srcObject = null;
           remoteVideo.style.display = 'none';
+          try { remoteVideo.remove(); } catch (_) {}
         }
 
         if (remoteAudio != null) {
@@ -5428,6 +5542,22 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
                 pc?.onIceConnectionStateChange.listen((_) {
                   print('⚡ WebRTC ICE Connection State: ${pc?.iceConnectionState}');
+                  final iceState = pc?.iceConnectionState;
+                  if (iceState == 'disconnected' || iceState == 'closed') {
+                    Future.delayed(const Duration(milliseconds: 1500), () {
+                      if (pc?.iceConnectionState == 'disconnected' || pc?.iceConnectionState == 'closed') {
+                        print('🔴 Mất kết nối ICE -> Tự động đóng phòng gọi');
+                        cleanupCall();
+                        try {
+                          Navigator.of(dialogContext, rootNavigator: true).pop();
+                        } catch (_) {
+                          try {
+                            Navigator.of(context, rootNavigator: true).pop();
+                          } catch (_) {}
+                        }
+                      }
+                    });
+                  }
                 });
 
                 if (pendingSignals.isNotEmpty) {
@@ -5480,8 +5610,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             endSub ??= SocketService.onCallEnded.listen((_) {
               print('🔴 Đối phương đã tắt máy -> Tự động đóng màn hình gọi!');
               cleanupCall();
-              if (Navigator.of(dialogContext).canPop()) {
-                Navigator.of(dialogContext).pop();
+              try {
+                Navigator.of(dialogContext, rootNavigator: true).pop();
+              } catch (_) {
+                try {
+                  Navigator.of(context, rootNavigator: true).pop();
+                } catch (_) {}
               }
             });
 
@@ -5637,10 +5771,17 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                     ),
                                     icon: const Icon(Icons.call_end_rounded, color: Colors.white),
                                     onPressed: () {
-                                      SocketService.socket?.emit('end_call', {'connectedUserId': targetUserId});
+                                      SocketService.socket?.emit('end_call', {
+                                        'connectedUserId': targetUserId,
+                                        'conversationId': conv.id,
+                                      });
                                       cleanupCall();
-                                      if (Navigator.of(dialogContext).canPop()) {
-                                        Navigator.of(dialogContext).pop();
+                                      try {
+                                        Navigator.of(dialogContext, rootNavigator: true).pop();
+                                      } catch (_) {
+                                        try {
+                                          Navigator.of(context, rootNavigator: true).pop();
+                                        } catch (_) {}
                                       }
                                     },
                                   ),

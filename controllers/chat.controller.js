@@ -1209,9 +1209,13 @@ exports.changeConversationTheme = async(req, res) => {
 
         // 3. Tạo tin nhắn hệ thống ghi nhận việc đổi chủ đề
         const themeNames = {
-            default: "Tho-Fi Classic",
-            ocean: "Đại dương",
-            sunset: "Hoàng hôn",
+            classic: "Mặc định (Classic)",
+            default: "Mặc định (Classic)",
+            ocean: "Đại dương (Ocean)",
+            sunset: "Hoàng hôn (Sunset)",
+            berry: "Quả mọng (Berry)",
+            emerald: "Ngọc bích (Emerald)",
+            love: "Tình yêu (Love)",
             lavender: "Oải hương",
             forest: "Rừng già",
             rose: "Hoa hồng",
@@ -2138,7 +2142,7 @@ exports.updateNickname = async (req, res) => {
         const { nickname } = req.body;
 
         const targetUserId = userId || req.body.targetUserId || req.body.userId;
-        const nickToSet = (nickname && nickname.trim().length > 0) ? nickname.trim() : null;
+        const nickToSet = (nickname && typeof nickname === 'string' && nickname.trim().length > 0) ? nickname.trim() : null;
 
         const member = await prisma.conversationMembers.findFirst({
             where: {
@@ -2151,24 +2155,144 @@ exports.updateNickname = async (req, res) => {
             return res.status(404).json({ success: false, message: "Không tìm thấy thành viên trong phòng chat" });
         }
 
+        // 1. Cập nhật ConversationMembers
         await prisma.conversationMembers.update({
             where: { id: member.id },
             data: { nickname: nickToSet },
         });
 
-        const io = req.app.get("io");
-        if (io) {
-            io.to(conversationId).emit("nickname_changed", {
+        // 2. Cập nhật Conversations.nicknames (JSON)
+        const conv = await prisma.conversations.findUnique({
+            where: { id: conversationId },
+            select: { nicknames: true },
+        });
+        let nicknames = {};
+        if (conv && conv.nicknames) {
+            try {
+                nicknames = (typeof conv.nicknames === 'string') ? JSON.parse(conv.nicknames) : conv.nicknames;
+            } catch (_) { nicknames = {}; }
+        }
+        if (nickToSet) {
+            nicknames[targetUserId] = nickToSet;
+        } else {
+            delete nicknames[targetUserId];
+        }
+        await prisma.conversations.update({
+            where: { id: conversationId },
+            data: { nicknames: nicknames },
+        });
+
+        // 3. Xóa cache danh sách chat
+        if (typeof conversationsCache !== 'undefined') {
+            conversationsCache.clear();
+        }
+
+        // 4. Kiểm tra chống tạo trùng lặp tin nhắn hệ thống (nếu vừa tạo trong 4 giây qua)
+        let mappedSysMsg = null;
+        let isNewSysMsg = false;
+        const recentSysMsg = await prisma.messages.findFirst({
+            where: {
                 conversationId,
-                userId: targetUserId,
+                type: "system",
+                content: { contains: targetUserId },
+                createdAt: { gte: new Date(Date.now() - 4000) },
+            },
+            include: {
+                Users: { select: { id: true, fullName: true } },
+            },
+        });
+
+        if (recentSysMsg) {
+            mappedSysMsg = {
+                ...recentSysMsg,
+                Users: recentSysMsg.Users ? { ...recentSysMsg.Users, avatar: `/api/users/${recentSysMsg.Users.id}/avatar` } : null,
+            };
+        } else {
+            const actorId = req.user ? (req.user.id || req.user.userId) : req.userId;
+            const [actorUser, targetUser] = await Promise.all([
+                actorId ? prisma.users.findUnique({ where: { id: actorId }, select: { fullName: true } }) : null,
+                prisma.users.findUnique({ where: { id: targetUserId }, select: { fullName: true } }),
+            ]);
+            const actorName = actorUser ? actorUser.fullName : "Người dùng";
+            const targetName = targetUser ? targetUser.fullName : "Người dùng";
+
+            let systemText;
+            if (actorId === targetUserId) {
+                systemText = nickToSet
+                    ? `${actorName} đã tự đặt biệt danh của mình là "${nickToSet}".`
+                    : `${actorName} đã xóa biệt danh của mình.`;
+            } else {
+                systemText = nickToSet
+                    ? `${actorName} đã đặt biệt danh cho ${targetName} là "${nickToSet}".`
+                    : `${actorName} đã xóa biệt danh của ${targetName}.`;
+            }
+
+            const systemPayload = {
+                action: "change_nickname",
+                actorId,
+                targetId: targetUserId,
                 nickname: nickToSet,
+                text: systemText,
+            };
+
+            const sysMsg = await prisma.messages.create({
+                data: {
+                    id: uuidv4(),
+                    conversationId,
+                    senderId: actorId || null,
+                    content: JSON.stringify(systemPayload),
+                    type: "system",
+                },
+                include: {
+                    Users: { select: { id: true, fullName: true } },
+                },
             });
+
+            mappedSysMsg = {
+                ...sysMsg,
+                Users: sysMsg.Users ? { ...sysMsg.Users, avatar: `/api/users/${sysMsg.Users.id}/avatar` } : null,
+            };
+            isNewSysMsg = true;
+        }
+
+        const io = req.app.get("io");
+        const socketPayload = {
+            conversationId,
+            targetUserId,
+            userId: targetUserId,
+            newNickname: nickToSet,
+            nickname: nickToSet,
+            nicknames,
+            systemMessage: mappedSysMsg,
+        };
+
+        if (io) {
+            io.to(conversationId).emit("conversation_nicknames_updated", socketPayload);
+            io.to(conversationId).emit("nickname_changed", socketPayload);
+            if (isNewSysMsg && mappedSysMsg) {
+                io.to(conversationId).emit("receive_message", mappedSysMsg);
+            }
+
+            prisma.conversationMembers.findMany({
+                where: { conversationId },
+                select: { userId: true },
+            }).then((members) => {
+                members.forEach((m) => {
+                    if (m.userId) {
+                        io.to(m.userId).emit("conversation_nicknames_updated", socketPayload);
+                        io.to(m.userId).emit("nickname_changed", socketPayload);
+                        if (isNewSysMsg && mappedSysMsg) {
+                            io.to(m.userId).emit("receive_message", mappedSysMsg);
+                        }
+                    }
+                });
+            }).catch(() => {});
         }
 
         return res.json({
             success: true,
             message: "Cập nhật biệt danh thành công",
-            data: { conversationId, userId: targetUserId, nickname: nickToSet },
+            data: { conversationId, userId: targetUserId, nickname: nickToSet, nicknames },
         });
     } catch (error) {
         console.error("❌ Lỗi updateNickname:", error);
@@ -2182,7 +2306,7 @@ exports.changeConversationTheme = async (req, res) => {
     try {
         const { conversationId } = req.params;
         const { theme } = req.body;
-        const validThemes = ['classic', 'sunset', 'ocean', 'berry', 'emerald', 'default'];
+        const validThemes = ['classic', 'sunset', 'ocean', 'berry', 'emerald', 'love', 'default'];
         const themeToSet = (theme && validThemes.includes(theme)) ? theme : 'classic';
 
         await prisma.conversations.update({
@@ -2221,7 +2345,8 @@ exports.changeConversationTheme = async (req, res) => {
                     sunset: "Hoàng hôn (Sunset)",
                     ocean: "Đại dương (Ocean)",
                     berry: "Quả mọng (Berry)",
-                    emerald: "Ngọc bích (Emerald)"
+                    emerald: "Ngọc bích (Emerald)",
+                    love: "Tình yêu (Love)"
                 };
                 const themeLabel = themeLabels[themeToSet] || themeToSet;
 

@@ -157,22 +157,29 @@ class ChatProvider extends ChangeNotifier {
       }
     });
 
-    _nicknameSubscription = SocketService.onNicknameChanged.listen((data) {
+    final handleNicknameUpdate = (dynamic rawData) {
+      if (rawData is! Map) return;
+      final data = Map<String, dynamic>.from(rawData);
       final convId = data['conversationId']?.toString();
       final userId = data['targetUserId']?.toString() ?? data['userId']?.toString();
-      final nickname = data['nickname']?.toString();
+      final nickname = data['newNickname']?.toString() ?? data['nickname']?.toString();
+      final rawNicknames = data['nicknames'];
+      Map<String, String>? nicknamesMap;
+      if (rawNicknames is Map) {
+        nicknamesMap = {};
+        rawNicknames.forEach((k, v) {
+          if (v != null && v.toString().trim().isNotEmpty) {
+            nicknamesMap![k.toString()] = v.toString().trim();
+          }
+        });
+      }
       if (convId != null && userId != null) {
-        updateMemberNickname(convId, userId, nickname);
+        updateMemberNickname(convId, userId, nickname, newNicknamesMap: nicknamesMap);
       }
-      if (data['systemMessage'] != null) {
-        final rawSys = data['systemMessage'];
-        if (rawSys is Map<String, dynamic>) {
-          addRealtimeMessage(MessageModel.fromJson(rawSys));
-        } else if (rawSys is Map) {
-          addRealtimeMessage(MessageModel.fromJson(Map<String, dynamic>.from(rawSys)));
-        }
-      }
-    });
+    };
+
+    _nicknameSubscription = SocketService.onNicknameChanged.listen(handleNicknameUpdate);
+    SocketService.onConversationNicknamesUpdated.listen(handleNicknameUpdate);
 
     _profileUpdatedSubscription = SocketService.onUserProfileUpdated.listen((data) {
       final updatedUserId = data['id']?.toString() ?? data['userId']?.toString();
@@ -336,6 +343,23 @@ class ChatProvider extends ChangeNotifier {
         msg.conversationId!.isNotEmpty &&
         msg.conversationId != selectedConversation!.id) {
       return;
+    }
+
+    // Chống trùng lặp tin nhắn hệ thống (system message) có cùng nội dung trong vòng 5 giây
+    if (msg.type == 'system') {
+      final isDupSystem = messages.any((m) =>
+          m.type == 'system' &&
+          (m.id == msg.id || (m.content == msg.content && m.createdAt.difference(msg.createdAt).inSeconds.abs() < 5)));
+      if (isDupSystem) return;
+    }
+
+    // Chống spam / trùng lặp cuộc gọi nhỡ (trong vòng 15 giây)
+    if (msg.type == 'missed_call' || msg.type == 'call' || msg.type == 'video_call') {
+      final isDupCall = messages.any((m) =>
+          (m.type == 'missed_call' || m.type == 'call' || m.type == 'video_call') &&
+          m.conversationId == msg.conversationId &&
+          m.createdAt.difference(msg.createdAt).inSeconds.abs() < 15);
+      if (isDupCall) return;
     }
 
     // Kiểm tra trùng lặp (bao gồm cả optimistic message và socket relay message)
@@ -537,8 +561,26 @@ class ChatProvider extends ChangeNotifier {
         return null;
       }).whereType<MessageModel>().toList();
 
-      messages = fetched;
-      _messagesCache[conv.id] = fetched;
+      final List<MessageModel> cleanFetched = [];
+      for (final m in fetched) {
+        if (m.type == 'system') {
+          final hasDup = cleanFetched.any((prev) =>
+              prev.type == 'system' &&
+              prev.content == m.content &&
+              prev.createdAt.difference(m.createdAt).inSeconds.abs() < 5);
+          if (hasDup) continue;
+        }
+        if (m.type == 'missed_call' || m.type == 'call' || m.type == 'video_call') {
+          final hasDupCall = cleanFetched.any((prev) =>
+              (prev.type == 'missed_call' || prev.type == 'call' || prev.type == 'video_call') &&
+              prev.createdAt.difference(m.createdAt).inSeconds.abs() < 15);
+          if (hasDupCall) continue;
+        }
+        cleanFetched.add(m);
+      }
+
+      messages = cleanFetched;
+      _messagesCache[conv.id] = cleanFetched;
     } catch (e) {
       debugPrint('Error fetching messages: $e');
     } finally {
@@ -703,24 +745,41 @@ class ChatProvider extends ChangeNotifier {
   }
 
   Future<bool> updateNickname(String conversationId, String userId, String? nickname) async {
-    final success = await ApiService.updateNickname(conversationId, userId, nickname);
-    if (success) {
-      SocketService.emitChangeNickname(conversationId, userId, nickname);
-      updateMemberNickname(conversationId, userId, nickname);
-    }
+    final cleanNick = (nickname != null && nickname.trim().isNotEmpty) ? nickname.trim() : null;
+
+    // 1. Phản hồi tức thì trên UI (Optimistic UI)
+    updateMemberNickname(conversationId, userId, cleanNick);
+
+    // 2. Phát socket event cho đối phương
+    SocketService.emitUpdateNickname(conversationId, userId, cleanNick);
+
+    // 3. Gọi REST API song song để lưu DB
+    final success = await ApiService.updateNickname(conversationId, userId, cleanNick);
     return success;
   }
 
-  void updateMemberNickname(String conversationId, String userId, String? nickname) {
+  void updateMemberNickname(String conversationId, String userId, String? nickname, {Map<String, String>? newNicknamesMap}) {
     bool updated = false;
     for (int i = 0; i < conversations.length; i++) {
       if (conversations[i].id == conversationId) {
         final conv = conversations[i];
+        final cleanNickname = (nickname != null && nickname.trim().isNotEmpty) ? nickname.trim() : null;
+
+        Map<String, String> updatedNicknames = Map<String, String>.from(conv.nicknames ?? {});
+        if (newNicknamesMap != null) {
+          updatedNicknames = Map<String, String>.from(newNicknamesMap);
+        } else {
+          if (cleanNickname != null) {
+            updatedNicknames[userId] = cleanNickname;
+          } else {
+            updatedNicknames.remove(userId);
+          }
+        }
+
         final memberIndex = conv.members.indexWhere((m) => m.id == userId);
+        List<UserModel> updatedMembers = List<UserModel>.from(conv.members);
         if (memberIndex != -1) {
-          final updatedMembers = List<UserModel>.from(conv.members);
           final oldMember = updatedMembers[memberIndex];
-          final cleanNickname = (nickname != null && nickname.trim().isNotEmpty) ? nickname.trim() : null;
           updatedMembers[memberIndex] = UserModel(
             id: oldMember.id,
             username: oldMember.username,
@@ -732,29 +791,44 @@ class ChatProvider extends ChangeNotifier {
             isOnline: oldMember.isOnline,
             lastActive: oldMember.lastActive,
           );
-
-          String newConvName = conv.name;
-          if (conv.type == 'private' && userId == conv.targetUserId) {
-            newConvName = cleanNickname ?? oldMember.fullName;
-          }
-
-          conversations[i] = ConversationModel(
-            id: conv.id,
-            name: newConvName,
-            avatar: conv.avatar,
-            type: conv.type,
-            lastMessage: conv.lastMessage,
-            unreadCount: conv.unreadCount,
-            updatedAt: conv.updatedAt,
-            targetUserId: conv.targetUserId,
-            members: updatedMembers,
-          );
-
-          if (selectedConversation?.id == conversationId) {
-            selectedConversation = conversations[i];
-          }
-          updated = true;
         }
+
+        String newConvName = conv.name;
+        if (conv.type == 'private') {
+          final partnerId = conv.targetUserId ?? (memberIndex != -1 ? updatedMembers[memberIndex].id : null);
+          if (partnerId != null) {
+            if (updatedNicknames.containsKey(partnerId) && updatedNicknames[partnerId]!.isNotEmpty) {
+              newConvName = updatedNicknames[partnerId]!;
+            } else {
+              final partner = updatedMembers.firstWhere(
+                (m) => m.id == partnerId,
+                orElse: () => UserModel(id: partnerId, username: '', fullName: ''),
+              );
+              if (partner.fullName.isNotEmpty) {
+                newConvName = partner.fullName;
+              }
+            }
+          }
+        }
+
+        conversations[i] = ConversationModel(
+          id: conv.id,
+          name: newConvName,
+          avatar: conv.avatar,
+          type: conv.type,
+          lastMessage: conv.lastMessage,
+          unreadCount: conv.unreadCount,
+          updatedAt: conv.updatedAt,
+          targetUserId: conv.targetUserId,
+          members: updatedMembers,
+          theme: conv.theme,
+          nicknames: updatedNicknames.isNotEmpty ? updatedNicknames : null,
+        );
+
+        if (selectedConversation?.id == conversationId) {
+          selectedConversation = conversations[i];
+        }
+        updated = true;
       }
     }
     if (updated) {

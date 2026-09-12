@@ -101,6 +101,23 @@ class ChatThemes {
       primaryColor: Color(0xFF11998E),
       previewColor: Color(0xFF38EF7D),
     ),
+    ChatThemeItem(
+      id: 'love',
+      name: 'Tình yêu (Love)',
+      gradient: LinearGradient(
+        colors: [Color(0xFFFF3377), Color(0xFFFF6584)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      backgroundGradient: LinearGradient(
+        colors: [Color(0xFFFFF0F5), Color(0xFFFFEBF0), Color(0xFFFFE4EC)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      headerColor: Color(0xFFFFF5F8),
+      primaryColor: Color(0xFFFF3377),
+      previewColor: Color(0xFFFF3377),
+    ),
   ];
 
   static ChatThemeItem getTheme(String? themeId) {

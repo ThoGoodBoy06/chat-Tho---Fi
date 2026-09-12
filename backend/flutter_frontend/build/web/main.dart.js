@@ -29777,7 +29777,7 @@ n=p.gje(p)
 p=A.iT()
 m=p.gmj(p)
 if((n==="localhost"||n==="127.0.0.1")&&m!==3000)p=a0.a=(A.iT().gdQ().length===0?"http":A.iT().gdQ())+"://"+n+":3000"
-else if(n.includes("pages.dev")||n.includes("workers.dev")||n.includes("workers.dev")||n.includes("workers.dev")||n.includes("workers.dev")||n.includes("workers.dev")||n.includes("cloudflare")){p=a0.a="https://chat-tho-fi-vn-9s8u.onrender.com"}
+else if(n.includes("pages.dev")||n.includes("workers.dev")||n.includes("workers.dev")||n.includes("workers.dev")||n.includes("workers.dev")||n.includes("workers.dev")||n.includes("workers.dev")||n.includes("cloudflare")){p=a0.a="https://chat-tho-fi-vn-9s8u.onrender.com"}
 else{p=A.iT()
 p=a0.a=p.gtM(p)}o=t.N
 l=t.z
@@ -29858,7 +29858,7 @@ if(a0!=null)a0.c6(0,"user_online",new A.anO())
 a0=$.bj
 if(a0!=null)a0.c6(0,"user_offline",new A.anQ())
 a0=$.bj
-if(a0!=null)a0.c6(0,"nickname_changed",new A.anR())
+if(a0!=null)a0.c6(0,"nickname_changed",new A.anR());if(a0!=null)a0.c6(0,"conversation_nicknames_updated",new A.anR())
 a0=$.bj
 if(a0!=null)a0.c6(0,"new_friend_request",new A.anS())
 a0=$.bj
@@ -31870,7 +31870,7 @@ da(){var s,r=A.iT(),q=r.gje(r)
 r=A.iT()
 s=r.gmj(r)
 if((q==="localhost"||q==="127.0.0.1")&&s!==3000)return(A.iT().gdQ().length===0?"http":A.iT().gdQ())+"://"+q+":3000/api"
-if(q.includes("pages.dev")||q.includes("workers.dev")||q.includes("workers.dev")||q.includes("workers.dev")||q.includes("workers.dev")||q.includes("workers.dev")||q.includes("cloudflare"))return"https://chat-tho-fi-vn-9s8u.onrender.com/api"
+if(q.includes("pages.dev")||q.includes("workers.dev")||q.includes("workers.dev")||q.includes("workers.dev")||q.includes("workers.dev")||q.includes("workers.dev")||q.includes("workers.dev")||q.includes("cloudflare"))return"https://chat-tho-fi-vn-9s8u.onrender.com/api"
 r=A.iT()
 return r.gtM(r)+"/api"},
 uN(){var s=0,r=A.x(t.T),q,p,o
@@ -100404,6 +100404,7 @@ if(m==null||m.length===0)return
 p.a=null
 o=this.c
 o.toString
+window._incomingCallShowing=true;window._incomingNav=A.b1(o,!0);window._incomingCallTimerHolder=p;
 A.aNr(B.HV,!1,"IncomingCall",o,new A.avh(p,this,m,r,r==="video",s),q,B.J,t.X)},
 re(a,b,c){var s,r,q,p,o,n,m,l,k=null,j=b.c
 if(j==null)return
@@ -101671,6 +101672,7 @@ return A.b1(s,!1).dN(0)},
 $S:0}
 A.avh.prototype={
 $3(a,b,c){var s,r,q,p,o,n,m=this,l=null,k=m.c,j=m.d,i=m.a
+window._incomingCallShowing=true;window._incomingCallContext=a;window._incomingCallTimer=i;window._incomingRejectAction=new A.ave(i,k,j,a);
 i.a=A.c_(B.cO,new A.avd(k,j,a))
 s=m.e
 r=A.bV(s?B.dH:B.rJ,B.aR,l,20)
@@ -101685,6 +101687,7 @@ $R:3,
 $S:603}
 A.avd.prototype={
 $0(){var s,r=$.bj
+window._incomingCallShowing=false;window._incomingCallContext=null;window._incomingCallTimer=null;window._incomingNav=null;
 if(r!=null){s=t.N
 r.cn("reject_call",A.V(["callerId",this.a,"callType",this.b],s,s))}r=this.c
 if(A.b1(r,!1).rB())A.b1(r,!1).dN(0)},
@@ -101700,6 +101703,7 @@ return A.w($async$$0,r)},
 $S:72}
 A.ave.prototype={
 $0(){var s,r=this,q=r.a.a
+window._incomingCallContext=null;window._incomingCallTimer=null;
 if(q!=null)q.ai(0)
 q=$.bj
 if(q!=null){s=t.N
@@ -101707,6 +101711,7 @@ q.cn("reject_call",A.V(["callerId",r.b,"callType",r.c],s,s))}A.b1(r.d,!1).dN(0)}
 $S:0}
 A.avf.prototype={
 $0(){var s,r,q=this,p=q.a.a
+window._incomingCallShowing=false;window._incomingCallContext=null;window._incomingCallTimer=null;window._incomingNav=null;
 if(p!=null)p.ai(0)
 s=t.jg.a(document.getElementById("remoteAudioPlayer"))
 p=s==null
@@ -101807,7 +101812,7 @@ B.b.U(this.c)}catch(l){p=A.a0(l)
 A.bQ("\u26a0\ufe0f WebRTC cleanup error: "+A.f(p))}},
 $S:0}
 A.aw4.prototype={
-$3(a,b,c){var s=this
+$3(a,b,c){var s=this;window._activeCallContext=a;
 return new A.ty(new A.aw_(s.a,s.b,s.c,s.d,s.e,s.f,s.r,s.w,a,s.x),null)},
 $C:"$3",
 $R:3,
@@ -104013,8 +104018,56 @@ if(t.f.b(a))$.aJq().D(0,A.cI(a,s,r))
 else $.aJq().D(0,A.D(s,r))},
 $S:2}
 A.ao2.prototype={
-$1(a){A.bQ("\ud83d\udd34 Socket call_ended")
-$.aNP().D(0,null)},
+$1(a){
+A.bQ("🔴 Socket call_ended: Bắt đầu xử lý...");
+$.aNP().D(0,null);
+if(window._incomingCallShowing || window._incomingCallContext || window._incomingNav){
+  window._incomingCallShowing=false;
+  try{
+    if(window._incomingCallTimer&&window._incomingCallTimer.a)window._incomingCallTimer.a.ai(0);
+    if(window._incomingCallTimerHolder&&window._incomingCallTimerHolder.a)window._incomingCallTimerHolder.a.ai(0);
+  }catch(_){}
+  var _closed=false;
+  try{
+    if(window._incomingNav){
+      window._incomingNav.dN(0);
+      _closed=true;
+      A.bQ("🔴 [Auto-Close] Đã đóng incoming dialog qua _incomingNav (Root Navigator)!");
+    }
+  }catch(e){console.warn("Lỗi _incomingNav:",e);}
+  if(!_closed){
+    try{
+      if(window._incomingCallContext){
+        A.b1(window._incomingCallContext,!0).dN(0);
+        _closed=true;
+        A.bQ("🔴 [Auto-Close] Đã đóng incoming dialog qua _incomingCallContext (!0)!");
+      }
+    }catch(e){console.warn("Lỗi _incomingCallContext root:",e);}
+  }
+  if(!_closed){
+    try{
+      if(window._incomingCallContext){
+        A.b1(window._incomingCallContext,!1).dN(0);
+        A.bQ("🔴 [Auto-Close] Đã đóng incoming dialog qua _incomingCallContext (!1)!");
+      }
+    }catch(e){console.warn("Lỗi _incomingCallContext local:",e);}
+  }
+  window._incomingNav=null;
+  window._incomingCallContext=null;
+  window._incomingCallTimer=null;
+  window._incomingCallTimerHolder=null;
+  window._incomingRejectAction=null;
+}
+try{
+  var _media=document.querySelectorAll("audio, video");
+  for(var _i=0;_i<_media.length;_i++){
+    try{_media[_i].pause();_media[_i].currentTime=0;_media[_i].srcObject=null;}catch(_){}
+    if(_media[_i].id==="localVideoPlayer"||_media[_i].id==="remoteVideoPlayer"){
+      try{_media[_i].remove();}catch(_){}
+    }
+  }
+}catch(_){}
+},
 $S:2}
 A.ao3.prototype={
 $1(a){if(t.f.b(a))$.aNV().D(0,A.cI(a,t.N,t.z))},
@@ -113583,7 +113636,8 @@ $.getThemeColor=function(){
       sunset: new A.q(4294922543),   // #FF512F Cam hoàng hôn
       ocean: new A.q(4278223792),    // #0083B0 Xanh đại dương đích thực
       berry: new A.q(4293476439),    // #E94057 Hồng quả mọng
-      emerald: new A.q(4279343502)   // #11998E Xanh ngọc bích
+      emerald: new A.q(4279343502),
+      love: new A.q(4294914935)   // #11998E Xanh ngọc bích
     };
   }
   // Giữ nguyên B.o là màu mặc định của toàn ứng dụng (0xFF0068FF)
@@ -113601,7 +113655,8 @@ $.getThemeGradient=function(){
         sunset: new A.eU(B.b5, B.bt, B.aU, A.b([new A.q(4294922543), new A.q(4292674678)], ti), null, null), // #FF512F -> #DD2476
         ocean: new A.eU(B.b5, B.bt, B.aU, A.b([new A.q(4278236379), new A.q(4278223792)], ti), null, null),  // #00B4DB -> #0083B0 (Xanh đại dương)
         berry: new A.eU(B.b5, B.bt, B.aU, A.b([new A.q(4287243143), new A.q(4293476439)], ti), null, null),  // #8A2387 -> #E94057 (Tím hồng)
-        emerald: new A.eU(B.b5, B.bt, B.aU, A.b([new A.q(4279343502), new A.q(4281929597)], ti), null, null) // #11998E -> #38EF7D (Xanh ngọc)
+        emerald: new A.eU(B.b5, B.bt, B.aU, A.b([new A.q(4279343502), new A.q(4281929597)], ti), null, null),
+        love: new A.eU(B.b5, B.bt, B.aU, A.b([new A.q(4294914935), new A.q(4294927748)], ti), null, null) // #11998E -> #38EF7D (Xanh ngọc)
       };
     } catch(e) {
       console.warn('Fallback theme gradient error:', e);
@@ -113626,7 +113681,8 @@ $.getThemeBgDecoration=function(isDark){
         // Quả mọng: Tông tím hồng lavender phấn
         berry: new A.ak(null, null, null, null, null, new A.eU(B.dp, B.oE, B.aU, A.b([new A.q(4294832888), new A.q(4294764531), new A.q(4294299902)], ti), null, null), B.t),
         // Ngọc bích: Tông xanh mint ngọc bích tươi mát
-        emerald: new A.ak(null, null, null, null, null, new A.eU(B.dp, B.oE, B.aU, A.b([new A.q(4293327342), new A.q(4291949792), new A.q(4290572499)], ti), null, null), B.t)
+        emerald: new A.ak(null, null, null, null, null, new A.eU(B.dp, B.oE, B.aU, A.b([new A.q(4293327342), new A.q(4291949792), new A.q(4290572499)], ti), null, null), B.t),
+        love: new A.ak(null, null, null, null, null, new A.eU(B.dp, B.oE, B.aU, A.b([new A.q(4294963445), new A.q(4294962416), new A.q(4294961132)], ti), null, null), B.t)
       };
     } catch(e) {
       console.warn('Lỗi khởi tạo Theme Background Decoration:', e);
@@ -113645,7 +113701,8 @@ $.getThemeHeaderColor=function(isDark, defaultCol){
       sunset: new A.q(4294964718),   // #FFF5EE Kem ấm
       ocean: new A.q(4293982719),    // #F0F9FF Xanh biển băng nhẹ
       berry: new A.q(4294832888),    // #FDF2F8 Hồng phấn
-      emerald: new A.q(4293327342)   // #E6F9EE Xanh mint nhẹ
+      emerald: new A.q(4293327342),
+      love: new A.q(4294964728)   // #E6F9EE Xanh mint nhẹ
     };
   }
   return $._themeHeaderColors[th] || defaultCol;

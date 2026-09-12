@@ -12,6 +12,8 @@ module.exports = (io) => {
 
   // Cache để tránh gọi DB update isOnline liên tục trong thời gian ngắn (Debounce 60 giây)
   const lastOnlineUpdateMap = new Map();
+  // Lưu các cặp cuộc gọi đang diễn ra để tự động tắt cả 2 bên nếu 1 bên cúp máy hoặc mất mạng
+  const activeCalls = new Map();
 
   async function handleUserConnect(socket, userId) {
     if (!userId) return;
@@ -139,24 +141,26 @@ module.exports = (io) => {
       }
     });
 
-    // 3. Lắng nghe trạng thái Đang gõ... (Typing indicator)
-    socket.on("change_nickname", async (data) => {
+    // 3. Lắng nghe đổi biệt danh (Nicknames)
+    const handleUpdateNickname = async (data) => {
       if (!data) return;
-      const { conversationId, userId, nickname } = data;
-      if (!conversationId || !userId) return;
+      let d = data;
+      if (typeof d === "string") {
+        try { d = JSON.parse(d); } catch (e) {}
+      }
+      const conversationId = d.conversationId || d.conversation_id;
+      const targetUserId = d.targetUserId || d.userId;
+      const rawNick = d.newNickname !== undefined ? d.newNickname : d.nickname;
+      if (!conversationId || !targetUserId) return;
 
       try {
-        const actorId = socket.userId || userId;
-        const actorMember = await prisma.conversationMembers.findFirst({
-          where: { conversationId, userId: actorId },
-        });
+        const actorId = socket.userId || d.actorId || d.senderId;
+        const nickToSet = (rawNick && typeof rawNick === "string" && rawNick.trim().length > 0) ? rawNick.trim() : null;
+
+        // 1. Cập nhật ConversationMembers
         const targetMember = await prisma.conversationMembers.findFirst({
-          where: { conversationId, userId },
+          where: { conversationId, userId: targetUserId },
         });
-
-        const actorOldNickname = actorMember ? actorMember.nickname : null;
-        const targetOldNickname = targetMember ? targetMember.nickname : null;
-
         if (targetMember) {
           await prisma.conversationMembers.update({
             where: { id: targetMember.id },
@@ -164,60 +168,146 @@ module.exports = (io) => {
           });
         }
 
-        // Lấy tên thật của người thực hiện và người được đặt biệt danh
-        const [actorUser, targetUser] = await Promise.all([
-          prisma.users.findUnique({ where: { id: actorId }, select: { fullName: true } }),
-          prisma.users.findUnique({ where: { id: userId }, select: { fullName: true } }),
-        ]);
+        // 2. Cập nhật Conversations.nicknames (JSON)
+        const conv = await prisma.conversations.findUnique({
+          where: { id: conversationId },
+          select: { nicknames: true },
+        });
+        let nicknames = {};
+        if (conv && conv.nicknames) {
+          try {
+            nicknames = (typeof conv.nicknames === "string") ? JSON.parse(conv.nicknames) : conv.nicknames;
+          } catch (_) { nicknames = {}; }
+        }
+        if (nickToSet) {
+          nicknames[targetUserId] = nickToSet;
+        } else {
+          delete nicknames[targetUserId];
+        }
+        await prisma.conversations.update({
+          where: { id: conversationId },
+          data: { nicknames: nicknames },
+        });
 
-        const actorDisplayName = actorOldNickname || (actorUser ? actorUser.fullName : "Người dùng");
-        const targetDisplayName = targetOldNickname || (targetUser ? targetUser.fullName : "Người dùng");
+        // 3. Xóa cache danh sách chat
+        try {
+          const chatCtrl = require("../controllers/chat.controller");
+          if (chatCtrl.conversationsCache) chatCtrl.conversationsCache.clear();
+        } catch (e) {}
 
-        const systemPayload = {
-          action: "change_nickname",
-          actorId,
-          targetId: userId,
-          nickname: nickToSet,
-        };
-        const systemContent = JSON.stringify(systemPayload);
-
-        const systemMessage = await prisma.messages.create({
-          data: {
-            id: uuidv4(),
+        // 4. Kiểm tra chống tạo trùng lặp tin nhắn hệ thống (nếu vừa tạo trong 4 giây qua)
+        let mappedSystemMessage = null;
+        let isNewSysMsg = false;
+        const recentSysMsg = await prisma.messages.findFirst({
+          where: {
             conversationId,
-            senderId: actorId,
-            content: systemContent,
             type: "system",
+            content: { contains: targetUserId },
+            createdAt: { gte: new Date(Date.now() - 4000) },
           },
           include: {
-            Users: {
-              select: { id: true, fullName: true },
-            },
+            Users: { select: { id: true, fullName: true } },
           },
         });
 
-        const mappedSystemMessage = {
-          ...systemMessage,
-          Users: systemMessage.Users ?
-            { ...systemMessage.Users, avatar: `/api/users/${systemMessage.Users.id}/avatar` } :
-            null,
-        };
+        if (recentSysMsg) {
+          mappedSystemMessage = {
+            ...recentSysMsg,
+            Users: recentSysMsg.Users
+              ? { ...recentSysMsg.Users, avatar: `/api/users/${recentSysMsg.Users.id}/avatar` }
+              : null,
+          };
+        } else {
+          const [actorUser, targetUser] = await Promise.all([
+            actorId ? prisma.users.findUnique({ where: { id: actorId }, select: { fullName: true } }) : null,
+            prisma.users.findUnique({ where: { id: targetUserId }, select: { fullName: true } }),
+          ]);
+          const actorName = actorUser ? actorUser.fullName : "Người dùng";
+          const targetName = targetUser ? targetUser.fullName : "Người dùng";
+
+          let systemText;
+          if (actorId === targetUserId) {
+            systemText = nickToSet
+              ? `${actorName} đã tự đặt biệt danh của mình là "${nickToSet}".`
+              : `${actorName} đã xóa biệt danh của mình.`;
+          } else {
+            systemText = nickToSet
+              ? `${actorName} đã đặt biệt danh cho ${targetName} là "${nickToSet}".`
+              : `${actorName} đã xóa biệt danh của ${targetName}.`;
+          }
+
+          const systemPayload = {
+            action: "change_nickname",
+            actorId,
+            targetId: targetUserId,
+            nickname: nickToSet,
+            text: systemText,
+          };
+          const systemContent = JSON.stringify(systemPayload);
+
+          const systemMessage = await prisma.messages.create({
+            data: {
+              id: uuidv4(),
+              conversationId,
+              senderId: actorId,
+              content: systemContent,
+              type: "system",
+            },
+            include: {
+              Users: { select: { id: true, fullName: true } },
+            },
+          });
+
+          mappedSystemMessage = {
+            ...systemMessage,
+            Users: systemMessage.Users
+              ? { ...systemMessage.Users, avatar: `/api/users/${systemMessage.Users.id}/avatar` }
+              : null,
+          };
+          isNewSysMsg = true;
+        }
 
         const payload = {
           conversationId,
-          targetUserId: userId,
-          userId,
+          targetUserId,
+          userId: targetUserId,
+          newNickname: nickToSet,
           nickname: nickToSet,
+          nicknames,
           systemMessage: mappedSystemMessage,
         };
 
-        io.to(conversationId).emit("receive_message", mappedSystemMessage);
+        // Broadcast tới room cuộc trò chuyện
+        io.to(conversationId).emit("conversation_nicknames_updated", payload);
         io.to(conversationId).emit("nickname_changed", payload);
-        console.log(`🏷️ User ${actorId} đặt biệt danh cho ${userId} trong room ${conversationId}: ${nickToSet}`);
+        if (isNewSysMsg && mappedSystemMessage) {
+          io.to(conversationId).emit("receive_message", mappedSystemMessage);
+        }
+
+        // Đồng thời broadcast tới room cá nhân của từng thành viên
+        prisma.conversationMembers.findMany({
+          where: { conversationId },
+          select: { userId: true },
+        }).then((members) => {
+          members.forEach((m) => {
+            if (m.userId) {
+              io.to(m.userId).emit("conversation_nicknames_updated", payload);
+              io.to(m.userId).emit("nickname_changed", payload);
+              if (isNewSysMsg && mappedSystemMessage) {
+                io.to(m.userId).emit("receive_message", mappedSystemMessage);
+              }
+            }
+          });
+        }).catch(() => {});
+
+        console.log(`🏷️ User ${actorId} đặt biệt danh cho ${targetUserId} trong room ${conversationId}: ${nickToSet}`);
       } catch (e) {
-        console.error("Lỗi socket change_nickname:", e);
+        console.error("Lỗi socket update_nickname:", e);
       }
-    });
+    };
+
+    socket.on("change_nickname", handleUpdateNickname);
+    socket.on("update_nickname", handleUpdateNickname);
 
     // 3b. Lắng nghe đổi chủ đề phòng chat (update_conversation_theme)
     socket.on("update_conversation_theme", async (data) => {
@@ -230,7 +320,7 @@ module.exports = (io) => {
       const theme = d.theme;
       if (!conversationId || !theme) return;
 
-      const validThemes = ['classic', 'sunset', 'ocean', 'berry', 'emerald', 'default'];
+      const validThemes = ['classic', 'sunset', 'ocean', 'berry', 'emerald', 'love', 'default'];
       const themeToSet = validThemes.includes(theme) ? theme : 'classic';
 
       try {
@@ -259,7 +349,8 @@ module.exports = (io) => {
             sunset: "Hoàng hôn (Sunset)",
             ocean: "Đại dương (Ocean)",
             berry: "Quả mọng (Berry)",
-            emerald: "Ngọc bích (Emerald)"
+            emerald: "Ngọc bích (Emerald)",
+            love: "Tình yêu (Love)"
           };
           const themeLabel = themeLabels[themeToSet] || themeToSet;
 
@@ -668,6 +759,8 @@ module.exports = (io) => {
 
         if (isCalleeOnline) {
           console.log(`📞 ${callerName} đang gọi cho ${calleeId}`);
+          activeCalls.set(callerId, { partnerId: calleeId });
+          activeCalls.set(calleeId, { partnerId: callerId });
           // Chuyển tiếp cuộc gọi đến (incoming_call) cho User B (qua room)
           io.to(calleeId).emit("incoming_call", {
             callerId,
@@ -687,6 +780,8 @@ module.exports = (io) => {
 
     // 6. User B từ chối cuộc gọi
     socket.on("reject_call", async ({ callerId, callType }) => {
+      activeCalls.delete(callerId);
+      activeCalls.delete(socket.userId);
       io.to(callerId).emit("call_rejected", { reason: "rejected" });
 
       // Xử lý tạo tin nhắn "Cuộc gọi nhỡ" hệ thống
@@ -704,6 +799,21 @@ module.exports = (io) => {
         );
 
         if (commonConv) {
+          // Chặn spam cuộc gọi nhỡ: nếu trong vòng 15 giây qua đã có cuộc gọi nhỡ giữa 2 người thì bỏ qua không tạo trùng
+          const recentMissedCall = await prisma.messages.findFirst({
+            where: {
+              conversationId: commonConv.conversationId,
+              type: "missed_call",
+              senderId: callerId,
+              createdAt: { gte: new Date(Date.now() - 15000) },
+            },
+          });
+
+          if (recentMissedCall) {
+            console.log(`⚠️ Đã có cuộc gọi nhỡ trong 15s qua cho room ${commonConv.conversationId}, bỏ qua tạo trùng lặp`);
+            return;
+          }
+
           const contentText =
             callType === "video" ? "Cuộc gọi video nhỡ" : "Cuộc gọi nhỡ";
           const missedCallMsg = await prisma.messages.create({
@@ -738,6 +848,8 @@ module.exports = (io) => {
 
     // 7. User B chấp nhận cuộc gọi
     socket.on("accept_call", async ({ callerId }) => {
+      activeCalls.set(socket.userId, { partnerId: callerId });
+      activeCalls.set(callerId, { partnerId: socket.userId });
       try {
         // Lấy thông tin của người vừa chấp nhận cuộc gọi (callee) từ DB
         const callee = await prisma.users.findUnique({
@@ -769,13 +881,36 @@ module.exports = (io) => {
     });
 
     // 9. Kết thúc cuộc gọi (gửi thông báo cho cả 2 phía để tự động đóng màn hình)
-    socket.on("end_call", ({ connectedUserId }) => {
-      if (connectedUserId) {
-        io.to(connectedUserId).emit("call_ended");
+    socket.on("end_call", async (data = {}) => {
+      const activeInfo = activeCalls.get(socket.userId);
+      const targetId = data.connectedUserId || data.to || data.targetUserId || data.userId || activeInfo?.partnerId;
+      const conversationId = data.conversationId || activeInfo?.conversationId;
+      console.log(`🔴 [end_call] Tắt cuộc gọi từ user ${socket.userId} -> partner ${targetId}, room ${conversationId}`);
+
+      if (targetId) {
+        io.to(targetId).emit("call_ended");
+        const targetSocketId = userSockets.get(targetId);
+        if (targetSocketId && targetSocketId !== targetId) {
+          io.to(targetSocketId).emit("call_ended");
+        }
+        activeCalls.delete(targetId);
+
+        // Huỷ thông báo chuông cuộc gọi đến trên FCM nếu có
+        try {
+          const targetUser = await prisma.users.findUnique({
+            where: { id: targetId },
+            select: { fcmToken: true }
+          });
+          if (targetUser && targetUser.fcmToken) {
+            sendPushNotification(targetUser.fcmToken, "Cuộc gọi đã kết thúc", "", {
+              type: "call_ended",
+              callerId: String(socket.userId || ""),
+              t: String(Date.now())
+            }, true).catch(() => {});
+          }
+        } catch (_) {}
       }
-      if (socket.userId) {
-        io.to(socket.userId).emit("call_ended");
-      }
+      activeCalls.delete(socket.userId);
     });
 
     // 10. Nâng cấp từ Voice lên Video
