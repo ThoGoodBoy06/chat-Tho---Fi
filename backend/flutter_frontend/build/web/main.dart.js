@@ -100404,7 +100404,7 @@ if(m==null||m.length===0)return
 p.a=null
 o=this.c
 o.toString
-window._incomingCallShowing=true;if(window._startCallVibration)window._startCallVibration();window._incomingNav=A.b1(o,!0);window._incomingCallTimerHolder=p;
+window._incomingCallShowing=true;window._incomingNav=A.b1(o,!0);window._incomingCallTimerHolder=p;
 A.aNr(B.HV,!1,"IncomingCall",o,new A.avh(p,this,m,r,r==="video",s),q,B.J,t.X)},
 re(a,b,c){var s,r,q,p,o,n,m,l,k=null,j=b.c
 if(j==null)return
@@ -101687,7 +101687,7 @@ $R:3,
 $S:603}
 A.avd.prototype={
 $0(){var s,r=$.bj
-window._incomingCallShowing=false;if(window._stopCallVibration)window._stopCallVibration();window._incomingCallContext=null;window._incomingCallTimer=null;window._incomingNav=null;
+window._incomingCallShowing=false;window._incomingCallContext=null;window._incomingCallTimer=null;window._incomingNav=null;
 if(r!=null){s=t.N
 r.cn("reject_call",A.V(["callerId",this.a,"callType",this.b],s,s))}r=this.c
 if(A.b1(r,!1).rB())A.b1(r,!1).dN(0)},
@@ -103891,7 +103891,9 @@ $0(){var s=this.a.Y(t.q)
 s.toString
 s.f.bA(B.aqB)},
 $S:0}
-A.aEp.prototype={\r\n$0(){if(typeof window.showNotificationModal==="function"){window.showNotificationModal();return}var s=this.a.Y(t.q)
+A.aEp.prototype={
+$0(){if(typeof window.showNotificationModal==="function"){window.showNotificationModal();return}
+var s=this.a.Y(t.q)
 s.toString
 s.f.bA(B.aql)},
 $S:0}
@@ -104018,7 +104020,7 @@ else $.aJq().D(0,A.D(s,r))},
 $S:2}
 A.ao2.prototype={
 $1(a){
-A.bQ("🔴 Socket call_ended: Bắt đầu xử lý...");if(window._stopCallVibration)window._stopCallVibration();
+A.bQ("🔴 Socket call_ended: Bắt đầu xử lý...");
 $.aNP().D(0,null);
 if(window._incomingCallShowing || window._incomingCallContext || window._incomingNav){
   window._incomingCallShowing=false;
