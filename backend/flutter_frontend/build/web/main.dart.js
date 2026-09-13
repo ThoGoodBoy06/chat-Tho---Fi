@@ -117176,7 +117176,7 @@ Function.prototype.$6=function(a,b,c,d,e,f){return this(a,b,c,d,e,f)}
 convertAllToFastObject(w);
 
 window.dismissIncomingCallNow = function() {
-  console.log("🔴 [dismissIncomingCallNow V10] Tắt chuông & đóng hộp thoại an toàn...");
+  console.log("🔴 [dismissIncomingCallNow V11] Tắt chuông & đóng hộp thoại an toàn...");
 
   // 1. DỪNG TOÀN BỘ ÂM THANH CHUÔNG, RUNG & MEDIA TỨC THÌ
   try { A.FS(); } catch(_) {}
@@ -117216,17 +117216,22 @@ window.dismissIncomingCallNow = function() {
   var _rv = document.getElementById("remoteVideoPlayer");
   if (_rv) { try { _rv.pause(); _rv.srcObject = null; _rv.remove(); } catch(_) {} }
 
-  // 2. NẾU HỘP THOẠI KHÔNG MỞ -> BỎ QUA, TUYỆT ĐỐI KHÔNG POP ĐỂ TRÁNH MÀN HÌNH TRẮNG
-  if (!window._incomingCallShowing && !window._activeCallShowing) {
-    console.log("ℹ️ [dismissIncomingCallNow V10] Không có hộp thoại nào đang mở, bỏ qua.");
+  // 2. NẾU HỘP THOẠI KHÔNG MỞ -> BỎ QUA, TUYỆT ĐỐI KHÔNG POP ĐỂ TRÁNH TRẮNG MÀN HÌNH
+  var hasIncoming = window._incomingCallShowing || window._incomingCallContext || window._incomingRejectAction;
+  var hasActive = window._activeCallShowing || window._activeCallContext;
+
+  if (!hasIncoming && !hasActive) {
+    console.log("ℹ️ [dismissIncomingCallNow V11] Không có hộp thoại nào đang mở, bỏ qua.");
     return;
   }
 
-  // 3. KHÓA SINGLE-POP: Đảm bảo chỉ pop đúng 1 lần duy nhất trong đời của 1 cuộc gọi
+  // Khóa single-pop
   if (window._isDismissingCall) return;
   window._isDismissingCall = true;
 
+  var rejectAction = window._incomingRejectAction;
   var ctx = window._incomingCallContext;
+  var inNav = window._incomingNav;
   var actCtx = window._activeCallContext;
 
   // XÓA SẠCH TRẠNG THÁI NGAY TỨC THÌ ĐỂ KHÔNG BAO GIỜ POP LẦN THỨ HAI
@@ -117239,30 +117244,57 @@ window.dismissIncomingCallNow = function() {
   window._incomingCallTimer = null;
   window._incomingCallTimerHolder = null;
 
-  // 4. THỰC HIỆN POP QUA ROOT NAVIGATOR (A.b1(ctx, !0)) CHUẨN XÁC 100% NHƯ NÚT TỪ CHỐI CỦA FLUTTER
-  if (ctx) {
+  var dismissed = false;
+
+  // Cách 1: Gọi trực tiếp Action Từ chối chuẩn gốc của Flutter (chính là code chạy khi bấm nút Từ chối màu đỏ)
+  if (rejectAction && typeof rejectAction.$0 === "function") {
+    try {
+      rejectAction.$0();
+      dismissed = true;
+      console.log("✅ [V11] Đã đóng incoming dialog thành công qua Flutter rejectAction.$0()!");
+    } catch(e) {
+      console.warn("Lỗi rejectAction.$0:", e);
+    }
+  }
+
+  // Cách 2: Nếu chưa đóng, pop qua rootNav của ctx
+  if (!dismissed && ctx) {
     try {
       var rootNav = A.b1(ctx, !0);
       if (rootNav && typeof rootNav.dN === "function") {
         rootNav.dN(0);
-        console.log("✅ [V10] Đã đóng incoming dialog thành công qua rootNav.dN(0)!");
+        dismissed = true;
+        console.log("✅ [V11] Đã đóng incoming dialog thành công qua rootNav.dN(0)!");
       }
     } catch(e) {
-      console.warn("Lỗi pop incoming dialog:", e);
+      console.warn("Lỗi pop ctx rootNav:", e);
     }
-  } else if (actCtx) {
+  }
+
+  // Cách 3: Pop qua inNav
+  if (!dismissed && inNav) {
+    try {
+      if (typeof inNav.dN === "function") {
+        inNav.dN(0);
+        dismissed = true;
+        console.log("✅ [V11] Đã đóng incoming dialog thành công qua inNav.dN(0)!");
+      }
+    } catch(e) {}
+  }
+
+  // Cách 4: Pop CallRoom đang đàm thoại nếu có
+  if (!dismissed && actCtx) {
     try {
       var actRootNav = A.b1(actCtx, !0);
       if (actRootNav && typeof actRootNav.dN === "function") {
         actRootNav.dN(0);
-        console.log("✅ [V10] Đã đóng active call dialog thành công qua actRootNav.dN(0)!");
+        console.log("✅ [V11] Đã đóng activeCall dialog thành công qua actRootNav.dN(0)!");
       }
     } catch(e) {
       console.warn("Lỗi pop active call dialog:", e);
     }
   }
 
-  // Mở khóa sau 1 giây cho cuộc gọi tiếp theo
   setTimeout(function() {
     window._isDismissingCall = false;
   }, 1000);
