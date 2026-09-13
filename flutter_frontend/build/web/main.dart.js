@@ -100405,7 +100405,7 @@ if(m==null||m.length===0)return
 p.a=null
 o=this.c
 o.toString
-window._chatScreenContext=o;window._incomingCallShowing=true;window._incomingNav=A.b1(o,!0);window._incomingCallTimerHolder=p;
+window._chatScreenContext=o;window._incomingCallShowing=true;window._incomingNav=A.b1(o,!0);window._incomingNavLocal=A.b1(o,!1);window._incomingCallTimerHolder=p;window._currentCallerId=m;if(window._startCallStatusPolling)window._startCallStatusPolling(m,$.aLM);
 try{A.FQ();}catch(_){}
 A.aNr(B.HV,!1,"IncomingCall",o,new A.avh(p,this,m,r,r==="video",s),q,B.J,t.X)},
 re(a,b,c){var s,r,q,p,o,n,m,l,k=null,j=b.c
@@ -101674,7 +101674,7 @@ return A.b1(s,!0).dN(0)},
 $S:0}
 A.avh.prototype={
 $3(a,b,c){var s,r,q,p,o,n,m=this,l=null,k=m.c,j=m.d,i=m.a
-window._incomingCallShowing=true;window._incomingCallContext=a;window._incomingCallTimer=i;window._incomingRejectAction=new A.ave(i,k,j,a);
+window._incomingCallShowing=true;window._incomingCallContext=a;window._incomingCallTimer=i;window._incomingRejectAction=new A.ave(i,k,j,a);if(window._startCallStatusPolling)window._startCallStatusPolling(k,$.aLM);
 i.a=A.c_(B.cO,new A.avd(k,j,a))
 s=m.e
 r=A.bV(s?B.dH:B.rJ,B.aR,l,20)
@@ -101711,7 +101711,7 @@ window._incomingCallShowing=false;window._incomingCallContext=null;window._incom
 if(q!=null)q.ai(0)
 q=$.bj
 if(q!=null){s=t.N
-q.cn("reject_call",A.V(["callerId",r.b,"callType",r.c],s,s))}A.b1(r.d,!0).dN(0)},
+q.cn("reject_call",A.V(["callerId",r.b,"callType",r.c],s,s))}var _n1=A.b1(r.d,!1);if(_n1&&_n1.rB()){_n1.dN(0)}else{var _n0=A.b1(r.d,!0);if(_n0&&_n0.rB())_n0.dN(0)}},
 $S:0}
 A.avf.prototype={
 $0(){var s,r,q=this,p=q.a.a
@@ -117176,9 +117176,9 @@ Function.prototype.$6=function(a,b,c,d,e,f){return this(a,b,c,d,e,f)}
 convertAllToFastObject(w);
 
 window.dismissIncomingCallNow = function() {
-  console.log("🔴 [dismissIncomingCallNow V11] Tắt chuông & đóng hộp thoại an toàn...");
+  console.log("🔴 [dismissIncomingCallNow V15] Bắt đầu tắt chuông & đóng màn hình...");
 
-  // 1. DỪNG TOÀN BỘ ÂM THANH CHUÔNG, RUNG & MEDIA TỨC THÌ
+  // 1. DỪNG TOÀN BỘ ÂM THANH CHUÔNG, RUNG & MEDIA
   try { A.FS(); } catch(_) {}
   try {
     if (typeof $ !== "undefined") {
@@ -117191,13 +117191,11 @@ window.dismissIncomingCallNow = function() {
   try { if (navigator.vibrate) navigator.vibrate(0); } catch(_) {}
   if (window.stopTestCallSound) { try { window.stopTestCallSound(); } catch(_) {} }
 
-  // Hủy các timer đổ chuông
   try {
     if (window._incomingCallTimer && window._incomingCallTimer.a) window._incomingCallTimer.a.ai(0);
     if (window._incomingCallTimerHolder && window._incomingCallTimerHolder.a) window._incomingCallTimerHolder.a.ai(0);
   } catch(_) {}
 
-  // Dừng tất cả thẻ audio và video trong DOM
   try {
     var allMedia = document.querySelectorAll("audio, video");
     for (var i = 0; i < allMedia.length; i++) {
@@ -117216,99 +117214,132 @@ window.dismissIncomingCallNow = function() {
   var _rv = document.getElementById("remoteVideoPlayer");
   if (_rv) { try { _rv.pause(); _rv.srcObject = null; _rv.remove(); } catch(_) {} }
 
-  // 2. NẾU HỘP THOẠI KHÔNG MỞ -> BỎ QUA, TUYỆT ĐỐI KHÔNG POP ĐỂ TRÁNH TRẮNG MÀN HÌNH
-  var hasIncoming = window._incomingCallShowing || window._incomingCallContext || window._incomingRejectAction;
-  var hasActive = window._activeCallShowing || window._activeCallContext;
-
-  if (!hasIncoming && !hasActive) {
-    console.log("ℹ️ [dismissIncomingCallNow V11] Không có hộp thoại nào đang mở, bỏ qua.");
-    return;
-  }
-
-  // Khóa single-pop
-  if (window._isDismissingCall) return;
-  window._isDismissingCall = true;
-
   var rejectAction = window._incomingRejectAction;
   var ctx = window._incomingCallContext;
   var inNav = window._incomingNav;
+  var inNavLocal = window._incomingNavLocal;
+  var chatCtx = window._chatScreenContext;
   var actCtx = window._activeCallContext;
-
-  // XÓA SẠCH TRẠNG THÁI NGAY TỨC THÌ ĐỂ KHÔNG BAO GIỜ POP LẦN THỨ HAI
-  window._incomingCallShowing = false;
-  window._activeCallShowing = false;
-  window._incomingCallContext = null;
-  window._incomingNav = null;
-  window._incomingRejectAction = null;
-  window._activeCallContext = null;
-  window._incomingCallTimer = null;
-  window._incomingCallTimerHolder = null;
 
   var dismissed = false;
 
-  // Cách 1: Gọi trực tiếp Action Từ chối chuẩn gốc của Flutter (chính là code chạy khi bấm nút Từ chối màu đỏ)
+  // Helper pop navigator an toàn (kiểm tra rB canPop)
+  function _safePop(nav) {
+    if (!nav) return false;
+    try {
+      if (typeof nav.rB === "function" && nav.rB() && typeof nav.dN === "function") {
+        nav.dN(0);
+        return true;
+      }
+    } catch(_) {}
+    return false;
+  }
+
+  // Cách 1: Gọi Action Từ chối chuẩn của Flutter
   if (rejectAction && typeof rejectAction.$0 === "function") {
     try {
       rejectAction.$0();
       dismissed = true;
-      console.log("✅ [V11] Đã đóng incoming dialog thành công qua Flutter rejectAction.$0()!");
+      console.log("✅ [V15] Đã gọi rejectAction.$0() thành công!");
     } catch(e) {
       console.warn("Lỗi rejectAction.$0:", e);
     }
   }
 
-  // Cách 2: Nếu chưa đóng, pop qua rootNav của ctx
+  // Cách 2: Pop qua dialog ctx (thử local !1 trước, rồi root !0)
   if (!dismissed && ctx) {
     try {
-      var rootNav = A.b1(ctx, !0);
-      if (rootNav && typeof rootNav.dN === "function") {
-        rootNav.dN(0);
+      var n1 = A.b1(ctx, !1);
+      if (_safePop(n1)) {
         dismissed = true;
-        console.log("✅ [V11] Đã đóng incoming dialog thành công qua rootNav.dN(0)!");
+        console.log("✅ [V15] Pop thành công qua ctx localNav (!1)");
+      } else {
+        var n0 = A.b1(ctx, !0);
+        if (_safePop(n0)) {
+          dismissed = true;
+          console.log("✅ [V15] Pop thành công qua ctx rootNav (!0)");
+        }
       }
-    } catch(e) {
-      console.warn("Lỗi pop ctx rootNav:", e);
+    } catch(_) {}
+  }
+
+  // Cách 3: Pop qua inNavLocal (!1) hoặc inNav (!0)
+  if (!dismissed) {
+    if (_safePop(inNavLocal)) {
+      dismissed = true;
+      console.log("✅ [V15] Pop thành công qua inNavLocal (!1)");
+    } else if (_safePop(inNav)) {
+      dismissed = true;
+      console.log("✅ [V15] Pop thành công qua inNav (!0)");
     }
   }
 
-  // Cách 3: Pop qua inNav
-  if (!dismissed && inNav) {
+  // Cách 4: Pop qua chatScreenContext (thử cả !1 và !0)
+  if (!dismissed && chatCtx) {
     try {
-      if (typeof inNav.dN === "function") {
-        inNav.dN(0);
+      var cn1 = A.b1(chatCtx, !1);
+      if (_safePop(cn1)) {
         dismissed = true;
-        console.log("✅ [V11] Đã đóng incoming dialog thành công qua inNav.dN(0)!");
+        console.log("✅ [V15] Pop thành công qua chatCtx localNav (!1)");
+      } else {
+        var cn0 = A.b1(chatCtx, !0);
+        if (_safePop(cn0)) {
+          dismissed = true;
+          console.log("✅ [V15] Pop thành công qua chatCtx rootNav (!0)");
+        }
       }
-    } catch(e) {}
+    } catch(_) {}
   }
 
-  // Cách 4: Pop CallRoom đang đàm thoại nếu có
+  // Cách 5: Pop activeCall dialog nếu có
   if (!dismissed && actCtx) {
     try {
-      var actRootNav = A.b1(actCtx, !0);
-      if (actRootNav && typeof actRootNav.dN === "function") {
-        actRootNav.dN(0);
-        console.log("✅ [V11] Đã đóng activeCall dialog thành công qua actRootNav.dN(0)!");
+      var an = A.b1(actCtx, !0) || A.b1(actCtx, !1);
+      if (_safePop(an)) {
+        dismissed = true;
+        console.log("✅ [V15] Đã đóng activeCall dialog");
       }
-    } catch(e) {
-      console.warn("Lỗi pop active call dialog:", e);
-    }
+    } catch(_) {}
   }
 
-  setTimeout(function() {
-    window._isDismissingCall = false;
-  }, 1000);
+  // Xóa sạch trạng thái sau khi đã đóng
+  window._incomingCallShowing = false;
+  window._activeCallShowing = false;
+  window._incomingCallContext = null;
+  window._incomingNav = null;
+  window._incomingNavLocal = null;
+  window._incomingRejectAction = null;
+  window._activeCallContext = null;
+  window._incomingCallTimer = null;
+  window._incomingCallTimerHolder = null;
+
+  // Dừng polling
+  if (window._incomingCallPollInterval) {
+    clearInterval(window._incomingCallPollInterval);
+    window._incomingCallPollInterval = null;
+  }
+  if (window._stopCallStatusPolling) {
+    window._stopCallStatusPolling();
+  }
 };
 
-
-
-
-
-
-
-
-
-
+window._startCallStatusPolling = function _startCallStatusPolling(callerId, calleeId) {
+  if (window._incomingCallPollInterval) clearInterval(window._incomingCallPollInterval);
+  window._incomingCallPollInterval = setInterval(function() {
+    var cId = callerId || window._currentCallerId || "";
+    var uId = calleeId || window._currentUserId || (typeof $ !== "undefined" && $.aLM) || "";
+    if (!cId && !uId) return;
+    fetch("/api/call/status?callerId=" + encodeURIComponent(cId) + "&calleeId=" + encodeURIComponent(uId) + "&t=" + Date.now(), { cache: "no-store" })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data && data.active === false) {
+          console.log("🔴 [V15 Heartbeat] Máy chủ xác nhận cuộc gọi đã kết thúc -> Đóng hộp thoại!");
+          if (window.dismissIncomingCallNow) window.dismissIncomingCallNow();
+        }
+      })
+      .catch(function() {});
+  }, 500);
+};
 
 convertToFastObject($);(function(a){if(typeof document==="undefined"){a(null)
 return}if(typeof document.currentScript!="undefined"){a(document.currentScript)

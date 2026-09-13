@@ -105,6 +105,24 @@ app.get("/api/health", (req, res) => {
 });
 
 // Endpoint HTTP Fallback: Kết thúc cuộc gọi chắc chắn 100%
+// [Call Status API] Kiểm tra trạng thái cuộc gọi theo thời gian thực (Polling Fallback)
+app.get("/api/call/status", (req, res) => {
+    try {
+        const { callerId, calleeId, room } = req.query;
+        let isActive = false;
+        if (global.activeCalls) {
+            const callCaller = callerId ? global.activeCalls.get(callerId) : null;
+            const callCallee = calleeId ? global.activeCalls.get(calleeId) : null;
+            if (callCaller && (!calleeId || callCaller.partnerId === calleeId)) isActive = true;
+            if (callCallee && (!callerId || callCallee.partnerId === callerId)) isActive = true;
+        }
+        res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+        res.status(200).json({ active: isActive, t: Date.now() });
+    } catch (e) {
+        res.status(200).json({ active: false });
+    }
+});
+
 app.post("/api/call/end", async (req, res) => {
     try {
         const { callerId, connectedUserId, conversationId, callType } = req.body || {};

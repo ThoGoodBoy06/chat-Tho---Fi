@@ -14,8 +14,8 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
   <!-- High Priority Preloads for Instant Native Startup -->
-  <link rel="preload" href="flutter_bootstrap.js?v=1789315196530" as="script">
-  <link rel="preload" href="main.dart.js?v=1789315196530" as="script">
+  <link rel="preload" href="flutter_bootstrap.js?v=1789318398100" as="script">
+  <link rel="preload" href="main.dart.js?v=1789317861513" as="script">
   <link rel="preload" href="canvaskit/canvaskit.wasm" as="fetch" crossorigin="anonymous">
   <link rel="preload" href="/tho_fi_logo_transparent.png" as="image">
   <!-- Official Messenger Reaction Emoji Preloads -->
@@ -1666,7 +1666,7 @@
   <script>
     window.flutterWebRenderer = "canvaskit";
   </script>
-  <script src="flutter_bootstrap.js?v=1789315196530" async></script>
+  <script src="flutter_bootstrap.js?v=1789318398100" async></script>
 
 <script id="messenger-theme-picker-script">
 window._openMessengerThemePicker = function(convId, convName) {
@@ -2363,5 +2363,100 @@ if ('serviceWorker' in navigator) {
   });
 }
 </script>
+
+<script>
+    // ============================================================
+    // [Call Sync V14] Standalone polling + dismiss
+    // Không phụ thuộc main.dart.js, chạy ngay từ index.html
+    // ============================================================
+    (function() {
+      var _pollInterval = null;
+      var _pollDelay = 600; // ms
+
+      function _doCallStatusCheck() {
+        var callerId = window._currentCallerId || '';
+        var calleeId = window._currentUserId || (typeof $ !== 'undefined' && $.aLM) || '';
+        if (!callerId && !calleeId) return;
+        fetch('/api/call/status?callerId=' + encodeURIComponent(callerId)
+            + '&calleeId=' + encodeURIComponent(calleeId)
+            + '&t=' + Date.now(), { cache: 'no-store' })
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            if (data && data.active === false) {
+              console.log('[Call-V14] Cuộc gọi đã kết thúc trên server -> Dismiss ngay!');
+              _stopPoll();
+              if (window.dismissIncomingCallNow) {
+                window.dismissIncomingCallNow();
+              } else {
+                // Thử lại sau 200ms nếu dismissIncomingCallNow chưa sẵn sàng
+                setTimeout(function() {
+                  if (window.dismissIncomingCallNow) window.dismissIncomingCallNow();
+                }, 200);
+              }
+            }
+          })
+          .catch(function() {});
+      }
+
+      function _startPoll() {
+        _stopPoll();
+        console.log('[Call-V14] Bắt đầu polling trạng thái cuộc gọi mỗi 600ms...');
+        _pollInterval = setInterval(function() {
+          var isShowing = window._incomingCallShowing || window._incomingRejectAction || window._incomingCallContext;
+          if (!isShowing) {
+            _stopPoll();
+            return;
+          }
+          _doCallStatusCheck();
+        }, _pollDelay);
+        // Check ngay lập tức lần đầu sau 300ms
+        setTimeout(_doCallStatusCheck, 300);
+      }
+
+      function _stopPoll() {
+        if (_pollInterval) {
+          clearInterval(_pollInterval);
+          _pollInterval = null;
+          console.log('[Call-V14] Đã dừng polling.');
+        }
+      }
+
+      // Expose ra global để main.dart.js có thể gọi
+      window._startCallStatusPolling = function(callerId, calleeId) {
+        window._currentCallerId = callerId;
+        _startPoll();
+      };
+      window._stopCallStatusPolling = _stopPoll;
+
+      // Khi app focus lại / visible lại: check ngay
+      function _onResume() {
+        var isShowing = window._incomingCallShowing || window._incomingRejectAction;
+        if (isShowing) {
+          console.log('[Call-V14] App visible lại, kiểm tra trạng thái cuộc gọi...');
+          _doCallStatusCheck();
+          // Cũng restart poll nếu đã bị dừng
+          if (!_pollInterval) _startPoll();
+        }
+      }
+
+      window.addEventListener('focus', _onResume);
+      document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') _onResume();
+      });
+
+      // Lắng nghe postMessage từ Service Worker (call_ended push notification)
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', function(event) {
+          if (event.data && (event.data.type === 'call_ended' || event.data.type === 'CALL_ENDED')) {
+            console.log('[Call-V14] Service Worker báo call_ended -> Dismiss ngay!');
+            _stopPoll();
+            if (window.dismissIncomingCallNow) window.dismissIncomingCallNow();
+          }
+        });
+      }
+
+      console.log('[Call-V14] Call Sync polling engine sẵn sàng.');
+    })();
+  </script>
 </body>
 </html>
