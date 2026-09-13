@@ -100404,7 +100404,8 @@ if(m==null||m.length===0)return
 p.a=null
 o=this.c
 o.toString
-window._incomingCallShowing=true;window._incomingNav=A.b1(o,!0);window._incomingCallTimerHolder=p;
+window._chatScreenContext=o;window._incomingCallShowing=true;window._incomingNav=A.b1(o,!0);window._incomingCallTimerHolder=p;
+try{A.FQ();}catch(_){}
 A.aNr(B.HV,!1,"IncomingCall",o,new A.avh(p,this,m,r,r==="video",s),q,B.J,t.X)},
 re(a,b,c){var s,r,q,p,o,n,m,l,k=null,j=b.c
 if(j==null)return
@@ -102283,7 +102284,7 @@ $S:0}
 A.avH.prototype={
 $0(){var s,r=$.bj
 if(r!=null){s=t.N
-r.cn("end_call",A.V(["connectedUserId",this.a],s,s))}this.b.$0()
+var convId=(window._currentActiveChatConvId||"");r.cn("end_call",A.V(["connectedUserId",this.a,"conversationId",convId],s,s))}this.b.$0()
 r=this.c
 if(A.b1(r,!1).rB())A.b1(r,!1).dN(0)},
 $S:0}
@@ -104020,54 +104021,11 @@ else $.aJq().D(0,A.D(s,r))},
 $S:2}
 A.ao2.prototype={
 $1(a){
-A.bQ("🔴 Socket call_ended: Bắt đầu xử lý...");
+A.bQ("🔴 Socket call_ended: Dừng chuông, dừng rung và đóng màn hình cuộc gọi!");
 $.aNP().D(0,null);
-if(window._incomingCallShowing || window._incomingCallContext || window._incomingNav){
-  window._incomingCallShowing=false;
-  try{
-    if(window._incomingCallTimer&&window._incomingCallTimer.a)window._incomingCallTimer.a.ai(0);
-    if(window._incomingCallTimerHolder&&window._incomingCallTimerHolder.a)window._incomingCallTimerHolder.a.ai(0);
-  }catch(_){}
-  var _closed=false;
-  try{
-    if(window._incomingNav){
-      window._incomingNav.dN(0);
-      _closed=true;
-      A.bQ("🔴 [Auto-Close] Đã đóng incoming dialog qua _incomingNav (Root Navigator)!");
-    }
-  }catch(e){console.warn("Lỗi _incomingNav:",e);}
-  if(!_closed){
-    try{
-      if(window._incomingCallContext){
-        A.b1(window._incomingCallContext,!0).dN(0);
-        _closed=true;
-        A.bQ("🔴 [Auto-Close] Đã đóng incoming dialog qua _incomingCallContext (!0)!");
-      }
-    }catch(e){console.warn("Lỗi _incomingCallContext root:",e);}
-  }
-  if(!_closed){
-    try{
-      if(window._incomingCallContext){
-        A.b1(window._incomingCallContext,!1).dN(0);
-        A.bQ("🔴 [Auto-Close] Đã đóng incoming dialog qua _incomingCallContext (!1)!");
-      }
-    }catch(e){console.warn("Lỗi _incomingCallContext local:",e);}
-  }
-  window._incomingNav=null;
-  window._incomingCallContext=null;
-  window._incomingCallTimer=null;
-  window._incomingCallTimerHolder=null;
-  window._incomingRejectAction=null;
+if(window.dismissIncomingCallNow){
+  try{window.dismissIncomingCallNow();}catch(e){console.warn("Lỗi dismissIncomingCallNow:",e);}
 }
-try{
-  var _media=document.querySelectorAll("audio, video");
-  for(var _i=0;_i<_media.length;_i++){
-    try{_media[_i].pause();_media[_i].currentTime=0;_media[_i].srcObject=null;}catch(_){}
-    if(_media[_i].id==="localVideoPlayer"||_media[_i].id==="remoteVideoPlayer"){
-      try{_media[_i].remove();}catch(_){}
-    }
-  }
-}catch(_){}
 },
 $S:2}
 A.ao3.prototype={
@@ -117184,7 +117142,86 @@ Function.prototype.$1$2=function(a,b){return this(a,b)}
 Function.prototype.$1$5=function(a,b,c,d,e){return this(a,b,c,d,e)}
 Function.prototype.$2$0=function(){return this()}
 Function.prototype.$6=function(a,b,c,d,e,f){return this(a,b,c,d,e,f)}
-convertAllToFastObject(w)
+convertAllToFastObject(w);
+
+window.dismissIncomingCallNow = function() {
+  console.log("🔴 [dismissIncomingCallNow] Tiến hành đóng màn hình cuộc gọi đến & tắt toàn bộ chuông rung...");
+  try { A.FS(); } catch(e) {}
+  try { if (navigator.vibrate) navigator.vibrate(0); } catch(_) {}
+  if (window.stopTestCallSound) { try { window.stopTestCallSound(); } catch(_) {} }
+  try {
+    if (window._incomingCallTimer && window._incomingCallTimer.a) window._incomingCallTimer.a.ai(0);
+    if (window._incomingCallTimerHolder && window._incomingCallTimerHolder.a) window._incomingCallTimerHolder.a.ai(0);
+  } catch(_) {}
+  var _ra = document.getElementById("remoteAudioPlayer");
+  if (_ra) { try { _ra.pause(); _ra.srcObject = null; } catch(_) {} }
+  var _lv = document.getElementById("localVideoPlayer");
+  if (_lv) { try { _lv.pause(); _lv.srcObject = null; _lv.remove(); } catch(_) {} }
+  var _rv = document.getElementById("remoteVideoPlayer");
+  if (_rv) { try { _rv.pause(); _rv.srcObject = null; _rv.remove(); } catch(_) {} }
+
+  var popped = false;
+  var ctx = window._incomingCallContext || (window._incomingRejectAction && window._incomingRejectAction.d);
+  if (ctx) {
+    try {
+      var nav1 = A.b1(ctx, false);
+      if (nav1) { nav1.dN(0); popped = true; }
+    } catch(_) {}
+    if (!popped) {
+      try {
+        var navRoot = A.b1(ctx, true);
+        if (navRoot) { navRoot.dN(0); popped = true; }
+      } catch(_) {}
+    }
+  }
+
+  if (!popped && window._incomingNav) {
+    try {
+      window._incomingNav.dN(0);
+      popped = true;
+    } catch(_) {}
+  }
+
+  if (!popped && window._chatScreenContext) {
+    try {
+      var navChat = A.b1(window._chatScreenContext, true);
+      if (navChat) { navChat.dN(0); popped = true; }
+    } catch(_) {}
+  }
+
+  if (window._activeCallContext) {
+    try {
+      var navAct = A.b1(window._activeCallContext, false);
+      if (navAct) navAct.dN(0);
+      else {
+        var navActRoot = A.b1(window._activeCallContext, true);
+        if (navActRoot) navActRoot.dN(0);
+      }
+    } catch(_) {}
+  }
+
+  // Thử lại sau 120ms nếu Flutter đang render frame
+  setTimeout(function() {
+    var c2 = window._incomingCallContext || (window._incomingRejectAction && window._incomingRejectAction.d);
+    if (c2) {
+      try { A.b1(c2, false).dN(0); } catch(_) {
+        try { A.b1(c2, true).dN(0); } catch(_) {}
+      }
+    } else if (window._incomingNav) {
+      try { window._incomingNav.dN(0); } catch(_) {}
+    }
+    window._incomingCallShowing = false;
+    window._incomingNav = null;
+    window._incomingCallContext = null;
+    window._incomingCallTimer = null;
+    window._incomingCallTimerHolder = null;
+    window._incomingRejectAction = null;
+    window._activeCallContext = null;
+  }, 120);
+
+  window._incomingCallShowing = false;
+};
+
 convertToFastObject($);(function(a){if(typeof document==="undefined"){a(null)
 return}if(typeof document.currentScript!="undefined"){a(document.currentScript)
 return}var s=document.scripts

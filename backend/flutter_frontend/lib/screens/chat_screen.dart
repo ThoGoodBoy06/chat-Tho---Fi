@@ -1162,6 +1162,7 @@ class _ChatScreenState extends State<ChatScreen> {
       'callerAvatar': callerAvatar,
       'calleeId': targetUserId,
       'callType': isVideo ? 'video' : 'audio',
+      'conversationId': conv.id,
     });
 
     _showCallDialog(

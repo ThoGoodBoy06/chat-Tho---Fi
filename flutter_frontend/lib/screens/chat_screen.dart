@@ -4958,17 +4958,20 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         // Tự động tắt màn hình đổ chuông khi người gọi ngắt máy trước khi nghe
         incomingEndSub?.cancel();
         incomingEndSub = SocketService.onCallEnded.listen((_) {
-          print('🔴 Người gọi đã tắt máy -> Đóng màn hình cuộc gọi đến!');
+          print('🔴 Người gọi đã tắt máy -> Đóng màn hình cuộc gọi đến & tắt chuông!');
           autoRejectTimer?.cancel();
           incomingEndSub?.cancel();
           _isIncomingCallShowing = false;
+          SoundService.stopAllCallSounds();
           try {
-            Navigator.of(dialogContext, rootNavigator: true).pop();
-          } catch (_) {
-            try {
+            if (Navigator.of(dialogContext).canPop()) {
+              Navigator.of(dialogContext).pop();
+            } else if (Navigator.of(dialogContext, rootNavigator: true).canPop()) {
+              Navigator.of(dialogContext, rootNavigator: true).pop();
+            } else if (Navigator.of(context, rootNavigator: true).canPop()) {
               Navigator.of(context, rootNavigator: true).pop();
-            } catch (_) {}
-          }
+            }
+          } catch (_) {}
         });
 
         autoRejectTimer = Timer(const Duration(seconds: 30), () {
@@ -5085,6 +5088,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                     _isIncomingCallShowing = false;
                                     autoRejectTimer?.cancel();
                                     incomingEndSub?.cancel();
+                                    SoundService.stopAllCallSounds();
                                     SocketService.socket?.emit('reject_call', {
                                       'callerId': callerId,
                                       'callType': callType,
@@ -5151,6 +5155,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       autoRejectTimer?.cancel();
       incomingEndSub?.cancel();
       _isIncomingCallShowing = false;
+      SoundService.stopAllCallSounds();
     });
   }
 
@@ -5198,6 +5203,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       'callerAvatar': callerAvatar,
       'calleeId': targetUserId,
       'callType': isVideo ? 'video' : 'audio',
+      'conversationId': conv.id,
     });
 
     _showCallDialog(
