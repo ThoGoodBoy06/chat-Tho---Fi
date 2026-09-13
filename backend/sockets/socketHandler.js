@@ -1034,7 +1034,7 @@ module.exports = (io) => {
           io.to(targetSocketId).emit("call_ended", { callerId: socket.userId, targetId, conversationId });
         }
         if (conversationId) {
-          io.to(conversationId).emit("call_ended", { callerId: socket.userId, targetId, conversationId });
+          socket.to(conversationId).emit("call_ended", { callerId: socket.userId, targetId, conversationId });
         }
         activeCalls.delete(targetId);
 

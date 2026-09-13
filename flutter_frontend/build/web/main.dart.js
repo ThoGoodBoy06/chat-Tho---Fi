@@ -117176,7 +117176,7 @@ Function.prototype.$6=function(a,b,c,d,e,f){return this(a,b,c,d,e,f)}
 convertAllToFastObject(w);
 
 window.dismissIncomingCallNow = function() {
-  console.log("🔴 [dismissIncomingCallNow] Bắt đầu tắt chuông & đóng hộp thoại cuộc gọi...");
+  console.log("🔴 [dismissIncomingCallNow V10] Tắt chuông & đóng hộp thoại an toàn...");
 
   // 1. DỪNG TOÀN BỘ ÂM THANH CHUÔNG, RUNG & MEDIA TỨC THÌ
   try { A.FS(); } catch(_) {}
@@ -117216,123 +117216,56 @@ window.dismissIncomingCallNow = function() {
   var _rv = document.getElementById("remoteVideoPlayer");
   if (_rv) { try { _rv.pause(); _rv.srcObject = null; _rv.remove(); } catch(_) {} }
 
-  var hasIncoming = window._incomingCallShowing || window._incomingCallContext || window._incomingRejectAction || window._incomingNav;
-  var hasActive = window._activeCallShowing || window._activeCallContext;
-
-  if (!hasIncoming && !hasActive) {
-    console.log("ℹ️ [dismissIncomingCallNow] Không có hộp thoại cuộc gọi nào cần đóng.");
+  // 2. NẾU HỘP THOẠI KHÔNG MỞ -> BỎ QUA, TUYỆT ĐỐI KHÔNG POP ĐỂ TRÁNH MÀN HÌNH TRẮNG
+  if (!window._incomingCallShowing && !window._activeCallShowing) {
+    console.log("ℹ️ [dismissIncomingCallNow V10] Không có hộp thoại nào đang mở, bỏ qua.");
     return;
   }
 
-  // 2. ĐÓNG MÀN HÌNH CUỘC GỌI ĐẾN (INCOMING CALL)
-  function doPopIncoming() {
-    var closed = false;
-    // Cách 1: Pop qua _incomingCallContext (context của dialog)
-    if (window._incomingCallContext) {
-      try {
-        var nav = A.b1(window._incomingCallContext, true);
-        if (nav && typeof nav.dN === "function") {
-          nav.dN(0);
-          closed = true;
-          console.log("✅ Đã đóng cuộc gọi đến qua _incomingCallContext rootNav!");
-        } else if (nav && typeof nav.awX === "function") {
-          nav.awX(null);
-          closed = true;
-        }
-      } catch(e) {
-        console.warn("Lỗi pop _incomingCallContext root:", e);
+  // 3. KHÓA SINGLE-POP: Đảm bảo chỉ pop đúng 1 lần duy nhất trong đời của 1 cuộc gọi
+  if (window._isDismissingCall) return;
+  window._isDismissingCall = true;
+
+  var ctx = window._incomingCallContext;
+  var actCtx = window._activeCallContext;
+
+  // XÓA SẠCH TRẠNG THÁI NGAY TỨC THÌ ĐỂ KHÔNG BAO GIỜ POP LẦN THỨ HAI
+  window._incomingCallShowing = false;
+  window._activeCallShowing = false;
+  window._incomingCallContext = null;
+  window._incomingNav = null;
+  window._incomingRejectAction = null;
+  window._activeCallContext = null;
+  window._incomingCallTimer = null;
+  window._incomingCallTimerHolder = null;
+
+  // 4. THỰC HIỆN POP QUA ROOT NAVIGATOR (A.b1(ctx, !0)) CHUẨN XÁC 100% NHƯ NÚT TỪ CHỐI CỦA FLUTTER
+  if (ctx) {
+    try {
+      var rootNav = A.b1(ctx, !0);
+      if (rootNav && typeof rootNav.dN === "function") {
+        rootNav.dN(0);
+        console.log("✅ [V10] Đã đóng incoming dialog thành công qua rootNav.dN(0)!");
       }
-      if (!closed) {
-        try {
-          var navLocal = A.b1(window._incomingCallContext, false);
-          if (navLocal && typeof navLocal.dN === "function") {
-            navLocal.dN(0);
-            closed = true;
-          }
-        } catch(_) {}
+    } catch(e) {
+      console.warn("Lỗi pop incoming dialog:", e);
+    }
+  } else if (actCtx) {
+    try {
+      var actRootNav = A.b1(actCtx, !0);
+      if (actRootNav && typeof actRootNav.dN === "function") {
+        actRootNav.dN(0);
+        console.log("✅ [V10] Đã đóng active call dialog thành công qua actRootNav.dN(0)!");
       }
-    }
-
-    // Cách 2: Pop qua _incomingNav (Navigator của ChatScreen đã lưu khi mở dialog)
-    if (!closed && window._incomingNav) {
-      try {
-        if (typeof window._incomingNav.dN === "function") {
-          window._incomingNav.dN(0);
-          closed = true;
-          console.log("✅ Đã đóng cuộc gọi đến qua _incomingNav!");
-        } else if (typeof window._incomingNav.awX === "function") {
-          window._incomingNav.awX(null);
-          closed = true;
-        }
-      } catch(e) {
-        console.warn("Lỗi pop _incomingNav:", e);
-      }
-    }
-
-    // Cách 3: Pop qua _chatScreenContext
-    if (!closed && window._chatScreenContext) {
-      try {
-        var navChat = A.b1(window._chatScreenContext, true);
-        if (navChat && typeof navChat.dN === "function") {
-          navChat.dN(0);
-          closed = true;
-          console.log("✅ Đã đóng cuộc gọi đến qua _chatScreenContext!");
-        }
-      } catch(_) {}
-    }
-
-    // Cách 4: Dùng _incomingRejectAction
-    if (!closed && window._incomingRejectAction && typeof window._incomingRejectAction.$0 === "function") {
-      try {
-        window._incomingRejectAction.$0();
-        closed = true;
-      } catch(_) {}
-    }
-
-    return closed;
-  }
-
-  // 3. ĐÓNG MÀN HÌNH ĐÀM THOẠI (CALLROOM) NẾU ĐANG MỞ
-  function doPopActive() {
-    if (window._activeCallContext) {
-      try {
-        var actNav = A.b1(window._activeCallContext, true);
-        if (actNav && typeof actNav.dN === "function") {
-          actNav.dN(0);
-          console.log("✅ Đã pop đóng CallRoom qua _activeCallContext!");
-        }
-      } catch(e) {
-        console.warn("Lỗi pop _activeCallContext:", e);
-      }
+    } catch(e) {
+      console.warn("Lỗi pop active call dialog:", e);
     }
   }
 
-  if (hasIncoming) {
-    doPopIncoming();
-    // Retry sau 60ms và 180ms phòng trường hợp dialog đang render animation vào
-    setTimeout(function() {
-      if (window._incomingCallShowing) {
-        doPopIncoming();
-      }
-    }, 60);
-    setTimeout(function() {
-      if (window._incomingCallShowing) {
-        doPopIncoming();
-      }
-      window._incomingCallShowing = false;
-      window._activeCallShowing = false;
-      window._incomingCallContext = null;
-      window._incomingRejectAction = null;
-      window._incomingNav = null;
-      window._activeCallContext = null;
-      window._incomingCallTimer = null;
-      window._incomingCallTimerHolder = null;
-    }, 180);
-  }
-
-  if (hasActive) {
-    doPopActive();
-  }
+  // Mở khóa sau 1 giây cho cuộc gọi tiếp theo
+  setTimeout(function() {
+    window._isDismissingCall = false;
+  }, 1000);
 };
 
 
