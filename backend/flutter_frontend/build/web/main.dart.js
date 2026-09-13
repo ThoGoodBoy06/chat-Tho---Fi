@@ -25836,7 +25836,8 @@ r=s}else r=null
 if(b){q=a.atQ(t.uK)
 r=q==null?r:q
 s=r}else{if(r==null)r=a.lZ(t.uK)
-s=r}s.toString
+if(r==null)r=a.atQ(t.uK)
+s=r}if(s!=null)s.toString
 return s},
 aRa(a){var s,r=a.k3
 r.toString
@@ -100431,8 +100432,8 @@ if(!r)l.volume=1
 if(!r){r=l.play()
 r.toString
 A.cz(r,t.z).f_(new A.awP())}r=$.bj
-if(r!=null)r.cn("request_call",A.V(["callerId",q,"callerName",n,"callerAvatar",m,"calleeId",s,"callType",c?"video":"audio"],t.N,t.T))
-this.VI(a,!0,c,j.b,s)},
+var _cId=(j&&j.b)||window._currentActiveChatConvId||"";if(r!=null)r.cn("request_call",A.V(["callerId",q,"callerName",n,"callerAvatar",m,"calleeId",s,"callType",c?"video":"audio","conversationId",_cId],t.N,t.T))
+window._currentCallPartnerId=s;this.VI(a,!0,c,j.b,s)},
 VI(a,b,c,d,e){var s,r,q,p,o={}
 o.a=!1
 o.b=!0
@@ -101669,7 +101670,7 @@ $S:217}
 A.auN.prototype={
 $0(){var s=this.a.c
 s.toString
-return A.b1(s,!1).dN(0)},
+return A.b1(s,!0).dN(0)},
 $S:0}
 A.avh.prototype={
 $3(a,b,c){var s,r,q,p,o,n,m=this,l=null,k=m.c,j=m.d,i=m.a
@@ -101691,24 +101692,26 @@ $0(){var s,r=$.bj
 window._incomingCallShowing=false;window._incomingCallContext=null;window._incomingCallTimer=null;window._incomingNav=null;
 if(r!=null){s=t.N
 r.cn("reject_call",A.V(["callerId",this.a,"callType",this.b],s,s))}r=this.c
-if(A.b1(r,!1).rB())A.b1(r,!1).dN(0)},
+if(A.b1(r,!0).rB())A.b1(r,!0).dN(0)},
 $S:0}
 A.avg.prototype={
 $0(){var s=0,r=A.x(t.y),q
 var $async$$0=A.t(function(a,b){if(a===1)return A.u(b,r)
-while(true)switch(s){case 0:q=!1
+while(true)switch(s){case 0:q=!0
 s=1
 break
 case 1:return A.v(q,r)}})
-return A.w($async$$0,r)},
+return A.w($async$0,r)},
 $S:72}
 A.ave.prototype={
 $0(){var s,r=this,q=r.a.a
-window._incomingCallContext=null;window._incomingCallTimer=null;
+try{A.FS();}catch(_){}
+try{if($.aJx)$.aJx().cs(0);}catch(_){}
+window._incomingCallShowing=false;window._incomingCallContext=null;window._incomingCallTimer=null;
 if(q!=null)q.ai(0)
 q=$.bj
 if(q!=null){s=t.N
-q.cn("reject_call",A.V(["callerId",r.b,"callType",r.c],s,s))}A.b1(r.d,!1).dN(0)},
+q.cn("reject_call",A.V(["callerId",r.b,"callType",r.c],s,s))}A.b1(r.d,!0).dN(0)},
 $S:0}
 A.avf.prototype={
 $0(){var s,r,q=this,p=q.a.a
@@ -101722,7 +101725,7 @@ if(!p){p=s.play()
 p.toString
 A.cz(p,t.z).f_(new A.avc())}p=$.bj
 if(p!=null){r=t.N
-p.cn("accept_call",A.V(["callerId",q.c],r,r))}A.b1(q.d,!1).dN(0)
+p.cn("accept_call",A.V(["callerId",q.c],r,r))}A.b1(q.d,!0).dN(0)
 p=q.b
 r=p.c
 r.toString
@@ -101813,7 +101816,7 @@ B.b.U(this.c)}catch(l){p=A.a0(l)
 A.bQ("\u26a0\ufe0f WebRTC cleanup error: "+A.f(p))}},
 $S:0}
 A.aw4.prototype={
-$3(a,b,c){var s=this;window._activeCallContext=a;
+$3(a,b,c){var s=this;window._activeCallContext=a;window._activeCallShowing=true;
 return new A.ty(new A.aw_(s.a,s.b,s.c,s.d,s.e,s.f,s.r,s.w,a,s.x),null)},
 $C:"$3",
 $R:3,
@@ -102236,14 +102239,14 @@ $S:0}
 A.avz.prototype={
 $0(){this.a.$0()
 var s=this.b
-if(A.b1(s,!1).rB())A.b1(s,!1).dN(0)},
+if(A.b1(s,!0).rB())A.b1(s,!0).dN(0)},
 $S:7}
 A.avD.prototype={
 $1(a){var s
 A.bQ("\ud83d\udd34 \u0110\u1ed1i ph\u01b0\u01a1ng \u0111\xe3 t\u1eaft m\xe1y -> T\u1ef1 \u0111\u1ed9ng \u0111\xf3ng m\xe0n h\xecnh g\u1ecdi!")
 this.a.$0()
 s=this.b
-if(A.b1(s,!1).rB())A.b1(s,!1).dN(0)},
+if(A.b1(s,!0).rB())A.b1(s,!0).dN(0)},
 $S:220}
 A.avE.prototype={
 $1(a){return this.a2M(a)},
@@ -102257,11 +102260,11 @@ $S:219}
 A.avJ.prototype={
 $0(){var s=0,r=A.x(t.y),q
 var $async$$0=A.t(function(a,b){if(a===1)return A.u(b,r)
-while(true)switch(s){case 0:q=!1
+while(true)switch(s){case 0:q=!0
 s=1
 break
 case 1:return A.v(q,r)}})
-return A.w($async$$0,r)},
+return A.w($async$0,r)},
 $S:72}
 A.avF.prototype={
 $0(){this.b.$1(new A.avx(this.a))},
@@ -102282,11 +102285,39 @@ s=p.f
 if(s!=null)for(s=s.getVideoTracks(),r=s.length,q=0;q<s.length;s.length===r||(0,A.R)(s),++q)s[q].enabled=!p.c},
 $S:0}
 A.avH.prototype={
-$0(){var s,r=$.bj
-if(r!=null){s=t.N
-var convId=(window._currentActiveChatConvId||"");r.cn("end_call",A.V(["connectedUserId",this.a,"conversationId",convId],s,s))}this.b.$0()
-r=this.c
-if(A.b1(r,!1).rB())A.b1(r,!1).dN(0)},
+$0(){
+  var s, r = $.bj;
+  var targetId = (typeof this.a === "string" && this.a) || window._currentCallPartnerId || "";
+  var convId = (typeof $ !== "undefined" && $._currentActiveChatConvId) || window._currentActiveChatConvId || "";
+  console.log("🔴 [Caller cúp máy] Đang cúp máy tới partner:", targetId, "room:", convId);
+  try { A.FS(); } catch(_) {}
+  try { if (typeof $ !== "undefined" && $.aJy) $.aJy().cs(0); } catch(_) {}
+  try { if (typeof $ !== "undefined") $.aos = false; } catch(_) {}
+  if (r != null) {
+    s = t.N;
+    r.cn("end_call", A.V(["connectedUserId", targetId, "conversationId", convId], s, s));
+  }
+  try {
+    var bUrl = (window.location.origin && window.location.origin.includes("pages.dev")) ? "https://chat-tho-fi-vn-9s8u.onrender.com" : "";
+    fetch(bUrl + '/api/call/end', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      keepalive: true,
+      body: JSON.stringify({ callerId: (window._currentUserId || ""), connectedUserId: targetId, conversationId: convId })
+    }).catch(function() {});
+  } catch(_) {}
+  try { this.b.$0(); } catch(_) {}
+  try {
+    r = this.c;
+    var nav = A.b1(r, true);
+    if (nav && typeof nav.dN === "function") nav.dN(0);
+    else if (nav && typeof nav.awX === "function") nav.awX(null);
+  } catch(e) {
+    console.warn("Lỗi đóng CallRoom:", e);
+  }
+  window._activeCallShowing = false;
+  window._activeCallContext = null;
+},
 $S:0}
 A.avI.prototype={
 $0(){this.b.$1(new A.avv(this.a))},
@@ -103868,7 +103899,7 @@ A.aEf.prototype={
 $1(a){return new A.oz(new A.aEe(),null)},
 $S:623}
 A.aEe.prototype={
-$0(){},
+$0(){if(typeof window!=="undefined"&&window.location){window.location.reload();}},
 $S:0}
 A.aEg.prototype={
 $1(a){return!1},
@@ -117145,14 +117176,39 @@ Function.prototype.$6=function(a,b,c,d,e,f){return this(a,b,c,d,e,f)}
 convertAllToFastObject(w);
 
 window.dismissIncomingCallNow = function() {
-  console.log("🔴 [dismissIncomingCallNow] Tiến hành đóng màn hình cuộc gọi đến & tắt toàn bộ chuông rung...");
-  try { A.FS(); } catch(e) {}
+  console.log("🔴 [dismissIncomingCallNow] Bắt đầu tắt chuông & đóng hộp thoại cuộc gọi...");
+
+  // 1. DỪNG TOÀN BỘ ÂM THANH CHUÔNG, RUNG & MEDIA TỨC THÌ
+  try { A.FS(); } catch(_) {}
+  try {
+    if (typeof $ !== "undefined") {
+      if ($.aJx) $.aJx().cs(0);
+      if ($.aJy) $.aJy().cs(0);
+      $.aor = false;
+      $.aos = false;
+    }
+  } catch(_) {}
   try { if (navigator.vibrate) navigator.vibrate(0); } catch(_) {}
   if (window.stopTestCallSound) { try { window.stopTestCallSound(); } catch(_) {} }
+
+  // Hủy các timer đổ chuông
   try {
     if (window._incomingCallTimer && window._incomingCallTimer.a) window._incomingCallTimer.a.ai(0);
     if (window._incomingCallTimerHolder && window._incomingCallTimerHolder.a) window._incomingCallTimerHolder.a.ai(0);
   } catch(_) {}
+
+  // Dừng tất cả thẻ audio và video trong DOM
+  try {
+    var allMedia = document.querySelectorAll("audio, video");
+    for (var i = 0; i < allMedia.length; i++) {
+      try {
+        allMedia[i].pause();
+        allMedia[i].currentTime = 0;
+        allMedia[i].srcObject = null;
+      } catch(_) {}
+    }
+  } catch(_) {}
+
   var _ra = document.getElementById("remoteAudioPlayer");
   if (_ra) { try { _ra.pause(); _ra.srcObject = null; } catch(_) {} }
   var _lv = document.getElementById("localVideoPlayer");
@@ -117160,67 +117216,134 @@ window.dismissIncomingCallNow = function() {
   var _rv = document.getElementById("remoteVideoPlayer");
   if (_rv) { try { _rv.pause(); _rv.srcObject = null; _rv.remove(); } catch(_) {} }
 
-  var popped = false;
-  var ctx = window._incomingCallContext || (window._incomingRejectAction && window._incomingRejectAction.d);
-  if (ctx) {
-    try {
-      var nav1 = A.b1(ctx, false);
-      if (nav1) { nav1.dN(0); popped = true; }
-    } catch(_) {}
-    if (!popped) {
+  var hasIncoming = window._incomingCallShowing || window._incomingCallContext || window._incomingRejectAction || window._incomingNav;
+  var hasActive = window._activeCallShowing || window._activeCallContext;
+
+  if (!hasIncoming && !hasActive) {
+    console.log("ℹ️ [dismissIncomingCallNow] Không có hộp thoại cuộc gọi nào cần đóng.");
+    return;
+  }
+
+  // 2. ĐÓNG MÀN HÌNH CUỘC GỌI ĐẾN (INCOMING CALL)
+  function doPopIncoming() {
+    var closed = false;
+    // Cách 1: Pop qua _incomingCallContext (context của dialog)
+    if (window._incomingCallContext) {
       try {
-        var navRoot = A.b1(ctx, true);
-        if (navRoot) { navRoot.dN(0); popped = true; }
+        var nav = A.b1(window._incomingCallContext, true);
+        if (nav && typeof nav.dN === "function") {
+          nav.dN(0);
+          closed = true;
+          console.log("✅ Đã đóng cuộc gọi đến qua _incomingCallContext rootNav!");
+        } else if (nav && typeof nav.awX === "function") {
+          nav.awX(null);
+          closed = true;
+        }
+      } catch(e) {
+        console.warn("Lỗi pop _incomingCallContext root:", e);
+      }
+      if (!closed) {
+        try {
+          var navLocal = A.b1(window._incomingCallContext, false);
+          if (navLocal && typeof navLocal.dN === "function") {
+            navLocal.dN(0);
+            closed = true;
+          }
+        } catch(_) {}
+      }
+    }
+
+    // Cách 2: Pop qua _incomingNav (Navigator của ChatScreen đã lưu khi mở dialog)
+    if (!closed && window._incomingNav) {
+      try {
+        if (typeof window._incomingNav.dN === "function") {
+          window._incomingNav.dN(0);
+          closed = true;
+          console.log("✅ Đã đóng cuộc gọi đến qua _incomingNav!");
+        } else if (typeof window._incomingNav.awX === "function") {
+          window._incomingNav.awX(null);
+          closed = true;
+        }
+      } catch(e) {
+        console.warn("Lỗi pop _incomingNav:", e);
+      }
+    }
+
+    // Cách 3: Pop qua _chatScreenContext
+    if (!closed && window._chatScreenContext) {
+      try {
+        var navChat = A.b1(window._chatScreenContext, true);
+        if (navChat && typeof navChat.dN === "function") {
+          navChat.dN(0);
+          closed = true;
+          console.log("✅ Đã đóng cuộc gọi đến qua _chatScreenContext!");
+        }
       } catch(_) {}
     }
-  }
 
-  if (!popped && window._incomingNav) {
-    try {
-      window._incomingNav.dN(0);
-      popped = true;
-    } catch(_) {}
-  }
-
-  if (!popped && window._chatScreenContext) {
-    try {
-      var navChat = A.b1(window._chatScreenContext, true);
-      if (navChat) { navChat.dN(0); popped = true; }
-    } catch(_) {}
-  }
-
-  if (window._activeCallContext) {
-    try {
-      var navAct = A.b1(window._activeCallContext, false);
-      if (navAct) navAct.dN(0);
-      else {
-        var navActRoot = A.b1(window._activeCallContext, true);
-        if (navActRoot) navActRoot.dN(0);
-      }
-    } catch(_) {}
-  }
-
-  // Thử lại sau 120ms nếu Flutter đang render frame
-  setTimeout(function() {
-    var c2 = window._incomingCallContext || (window._incomingRejectAction && window._incomingRejectAction.d);
-    if (c2) {
-      try { A.b1(c2, false).dN(0); } catch(_) {
-        try { A.b1(c2, true).dN(0); } catch(_) {}
-      }
-    } else if (window._incomingNav) {
-      try { window._incomingNav.dN(0); } catch(_) {}
+    // Cách 4: Dùng _incomingRejectAction
+    if (!closed && window._incomingRejectAction && typeof window._incomingRejectAction.$0 === "function") {
+      try {
+        window._incomingRejectAction.$0();
+        closed = true;
+      } catch(_) {}
     }
-    window._incomingCallShowing = false;
-    window._incomingNav = null;
-    window._incomingCallContext = null;
-    window._incomingCallTimer = null;
-    window._incomingCallTimerHolder = null;
-    window._incomingRejectAction = null;
-    window._activeCallContext = null;
-  }, 120);
 
-  window._incomingCallShowing = false;
+    return closed;
+  }
+
+  // 3. ĐÓNG MÀN HÌNH ĐÀM THOẠI (CALLROOM) NẾU ĐANG MỞ
+  function doPopActive() {
+    if (window._activeCallContext) {
+      try {
+        var actNav = A.b1(window._activeCallContext, true);
+        if (actNav && typeof actNav.dN === "function") {
+          actNav.dN(0);
+          console.log("✅ Đã pop đóng CallRoom qua _activeCallContext!");
+        }
+      } catch(e) {
+        console.warn("Lỗi pop _activeCallContext:", e);
+      }
+    }
+  }
+
+  if (hasIncoming) {
+    doPopIncoming();
+    // Retry sau 60ms và 180ms phòng trường hợp dialog đang render animation vào
+    setTimeout(function() {
+      if (window._incomingCallShowing) {
+        doPopIncoming();
+      }
+    }, 60);
+    setTimeout(function() {
+      if (window._incomingCallShowing) {
+        doPopIncoming();
+      }
+      window._incomingCallShowing = false;
+      window._activeCallShowing = false;
+      window._incomingCallContext = null;
+      window._incomingRejectAction = null;
+      window._incomingNav = null;
+      window._activeCallContext = null;
+      window._incomingCallTimer = null;
+      window._incomingCallTimerHolder = null;
+    }, 180);
+  }
+
+  if (hasActive) {
+    doPopActive();
+  }
 };
+
+
+
+
+
+
+
+
+
+
 
 convertToFastObject($);(function(a){if(typeof document==="undefined"){a(null)
 return}if(typeof document.currentScript!="undefined"){a(document.currentScript)

@@ -22,3 +22,5 @@ String getWebDeviceId() {
 
 bool isNotificationPermissionGranted() => true;
 Future<bool> requestWebNotificationPermission() async => true;
+
+void forceDismissWebCallDialog() {}

@@ -38,9 +38,20 @@ messaging.onBackgroundMessage((payload) => {
   console.log("[firebase-messaging-sw.js] Đã nhận tin nhắn chạy ngầm", payload);
   // [Auto-Dismiss] Huỷ thông báo cuộc gọi đến khi đối phương tắt máy
   if (payload.data?.type === "call_ended" || payload.data?.type === "CALL_ENDED") {
-    return self.registration.getNotifications({ tag: "incoming-call" }).then((notifications) => {
-      notifications.forEach((n) => n.close());
-    });
+    return Promise.all([
+      self.registration.getNotifications().then((notifications) => {
+        notifications.forEach((n) => {
+          if (n.tag === "incoming-call" || (n.title && n.title.includes("gọi"))) {
+            n.close();
+          }
+        });
+      }),
+      self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+        clients.forEach((client) => {
+          client.postMessage({ type: "call_ended" });
+        });
+      })
+    ]);
   }
 
   const isCall = payload.data?.type === "incoming_call" || payload.data?.type === "INCOMING_CALL";

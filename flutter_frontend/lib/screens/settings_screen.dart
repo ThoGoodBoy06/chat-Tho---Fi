@@ -52,22 +52,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             onPressed: () async {
               Navigator.pop(ctx);
-              // 1. Xóa toàn bộ Token/Session
-              await ApiService.clearToken();
-              // 2. Ngắt kết nối Socket.IO ngay lập tức
-              SocketService.disconnect();
-              // 3. Xóa dữ liệu user cục bộ trong Provider
               if (mounted) {
-                Provider.of<ChatProvider>(context, listen: false).clearCurrentUser();
-                // 4. Push & Remove Until tới LoginScreen
-                Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-                  MaterialPageRoute(
-                    builder: (_) => LoginScreen(
-                      onLoginSuccess: () {},
-                    ),
-                  ),
-                  (route) => false,
-                );
+                Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
+                widget.onLogout();
               }
             },
             child: const Text('Đăng xuất', style: TextStyle(fontWeight: FontWeight.bold)),

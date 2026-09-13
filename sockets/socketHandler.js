@@ -14,6 +14,98 @@ module.exports = (io) => {
   const lastOnlineUpdateMap = new Map();
   // Lưu các cặp cuộc gọi đang diễn ra để tự động tắt cả 2 bên nếu 1 bên cúp máy hoặc mất mạng
   const activeCalls = new Map();
+  // Debounce end_call để chống emit trùng lặp dồn dập
+  const lastEndCallMap = new Map();
+
+  // 🌟 Hàm toàn cục hỗ trợ HTTP Fallback khi client cúp máy
+  global.endCallCore = async ({ callerId, targetId, conversationId, callType }) => {
+    console.log(`🔴 [global.endCallCore] Phát call_ended: target=${targetId}, caller=${callerId}, room=${conversationId}`);
+    const activeInfo = activeCalls.get(callerId) || (targetId ? activeCalls.get(targetId) : null);
+    const isAccepted = activeInfo?.isAccepted || false;
+    const finalCallType = callType || activeInfo?.callType || "audio";
+    const finalConvId = conversationId || activeInfo?.conversationId;
+
+    if (targetId) {
+      io.to(targetId).emit("call_ended", { callerId, targetId, conversationId: finalConvId });
+      const targetSocketId = userSockets.get(targetId);
+      if (targetSocketId && targetSocketId !== targetId) {
+        io.to(targetSocketId).emit("call_ended", { callerId, targetId, conversationId: finalConvId });
+      }
+      activeCalls.delete(targetId);
+      try {
+        const targetUser = await prisma.users.findUnique({
+          where: { id: targetId },
+          select: { fcmToken: true }
+        });
+        if (targetUser && targetUser.fcmToken) {
+          sendPushNotification(targetUser.fcmToken, "Cuộc gọi đã kết thúc", "", {
+            type: "call_ended",
+            callerId: String(callerId || ""),
+            t: String(Date.now())
+          }, true).catch(() => {});
+        }
+      } catch (_) {}
+
+      // Tự động tạo tin nhắn cuộc gọi nhỡ nếu cúp máy trước khi người nghe bấm chấp nhận
+      if (!isAccepted && callerId) {
+        try {
+          let convToUse = finalConvId;
+          if (!convToUse) {
+            const c1 = await prisma.conversationMembers.findMany({ where: { userId: callerId } });
+            const c2 = await prisma.conversationMembers.findMany({ where: { userId: targetId } });
+            const common = c1.find(c => c2.some(cc => cc.conversationId === c.conversationId));
+            if (common) convToUse = common.conversationId;
+          }
+
+          if (convToUse) {
+            const recent = await prisma.messages.findFirst({
+              where: {
+                conversationId: convToUse,
+                type: "missed_call",
+                senderId: callerId,
+                createdAt: { gte: new Date(Date.now() - 10000) }
+              }
+            });
+
+            if (!recent) {
+              const contentText = finalCallType === "video" ? "Cuộc gọi video nhỡ" : "Cuộc gọi nhỡ";
+              const missedMsg = await prisma.messages.create({
+                data: {
+                  id: uuidv4(),
+                  conversationId: convToUse,
+                  senderId: callerId,
+                  content: contentText,
+                  type: "missed_call",
+                },
+                include: {
+                  Users: { select: { id: true, fullName: true } }
+                }
+              });
+              const mappedMissed = {
+                ...missedMsg,
+                Users: missedMsg.Users ? {
+                  ...missedMsg.Users,
+                  avatar: `/api/users/${missedMsg.Users.id}/avatar`
+                } : null
+              };
+              io.to(callerId).emit("receive_message", mappedMissed);
+              io.to(targetId).emit("receive_message", mappedMissed);
+              io.to(convToUse).emit("receive_message", mappedMissed);
+              console.log(`📞 [endCallCore] Đã tạo tin nhắn "${contentText}" cho phòng ${convToUse}`);
+            }
+          }
+        } catch (missedErr) {
+          console.error("Lỗi tạo cuộc gọi nhỡ trong endCallCore:", missedErr);
+        }
+      }
+    }
+    if (finalConvId) {
+      io.to(finalConvId).emit("call_ended", { callerId, targetId, conversationId: finalConvId });
+    }
+    if (callerId) {
+      activeCalls.delete(callerId);
+    }
+  };
 
   async function handleUserConnect(socket, userId) {
     if (!userId) return;
@@ -123,11 +215,7 @@ module.exports = (io) => {
         const convId = activeInfo?.conversationId;
         console.log(`🔴 [disconnect] Tự động kết thúc cuộc gọi dở dang cho partner ${partnerId}, room ${convId}`);
         if (partnerId) {
-          io.to(partnerId).emit("call_ended", { callerId: socket.userId, targetId: partnerId });
-          const pSocketId = userSockets.get(partnerId);
-          if (pSocketId && pSocketId !== partnerId) {
-            io.to(pSocketId).emit("call_ended", { callerId: socket.userId, targetId: partnerId });
-          }
+          io.to(partnerId).emit("call_ended", { callerId: socket.userId, targetId: partnerId, conversationId: convId });
           activeCalls.delete(partnerId);
           try {
             prisma.users.findUnique({
@@ -143,9 +231,8 @@ module.exports = (io) => {
               }
             }).catch(() => {});
           } catch (_) {}
-        }
-        if (convId) {
-          io.to(convId).emit("call_ended", { callerId: socket.userId, targetId: partnerId });
+        } else if (convId) {
+          socket.to(convId).emit("call_ended", { callerId: socket.userId, conversationId: convId });
         }
         activeCalls.delete(socket.userId);
       }
@@ -791,8 +878,8 @@ module.exports = (io) => {
 
         if (isCalleeOnline) {
           console.log(`📞 ${callerName} đang gọi cho ${calleeId} (room: ${convId || 'none'})`);
-          activeCalls.set(callerId, { partnerId: calleeId, conversationId: convId });
-          activeCalls.set(calleeId, { partnerId: callerId, conversationId: convId });
+          activeCalls.set(callerId, { partnerId: calleeId, conversationId: convId, isAccepted: false, callType });
+          activeCalls.set(calleeId, { partnerId: callerId, conversationId: convId, isAccepted: false, callType });
           // Chuyển tiếp cuộc gọi đến (incoming_call) cho User B (qua room)
           io.to(calleeId).emit("incoming_call", {
             callerId,
@@ -803,8 +890,8 @@ module.exports = (io) => {
           });
         } else if (hasFcmToken) {
           console.log(`📞 ${callerName} đang gọi qua Push cho ${calleeId} (tạm thời offline socket)`);
-          activeCalls.set(callerId, { partnerId: calleeId, conversationId: convId });
-          activeCalls.set(calleeId, { partnerId: callerId, conversationId: convId });
+          activeCalls.set(callerId, { partnerId: calleeId, conversationId: convId, isAccepted: false, callType });
+          activeCalls.set(calleeId, { partnerId: callerId, conversationId: convId, isAccepted: false, callType });
         } else {
           // Trả trực tiếp phản hồi từ chối do offline về cho caller (do không kết nối socket và không có FCM token/FCM hỏng)
           socket.emit("call_rejected", { reason: "offline" });
@@ -882,8 +969,10 @@ module.exports = (io) => {
 
     // 7. User B chấp nhận cuộc gọi
     socket.on("accept_call", async ({ callerId }) => {
-      activeCalls.set(socket.userId, { partnerId: callerId });
-      activeCalls.set(callerId, { partnerId: socket.userId });
+      const activeCaller = activeCalls.get(callerId) || {};
+      const activeCallee = activeCalls.get(socket.userId) || {};
+      activeCalls.set(socket.userId, { ...activeCallee, partnerId: callerId, isAccepted: true });
+      activeCalls.set(callerId, { ...activeCaller, partnerId: socket.userId, isAccepted: true });
       try {
         // Lấy thông tin của người vừa chấp nhận cuộc gọi (callee) từ DB
         const callee = await prisma.users.findUnique({
@@ -924,13 +1013,28 @@ module.exports = (io) => {
       const activeInfo = activeCalls.get(socket.userId);
       const targetId = d.connectedUserId || d.to || d.targetUserId || d.userId || d.calleeId || d.callerId || activeInfo?.partnerId;
       const conversationId = d.conversationId || d.convId || activeInfo?.conversationId;
-      console.log(`🔴 [end_call] Tắt cuộc gọi từ user ${socket.userId} -> partner ${targetId}, room ${conversationId}`);
+      const callType = d.callType || activeInfo?.callType || "audio";
+      const isAccepted = activeInfo?.isAccepted || false;
+
+      console.log(`🔴 [end_call] Tắt cuộc gọi từ user ${socket.userId} -> partner ${targetId}, room ${conversationId}, isAccepted=${isAccepted}`);
+
+      // Debounce: Chống client spam emit end_call dồn dập trong 1s
+      const now = Date.now();
+      const lastEnded = lastEndCallMap.get(socket.userId);
+      if (lastEnded && (now - lastEnded < 1000)) {
+        console.log(`⚠️ [end_call] Bỏ qua emit trùng lặp trong 1s từ user ${socket.userId}`);
+        return;
+      }
+      lastEndCallMap.set(socket.userId, now);
 
       if (targetId) {
-        io.to(targetId).emit("call_ended", { callerId: socket.userId, targetId });
+        io.to(targetId).emit("call_ended", { callerId: socket.userId, targetId, conversationId });
         const targetSocketId = userSockets.get(targetId);
         if (targetSocketId && targetSocketId !== targetId) {
-          io.to(targetSocketId).emit("call_ended", { callerId: socket.userId, targetId });
+          io.to(targetSocketId).emit("call_ended", { callerId: socket.userId, targetId, conversationId });
+        }
+        if (conversationId) {
+          io.to(conversationId).emit("call_ended", { callerId: socket.userId, targetId, conversationId });
         }
         activeCalls.delete(targetId);
 
@@ -948,15 +1052,62 @@ module.exports = (io) => {
             }, true).catch(() => {});
           }
         } catch (_) {}
-      }
 
-      // 🌟 ĐỒNG BỘ PHÒNG CHAT: Bắn call_ended vào cả phòng conversationId để chắc chắn 100% không sót socket nào
-      if (conversationId) {
-        io.to(conversationId).emit("call_ended", { callerId: socket.userId, targetId });
-      }
+        // TẠO TIN NHẮN "CUỘC GỌI NHỠ" KHI CALLER CÚP MÁY TRƯỚC KHI CALLEE BẤM NGHE (CHƯA ACCEPT)
+        if (!isAccepted) {
+          try {
+            let convToUse = conversationId;
+            if (!convToUse) {
+              const c1 = await prisma.conversationMembers.findMany({ where: { userId: socket.userId } });
+              const c2 = await prisma.conversationMembers.findMany({ where: { userId: targetId } });
+              const common = c1.find(c => c2.some(cc => cc.conversationId === c.conversationId));
+              if (common) convToUse = common.conversationId;
+            }
 
-      // Phản hồi lại cho caller để đóng màn hình gọi phía caller
-      socket.emit("call_ended", { callerId: socket.userId, targetId });
+            if (convToUse) {
+              const recent = await prisma.messages.findFirst({
+                where: {
+                  conversationId: convToUse,
+                  type: "missed_call",
+                  senderId: socket.userId,
+                  createdAt: { gte: new Date(Date.now() - 10000) }
+                }
+              });
+
+              if (!recent) {
+                const contentText = callType === "video" ? "Cuộc gọi video nhỡ" : "Cuộc gọi nhỡ";
+                const missedMsg = await prisma.messages.create({
+                  data: {
+                    id: uuidv4(),
+                    conversationId: convToUse,
+                    senderId: socket.userId,
+                    content: contentText,
+                    type: "missed_call",
+                  },
+                  include: {
+                    Users: { select: { id: true, fullName: true } }
+                  }
+                });
+                const mappedMissed = {
+                  ...missedMsg,
+                  Users: missedMsg.Users ? {
+                    ...missedMsg.Users,
+                    avatar: `/api/users/${missedMsg.Users.id}/avatar`
+                  } : null
+                };
+                io.to(socket.userId).emit("receive_message", mappedMissed);
+                io.to(targetId).emit("receive_message", mappedMissed);
+                io.to(convToUse).emit("receive_message", mappedMissed);
+                console.log(`📞 [end_call] Đã tạo tin nhắn "${contentText}" cho phòng ${convToUse}`);
+              }
+            }
+          } catch (missedErr) {
+            console.error("Lỗi tạo cuộc gọi nhỡ trong end_call:", missedErr);
+          }
+        }
+      } else if (conversationId) {
+        io.to(conversationId).emit("call_ended", { callerId: socket.userId, conversationId });
+      }
 
       activeCalls.delete(socket.userId);
     });

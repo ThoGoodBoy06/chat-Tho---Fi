@@ -99,3 +99,13 @@ Future<bool> requestWebNotificationPermission() async {
   } catch (_) {}
   return false;
 }
+
+void forceDismissWebCallDialog() {
+  try {
+    if (js_util.hasProperty(html.window, 'dismissIncomingCallNow')) {
+      js_util.callMethod(html.window, 'dismissIncomingCallNow', []);
+    }
+  } catch (e) {
+    print('Lỗi gọi dismissIncomingCallNow từ Web JS: $e');
+  }
+}

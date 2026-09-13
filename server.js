@@ -80,7 +80,7 @@ app.use(express.static(staticPath, {
     setHeaders: (res, filePath) => {
         const basename = path.basename(filePath);
         // HTML, version.json và Service Worker luôn revalidate để nhận diện bản build mới ngay tức thì
-        if (basename === "index.html" || basename === "version.json" || basename.includes("service_worker") || basename.includes("sw.js") || basename.includes("main.dart") || basename.includes("flutter_bootstrap")) {
+        if (basename === "index.html" || basename === "version.json" || basename.includes("service_worker") || basename.includes("sw.js") || basename === "flutter.js" || basename.includes("main.dart") || basename.includes("flutter_bootstrap")) {
             res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
             res.setHeader("Pragma", "no-cache");
             res.setHeader("Expires", "0");
@@ -126,6 +126,27 @@ const adminAuth = require("./middlewares/adminAuth");
 // API Health check cho kiểm tra trạng thái & Render keep-alive ping
 app.get("/api/health", (req, res) => {
     res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+// Nhận telemetry log từ Flutter Web client
+// Endpoint HTTP Fallback: Kết thúc cuộc gọi chắc chắn 100%
+app.post("/api/call/end", async (req, res) => {
+    try {
+        const { callerId, connectedUserId, conversationId, callType } = req.body || {};
+        console.log(`🔴 [HTTP API /api/call/end] Nhận lệnh kết thúc: caller=${callerId}, partner=${connectedUserId}, room=${conversationId}`);
+        if (global.endCallCore) {
+            await global.endCallCore({ callerId, targetId: connectedUserId, conversationId, callType });
+        }
+        res.status(200).json({ status: "ok" });
+    } catch (e) {
+        console.error("Lỗi /api/call/end:", e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post("/api/client_debug", (req, res) => {
+    console.log("📱 [CLIENT TELEMETRY]", JSON.stringify(req.body));
+    res.status(200).json({ status: "ok" });
 });
 
 // Tự động Self-Ping Render mỗi 10 phút để phòng chống Cold Start (ngủ ngầm trên Render free tier)

@@ -82,6 +82,7 @@ class SoundService {
     try {
       _isPlayingRingtone = false;
       await _ringtonePlayer.stop();
+      await _ringtonePlayer.release();
       debugPrint('🔇 [SoundService] Đã dừng chuông cuộc gọi & dừng rung.');
     } catch (e) {
       debugPrint('⚠️ [SoundService] Lỗi khi dừng chuông: $e');
@@ -119,6 +120,7 @@ class SoundService {
     try {
       _isPlayingTutTut = false;
       await _tutTutPlayer.stop();
+      await _tutTutPlayer.release();
       debugPrint('🔇 [SoundService] Đã dừng âm thanh tút tút.');
     } catch (e) {
       debugPrint('⚠️ [SoundService] Lỗi khi dừng tút tút: $e');
@@ -127,8 +129,27 @@ class SoundService {
 
   /// Dừng tất cả âm thanh cuộc gọi (cả chuông gọi đến và tút tút)
   static Future<void> stopAllCallSounds() async {
-    await stopRingtone();
-    await stopTutTut();
+    try {
+      _stopCallVibration();
+      _isPlayingRingtone = false;
+      _isPlayingTutTut = false;
+      await _ringtonePlayer.stop();
+      await _ringtonePlayer.release();
+      await _tutTutPlayer.stop();
+      await _tutTutPlayer.release();
+      if (!kIsWeb) {
+        try {
+          HapticFeedback.cancel();
+        } catch (_) {}
+      } else {
+        try {
+          html.window.navigator.vibrate(0);
+        } catch (_) {}
+      }
+      debugPrint('[SoundService] stopAllCallSounds() hoàn tất');
+    } catch (e) {
+      debugPrint('[SoundService] Lỗi stopAllCallSounds: $e');
+    }
   }
 
   /// Phát âm thanh thông báo tin nhắn 1 lần & rung điện thoại

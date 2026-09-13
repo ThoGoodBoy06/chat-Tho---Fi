@@ -23,6 +23,7 @@ import 'add_friend_screen.dart';
 import 'qr_scanner_screen.dart';
 import 'other_user_profile_screen.dart';
 import 'profile_tab.dart';
+import '../utils/web_helpers.dart';
 
 class ChatScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -49,6 +50,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   StreamSubscription? _incomingCallSub;
   StreamSubscription? _visibilitySub;
   bool _isIncomingCallShowing = false;
+  bool _isDialogClosed = false;
+  StreamSubscription? _incomingEndSub;
   bool _isStartingCall = false;
 
   // AI Assistant Chat state
@@ -233,6 +236,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     _visibilitySub?.cancel();
     _friendRequestSub?.cancel();
     _unfriendSub?.cancel();
+    _incomingEndSub?.cancel();
     _debounceTimer?.cancel();
     _pendingRefreshTimer?.cancel();
     try {
@@ -4949,45 +4953,59 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
     Timer? autoRejectTimer;
     StreamSubscription? incomingEndSub;
+    // Flag để bypass WillPopScope khi caller tắt máy hoặc đóng an toàn
+    bool isDialogClosed = false;
+    bool canDismiss = false;
+
+    void safeDismissCallDialog(BuildContext dialogCtx) {
+      if (isDialogClosed) return;
+      isDialogClosed = true;
+      autoRejectTimer?.cancel();
+      incomingEndSub?.cancel();
+      _isIncomingCallShowing = false;
+      SoundService.stopAllCallSounds();
+      canDismiss = true;
+
+      try {
+        if (dialogCtx.mounted) {
+          try {
+            Navigator.of(dialogCtx, rootNavigator: true).pop();
+          } catch (_) {
+            try {
+              Navigator.of(dialogCtx).pop();
+            } catch (_) {}
+          }
+        }
+      } catch (e) {
+        debugPrint('⚠️ [safeDismissCallDialog] Lỗi pop dialog: $e');
+      }
+
+      if (kIsWeb) {
+        forceDismissWebCallDialog();
+      }
+    }
 
     showGeneralDialog(
       context: context,
       barrierDismissible: false,
       barrierLabel: 'IncomingCall',
       pageBuilder: (dialogContext, anim1, anim2) {
-        // Tự động tắt màn hình đổ chuông khi người gọi ngắt máy trước khi nghe
-        incomingEndSub?.cancel();
-        incomingEndSub = SocketService.onCallEnded.listen((_) {
+        // Đăng ký listener 1 lần duy nhất khi pageBuilder chạy lần đầu
+        incomingEndSub ??= SocketService.onCallEnded.listen((_) {
           print('🔴 Người gọi đã tắt máy -> Đóng màn hình cuộc gọi đến & tắt chuông!');
-          autoRejectTimer?.cancel();
-          incomingEndSub?.cancel();
-          _isIncomingCallShowing = false;
-          SoundService.stopAllCallSounds();
-          try {
-            if (Navigator.of(dialogContext).canPop()) {
-              Navigator.of(dialogContext).pop();
-            } else if (Navigator.of(dialogContext, rootNavigator: true).canPop()) {
-              Navigator.of(dialogContext, rootNavigator: true).pop();
-            } else if (Navigator.of(context, rootNavigator: true).canPop()) {
-              Navigator.of(context, rootNavigator: true).pop();
-            }
-          } catch (_) {}
+          safeDismissCallDialog(dialogContext);
         });
 
-        autoRejectTimer = Timer(const Duration(seconds: 30), () {
-          incomingEndSub?.cancel();
-          _isIncomingCallShowing = false;
+        autoRejectTimer ??= Timer(const Duration(seconds: 30), () {
           SocketService.socket?.emit('reject_call', {
             'callerId': callerId,
             'callType': callType,
           });
-          if (Navigator.of(dialogContext).canPop()) {
-            Navigator.of(dialogContext).pop();
-          }
+          safeDismissCallDialog(dialogContext);
         });
 
         return WillPopScope(
-          onWillPop: () async => false,
+          onWillPop: () async => canDismiss,
           child: Material(
             color: const Color(0xFF090D1A),
             child: SafeArea(
@@ -5085,15 +5103,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                   ),
                                   icon: const Icon(Icons.call_end_rounded, color: Colors.white),
                                   onPressed: () {
-                                    _isIncomingCallShowing = false;
-                                    autoRejectTimer?.cancel();
-                                    incomingEndSub?.cancel();
-                                    SoundService.stopAllCallSounds();
                                     SocketService.socket?.emit('reject_call', {
                                       'callerId': callerId,
                                       'callType': callType,
                                     });
-                                    Navigator.of(dialogContext).pop();
+                                    safeDismissCallDialog(dialogContext);
                                   },
                                 ),
                                 const SizedBox(height: 12),
@@ -5116,15 +5130,24 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                   ),
                                   icon: const Icon(Icons.call_rounded, color: Colors.white),
                                   onPressed: () {
+                                    if (isDialogClosed) return;
+                                    isDialogClosed = true;
                                     _isIncomingCallShowing = false;
                                     autoRejectTimer?.cancel();
                                     incomingEndSub?.cancel();
+                                    canDismiss = true;
+                                    SoundService.stopAllCallSounds();
                                     final audioPlayer = html.document.getElementById('remoteAudioPlayer') as html.AudioElement?;
                                     audioPlayer?.muted = false;
                                     audioPlayer?.volume = 1.0;
                                     audioPlayer?.play().catchError((_) {});
                                     SocketService.socket?.emit('accept_call', {'callerId': callerId});
-                                    Navigator.of(dialogContext).pop();
+                                    if (dialogContext.mounted) {
+                                      final nav = Navigator.of(dialogContext, rootNavigator: true);
+                                      if (nav.canPop()) {
+                                        nav.pop();
+                                      }
+                                    }
                                     _showCallDialog(
                                       context: context,
                                       partnerName: callerName,
@@ -5617,12 +5640,16 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               print('🔴 Đối phương đã tắt máy -> Tự động đóng màn hình gọi!');
               cleanupCall();
               try {
-                Navigator.of(dialogContext, rootNavigator: true).pop();
-              } catch (_) {
-                try {
-                  Navigator.of(context, rootNavigator: true).pop();
-                } catch (_) {}
-              }
+                if (dialogContext.mounted) {
+                  try {
+                    Navigator.of(dialogContext, rootNavigator: true).pop();
+                  } catch (_) {
+                    try {
+                      Navigator.of(dialogContext).pop();
+                    } catch (_) {}
+                  }
+                }
+              } catch (_) {}
             });
 
             signalSub ??= SocketService.onWebrtcSignal.listen((data) async {
@@ -5777,9 +5804,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                     ),
                                     icon: const Icon(Icons.call_end_rounded, color: Colors.white),
                                     onPressed: () {
+                                      final curConv = Provider.of<ChatProvider>(context, listen: false).selectedConversation;
                                       SocketService.socket?.emit('end_call', {
                                         'connectedUserId': targetUserId,
-                                        'conversationId': conv.id,
+                                        'conversationId': curConv?.id ?? '',
                                       });
                                       cleanupCall();
                                       try {
