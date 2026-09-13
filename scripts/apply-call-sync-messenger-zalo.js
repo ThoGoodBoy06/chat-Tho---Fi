@@ -211,7 +211,7 @@ indexFiles.forEach(idxF => {
     }`;
 
   if (!html.includes('// [Call Sync] Lắng nghe tín hiệu call_ended từ Service Worker')) {
-    html = html.replace('</body>', `${swListenerCode}\n</body>`);
+    html = html.replace('</script>', `${swListenerCode}\n  </script>`);
     console.log(`✅ [Index] Đã thêm SW message listener cho ${idxF}`);
   }
 

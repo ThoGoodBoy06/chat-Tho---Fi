@@ -15,7 +15,7 @@
 
   <!-- High Priority Preloads for Instant Native Startup -->
   <link rel="preload" href="flutter_bootstrap.js?v=1789282442156" as="script">
-  <link rel="preload" href="main.dart.js?v=1789282442156" as="script">
+  <link rel="preload" href="main.dart.js?v=1789282719461" as="script">
   <link rel="preload" href="canvaskit/canvaskit.wasm" as="fetch" crossorigin="anonymous">
   <link rel="preload" href="/tho_fi_logo_transparent.png" as="image">
   <!-- Official Messenger Reaction Emoji Preloads -->
@@ -2341,9 +2341,7 @@ window._openMessengerThemePicker = function(convId, convName) {
         console.error(e);
       }
     };
-  </script>
-
-    // [Call Sync] Lắng nghe tín hiệu call_ended từ Service Worker để đóng màn hình gọi ngay lập tức
+      // [Call Sync] Lắng nghe tín hiệu call_ended từ Service Worker để đóng màn hình gọi ngay lập tức
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('message', function(event) {
         if (event.data && (event.data.type === 'call_ended' || event.data.type === 'CALL_ENDED')) {
@@ -2354,5 +2352,6 @@ window._openMessengerThemePicker = function(convId, convName) {
         }
       });
     }
+  </script>
 </body>
 </html>
