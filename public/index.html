@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
   <!-- High Priority Preloads for Instant Native Startup -->
-  <link rel="preload" href="flutter_bootstrap.js?v=1789318398100" as="script">
+  <link rel="preload" href="flutter_bootstrap.js?v=1789399235739" as="script">
   <link rel="preload" href="main.dart.js?v=1789317861513" as="script">
   <link rel="preload" href="canvaskit/canvaskit.wasm" as="fetch" crossorigin="anonymous">
   <link rel="preload" href="/tho_fi_logo_transparent.png" as="image">
@@ -1666,7 +1666,7 @@
   <script>
     window.flutterWebRenderer = "canvaskit";
   </script>
-  <script src="flutter_bootstrap.js?v=1789318398100" async></script>
+  <script src="flutter_bootstrap.js?v=1789399235739" async></script>
 
 <script id="messenger-theme-picker-script">
 window._openMessengerThemePicker = function(convId, convName) {
@@ -2377,7 +2377,11 @@ if ('serviceWorker' in navigator) {
         var callerId = window._currentCallerId || '';
         var calleeId = window._currentUserId || (typeof $ !== 'undefined' && $.aLM) || '';
         if (!callerId && !calleeId) return;
-        fetch('/api/call/status?callerId=' + encodeURIComponent(callerId)
+        if (window._activeCallShowing) { _stopPoll(); return; }
+        var bUrl = (window.location.hostname.includes('pages.dev') || window.location.hostname.includes('workers.dev') || window.location.hostname.includes('cloudflare'))
+          ? 'https://chat-tho-fi-vn-9s8u.onrender.com'
+          : '';
+        fetch(bUrl + '/api/call/status?callerId=' + encodeURIComponent(callerId)
             + '&calleeId=' + encodeURIComponent(calleeId)
             + '&t=' + Date.now(), { cache: 'no-store' })
           .then(function(r) { return r.json(); })

@@ -5254,7 +5254,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     if (isCaller) {
       SoundService.playTutTut();
     } else {
-      SoundService.playRingtone();
+      SoundService.stopAllCallSounds();
     }
 
     StreamSubscription? acceptSub;
@@ -5456,11 +5456,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 };
                 pc = await html.RtcPeerConnection(config);
 
-                final existingAudio = html.document.getElementById('remoteAudioPlayer') as html.AudioElement?;
+                var existingAudio = html.document.getElementById('remoteAudioPlayer') as html.AudioElement?;
                 if (existingAudio != null) {
                   remoteAudio = existingAudio;
                 } else {
-                  remoteAudio = html.AudioElement()..autoplay = true;
+                  remoteAudio = html.AudioElement()
+                    ..id = 'remoteAudioPlayer'
+                    ..autoplay = true
+                    ..setAttribute('playsinline', 'true');
                   remoteAudio!.style.display = 'none';
                   html.document.body?.children.add(remoteAudio!);
                 }

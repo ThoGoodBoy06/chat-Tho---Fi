@@ -1,7 +1,7 @@
 {
     "name": "chat-tho-fi",
     "version": "1.0.0",
-    "description": "Chat Tho-Fi Application",
+    "description": "Chat Tho-Fi",
     "main": "server.js",
     "scripts": {
         "start": "node server.js",

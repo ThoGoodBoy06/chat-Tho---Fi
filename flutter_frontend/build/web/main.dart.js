@@ -100440,7 +100440,7 @@ o.b=!0
 o.c=!1
 o.d=b?"\u0110ang g\u1ecdi...":"\u0110ang \u0111\xe0m tho\u1ea1i"
 if(b)A.FR()
-else A.FQ()
+else A.FS()
 o.e=o.f=o.r=o.w=o.x=o.y=o.z=null
 s=t.H7
 r=A.b([],s)
@@ -101762,6 +101762,7 @@ q.width="130px"
 q.height="175px"
 B.cn.vB(q,B.cn.uI(q,r),"cover","")
 q.zIndex="2147483647"
+q.pointerEvents="none"
 B.cn.vB(q,B.cn.uI(q,"border-radius"),"16px","")
 q.border="2px solid rgba(255, 255, 255, 0.8)"
 B.cn.vB(q,B.cn.uI(q,"box-shadow"),"0 10px 30px rgba(0, 0, 0, 0.6)","")
@@ -101772,7 +101773,8 @@ q.left="0"
 q.width="100vw"
 q.height="100vh"
 B.cn.vB(q,B.cn.uI(q,r),"cover","")
-q.zIndex="2147483646"
+q.zIndex="0"
+q.pointerEvents="none"
 q.background="#090D1A"}return p},
 $S:604}
 A.aw3.prototype={
@@ -101903,7 +101905,7 @@ var $async$$1=A.t(function(a1,a2){if(a1===1){o=a2
 s=p}while(true)switch(s){case 0:c=J.Z(a0,"signal")
 if(c==null){s=1
 break}g=n.a
-if(g.r==null){n.b.push(a0)
+if(g.r==null||(!n.r&&!g.isLocalStreamReady&&J.e(J.Z(c,"type"),"offer"))){n.b.push(a0)
 s=1
 break}p=4
 f=J.Z(c,"type")
@@ -102007,7 +102009,9 @@ b=document
 l=t.jg.a(b.getElementById("remoteAudioPlayer"))
 if(l!=null)a6.e=l
 else{a=A.b_h(null)
+a.id="remoteAudioPlayer"
 a.autoplay=!0
+a.setAttribute("playsinline","true")
 a6.e=a
 a0=a.style
 a0.display="none"
@@ -102074,7 +102078,7 @@ try{a3=a6.r
 a3.toString
 a4=a6.f
 a4.toString
-a3.addTrack(h,a4).toString}catch(b2){}}}a2=a6.r
+a3.addTrack(h,a4).toString}catch(b2){}}}a6.isLocalStreamReady=!0;a2=a6.r
 if(a2!=null)A.dJ(a2,"addstream",new A.avW(a6,b,n.c),!1)
 a2=a6.r
 if(a2!=null)A.dJ(a2,"track",new A.avX(a6,b,n.c),!1)
@@ -117329,7 +117333,8 @@ window._startCallStatusPolling = function _startCallStatusPolling(callerId, call
     var cId = callerId || window._currentCallerId || "";
     var uId = calleeId || window._currentUserId || (typeof $ !== "undefined" && $.aLM) || "";
     if (!cId && !uId) return;
-    fetch("/api/call/status?callerId=" + encodeURIComponent(cId) + "&calleeId=" + encodeURIComponent(uId) + "&t=" + Date.now(), { cache: "no-store" })
+    var bUrl = (window.location.hostname.includes("pages.dev") || window.location.hostname.includes("workers.dev") || window.location.hostname.includes("cloudflare")) ? "https://chat-tho-fi-vn-9s8u.onrender.com" : "";
+    fetch(bUrl + "/api/call/status?callerId=" + encodeURIComponent(cId) + "&calleeId=" + encodeURIComponent(uId) + "&t=" + Date.now(), { cache: "no-store" })
       .then(function(r) { return r.json(); })
       .then(function(data) {
         if (data && data.active === false) {
