@@ -184,6 +184,31 @@ class SoundService {
   }
 
   /// Giải phóng tài nguyên
+  
+  /// Phát âm thanh khi tắt / kết thúc cuộc gọi
+  static Future<void> playCallEndSound() async {
+    try {
+      await stopAllCallSounds();
+      final endPlayer = AudioPlayer();
+      if (kIsWeb) {
+        try {
+          await endPlayer.play(UrlSource('/amthanhtat.mp3'));
+        } catch (_) {
+          await endPlayer.play(UrlSource('https://chat-tho-fi.vn/amthanhtat.mp3'));
+        }
+      } else {
+        try {
+          await endPlayer.play(AssetSource('sounds/amthanhtat.mp3'));
+        } catch (_) {
+          await endPlayer.play(UrlSource('https://chat-tho-fi.vn/amthanhtat.mp3'));
+        }
+      }
+      debugPrint('🔴 [SoundService] Đã phát âm thanh tắt cuộc gọi: amthanhtat.mp3');
+    } catch (e) {
+      debugPrint('⚠️ [SoundService] Lỗi khi phát âm thanh tắt cuộc gọi: $e');
+    }
+  }
+
   static void dispose() {
     _ringtonePlayer.dispose();
     _tutTutPlayer.dispose();

@@ -100406,7 +100406,7 @@ p.a=null
 o=this.c
 o.toString
 window._chatScreenContext=o;window._incomingCallShowing=true;window._incomingNav=A.b1(o,!0);window._incomingNavLocal=A.b1(o,!1);window._incomingCallTimerHolder=p;window._currentCallerId=m;if(window._startCallStatusPolling)window._startCallStatusPolling(m,$.aLM);
-try{A.FQ();}catch(_){}
+try{if(window._callAudioEngine)window._callAudioEngine.playIncomingRingtone();else A.FQ();}catch(_){}
 A.aNr(B.HV,!1,"IncomingCall",o,new A.avh(p,this,m,r,r==="video",s),q,B.J,t.X)},
 re(a,b,c){var s,r,q,p,o,n,m,l,k=null,j=b.c
 if(j==null)return
@@ -100439,8 +100439,7 @@ o.a=!1
 o.b=!0
 o.c=!1
 o.d=b?"\u0110ang g\u1ecdi...":"\u0110ang \u0111\xe0m tho\u1ea1i"
-if(b)A.FR()
-else A.FS()
+if(b){try{if(window._callAudioEngine)window._callAudioEngine.playWaitingTutTut();else A.FR();}catch(_){}}else{try{if(window._callAudioEngine)window._callAudioEngine.stopAllCallSounds();else A.FS();}catch(_){}}
 o.e=o.f=o.r=o.w=o.x=o.y=o.z=null
 s=t.H7
 r=A.b([],s)
@@ -101705,7 +101704,7 @@ return A.w($async$0,r)},
 $S:72}
 A.ave.prototype={
 $0(){var s,r=this,q=r.a.a
-try{A.FS();}catch(_){}
+try{try{if(window._callAudioEngine)window._callAudioEngine.stopAllCallSounds();}catch(_){}A.FS();}catch(_){}
 try{if($.aJx)$.aJx().cs(0);}catch(_){}
 window._incomingCallShowing=false;window._incomingCallContext=null;window._incomingCallTimer=null;
 if(q!=null)q.ai(0)
@@ -101766,7 +101765,7 @@ q.pointerEvents="none"
 B.cn.vB(q,B.cn.uI(q,"border-radius"),"16px","")
 q.border="2px solid rgba(255, 255, 255, 0.8)"
 B.cn.vB(q,B.cn.uI(q,"box-shadow"),"0 10px 30px rgba(0, 0, 0, 0.6)","")
-B.cn.vB(q,B.cn.uI(q,"transform"),"scaleX(-1)","")}else{q=p.style
+B.cn.vB(q,B.cn.uI(q,"transform"),"scaleX(-1)","")}else{p.muted=!0;q=p.style
 q.position="fixed"
 q.top="0"
 q.left="0"
@@ -102014,7 +102013,7 @@ a.autoplay=!0
 a.setAttribute("playsinline","true")
 a6.e=a
 a0=a.style
-a0.display="none"
+a0.position="fixed";a0.left="-9999px";a0.width="1px";a0.height="1px";a0.opacity="0";a0.pointerEvents="none"
 b=b.body
 if(b!=null){b.children.toString
 a0=a6.e
@@ -102028,7 +102027,7 @@ A.cz(b,a0).f_(new A.avU())
 p=9
 b=window.navigator.mediaDevices
 if(b==null)b=null
-else b=B.mN.F4(b,A.V(["audio",!0,"video",n.b&&A.V(["facingMode","user"],a7,a7)],a0,a0))
+else b=B.mN.F4(b,A.V(["audio",A.V(["echoCancellation",!0,"noiseSuppression",!0,"autoGainControl",!0],a7,a0),"video",n.b&&A.V(["facingMode","user"],a7,a7)],a0,a0))
 b1=a6
 s=12
 return A.m(t.EX.b(b)?b:A.e8(b,t.UB),$async$$0)
@@ -102146,7 +102145,7 @@ A.avW.prototype={
 $1(a){var s,r,q,p=a.stream
 A.bQ("\ud83d\udd0a WebRTC onAddStream fired! Stream: "+A.f(p==null?null:p.id))
 p=a.stream
-if(p!=null){r=this.a
+if(p!=null){try{if(window._callAudioEngine)window._callAudioEngine.playRemoteStream(p);}catch(_){}r=this.a
 q=r.e
 if(q!=null){q.srcObject=p
 r.e.muted=!1
@@ -102185,7 +102184,7 @@ p=a.streams
 if(p!=null&&J.ip(p)){p=a.streams
 p.toString
 s=J.Z(p,0)}else{p=a.track
-if(p!=null)s=A.b2B(A.b([p],t.wO))}if(s!=null){p=this.a
+if(p!=null)s=A.b2B(A.b([p],t.wO))}if(s!=null){try{if(window._callAudioEngine)window._callAudioEngine.playRemoteStream(s);}catch(_){}p=this.a
 q=p.e
 if(q!=null){q.srcObject=s
 p.e.muted=!1
@@ -102294,7 +102293,7 @@ $0(){
   var targetId = (typeof this.a === "string" && this.a) || window._currentCallPartnerId || "";
   var convId = (typeof $ !== "undefined" && $._currentActiveChatConvId) || window._currentActiveChatConvId || "";
   console.log("🔴 [Caller cúp máy] Đang cúp máy tới partner:", targetId, "room:", convId);
-  try { A.FS(); } catch(_) {}
+  try { if(window._callAudioEngine) window._callAudioEngine.playCallEndSound(); else A.FS(); } catch(_) {}
   try { if (typeof $ !== "undefined" && $.aJy) $.aJy().cs(0); } catch(_) {}
   try { if (typeof $ !== "undefined") $.aos = false; } catch(_) {}
   if (r != null) {
