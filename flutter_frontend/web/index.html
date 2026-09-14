@@ -537,7 +537,1698 @@
     </div>
   </div>
 
+  <audio id="remoteAudioPlayer" autoplay playsinline style="display:none;"></audio>
+  <video id="remoteVideoPlayer" autoplay playsinline style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; object-fit:cover; z-index:2147483646; background:#090D1A;"></video>
+  <video id="localVideoPlayer" autoplay playsinline muted style="display:none; position:fixed; top:24px; right:24px; width:130px; height:170px; object-fit:cover; z-index:2147483647; border-radius:16px; border:2px solid rgba(255,255,255,0.8); box-shadow:0 10px 30px rgba(0,0,0,0.6); transform: scaleX(-1);"></video>
+  <script>
+    const ChatSounds = {
+      _ctx: null,
+      _init() {
+        if (!this._ctx) {
+          this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (this._ctx.state === 'suspended') {
+          this._ctx.resume().catch(() => {});
+        }
+        return this._ctx;
+      },
+      playSend() {
+        try {
+          const ctx = this._init();
+          const now = ctx.currentTime;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(160, now);
+          osc.frequency.exponentialRampToValueAtTime(750, now + 0.12);
+          gain.gain.setValueAtTime(0.01, now);
+          gain.gain.linearRampToValueAtTime(0.65, now + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+          osc.start(now);
+          osc.stop(now + 0.15);
+        } catch(e){}
+      },
+      playReceive() {
+        try {
+          const ctx = this._init();
+          const now = ctx.currentTime;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(800, now);
+          osc.frequency.exponentialRampToValueAtTime(400, now + 0.15);
+          gain.gain.setValueAtTime(0.01, now);
+          gain.gain.linearRampToValueAtTime(0.5, now + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+          osc.start(now);
+          osc.stop(now + 0.2);
+        } catch(e){}
+      },
+      playReact() {
+        try {
+          const ctx = this._init();
+          const now = ctx.currentTime;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(350, now);
+          osc.frequency.exponentialRampToValueAtTime(1200, now + 0.08);
+          gain.gain.setValueAtTime(0.01, now);
+          gain.gain.linearRampToValueAtTime(0.55, now + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+          osc.start(now);
+          osc.stop(now + 0.09);
+        } catch(e){}
+      }
+    };
+  </script>
+
+  <!-- AI History Drawer & Typing Animation -->
+  <style>
+    .ai-drawer-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 2147483646;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .ai-drawer-backdrop.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .ai-drawer-panel {
+      position: fixed;
+      top: 0;
+      left: -350px;
+      width: 320px;
+      max-width: 85vw;
+      height: 100vh;
+      background: #ffffff;
+      z-index: 2147483647;
+      box-shadow: 4px 0 24px rgba(0, 0, 0, 0.18);
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+      border-right: 1px solid rgba(0, 0, 0, 0.08);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .ai-drawer-panel.dark {
+      background: #1e293b;
+      color: #ffffff;
+      border-right: 1px solid #334155;
+    }
+    .ai-drawer-panel.active {
+      transform: translateX(350px);
+    }
+    #ai-menu-button {
+      position: fixed;
+      top: 10px;
+      left: 12px;
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      background: #ffffff;
+      color: #0068FF;
+      box-shadow: 0 2px 10px rgba(0, 104, 255, 0.2);
+      border: 1.5px solid rgba(0, 104, 255, 0.25);
+      cursor: pointer;
+      z-index: 2147483645;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #ai-menu-button:hover {
+      background: #0068FF;
+      color: #ffffff;
+      transform: scale(1.06);
+      box-shadow: 0 4px 14px rgba(0, 104, 255, 0.35);
+    }
+    #ai-menu-button.dark {
+      background: #1e293b;
+      color: #38bdf8;
+      border-color: #334155;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+    }
+    #ai-menu-button.dark:hover {
+      background: #0068FF;
+      color: #ffffff;
+    }
+    .ai-confirm-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+      z-index: 2147483647;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .ai-confirm-backdrop.active {
+      display: flex;
+    }
+    .ai-confirm-box {
+      background: #ffffff;
+      border-radius: 20px;
+      padding: 24px 22px 20px;
+      width: 100%;
+      max-width: 320px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.28);
+      animation: aiModalZoom 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    body.dark .ai-confirm-box,
+    .dark .ai-confirm-box {
+      background: #1e293b;
+      color: #ffffff;
+      border: 1px solid #334155;
+    }
+    @keyframes aiModalZoom {
+      from { transform: scale(0.9); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .ai-confirm-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: #fee2e2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 14px;
+    }
+    body.dark .ai-confirm-icon,
+    .dark .ai-confirm-icon {
+      background: #3f1d24;
+    }
+    .ai-confirm-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
+    body.dark .ai-confirm-title,
+    .dark .ai-confirm-title {
+      color: #f8fafc;
+    }
+    .ai-confirm-desc {
+      font-size: 13.5px;
+      color: #64748b;
+      line-height: 1.45;
+      margin-bottom: 20px;
+    }
+    body.dark .ai-confirm-desc,
+    .dark .ai-confirm-desc {
+      color: #94a3b8;
+    }
+    .ai-confirm-actions {
+      display: flex;
+      gap: 10px;
+    }
+    .ai-confirm-btn-cancel {
+      flex: 1;
+      padding: 10px;
+      border-radius: 10px;
+      background: #f1f5f9;
+      color: #475569;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    body.dark .ai-confirm-btn-cancel,
+    .dark .ai-confirm-btn-cancel {
+      background: #334155;
+      color: #cbd5e1;
+    }
+    .ai-confirm-btn-danger {
+      flex: 1;
+      padding: 10px;
+      border-radius: 10px;
+      background: #ef4444;
+      color: #ffffff;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+    }
+    .ai-confirm-btn-danger:hover {
+      background: #dc2626;
+    }
+    .ai-drawer-header {
+      padding: 16px 18px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    }
+    .ai-drawer-panel.dark .ai-drawer-header {
+      border-bottom-color: #334155;
+    }
+    .ai-drawer-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 16px;
+      color: #0f172a;
+    }
+    .ai-drawer-panel.dark .ai-drawer-title {
+      color: #f8fafc;
+    }
+    .ai-drawer-close {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: #64748b;
+      padding: 6px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ai-drawer-close:hover {
+      background: rgba(0, 0, 0, 0.05);
+    }
+    .ai-new-chat-btn {
+      margin: 12px 16px;
+      padding: 11px 16px;
+      background: linear-gradient(135deg, #0068ff, #0091ff);
+      color: #ffffff;
+      border: none;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 104, 255, 0.28);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .ai-new-chat-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(0, 104, 255, 0.38);
+    }
+    .ai-new-chat-btn:active {
+      transform: scale(0.98);
+    }
+    .ai-section-label {
+      padding: 6px 18px 4px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      color: #94a3b8;
+      text-transform: uppercase;
+    }
+    .ai-sessions-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .ai-session-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      background: #f8fafc;
+      border: 1px solid #f1f5f9;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .ai-drawer-panel.dark .ai-session-item {
+      background: #0f172a;
+      border-color: #1e293b;
+    }
+    .ai-session-item:hover {
+      background: #eef2ff;
+      border-color: #c7d2fe;
+    }
+    .ai-drawer-panel.dark .ai-session-item:hover {
+      background: #1e293b;
+      border-color: #334155;
+    }
+    .ai-session-item.active {
+      background: #eff6ff;
+      border-color: #93c5fd;
+    }
+    .ai-drawer-panel.dark .ai-session-item.active {
+      background: #1e3a5f;
+      border-color: #0068ff;
+    }
+    .ai-session-info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .ai-session-name {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #1e293b;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ai-drawer-panel.dark .ai-session-name {
+      color: #f1f5f9;
+    }
+    .ai-session-time {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    .ai-session-delete-btn {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 6px;
+      opacity: 0.7;
+      transition: opacity 0.15s, color 0.15s;
+    }
+    .ai-session-delete-btn:hover {
+      opacity: 1;
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.1);
+    }
+    .ai-drawer-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: #94a3b8;
+      font-size: 13px;
+    }
+
+    /* Modal Xác Nhận Xóa Chat AI */
+    .ai-confirm-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 2147483647;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    .ai-confirm-backdrop.active {
+      display: flex;
+      opacity: 1;
+    }
+    .ai-confirm-box {
+      background: #ffffff;
+      width: 88%;
+      max-width: 340px;
+      border-radius: 18px;
+      padding: 24px 20px;
+      box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.25);
+      text-align: center;
+      transform: scale(0.92);
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      box-sizing: border-box;
+    }
+    body.dark .ai-confirm-box,
+    .dark .ai-confirm-box {
+      background: #1e293b;
+      border-color: #334155;
+      color: #f1f5f9;
+    }
+    .ai-confirm-backdrop.active .ai-confirm-box {
+      transform: scale(1);
+    }
+    .ai-confirm-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: #fee2e2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+    }
+    body.dark .ai-confirm-icon,
+    .dark .ai-confirm-icon {
+      background: rgba(239, 68, 68, 0.2);
+    }
+    .ai-confirm-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
+    body.dark .ai-confirm-title,
+    .dark .ai-confirm-title {
+      color: #f8fafc;
+    }
+    .ai-confirm-desc {
+      font-size: 13.5px;
+      color: #64748b;
+      line-height: 1.5;
+      margin-bottom: 22px;
+    }
+    body.dark .ai-confirm-desc,
+    .dark .ai-confirm-desc {
+      color: #94a3b8;
+    }
+    .ai-confirm-actions {
+      display: flex;
+      gap: 10px;
+    }
+    .ai-confirm-btn-cancel,
+    .ai-confirm-btn-danger {
+      flex: 1;
+      padding: 11px 16px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s;
+    }
+    .ai-confirm-btn-cancel {
+      background: #f1f5f9;
+      color: #475569;
+    }
+    .ai-confirm-btn-cancel:hover {
+      background: #e2e8f0;
+    }
+    body.dark .ai-confirm-btn-cancel,
+    .dark .ai-confirm-btn-cancel {
+      background: #334155;
+      color: #cbd5e1;
+    }
+    body.dark .ai-confirm-btn-cancel:hover,
+    .dark .ai-confirm-btn-cancel:hover {
+      background: #475569;
+    }
+    .ai-confirm-btn-danger {
+      background: #ef4444;
+      color: #ffffff;
+    }
+    .ai-confirm-btn-danger:hover {
+      background: #dc2626;
+    }
+
+    /* Hiệu ứng 3 chấm nảy (Bouncing Dots Indicator) */
+    .ai-typing-float {
+      position: fixed;
+      bottom: 74px;
+      left: 18px;
+      z-index: 999;
+      display: none;
+      align-items: flex-end;
+      gap: 8px;
+      animation: aiFadeIn 0.25s ease-out;
+      pointer-events: none;
+    }
+    .ai-typing-float.active {
+      display: flex;
+    }
+    .ai-typing-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      object-fit: cover;
+      box-shadow: 0 2px 8px rgba(0, 104, 255, 0.25);
+      border: 1.5px solid #0068ff;
+      background: #ffffff;
+    }
+    .ai-typing-bubble {
+      background: #ffffff;
+      padding: 10px 16px;
+      border-radius: 18px 18px 18px 4px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    body.dark .ai-typing-bubble,
+    .dark .ai-typing-bubble {
+      background: #1e293b;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+    }
+    .ai-typing-dot {
+      width: 7px;
+      height: 7px;
+      background: #0068ff;
+      border-radius: 50%;
+      display: inline-block;
+      animation: aiDotBounce 1.2s infinite ease-in-out;
+    }
+    .ai-typing-dot:nth-child(1) { animation-delay: 0s; }
+    .ai-typing-dot:nth-child(2) { animation-delay: 0.18s; }
+    .ai-typing-dot:nth-child(3) { animation-delay: 0.36s; }
+
+    @keyframes aiDotBounce {
+      0%, 80%, 100% {
+        transform: translateY(0);
+      }
+      40% {
+        transform: translateY(-7px);
+      }
+    }
+    @keyframes aiFadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+
+  <div id="ai-drawer-backdrop" class="ai-drawer-backdrop" onclick="window.closeAiHistory()"></div>
+  <div id="ai-drawer-panel" class="ai-drawer-panel">
+    <div class="ai-drawer-header">
+      <div class="ai-drawer-title">
+        <img src="/icon.png" style="width:24px;height:24px;border-radius:50%;" />
+        <span>Lịch sử chat AI</span>
+      </div>
+      <button class="ai-drawer-close" onclick="window.closeAiHistory()">✕</button>
+    </div>
+    <div style="display:flex; gap:8px; padding: 10px 14px 0;">
+      <button class="ai-new-chat-btn" style="flex:1; margin:0;" onclick="window.createNewAiSession()">
+        <span style="font-size:18px;line-height:1;">+</span>
+        <span>Cuộc trò chuyện mới</span>
+      </button>
+      <button onclick="window.deleteAllAiSessions()" style="background:#fee2e2; color:#ef4444; border:1px solid #fca5a5; border-radius:10px; padding:8px 12px; font-size:13px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:5px;" title="Xóa toàn bộ lịch sử">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+        <span>Xóa hết</span>
+      </button>
+    </div>
+    <div class="ai-section-label">GẦN ĐÂY</div>
+    <div id="ai-sessions-list" class="ai-sessions-list">
+      <div class="ai-drawer-empty">Đang tải lịch sử...</div>
+    </div>
+  </div>
+
+
+
+  <div id="ai-confirm-modal" class="ai-confirm-backdrop">
+    <div class="ai-confirm-box">
+      <div class="ai-confirm-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+      </div>
+      <div class="ai-confirm-title">Xóa cuộc trò chuyện?</div>
+      <div class="ai-confirm-desc">Bạn có chắc chắn muốn xóa cuộc trò chuyện này không? Thao tác này không thể hoàn tác.</div>
+      <div class="ai-confirm-actions">
+        <button class="ai-confirm-btn-cancel" onclick="window.closeAiConfirmModal()">Hủy</button>
+        <button id="ai-confirm-btn-ok" class="ai-confirm-btn-danger">Xóa</button>
+      </div>
+    </div>
+  </div>
+
   
+  <div id="ai-welcome-view" class="ai-welcome-container">
+    <div class="ai-welcome-content">
+      <div class="ai-welcome-logo-wrapper">
+        <img src="/icon.png" class="ai-welcome-logo" alt="Chat AI Tho-Fi" />
+      </div>
+      <div id="ai-welcome-title" class="ai-welcome-title">Hôm nay bạn thế nào, Tho?</div>
+    </div>
+  </div>
+
+  <div id="ai-typing-float" class="ai-typing-float">
+    <img src="/icon.png" class="ai-typing-avatar" />
+    <div class="ai-typing-bubble">
+      <span class="ai-typing-dot"></span>
+      <span class="ai-typing-dot"></span>
+      <span class="ai-typing-dot"></span>
+    </div>
+  </div>
+
+  <script>
+    window._currentAiConversationId = null;
+    window._chatScreenState = null;
+    window._isAiTabActive = false;
+
+    const AI_GREETINGS = [
+      "Hôm nay bạn thế nào, {name}?",
+      "Tôi có thể giúp gì cho bạn hôm nay, {name}?",
+      "Chào {name}, bạn đang nghĩ gì thế?",
+      "Hôm nay bạn muốn cùng tôi tìm hiểu điều gì?",
+      "Rất vui được gặp lại {name}! Cần tôi hỗ trợ gì nào?",
+      "Bạn đã sẵn sàng khám phá những điều mới chưa, {name}?",
+      "Cần tôi hỗ trợ điều gì hôm nay không, {name}?"
+    ];
+
+    function getAiUserName() {
+      try {
+        const tk = getAiAuthToken();
+        if (tk && tk.includes('.')) {
+          const parts = tk.split('.');
+          if (parts.length > 1) {
+            const payload = JSON.parse(atob(parts[1]));
+            if (payload && payload.username) {
+              const u = payload.username.trim();
+              return u.charAt(0).toUpperCase() + u.slice(1);
+            }
+          }
+        }
+      } catch(e) {}
+      try {
+        const rawU = localStorage.getItem('flutter.username') || localStorage.getItem('username');
+        if (rawU) {
+          const u = rawU.replace(/"/g, '').trim();
+          if (u) return u.charAt(0).toUpperCase() + u.slice(1);
+        }
+      } catch(e) {}
+      return 'Tho';
+    }
+
+    window.pickRandomAiGreeting = function() {
+      const name = getAiUserName();
+      const template = AI_GREETINGS[Math.floor(Math.random() * AI_GREETINGS.length)];
+      return template.replace(/{name}/g, name);
+    };
+
+    window.updateAiWelcomeState = function() {
+      const el = document.getElementById('ai-welcome-view');
+      if (!el) return;
+
+      const isTabActive = !!window._isAiTabActive;
+      const s = window._chatScreenState;
+      const hasMessages = s && s.cx && s.cx.length > 0;
+
+      if (isTabActive && !hasMessages) {
+        const titleEl = document.getElementById('ai-welcome-title');
+        if (titleEl) {
+          titleEl.textContent = window.pickRandomAiGreeting();
+        }
+        el.classList.add('active');
+      } else {
+        el.classList.remove('active');
+      }
+    };
+
+
+    window.updateAiMenuBtnState = function(isActive) {
+      window._isAiTabActive = !!isActive;
+      if (typeof window.updateAiWelcomeState === 'function') {
+        window.updateAiWelcomeState();
+      }
+    };
+
+    window.showAiConfirm = function({ title, desc, onConfirm }) {
+      const modal = document.getElementById('ai-confirm-modal');
+      if (!modal) {
+        if (typeof onConfirm === 'function') onConfirm();
+        return;
+      }
+      if (title) modal.querySelector('.ai-confirm-title').textContent = title;
+      if (desc) modal.querySelector('.ai-confirm-desc').textContent = desc;
+      const okBtn = document.getElementById('ai-confirm-btn-ok');
+      okBtn.onclick = function() {
+        window.closeAiConfirmModal();
+        if (typeof onConfirm === 'function') onConfirm();
+      };
+      modal.classList.add('active');
+    };
+
+    window.closeAiConfirmModal = function() {
+      const modal = document.getElementById('ai-confirm-modal');
+      if (modal) modal.classList.remove('active');
+    };
+
+    window.clearCurrentAiChat = async function() {
+      console.log('🚀 Clearing current AI chat...');
+      try {
+        const tk = getAiAuthToken();
+        const convId = window._currentAiConversationId;
+        
+        if (convId) {
+          await fetch('/api/ai/chat/session/' + convId, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + tk }
+          });
+        } else {
+          await fetch('/api/ai/chat/history', {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + tk }
+          });
+        }
+
+        window._currentAiConversationId = null;
+
+        if (window._chatScreenState && window._chatScreenState.cx) {
+          const s = window._chatScreenState;
+          s.cx.length = 0;
+          if (window._dartMapHelper) {
+            s.cx.push(window._dartMapHelper('ai', 'Đã xoá cuộc trò chuyện thành công! Tôi có thể giúp gì cho bạn hôm nay?'));
+          }
+          if (s.c != null) s.K(new window._dartSetStateHelper());
+        }
+
+        if (typeof window.fetchAiSessions === 'function') {
+          window.fetchAiSessions();
+        }
+      } catch (err) {
+        console.error('Lỗi khi xóa cuộc trò chuyện:', err);
+      }
+    };
+
+    window.openAiHistory = function() {
+      console.log('🚀 openAiHistory called!');
+      try {
+        const isDark = (document.body && document.body.classList.contains('dark')) || (localStorage.getItem('flutter.isDarkMode') === 'true');
+        const panel = document.getElementById('ai-drawer-panel');
+        const backdrop = document.getElementById('ai-drawer-backdrop');
+        if (panel && backdrop) {
+          if (isDark) panel.classList.add('dark'); else panel.classList.remove('dark');
+          panel.classList.add('active');
+          backdrop.classList.add('active');
+          if (typeof window.fetchAiSessions === 'function') {
+            window.fetchAiSessions();
+          }
+        }
+      } catch (err) {
+        console.error('Error opening AI history drawer:', err);
+      }
+    };
+
+    window.closeAiHistory = function() {
+      console.log('🚀 closeAiHistory called!');
+      try {
+        const panel = document.getElementById('ai-drawer-panel');
+        const backdrop = document.getElementById('ai-drawer-backdrop');
+        if (panel) panel.classList.remove('active');
+        if (backdrop) backdrop.classList.remove('active');
+      } catch (err) {
+        console.error('Error closing AI history drawer:', err);
+      }
+    };
+
+    function getAiAuthToken() {
+      let tk = '';
+      try {
+        const raw = localStorage.getItem('flutter.authToken') || localStorage.getItem('authToken');
+        if (raw) {
+          if (raw.startsWith('"') && raw.endsWith('"')) tk = JSON.parse(raw);
+          else tk = raw;
+        }
+      } catch(e) {
+        tk = localStorage.getItem('flutter.authToken') || localStorage.getItem('authToken') || '';
+      }
+      return tk;
+    }
+
+    window.fetchAiSessions = async function() {
+      const container = document.getElementById('ai-sessions-list');
+      if (!container) return;
+      try {
+        const res = await fetch('/api/ai/chat/sessions', {
+          headers: { 'Authorization': 'Bearer ' + getAiAuthToken() }
+        });
+        const data = await res.json();
+        if (data && data.success && Array.isArray(data.sessions)) {
+          if (data.sessions.length === 0) {
+            container.innerHTML = '<div class="ai-drawer-empty">Chưa có cuộc trò chuyện nào.<br>Bấm "+ Cuộc trò chuyện mới" để bắt đầu!</div>';
+            return;
+          }
+          container.innerHTML = '';
+          data.sessions.forEach(function(s) {
+            const isActive = window._currentAiConversationId === s.id;
+            const item = document.createElement('div');
+            item.className = 'ai-session-item' + (isActive ? ' active' : '');
+            
+            const timeStr = s.createdAt ? new Date(s.createdAt).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '';
+            
+            item.innerHTML = `
+              <div class="ai-session-info" style="cursor:pointer;" onclick="window.selectAiSession('${s.id}')">
+                <div class="ai-session-name">${escapeAiHtml(s.name || 'Cuộc trò chuyện mới')}</div>
+                <div class="ai-session-time">${timeStr}</div>
+              </div>
+              <button class="ai-session-delete-btn" title="Xóa" onclick="window.deleteAiSession('${s.id}', event)">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              </button>
+            `;
+            container.appendChild(item);
+          });
+        }
+      } catch(e) {
+        container.innerHTML = '<div class="ai-drawer-empty">Không thể tải lịch sử trò chuyện.</div>';
+      }
+    };
+
+    function escapeAiHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    window.createNewAiSession = async function() {
+      try {
+        const res = await fetch('/api/ai/chat/session/new', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + getAiAuthToken(), 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (data && data.success && data.session) {
+          window._currentAiConversationId = data.session.id;
+          window.closeAiHistory();
+          if (window._chatScreenState && window._chatScreenState.cx) {
+            const s = window._chatScreenState;
+            s.cx.length = 0;
+            if (s.c != null) s.K(new window._dartSetStateHelper());
+          }
+          if (typeof window.updateAiWelcomeState === 'function') {
+            window.updateAiWelcomeState();
+          }
+          if (typeof window.fetchAiSessions === 'function') {
+            window.fetchAiSessions();
+          }
+        }
+      } catch(e) {
+        console.error('Lỗi tạo phiên chat mới:', e);
+      }
+    };
+
+    window.selectAiSession = async function(id) {
+      try {
+        window._currentAiConversationId = id;
+        window.closeAiHistory();
+        const res = await fetch('/api/ai/chat/history?conversationId=' + id, {
+          headers: { 'Authorization': 'Bearer ' + getAiAuthToken() }
+        });
+        const data = await res.json();
+        if (data && data.success && Array.isArray(data.messages)) {
+          if (window._chatScreenState && window._chatScreenState.cx) {
+            const s = window._chatScreenState;
+            s.cx.length = 0;
+            if (data.messages.length === 0) {
+              // Để trống để hiện màn chào mừng Gemini
+            } else {
+              data.messages.forEach(function(m) {
+                if (window._dartMapHelper) {
+                  s.cx.push(window._dartMapHelper(m.role === 'user' ? 'user' : 'ai', m.content || ''));
+                }
+              });
+            }
+            if (s.c != null) s.K(new window._dartSetStateHelper());
+          }
+          if (typeof window.updateAiWelcomeState === 'function') {
+            window.updateAiWelcomeState();
+          }
+        }
+      } catch(e) {
+        console.error('Lỗi tải tin nhắn phiên chat:', e);
+      }
+    };
+
+    window.deleteAiSession = function(id, evt) {
+      if (evt) {
+        evt.stopPropagation();
+        evt.preventDefault();
+      }
+      window.showAiConfirm({
+        title: 'Xóa cuộc trò chuyện?',
+        desc: 'Bạn có chắc chắn muốn xóa cuộc trò chuyện này không? Thao tác này không thể hoàn tác.',
+        onConfirm: async function() {
+          console.log('🚀 Deleting session:', id);
+          try {
+            const res = await fetch('/api/ai/chat/session/' + id, {
+              method: 'DELETE',
+              headers: { 'Authorization': 'Bearer ' + getAiAuthToken() }
+            });
+            const data = await res.json();
+            console.log('🚀 Delete result:', data);
+            if (data && data.success) {
+              const wasCurrent = (!window._currentAiConversationId || window._currentAiConversationId === id);
+              if (wasCurrent) {
+                window._currentAiConversationId = null;
+                if (window._chatScreenState && window._chatScreenState.cx) {
+                  const s = window._chatScreenState;
+                  s.cx.length = 0;
+                  if (window._dartMapHelper) {
+                    s.cx.push(window._dartMapHelper('ai', 'Đã xoá cuộc trò chuyện thành công! Tôi có thể giúp gì cho bạn hôm nay?'));
+                  }
+                  if (s.c != null) s.K(new window._dartSetStateHelper());
+                }
+              }
+              await window.fetchAiSessions();
+            } else {
+              alert(data?.error || 'Không thể xóa cuộc trò chuyện.');
+            }
+          } catch(e) {
+            console.error('Lỗi xóa phiên chat:', e);
+          }
+        }
+      });
+    };
+
+    window.deleteAllAiSessions = function() {
+      window.showAiConfirm({
+        title: 'Xóa toàn bộ lịch sử?',
+        desc: 'Bạn có chắc chắn muốn xóa tất cả các cuộc trò chuyện AI không? Thao tác này không thể hoàn tác.',
+        onConfirm: async function() {
+          console.log('🚀 Deleting all AI sessions...');
+          try {
+            const res = await fetch('/api/ai/chat/sessions/all', {
+              method: 'DELETE',
+              headers: { 'Authorization': 'Bearer ' + getAiAuthToken() }
+            });
+            const data = await res.json();
+            console.log('🚀 Delete all result:', data);
+            if (data && data.success) {
+              window._currentAiConversationId = null;
+              if (window._chatScreenState && window._chatScreenState.cx) {
+                const s = window._chatScreenState;
+                s.cx.length = 0;
+                if (s.c != null) s.K(new window._dartSetStateHelper());
+              }
+              if (typeof window.updateAiWelcomeState === 'function') {
+                window.updateAiWelcomeState();
+              }
+              await window.fetchAiSessions();
+            } else {
+              alert(data?.error || 'Không thể xóa toàn bộ lịch sử.');
+            }
+          } catch(e) {
+            console.error('Lỗi xóa toàn bộ phiên chat:', e);
+          }
+        }
+      });
+    };
+
+    window.showAiThinking = function(show) {
+      const el = document.getElementById('ai-typing-float');
+      if (!el) return;
+      if (show) {
+        el.classList.add('active');
+      } else {
+        el.classList.remove('active');
+      }
+    };
+  </script>
+  <script src="flutter_bootstrap.js?v=1789399816616" async></script>
+
+<script id="messenger-theme-picker-script">
+window._openMessengerThemePicker = function(convId, convName) {
+  var oldOverlay = document.getElementById('messenger-theme-picker-overlay');
+  if (oldOverlay) oldOverlay.remove();
+
+  // Đảm bảo luôn lấy được convId chính xác
+  if (!convId && window.$ && window.$._currentActiveChatConvId) {
+    convId = window.$._currentActiveChatConvId;
+  }
+  if (!convId && window.$ && window.$._activeChatScreenState && window.$._activeChatScreenState._activeChatConvId) {
+    convId = window.$._activeChatScreenState._activeChatConvId;
+  }
+  if (!convId && typeof localStorage !== 'undefined') {
+    convId = localStorage.getItem('last_active_conv_id') || '';
+  }
+
+  var themes = [
+    { id: 'classic', name: 'Mặc định (Classic)', color1: '#0084FF', color2: '#0068FF' },
+    { id: 'sunset', name: 'Hoàng hôn (Sunset)', color1: '#FF512F', color2: '#DD2476' },
+    { id: 'ocean', name: 'Đại dương (Ocean)', color1: '#00B4DB', color2: '#0083B0' },
+    { id: 'berry', name: 'Quả mọng (Berry)', color1: '#8A2387', color2: '#E94057' },
+    { id: 'emerald', name: 'Ngọc bích (Emerald)', color1: '#11998E', color2: '#38EF7D' },
+    { id: 'love', name: 'Tình yêu (Love)', color1: '#FF3377', color2: '#FF6584' }
+  ];
+
+  // 1. Xác định currentTheme chuẩn xác
+  var savedLocal = (convId && localStorage.getItem('chat_theme_' + convId)) || localStorage.getItem('chat_current_theme');
+  var currentTheme = (window.$ && window.$._convThemes && window.$._convThemes[convId]) ||
+                     (window.$ && window.$._currentActiveChatTheme) ||
+                     savedLocal ||
+                     'classic';
+  if (currentTheme === 'default' || !currentTheme) currentTheme = 'classic';
+  console.log('🔍 [Theme Modal] convId:', convId, 'currentTheme:', currentTheme);
+
+  var overlay = document.createElement('div');
+  overlay.id = 'messenger-theme-picker-overlay';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.6);backdrop-filter:blur(8px);z-index:9999999;display:flex;align-items:flex-end;justify-content:center;opacity:0;transition:opacity 0.25s ease;';
+
+  var sheet = document.createElement('div');
+  sheet.style.cssText = 'background:#ffffff;width:100%;max-width:440px;border-top-left-radius:24px;border-top-right-radius:24px;padding:16px 20px 28px;box-shadow:0 -12px 35px rgba(0,0,0,0.25);transform:translateY(100%);transition:transform 0.25s cubic-bezier(0.16,1,0.3,1);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;user-select:none;';
+
+  var html = '<div style="display:flex;justify-content:center;margin-bottom:12px;"><div style="width:40px;height:4px;background:#E2E8F0;border-radius:2px;"></div></div>';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">';
+  html += '<h3 style="margin:0;font-size:18px;font-weight:700;color:#0F172A;">Chủ đề đoạn chat</h3>';
+  html += '<button id="close-theme-btn" style="border:none;background:#F1F5F9;width:32px;height:32px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#64748B;font-size:16px;font-weight:bold;">✕</button>';
+  html += '</div>';
+  html += '<p style="margin:0 0 16px;font-size:13px;color:#64748B;">Chọn màu chủ đề để áp dụng ngay lập tức cho cả hai bên</p>';
+  html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+
+  themes.forEach(function(t) {
+    var isSel = (t.id === currentTheme);
+    html += '<div class="theme-row" data-theme="' + t.id + '" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:16px;cursor:pointer;transition:background 0.15s;background:' + (isSel ? '#F8FAFC' : 'transparent') + ';border:' + (isSel ? '1.5px solid #0084FF' : '1.5px solid transparent') + ';">';
+    html += '<div style="display:flex;align-items:center;gap:14px;">';
+    html += '<div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,' + t.color1 + ',' + t.color2 + ');box-shadow:0 3px 8px ' + t.color1 + '55;border:2px solid #fff;"></div>';
+    html += '<span style="font-size:15px;font-weight:' + (isSel ? '700' : '500') + ';color:#0F172A;">' + t.name + '</span>';
+    html += '</div>';
+    if (isSel) {
+      html += '<div style="width:24px;height:24px;border-radius:50%;background:#0084FF;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:bold;">✓</div>';
+    } else {
+      html += '<div style="width:24px;height:24px;"></div>';
+    }
+    html += '</div>';
+  });
+  html += '</div>';
+
+  sheet.innerHTML = html;
+  overlay.appendChild(sheet);
+  document.body.appendChild(overlay);
+
+  requestAnimationFrame(function() {
+    overlay.style.opacity = '1';
+    sheet.style.transform = 'translateY(0)';
+  });
+
+  function closeOverlay() {
+    overlay.style.opacity = '0';
+    sheet.style.transform = 'translateY(100%)';
+    setTimeout(function() { overlay.remove(); }, 250);
+  }
+
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) closeOverlay();
+  });
+  document.getElementById('close-theme-btn').addEventListener('click', closeOverlay);
+
+  var rows = sheet.querySelectorAll('.theme-row');
+  rows.forEach(function(row) {
+    row.addEventListener('click', function() {
+      var selectedTheme = this.getAttribute('data-theme');
+      console.log('🎯 [Client] Chọn theme:', selectedTheme, 'cho conversationId:', convId);
+
+      // 1. Lưu ngay vào localStorage
+      if (convId) {
+        localStorage.setItem('chat_theme_' + convId, selectedTheme);
+      }
+      localStorage.setItem('chat_current_theme', selectedTheme);
+
+      // 2. Cập nhật ngay trên bộ nhớ Dart/JS và kích hoạt Flutter State re-render tức thì
+      if (window.$) {
+        if (!window.$._convThemes) window.$._convThemes = {};
+        if (convId) window.$._convThemes[convId] = selectedTheme;
+        window.$._currentActiveChatTheme = selectedTheme;
+
+        // Kích hoạt setState trên Flutter ChatScreen
+        if (window.$._activeChatScreenState) {
+          window.$._activeChatScreenState.Q = false; // Đảm bảo đóng emoji
+          if (typeof window.$._activeChatScreenState.K === 'function' && window.A && window.A.ax1) {
+            try {
+              window.$._activeChatScreenState.K(new window.A.ax1());
+            } catch(e) {}
+          }
+        }
+      }
+
+      // 3. Phát socket realtime cho cả hai bên
+      var socketPayload = null;
+      if (window.A && typeof window.A.V === 'function' && window.t && window.t.N) {
+        try {
+          socketPayload = window.A.V(["conversationId", convId, "theme", selectedTheme], window.t.N, window.t.N);
+        } catch(e) {}
+      }
+      if (!socketPayload) {
+        socketPayload = { conversationId: convId, theme: selectedTheme };
+      }
+
+      if (window.$ && window.$.bj && typeof window.$.bj.cn === 'function') {
+        try {
+          window.$.bj.cn("update_conversation_theme", socketPayload);
+          console.log('⚡ [Client] Đã phát socket update_conversation_theme thành công!');
+        } catch(e) {
+          console.error('Lỗi phát socket theme:', e);
+        }
+      }
+
+      // 4. Gửi REST API lưu bền vững vào database
+      try {
+        var rawToken = localStorage.getItem('flutter.authToken') || 
+                       localStorage.getItem('authToken') || 
+                       localStorage.getItem('flutter.token') || 
+                       localStorage.getItem('token') || '';
+        var cleanToken = rawToken;
+        try {
+          cleanToken = JSON.parse(rawToken);
+        } catch(e) {
+          if (cleanToken.startsWith('"') && cleanToken.endsWith('"')) {
+            cleanToken = cleanToken.slice(1, -1);
+          }
+        }
+
+        if (cleanToken && convId) {
+          var backendUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? '' : 'https://chat-tho-fi-vn-9s8u.onrender.com';
+        fetch(backendUrl + '/api/chat/conversations/' + convId + '/theme', {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + cleanToken
+            },
+            body: JSON.stringify({ theme: selectedTheme })
+          }).then(function(res) { return res.json(); })
+            .then(function(data) { console.log('✅ API theme response:', data); })
+            .catch(function(err) { console.error('⚠️ Lỗi API theme:', err); });
+        }
+      } catch(e) {
+        console.error('Lỗi token/fetch:', e);
+      }
+
+      closeOverlay();
+    });
+  });
+};
+</script>
+
+
+  <!-- Modal Quản Lý Thông Báo & Web Push iOS -->
+  <style>
+    #notif-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 999999;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #notif-modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    #notif-modal-sheet {
+      width: 100%;
+      max-width: 500px;
+      max-height: 88vh;
+      background: #ffffff;
+      border-top-left-radius: 26px;
+      border-top-right-radius: 26px;
+      box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.22);
+      display: flex;
+      flex-direction: column;
+      transform: translateY(100%);
+      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    #notif-modal-overlay.active #notif-modal-sheet {
+      transform: translateY(0);
+    }
+    .notif-drag-bar {
+      width: 40px;
+      height: 4px;
+      background: #cbd5e1;
+      border-radius: 2px;
+      margin: 12px auto 6px;
+    }
+    .notif-header {
+      padding: 10px 20px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .notif-header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .notif-header-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 13px;
+      background: linear-gradient(135deg, #8b5cf6, #6366f1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 20px;
+    }
+    .notif-header-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+    .notif-header-sub {
+      font-size: 12.5px;
+      color: #64748b;
+      margin-top: 2px;
+    }
+    .notif-close-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #f1f5f9;
+      border: none;
+      font-size: 16px;
+      color: #64748b;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .notif-content {
+      padding: 18px 20px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .notif-status-box {
+      padding: 14px 16px;
+      border-radius: 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      border: 1px solid transparent;
+    }
+    .notif-status-box.active {
+      background: #ecfdf5;
+      border-color: #a7f3d0;
+      color: #065f46;
+    }
+    .notif-status-box.inactive {
+      background: #fffbeb;
+      border-color: #fde68a;
+      color: #92400e;
+    }
+    .notif-btn-main {
+      width: 100%;
+      height: 48px;
+      background: #0068ff;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .notif-btn-main:active {
+      transform: scale(0.98);
+      background: #0056d6;
+    }
+    .notif-btn-outline {
+      width: 100%;
+      height: 44px;
+      background: transparent;
+      color: #0068ff;
+      font-size: 14px;
+      font-weight: 600;
+      border: 1.5px solid #0068ff;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .notif-btn-outline:active {
+      background: rgba(0, 104, 255, 0.08);
+    }
+    .notif-test-row {
+      display: flex;
+      gap: 10px;
+    }
+    .notif-test-btn {
+      flex: 1;
+      height: 42px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #334155;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+    .notif-guide-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 14px 16px;
+      font-size: 12.5px;
+    }
+    .notif-guide-title {
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .notif-guide-step {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 6px;
+      line-height: 1.35;
+      color: #475569;
+    }
+    .notif-step-badge {
+      width: 18px;
+      height: 18px;
+      background: #0068ff;
+      color: #fff;
+      border-radius: 50%;
+      font-size: 11px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+  </style>
+
+  <div id="notif-modal-overlay">
+    <div id="notif-modal-sheet">
+      <div class="notif-drag-bar"></div>
+      <div class="notif-header">
+        <div class="notif-header-left">
+          <div class="notif-header-icon">🔔</div>
+          <div>
+            <div class="notif-header-title">Thông báo & Âm thanh</div>
+            <div class="notif-header-sub">Nhận chuông gọi & tin nhắn khi khóa máy</div>
+          </div>
+        </div>
+        <button class="notif-close-btn" onclick="window.closeNotificationModal()">✕</button>
+      </div>
+
+      <div class="notif-content">
+        <!-- Status Box -->
+        <div id="notif-status-box" class="notif-status-box inactive">
+          <div style="font-size: 22px;" id="notif-status-icon">⚠️</div>
+          <div>
+            <div id="notif-status-title" style="font-weight: 700; font-size: 14.5px;">Chưa kích hoạt thông báo</div>
+            <div id="notif-status-desc" style="font-size: 12.5px; margin-top: 2px;">
+              Bấm nút bên dưới để bật chuông cuộc gọi và tin nhắn khi thoát app.
+            </div>
+          </div>
+        </div>
+
+        <!-- Button Kích hoạt -->
+        <button id="notif-activate-btn" class="notif-btn-main" onclick="window.handleActivateNotificationClick()">
+          <span id="notif-activate-icon">🔔</span>
+          <span id="notif-activate-text">Bật thông báo trên thiết bị này</span>
+        </button>
+
+        <!-- Button Gửi Test Push -->
+        <button id="notif-test-push-btn" class="notif-btn-outline" onclick="window.handleTestPushClick()">
+          <span>📲</span> Gửi thông báo đẩy thử nghiệm (Test Push)
+        </button>
+
+        <!-- Hàng nút Test Âm thanh & Rung -->
+        <div style="font-size: 12px; font-weight: 700; color: #64748b; letter-spacing: 0.5px; margin-top: 4px;">
+          KIỂM TRA ÂM THANH & RUNG
+        </div>
+        <div class="notif-test-row">
+          <button id="notif-test-call-btn" class="notif-test-btn" onclick="window.handleToggleTestCallSound()">
+            <span id="notif-test-call-icon">📞</span>
+            <span id="notif-test-call-text">Thử chuông gọi</span>
+          </button>
+          <button class="notif-test-btn" onclick="window.handleTestMessageSound()">
+            <span>💬</span> Thử âm tin nhắn
+          </button>
+        </div>
+
+        <!-- Hướng dẫn iOS -->
+        <div class="notif-guide-card">
+          <div class="notif-guide-title">
+            <span>🍎</span> Hướng dẫn quan trọng cho iPhone / iOS
+          </div>
+          <div class="notif-guide-step">
+            <div class="notif-step-badge">1</div>
+            <div>Mở bằng <b>Safari</b> trên iPhone (chỉ Safari hỗ trợ Web Push).</div>
+          </div>
+          <div class="notif-guide-step">
+            <div class="notif-step-badge">2</div>
+            <div>Bấm nút <b>Chia sẻ (⎋)</b> ở thanh dưới ➔ Chọn <b>"Thêm vào MH chính"</b>.</div>
+          </div>
+          <div class="notif-guide-step">
+            <div class="notif-step-badge">3</div>
+            <div>Mở app từ Màn hình chính và bấm nút <b>"Bật thông báo"</b> ở trên.</div>
+          </div>
+          <div class="notif-guide-step">
+            <div class="notif-step-badge">4</div>
+            <div>Vào <b>Cài đặt iPhone ➔ Thông báo ➔ Chat Tho-Fi</b> ➔ Bật Màn hình khóa, Biểu ngữ & Âm thanh.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let _testRingtoneAudio = null;
+    let _testVibrationInterval = null;
+
+    window.showNotificationModal = function() {
+      const overlay = document.getElementById('notif-modal-overlay');
+      if (!overlay) return;
+      window.updateNotificationModalState();
+      overlay.classList.add('active');
+    };
+
+    window.closeNotificationModal = function() {
+      const overlay = document.getElementById('notif-modal-overlay');
+      if (overlay) overlay.classList.remove('active');
+      window.stopTestCallSound();
+    };
+
+    // Đóng khi bấm ra ngoài vùng đen
+    document.addEventListener('click', function(e) {
+      const overlay = document.getElementById('notif-modal-overlay');
+      if (overlay && e.target === overlay) {
+        window.closeNotificationModal();
+      }
+    });
+
+    window.updateNotificationModalState = function() {
+      const isGranted = ('Notification' in window) && (Notification.permission === 'granted');
+      const statusBox = document.getElementById('notif-status-box');
+      const statusIcon = document.getElementById('notif-status-icon');
+      const statusTitle = document.getElementById('notif-status-title');
+      const statusDesc = document.getElementById('notif-status-desc');
+      const btnText = document.getElementById('notif-activate-text');
+
+      if (isGranted) {
+        if (statusBox) {
+          statusBox.className = 'notif-status-box active';
+          statusIcon.textContent = '✅';
+          statusTitle.textContent = 'Thông báo đang BẬT';
+          statusDesc.textContent = 'Thiết bị này đã sẵn sàng nhận chuông cuộc gọi & tin nhắn khi bạn khóa màn hình hoặc ra ngoài.';
+        }
+        if (btnText) btnText.textContent = 'Cập nhật lại quyền thông báo';
+      } else {
+        if (statusBox) {
+          statusBox.className = 'notif-status-box inactive';
+          statusIcon.textContent = '⚠️';
+          statusTitle.textContent = 'Thông báo CHƯA BẬT';
+          statusDesc.textContent = 'Vui lòng bấm nút bên dưới để cấp quyền nhận cuộc gọi và tin nhắn khi thoát app.';
+        }
+        if (btnText) btnText.textContent = 'Bật thông báo trên thiết bị này';
+      }
+    };
+
+    window.handleActivateNotificationClick = async function() {
+      const btn = document.getElementById('notif-activate-btn');
+      const btnText = document.getElementById('notif-activate-text');
+      const originalText = btnText ? btnText.textContent : '';
+
+      try {
+        if (btnText) btnText.textContent = 'Đang kích hoạt...';
+        if (btn) btn.disabled = true;
+
+        if (!('Notification' in window)) {
+          alert('Trình duyệt hiện tại chưa hỗ trợ Web Push. Nếu bạn dùng iPhone, hãy bấm nút Chia sẻ (⎋) -> "Thêm vào MH chính" rồi mở từ màn hình chính!');
+          return;
+        }
+
+        // Kích hoạt ngay trong User Gesture context của click này
+        const token = await window.registerFCMAndGetToken();
+
+        if (token) {
+          // Lưu token lên server
+          const authToken = localStorage.getItem('flutter.authToken') || localStorage.getItem('authToken');
+          const deviceId = window.getWebDeviceId ? window.getWebDeviceId() : 'web_device';
+
+          if (authToken) {
+            await fetch('/api/users/fcm-token', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + authToken.replace(/"/g, '')
+              },
+              body: JSON.stringify({
+                fcmToken: token,
+                platform: 'web',
+                deviceId: deviceId
+              })
+            }).catch(e => console.warn('Lưu fcm-token lỗi:', e));
+          }
+
+          window.updateNotificationModalState();
+          alert('🎉 Đã bật thông báo thành công! Bây giờ bạn có thể thử khóa màn hình hoặc thoát ra ngoài màn hình chính để kiểm tra.');
+        } else {
+          window.updateNotificationModalState();
+          alert('⚠️ Chưa thể kích hoạt thông báo. Nếu bạn đang dùng iPhone, hãy chắc chắn rằng bạn đã "Thêm vào MH chính" bằng Safari và mở ứng dụng từ màn hình chính!');
+        }
+      } catch (err) {
+        console.error('Lỗi kích hoạt:', err);
+        alert('Lỗi kích hoạt thông báo: ' + err.message);
+      } finally {
+        if (btn) btn.disabled = false;
+        if (btnText) btnText.textContent = originalText;
+      }
+    };
+
+    window.handleTestPushClick = async function() {
+      const btn = document.getElementById('notif-test-push-btn');
+      const originalHtml = btn ? btn.innerHTML : '';
+      try {
+        if (btn) {
+          btn.innerHTML = '<span>⏳</span> Đang gửi thông báo...';
+          btn.disabled = true;
+        }
+
+        const authToken = localStorage.getItem('flutter.authToken') || localStorage.getItem('authToken');
+        if (!authToken) {
+          alert('Bạn cần đăng nhập để gửi thông báo thử nghiệm.');
+          return;
+        }
+
+        const res = await fetch('/api/users/test-push', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + authToken.replace(/"/g, '')
+          }
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          alert('🔔 Đã bắn thông báo thử nghiệm! Bạn hãy thử khóa màn hình điện thoại hoặc thoát ra ngoài màn hình chính để kiểm tra.');
+        } else {
+          alert('⚠️ Gửi thông báo test thất bại: ' + (data.message || 'Chưa đăng ký thiết bị'));
+        }
+      } catch (err) {
+        alert('Lỗi gửi thông báo: ' + err.message);
+      } finally {
+        if (btn) {
+          btn.innerHTML = originalHtml;
+          btn.disabled = false;
+        }
+      }
+    };
+
+    window.handleToggleTestCallSound = function() {
+      const btnText = document.getElementById('notif-test-call-text');
+      const btnIcon = document.getElementById('notif-test-call-icon');
+      const btn = document.getElementById('notif-test-call-btn');
+
+      if (_testRingtoneAudio && !_testRingtoneAudio.paused) {
+        window.stopTestCallSound();
+      } else {
+        try {
+          if (!_testRingtoneAudio) {
+            _testRingtoneAudio = new Audio('/ringtone.mp3');
+            _testRingtoneAudio.loop = true;
+          }
+          _testRingtoneAudio.currentTime = 0;
+          _testRingtoneAudio.play().catch(() => {});
+
+          // Rung chu kỳ 1000ms rung, 500ms nghỉ
+          if (navigator.vibrate) {
+            navigator.vibrate([1000, 500, 1000, 500]);
+            clearInterval(_testVibrationInterval);
+            _testVibrationInterval = setInterval(() => {
+              if (_testRingtoneAudio && !_testRingtoneAudio.paused) {
+                navigator.vibrate([1000, 500]);
+              } else {
+                clearInterval(_testVibrationInterval);
+              }
+            }, 1500);
+          }
+
+          if (btnText) btnText.textContent = 'Dừng chuông';
+          if (btnIcon) btnIcon.textContent = '⏹️';
+          if (btn) btn.style.background = '#fee2e2';
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    };
+
+    window.stopTestCallSound = function() {
+      if (_testRingtoneAudio) {
+        _testRingtoneAudio.pause();
+        _testRingtoneAudio.currentTime = 0;
+      }
+      clearInterval(_testVibrationInterval);
+      if (navigator.vibrate) navigator.vibrate(0);
+
+      const btnText = document.getElementById('notif-test-call-text');
+      const btnIcon = document.getElementById('notif-test-call-icon');
+      const btn = document.getElementById('notif-test-call-btn');
+      if (btnText) btnText.textContent = 'Thử chuông gọi';
+      if (btnIcon) btnIcon.textContent = '📞';
+      if (btn) btn.style.background = '#f8fafc';
+    };
+
+    window.handleTestMessageSound = function() {
+      try {
+        const audio = new Audio('/amthanhtinnhan.mp3');
+        audio.play().catch(() => {});
+        if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+  </script>
+
+
 <!-- Thẻ audio chuyên biệt cho WebRTC và chuông cuộc gọi -->
 <audio id="remoteAudioPlayer" autoplay playsinline style="position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;"></audio>
 <audio id="callRingtoneAudio" loop preload="auto" src="/ringtone.mp3" style="display:none;"></audio>
@@ -560,7 +2251,6 @@
     return audioCtx;
   }
 
-  // Tự động unlock âm thanh ngay khi người dùng chạm / bấm vào màn hình
   function unlockAudio() {
     var ctx = getAudioCtx();
     ['remoteAudioPlayer', 'callRingtoneAudio', 'callTutTutAudio', 'callEndAudio'].forEach(function(id) {
@@ -582,7 +2272,6 @@
 
   window._callAudioEngine = {
     playIncomingRingtone: function() {
-      console.log('🔔 [_callAudioEngine] Bắt đầu phát chuông gọi đến: ringtone.mp3');
       this.stopAllCallSounds();
       var el = document.getElementById('callRingtoneAudio');
       if (el) {
@@ -590,11 +2279,10 @@
         el.muted = false;
         el.volume = 1.0;
         var p = el.play();
-        if (p && p.catch) p.catch(function(e) { console.warn('Ringtone play deferred:', e); });
+        if (p && p.catch) p.catch(function(e) {});
       }
     },
     playWaitingTutTut: function() {
-      console.log('📞 [_callAudioEngine] Bắt đầu phát âm thanh chờ: tuttut.mp3');
       this.stopAllCallSounds();
       var el = document.getElementById('callTutTutAudio');
       if (el) {
@@ -602,11 +2290,10 @@
         el.muted = false;
         el.volume = 1.0;
         var p = el.play();
-        if (p && p.catch) p.catch(function(e) { console.warn('TutTut play deferred:', e); });
+        if (p && p.catch) p.catch(function(e) {});
       }
     },
     playCallEndSound: function() {
-      console.log('🔴 [_callAudioEngine] Phát âm thanh tắt cuộc gọi: amthanhtat.mp3');
       this.stopAllCallSounds();
       var el = document.getElementById('callEndAudio');
       if (el) {
@@ -614,7 +2301,7 @@
         el.muted = false;
         el.volume = 1.0;
         var p = el.play();
-        if (p && p.catch) p.catch(function(e) { console.warn('End call sound deferred:', e); });
+        if (p && p.catch) p.catch(function(e) {});
       }
     },
     stopAllCallSounds: function() {
@@ -625,7 +2312,6 @@
     },
     playRemoteStream: function(stream) {
       if (!stream) return;
-      console.log('🔊 [_callAudioEngine] Đang kết nối luồng âm thanh đàm thoại 2 chiều...');
       try {
         var audioEl = document.getElementById('remoteAudioPlayer');
         if (!audioEl) {
@@ -640,12 +2326,9 @@
         audioEl.muted = false;
         audioEl.volume = 1.0;
         var p = audioEl.play();
-        if (p && p.catch) p.catch(function(err) { console.warn('Audio tag play deferred:', err); });
-      } catch(e) {
-        console.error('AudioElement error:', e);
-      }
+        if (p && p.catch) p.catch(function() {});
+      } catch(e) {}
 
-      // Kênh phần cứng Web Audio API: Bơm trực tiếp vào loa hệ điều hành
       try {
         var ctx = getAudioCtx();
         if (ctx) {
@@ -654,16 +2337,12 @@
           }
           remoteSourceNode = ctx.createMediaStreamSource(stream);
           remoteSourceNode.connect(ctx.destination);
-          console.log('✅ [_callAudioEngine] Web Audio API đã kết nối trực tiếp ra loa ngoài!');
         }
-      } catch(ctxErr) {
-        console.warn('Web Audio Context bridge note:', ctxErr);
-      }
+      } catch(ctxErr) {}
     }
   };
 })();
 </script>
-
 
 </body>
 </html>
