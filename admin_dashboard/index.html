@@ -637,12 +637,14 @@
               </div>
             </div>
 
-            <!-- Cần gạt BẬT / TẮT Bảo trì lớn -->
-            <div class="maint-switch-box" id="btn-toggle-maint" title="Bấm vào để Bật hoặc Tắt chế độ bảo trì">
-              <span class="maint-switch-label" id="maint-switch-text" style="color:var(--text-primary);">BẢO TRÌ: TẮT</span>
-              <div class="ios-switch lg off" id="switch-maint">
-                <div class="ios-switch-knob"></div>
-              </div>
+            <!-- Cặp Nút TẮT và BẬT Bảo trì rõ ràng -->
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+              <button type="button" id="btn-mode-off" class="btn-system-mode active-off" onclick="setSystemMode(false)">
+                🟢 TẮT BẢO TRÌ
+              </button>
+              <button type="button" id="btn-mode-on" class="btn-system-mode" onclick="setSystemMode(true)">
+                🔴 BẬT BẢO TRÌ
+              </button>
             </div>
           </div>
         </div>
@@ -650,7 +652,7 @@
         <!-- Khung cấu hình chi tiết -->
         <div class="glass-card">
           <div class="card-title">
-            <span>⚙️ Quản lý vận hành & Cờ tính năng</span>
+            <span>⚙️ Cấu hình thông báo bảo trì</span>
           </div>
 
           <!-- Khu vực tin nhắn thông báo bảo trì -->
@@ -675,79 +677,8 @@
             </div>
           </div>
 
-          <!-- Bảng 4 công tắc tính năng dạng Cần gạt Bật/Tắt -->
-          <h4 style="font-size:14px; font-weight:700; margin-bottom:14px; color:var(--text-primary);">
-            🚩 Công tắc tính năng hệ thống (Bấm cần gạt hoặc thẻ để BẬT / TẮT)
-          </h4>
-
-          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:16px; margin-bottom:24px;">
-            <!-- Card 1: Đăng ký mới -->
-            <div class="feature-card active" id="card-feature-reg" onclick="toggleFeature('allowRegistration')">
-              <div class="feature-card-header">
-                <div class="feature-icon">👤</div>
-                <div>
-                  <div class="feature-title">Đăng ký tài khoản mới</div>
-                  <div class="feature-desc">Cho phép người dùng mới tạo tài khoản</div>
-                </div>
-              </div>
-              <div class="switch-control-group">
-                <span class="switch-text on" id="text-feature-reg">🟢 BẬT</span>
-                <div class="ios-switch on" id="switch-feature-reg">
-                  <div class="ios-switch-knob"></div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Card 2: Gọi thoại -->
-            <div class="feature-card active" id="card-feature-voice" onclick="toggleFeature('allowVoiceCalls')">
-              <div class="feature-card-header">
-                <div class="feature-icon">📞</div>
-                <div>
-                  <div class="feature-title">Cuộc gọi thoại (Audio)</div>
-                  <div class="feature-desc">Cho phép gọi đàm thoại âm thanh</div>
-                </div>
-              </div>
-              <div class="switch-control-group">
-                <span class="switch-text on" id="text-feature-voice">🟢 BẬT</span>
-                <div class="ios-switch on" id="switch-feature-voice">
-                  <div class="ios-switch-knob"></div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Card 3: Gọi video -->
-            <div class="feature-card active" id="card-feature-video" onclick="toggleFeature('allowVideoCalls')">
-              <div class="feature-card-header">
-                <div class="feature-icon">📹</div>
-                <div>
-                  <div class="feature-title">Cuộc gọi video (Video)</div>
-                  <div class="feature-desc">Cho phép gọi có hình trực tiếp</div>
-                </div>
-              </div>
-              <div class="switch-control-group">
-                <span class="switch-text on" id="text-feature-video">🟢 BẬT</span>
-                <div class="ios-switch on" id="switch-feature-video">
-                  <div class="ios-switch-knob"></div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Card 4: Tải file & media -->
-            <div class="feature-card active" id="card-feature-files" onclick="toggleFeature('allowFileUploads')">
-              <div class="feature-card-header">
-                <div class="feature-icon">📁</div>
-                <div>
-                  <div class="feature-title">Gửi ảnh & Tệp Media</div>
-                  <div class="feature-desc">Cho phép gửi hình ảnh, video và tệp</div>
-                </div>
-              </div>
-              <div class="switch-control-group">
-                <span class="switch-text on" id="text-feature-files">🟢 BẬT</span>
-                <div class="ios-switch on" id="switch-feature-files">
-                  <div class="ios-switch-knob"></div>
-                </div>
-              </div>
-            </div>
+          <!-- Hộp thông báo kết quả lưu thành công -->
+          <div id="system-save-alert" style="display:none; padding:14px 18px; border-radius:12px; font-size:14px; font-weight:700; margin-bottom:20px; align-items:center; gap:10px;">
           </div>
 
           <!-- Nút lưu cấu hình -->

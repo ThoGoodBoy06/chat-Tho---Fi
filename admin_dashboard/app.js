@@ -1406,52 +1406,45 @@ window.setMaintenanceTemplate = function (text) {
   }
 };
 
-window.toggleFeature = function (featureKey) {
-  systemConfigState[featureKey] = !systemConfigState[featureKey];
-  updateFeatureCardUI(featureKey, systemConfigState[featureKey]);
-  const statusStr = systemConfigState[featureKey] ? "BẬT" : "TẮT";
-  showToast(`Đã chuyển tính năng sang: ${statusStr} (Nhấn 'Lưu' để áp dụng)`, "info");
-};
 
-function updateFeatureCardUI(featureKey, isEnabled) {
-  const map = {
-    allowRegistration: { cardId: "card-feature-reg", switchId: "switch-feature-reg", textId: "text-feature-reg" },
-    allowVoiceCalls: { cardId: "card-feature-voice", switchId: "switch-feature-voice", textId: "text-feature-voice" },
-    allowVideoCalls: { cardId: "card-feature-video", switchId: "switch-feature-video", textId: "text-feature-video" },
-    allowFileUploads: { cardId: "card-feature-files", switchId: "switch-feature-files", textId: "text-feature-files" },
-  };
-  const item = map[featureKey];
-  if (!item) return;
-
-  const card = document.getElementById(item.cardId);
-  const sw = document.getElementById(item.switchId);
-  const text = document.getElementById(item.textId);
-
-  if (card) {
-    if (isEnabled) {
-      card.classList.add("active");
-      card.classList.remove("disabled");
+// Hàm bấm nút BẬT hoặc TẮT bảo trì
+window.setSystemMode = function (isMaint) {
+  systemConfigState.maintenanceMode = isMaint;
+  updateMaintenanceUI(isMaint);
+  const alertEl = document.getElementById("system-save-alert");
+  if (alertEl) {
+    alertEl.style.display = "flex";
+    if (isMaint) {
+      alertEl.style.background = "rgba(239, 68, 68, 0.12)";
+      alertEl.style.border = "1.5px dashed rgba(239, 68, 68, 0.4)";
+      alertEl.style.color = "#fca5a5";
+      alertEl.innerHTML = "⚠️ <span>Bạn đã chọn <b>BẬT BẢO TRÌ</b>. Hãy bấm nút <b>'Lưu và Áp dụng tức thì'</b> bên dưới để kích hoạt!</span>";
     } else {
-      card.classList.remove("active");
-      card.classList.add("disabled");
+      alertEl.style.background = "rgba(16, 185, 129, 0.12)";
+      alertEl.style.border = "1.5px dashed rgba(16, 185, 129, 0.4)";
+      alertEl.style.color = "#34d399";
+      alertEl.innerHTML = "💡 <span>Bạn đã chọn <b>TẮT BẢO TRÌ</b>. Hãy bấm nút <b>'Lưu và Áp dụng tức thì'</b> bên dưới để mở lại hệ thống!</span>";
     }
   }
-  if (sw) {
-    sw.className = isEnabled ? "ios-switch on" : "ios-switch off";
-  }
-  if (text) {
-    text.className = isEnabled ? "switch-text on" : "switch-text off";
-    text.textContent = isEnabled ? "🟢 BẬT" : "⚪ TẮT";
-  }
-}
+};
 
 function updateMaintenanceUI(isMaint) {
   const banner = document.getElementById("maint-banner-card");
   const icon = document.getElementById("maint-status-icon");
   const title = document.getElementById("maint-status-title");
   const desc = document.getElementById("maint-status-desc");
-  const swMaint = document.getElementById("switch-maint");
-  const textMaint = document.getElementById("maint-switch-text");
+  const btnOff = document.getElementById("btn-mode-off");
+  const btnOn = document.getElementById("btn-mode-on");
+
+  if (btnOff && btnOn) {
+    if (isMaint) {
+      btnOn.className = "btn-system-mode active-on";
+      btnOff.className = "btn-system-mode";
+    } else {
+      btnOff.className = "btn-system-mode active-off";
+      btnOn.className = "btn-system-mode";
+    }
+  }
 
   if (isMaint) {
     if (banner) banner.style.borderLeftColor = "var(--accent-rose)";
@@ -1467,13 +1460,6 @@ function updateMaintenanceUI(isMaint) {
     if (desc) {
       desc.textContent = "Người dùng khi vào app sẽ thấy trang bảo trì và không thể gửi tin hay gọi điện.";
     }
-    if (swMaint) {
-      swMaint.className = "ios-switch lg on";
-    }
-    if (textMaint) {
-      textMaint.textContent = "BẢO TRÌ: ĐANG BẬT 🔴";
-      textMaint.style.color = "#f87171";
-    }
   } else {
     if (banner) banner.style.borderLeftColor = "var(--accent-emerald)";
     if (icon) {
@@ -1488,13 +1474,6 @@ function updateMaintenanceUI(isMaint) {
     if (desc) {
       desc.textContent = "Người dùng có thể truy cập, nhắn tin, gửi ảnh và gọi điện bình thường.";
     }
-    if (swMaint) {
-      swMaint.className = "ios-switch lg off";
-    }
-    if (textMaint) {
-      textMaint.textContent = "BẢO TRÌ: ĐANG TẮT 🟢";
-      textMaint.style.color = "var(--text-primary)";
-    }
   }
 }
 
@@ -1504,10 +1483,6 @@ function applySystemConfigToUI(cfg) {
   if (msgInput && cfg.maintenanceMessage) {
     msgInput.value = cfg.maintenanceMessage;
   }
-  updateFeatureCardUI("allowRegistration", cfg.allowRegistration !== false);
-  updateFeatureCardUI("allowVoiceCalls", cfg.allowVoiceCalls !== false);
-  updateFeatureCardUI("allowVideoCalls", cfg.allowVideoCalls !== false);
-  updateFeatureCardUI("allowFileUploads", cfg.allowFileUploads !== false);
 }
 
 async function loadSystemConfig() {
@@ -1528,25 +1503,16 @@ async function loadSystemConfig() {
   }
 }
 
-// Bấm nút bật/tắt bảo trì trên Banner
-document.getElementById("btn-toggle-maint")?.addEventListener("click", () => {
-  systemConfigState.maintenanceMode = !systemConfigState.maintenanceMode;
-  updateMaintenanceUI(systemConfigState.maintenanceMode);
-  if (systemConfigState.maintenanceMode) {
-    showToast("⚠️ Đã chuyển sang trạng thái BẢO TRÌ. Hãy bấm 'Lưu và Áp dụng tức thì' bên dưới!", "warning");
-  } else {
-    showToast("✅ Đã tắt bảo trì. Hãy bấm 'Lưu và Áp dụng tức thì' để mở lại hệ thống!", "info");
-  }
-});
-
 // Bấm nút Lưu cấu hình hệ thống
 document.getElementById("btn-save-system-config")?.addEventListener("click", async () => {
   const btn = document.getElementById("btn-save-system-config");
   const msgInput = document.getElementById("cfg-maintenance-msg");
   const maintenanceMessage = msgInput ? msgInput.value.trim() : systemConfigState.maintenanceMessage;
 
+  const isMaint = !!systemConfigState.maintenanceMode;
+
   const payload = {
-    maintenanceMode: !!systemConfigState.maintenanceMode,
+    maintenanceMode: isMaint,
     maintenanceMessage: maintenanceMessage || "Hệ thống đang bảo trì định kỳ. Vui lòng quay lại sau ít phút!",
     allowRegistration: systemConfigState.allowRegistration !== false,
     allowVoiceCalls: systemConfigState.allowVoiceCalls !== false,
@@ -1563,6 +1529,23 @@ document.getElementById("btn-save-system-config")?.addEventListener("click", asy
       method: "PUT",
       body: JSON.stringify(payload),
     });
+
+    const alertEl = document.getElementById("system-save-alert");
+    if (alertEl) {
+      alertEl.style.display = "flex";
+      if (isMaint) {
+        alertEl.style.background = "rgba(239, 68, 68, 0.18)";
+        alertEl.style.border = "1.5px solid #ef4444";
+        alertEl.style.color = "#ffffff";
+        alertEl.innerHTML = `🔴 <span><b>THÔNG BÁO:</b> Đã lưu thành công! Chế độ bảo trì <b>ĐANG BẬT</b>.<br><small style="color:#fca5a5;">Người dùng khi vào app sẽ thấy trang thông báo: "${payload.maintenanceMessage}"</small></span>`;
+      } else {
+        alertEl.style.background = "rgba(16, 185, 129, 0.18)";
+        alertEl.style.border = "1.5px solid #10b981";
+        alertEl.style.color = "#ffffff";
+        alertEl.innerHTML = "🟢 <span><b>THÔNG BÁO:</b> Đã lưu thành công! Chế độ bảo trì <b>ĐANG TẮT</b>.<br><small style="color:#6ee7b7;">Hệ thống đang mở cửa bình thường cho tất cả người dùng.</small></span>";
+      }
+    }
+
     showToast(res.message || "Đã lưu và áp dụng cấu hình hệ thống thành công!", "success");
     if (res.data) {
       systemConfigState = {

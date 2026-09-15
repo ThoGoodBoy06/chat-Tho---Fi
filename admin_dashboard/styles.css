@@ -1602,30 +1602,41 @@ textarea.form-control {
   color: #94a3b8;
 }
 
-/* Khung công tắc chế độ bảo trì trên Banner */
-.maint-switch-box {
-  display: flex;
+/* Nút chọn chế độ BẬT / TẮT Bảo trì */
+.btn-system-mode {
+  display: inline-flex;
   align-items: center;
-  gap: 14px;
-  background: rgba(15, 23, 42, 0.7);
-  border: 1.5px solid rgba(255, 255, 255, 0.12);
-  padding: 10px 20px;
-  border-radius: 9999px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  user-select: none;
-}
-
-.maint-switch-box:hover {
-  border-color: rgba(6, 182, 212, 0.5);
-  background: rgba(15, 23, 42, 0.9);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-}
-
-.maint-switch-label {
+  gap: 8px;
+  padding: 12px 22px;
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 700;
+  border-radius: 12px;
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  background: rgba(30, 41, 59, 0.6);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  user-select: none;
   font-family: 'Outfit', sans-serif;
-  letter-spacing: 0.5px;
+}
+
+.btn-system-mode:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #fff;
+}
+
+.btn-system-mode.active-off {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.35));
+  border-color: #10b981;
+  color: #34d399;
+  box-shadow: 0 0 22px rgba(16, 185, 129, 0.35);
+}
+
+.btn-system-mode.active-on {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(220, 38, 38, 0.4));
+  border-color: #ef4444;
+  color: #fca5a5;
+  box-shadow: 0 0 25px rgba(239, 68, 68, 0.45);
 }
 
