@@ -52,6 +52,143 @@ app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
+// Bộ nhớ đệm cấu hình hệ thống thời gian thực (In-memory System Config)
+global.systemConfig = {
+    maintenanceMode: false,
+    maintenanceMessage: "Hệ thống đang bảo trì định kỳ. Vui lòng quay lại sau ít phút!",
+    allowRegistration: true,
+    allowVoiceCalls: true,
+    allowVideoCalls: true,
+    allowFileUploads: true,
+};
+
+async function syncSystemConfigFromDB() {
+    try {
+        const configs = await prisma.systemConfig.findMany();
+        configs.forEach((c) => {
+            global.systemConfig[c.key] = c.value;
+        });
+        console.log("⚙️ [SystemConfig] Trạng thái bảo trì:", global.systemConfig.maintenanceMode ? "🔴 ĐANG BẬT" : "🟢 ĐANG TẮT");
+    } catch (e) {
+        console.warn("⚠️ [SystemConfig] Lỗi nạp cấu hình:", e.message);
+    }
+}
+syncSystemConfigFromDB();
+
+function getMaintenanceHtml(msg) {
+    const customMsg = msg || "Hệ thống đang bảo trì định kỳ. Vui lòng quay lại sau ít phút!";
+    return `<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bảo trì hệ thống | Chat Tho - Fi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #020617;
+      color: #f8fafc;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background-image: radial-gradient(circle at 50% 30%, rgba(244, 63, 94, 0.15) 0%, transparent 65%);
+    }
+    .card {
+      max-width: 480px;
+      width: 100%;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(244, 63, 94, 0.35);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 35px rgba(244, 63, 94, 0.25);
+      backdrop-filter: blur(20px);
+      border-radius: 24px;
+      padding: 40px 32px;
+      text-align: center;
+    }
+    .icon-box {
+      width: 80px;
+      height: 80px;
+      background: rgba(244, 63, 94, 0.12);
+      border: 2px solid rgba(244, 63, 94, 0.4);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 38px;
+      margin: 0 auto 24px auto;
+    }
+    h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      background: rgba(244, 63, 94, 0.2);
+      color: #fb7185;
+      border: 1px solid rgba(244, 63, 94, 0.4);
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 18px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .msg-box {
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px dashed rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 16px 18px;
+      font-size: 14px;
+      color: #e2e8f0;
+      line-height: 1.6;
+      margin-bottom: 24px;
+      word-break: break-word;
+    }
+    .btn-reload {
+      background: linear-gradient(135deg, #f43f5e, #e11d48);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 28px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(244, 63, 94, 0.4);
+      transition: all 0.2s;
+    }
+    .btn-reload:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(244, 63, 94, 0.6);
+    }
+    .footer {
+      font-size: 11px;
+      color: #64748b;
+      margin-top: 24px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon-box">🛠️</div>
+    <h1>HỆ THỐNG ĐANG BẢO TRÌ</h1>
+    <div class="badge">Tạm ngừng phục vụ</div>
+    <div class="msg-box">${customMsg}</div>
+    <button class="btn-reload" onclick="location.reload()">🔄 Thử tải lại trang</button>
+    <div class="footer">Chat Tho - Fi • Quản trị hệ thống</div>
+  </div>
+</body>
+</html>`;
+}
+
 // Cấu hình Cache-Control linh hoạt:
 // Chặn cache đối với các API endpoints để luôn có dữ liệu mới nhất
 // NGOẠI TRỪ avatar và cover photo (ảnh tĩnh nên để browser cache)
@@ -64,6 +201,56 @@ app.use("/api", (req, res, next) => {
     res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0");
     res.setHeader("Pragma", "no-cache");
     res.setHeader("Expires", "0");
+
+    // 1. Luôn cho phép các API quản trị Admin và Health check
+    if (url.startsWith("/api/admin") || url.startsWith("/api/health") || url.startsWith("/api/auth/login")) {
+        return next();
+    }
+
+    // 2. Chế độ bảo trì hệ thống (Chặn toàn bộ người dùng thường)
+    if (global.systemConfig?.maintenanceMode) {
+        return res.status(503).json({
+            success: false,
+            maintenance: true,
+            message: global.systemConfig.maintenanceMessage || "Hệ thống đang bảo trì định kỳ. Vui lòng quay lại sau ít phút!"
+        });
+    }
+
+    // 3. Chặn đăng ký tài khoản mới nếu allowRegistration = false
+    if (global.systemConfig?.allowRegistration === false && req.path === "/auth/register") {
+        return res.status(403).json({
+            success: false,
+            message: "Tính năng đăng ký tài khoản mới hiện đang tạm đóng bởi Quản trị viên."
+        });
+    }
+
+    // 4. Chặn tải tệp nếu allowFileUploads = false
+    if (global.systemConfig?.allowFileUploads === false) {
+        const isUpload = req.path.includes("/upload") || req.path.includes("/avatar") || (req.method === "POST" && req.path.includes("/media"));
+        if (isUpload) {
+            return res.status(403).json({
+                success: false,
+                message: "Tính năng tải tệp & hình ảnh hiện đang tạm khóa bởi Quản trị viên."
+            });
+        }
+    }
+
+    next();
+});
+
+// Chặn truy cập web app chính khi hệ thống đang bật chế độ bảo trì
+app.use((req, res, next) => {
+    if (global.systemConfig?.maintenanceMode) {
+        const url = req.path;
+        if (url.startsWith("/admin") || url.startsWith("/api/admin") || url.startsWith("/api/health") || url.startsWith("/health")) {
+            return next();
+        }
+        if (req.method === "GET" && (url === "/" || url === "/index.html")) {
+            res.setHeader("Content-Type", "text/html; charset=utf-8");
+            res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+            return res.status(503).send(getMaintenanceHtml(global.systemConfig.maintenanceMessage));
+        }
+    }
     next();
 });
 
@@ -749,6 +936,12 @@ app.use((err, req, res, next) => {
 // SPA Fallback cho Flutter Web (Tương thích 100% với Express 5.x)
 app.use((req, res, next) => {
     if (req.method === "GET" && !req.path.startsWith("/api") && !req.path.startsWith("/socket.io") && !req.path.startsWith("/uploads") && !req.path.startsWith("/admin")) {
+        // Nếu đang bật chế độ bảo trì, phục vụ trang thông báo bảo trì trực tiếp
+        if (global.systemConfig?.maintenanceMode) {
+            res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+            return res.status(503).send(getMaintenanceHtml(global.systemConfig.maintenanceMessage));
+        }
+
         const indexPath = path.join(staticPath, "index.html");
         if (fs.existsSync(indexPath)) {
             return res.sendFile(indexPath);

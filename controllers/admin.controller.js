@@ -1192,6 +1192,7 @@ exports.updateSystemConfig = async (req, res) => {
     }
 
     for (const [key, value] of Object.entries(updates)) {
+      if (global.systemConfig) global.systemConfig[key] = value;
       await prisma.systemConfig.upsert({
         where: { key },
         update: {
@@ -1212,7 +1213,7 @@ exports.updateSystemConfig = async (req, res) => {
       if (io) {
         io.emit("system_maintenance_status", {
           maintenanceMode: updates.maintenanceMode,
-          message: updates.maintenanceMessage || "Hệ thống bảo trì.",
+          message: updates.maintenanceMessage || global.systemConfig?.maintenanceMessage || "Hệ thống đang bảo trì định kỳ. Vui lòng quay lại sau ít phút!",
         });
       }
     }

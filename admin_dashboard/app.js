@@ -1384,56 +1384,196 @@ document.getElementById("modal-lightbox")?.addEventListener("click", (e) => {
 });
 
 // =========================================================================
-// 10. TAB 7: SYSTEM CONFIG
 // =========================================================================
+// 10. TAB 7: SYSTEM CONFIG (GIAO DIỆN THẺ THÔNG MINH - KHÔNG DÙNG CHECKBOX)
+// =========================================================================
+
+let systemConfigState = {
+  maintenanceMode: false,
+  maintenanceMessage: "Hệ thống đang bảo trì định kỳ. Vui lòng quay lại sau ít phút!",
+  allowRegistration: true,
+  allowVoiceCalls: true,
+  allowVideoCalls: true,
+  allowFileUploads: true,
+};
+
+window.setMaintenanceTemplate = function (text) {
+  const msgEl = document.getElementById("cfg-maintenance-msg");
+  if (msgEl) {
+    msgEl.value = text;
+    systemConfigState.maintenanceMessage = text;
+    showToast("Đã chọn mẫu thông báo bảo trì", "info");
+  }
+};
+
+window.toggleFeature = function (featureKey) {
+  systemConfigState[featureKey] = !systemConfigState[featureKey];
+  updateFeatureCardUI(featureKey, systemConfigState[featureKey]);
+  const statusStr = systemConfigState[featureKey] ? "BẬT" : "TẮT";
+  showToast(`Đã chuyển tính năng sang: ${statusStr} (Nhấn 'Lưu' để áp dụng)`, "info");
+};
+
+function updateFeatureCardUI(featureKey, isEnabled) {
+  const map = {
+    allowRegistration: { cardId: "card-feature-reg", badgeId: "badge-feature-reg" },
+    allowVoiceCalls: { cardId: "card-feature-voice", badgeId: "badge-feature-voice" },
+    allowVideoCalls: { cardId: "card-feature-video", badgeId: "badge-feature-video" },
+    allowFileUploads: { cardId: "card-feature-files", badgeId: "badge-feature-files" },
+  };
+  const item = map[featureKey];
+  if (!item) return;
+
+  const card = document.getElementById(item.cardId);
+  const badge = document.getElementById(item.badgeId);
+
+  if (card) {
+    if (isEnabled) {
+      card.classList.add("active");
+      card.classList.remove("disabled");
+    } else {
+      card.classList.remove("active");
+      card.classList.add("disabled");
+    }
+  }
+  if (badge) {
+    badge.innerHTML = isEnabled ? "🟢 ĐANG BẬT" : "🔴 ĐANG TẮT";
+  }
+}
+
+function updateMaintenanceUI(isMaint) {
+  const banner = document.getElementById("maint-banner-card");
+  const icon = document.getElementById("maint-status-icon");
+  const title = document.getElementById("maint-status-title");
+  const desc = document.getElementById("maint-status-desc");
+  const btnToggle = document.getElementById("btn-toggle-maint");
+  const btnText = document.getElementById("btn-maint-toggle-text");
+  const btnIcon = document.getElementById("btn-maint-toggle-icon");
+
+  if (isMaint) {
+    if (banner) banner.style.borderLeftColor = "var(--accent-rose)";
+    if (icon) {
+      icon.innerHTML = "🔴";
+      icon.style.background = "rgba(239, 68, 68, 0.18)";
+      icon.style.borderColor = "rgba(239, 68, 68, 0.4)";
+    }
+    if (title) {
+      title.textContent = "HỆ THỐNG ĐANG BẢO TRÌ";
+      title.style.color = "#f87171";
+    }
+    if (desc) {
+      desc.textContent = "Người dùng khi vào app sẽ thấy trang bảo trì và không thể gửi tin hay gọi điện.";
+    }
+    if (btnToggle) {
+      btnToggle.className = "btn-maint-toggle on";
+    }
+    if (btnText) btnText.textContent = "TẮT BẢO TRÌ (MỞ LẠI HỆ THỐNG)";
+    if (btnIcon) btnIcon.textContent = "🟢";
+  } else {
+    if (banner) banner.style.borderLeftColor = "var(--accent-emerald)";
+    if (icon) {
+      icon.innerHTML = "🟢";
+      icon.style.background = "rgba(16, 185, 129, 0.15)";
+      icon.style.borderColor = "rgba(16, 185, 129, 0.3)";
+    }
+    if (title) {
+      title.textContent = "Hệ thống đang hoạt động bình thường";
+      title.style.color = "var(--text-primary)";
+    }
+    if (desc) {
+      desc.textContent = "Người dùng có thể truy cập, nhắn tin, gửi ảnh và gọi điện bình thường.";
+    }
+    if (btnToggle) {
+      btnToggle.className = "btn-maint-toggle off";
+    }
+    if (btnText) btnText.textContent = "BẬT CHẾ ĐỘ BẢO TRÌ";
+    if (btnIcon) btnIcon.textContent = "🛠️";
+  }
+}
+
+function applySystemConfigToUI(cfg) {
+  updateMaintenanceUI(cfg.maintenanceMode);
+  const msgInput = document.getElementById("cfg-maintenance-msg");
+  if (msgInput && cfg.maintenanceMessage) {
+    msgInput.value = cfg.maintenanceMessage;
+  }
+  updateFeatureCardUI("allowRegistration", cfg.allowRegistration !== false);
+  updateFeatureCardUI("allowVoiceCalls", cfg.allowVoiceCalls !== false);
+  updateFeatureCardUI("allowVideoCalls", cfg.allowVideoCalls !== false);
+  updateFeatureCardUI("allowFileUploads", cfg.allowFileUploads !== false);
+}
 
 async function loadSystemConfig() {
   try {
     const res = await apiFetch("/api/admin/system/config");
     const cfg = res.data;
-
-    const chkMaint = document.getElementById("cfg-maintenance-mode");
-    const msgMaint = document.getElementById("cfg-maintenance-msg");
-    const chkReg = document.getElementById("cfg-allow-registration");
-    const chkVoice = document.getElementById("cfg-allow-voice-calls");
-    const chkVideo = document.getElementById("cfg-allow-video-calls");
-    const chkFiles = document.getElementById("cfg-allow-file-uploads");
-
-    if (chkMaint) chkMaint.checked = !!cfg.maintenanceMode;
-    if (msgMaint) msgMaint.value = cfg.maintenanceMessage || "";
-    if (chkReg) chkReg.checked = cfg.allowRegistration !== false;
-    if (chkVoice) chkVoice.checked = cfg.allowVoiceCalls !== false;
-    if (chkVideo) chkVideo.checked = cfg.allowVideoCalls !== false;
-    if (chkFiles) chkFiles.checked = cfg.allowFileUploads !== false;
+    systemConfigState = {
+      maintenanceMode: !!cfg.maintenanceMode,
+      maintenanceMessage: cfg.maintenanceMessage || "Hệ thống đang bảo trì định kỳ. Vui lòng quay lại sau ít phút!",
+      allowRegistration: cfg.allowRegistration !== false,
+      allowVoiceCalls: cfg.allowVoiceCalls !== false,
+      allowVideoCalls: cfg.allowVideoCalls !== false,
+      allowFileUploads: cfg.allowFileUploads !== false,
+    };
+    applySystemConfigToUI(systemConfigState);
   } catch (err) {
-    showToast("Không thể tải cấu hình hệ thống", "error");
+    showToast("Không thể tải cấu hình hệ thống: " + err.message, "error");
   }
 }
 
-document.getElementById("system-config-form")?.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const maintenanceMode = document.getElementById("cfg-maintenance-mode").checked;
-  const maintenanceMessage = document.getElementById("cfg-maintenance-msg").value.trim();
-  const allowRegistration = document.getElementById("cfg-allow-registration").checked;
-  const allowVoiceCalls = document.getElementById("cfg-allow-voice-calls").checked;
-  const allowVideoCalls = document.getElementById("cfg-allow-video-calls").checked;
-  const allowFileUploads = document.getElementById("cfg-allow-file-uploads").checked;
+// Bấm nút bật/tắt bảo trì trên Banner
+document.getElementById("btn-toggle-maint")?.addEventListener("click", () => {
+  systemConfigState.maintenanceMode = !systemConfigState.maintenanceMode;
+  updateMaintenanceUI(systemConfigState.maintenanceMode);
+  if (systemConfigState.maintenanceMode) {
+    showToast("⚠️ Đã chuyển sang trạng thái BẢO TRÌ. Hãy bấm 'Lưu và Áp dụng tức thì' bên dưới!", "warning");
+  } else {
+    showToast("✅ Đã tắt bảo trì. Hãy bấm 'Lưu và Áp dụng tức thì' để mở lại hệ thống!", "info");
+  }
+});
+
+// Bấm nút Lưu cấu hình hệ thống
+document.getElementById("btn-save-system-config")?.addEventListener("click", async () => {
+  const btn = document.getElementById("btn-save-system-config");
+  const msgInput = document.getElementById("cfg-maintenance-msg");
+  const maintenanceMessage = msgInput ? msgInput.value.trim() : systemConfigState.maintenanceMessage;
+
+  const payload = {
+    maintenanceMode: !!systemConfigState.maintenanceMode,
+    maintenanceMessage: maintenanceMessage || "Hệ thống đang bảo trì định kỳ. Vui lòng quay lại sau ít phút!",
+    allowRegistration: systemConfigState.allowRegistration !== false,
+    allowVoiceCalls: systemConfigState.allowVoiceCalls !== false,
+    allowVideoCalls: systemConfigState.allowVideoCalls !== false,
+    allowFileUploads: systemConfigState.allowFileUploads !== false,
+  };
 
   try {
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = "<span>⏳ Đang lưu cấu hình...</span>";
+    }
     const res = await apiFetch("/api/admin/system/config", {
       method: "PUT",
-      body: JSON.stringify({
-        maintenanceMode,
-        maintenanceMessage,
-        allowRegistration,
-        allowVoiceCalls,
-        allowVideoCalls,
-        allowFileUploads,
-      }),
+      body: JSON.stringify(payload),
     });
-    showToast(res.message, "success");
+    showToast(res.message || "Đã lưu và áp dụng cấu hình hệ thống thành công!", "success");
+    if (res.data) {
+      systemConfigState = {
+        maintenanceMode: !!res.data.maintenanceMode,
+        maintenanceMessage: res.data.maintenanceMessage,
+        allowRegistration: res.data.allowRegistration !== false,
+        allowVoiceCalls: res.data.allowVoiceCalls !== false,
+        allowVideoCalls: res.data.allowVideoCalls !== false,
+        allowFileUploads: res.data.allowFileUploads !== false,
+      };
+      applySystemConfigToUI(systemConfigState);
+    }
   } catch (err) {
-    showToast(err.message, "error");
+    showToast("Lỗi khi lưu cấu hình: " + err.message, "error");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = "<span>💾 Lưu và Áp dụng tức thì</span>";
+    }
   }
 });
 

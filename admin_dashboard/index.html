@@ -620,50 +620,119 @@
 
       <!-- ================= 7. TAB SYSTEM ================= -->
       <section class="tab-panel" id="tab-system">
+        <!-- Banner trạng thái lớn trên cùng -->
+        <div class="glass-card" style="margin-bottom: 24px; border-left: 5px solid var(--accent-emerald);" id="maint-banner-card">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+            <div style="display:flex; align-items:center; gap:16px;">
+              <div id="maint-status-icon" style="width:52px; height:52px; border-radius:50%; background:rgba(16,185,129,0.15); display:flex; align-items:center; justify-content:center; font-size:26px; border:1px solid rgba(16,185,129,0.3);">
+                🟢
+              </div>
+              <div>
+                <h3 id="maint-status-title" style="font-size:18px; font-weight:800; font-family:'Outfit',sans-serif; color:var(--text-primary);">
+                  Hệ thống đang hoạt động bình thường
+                </h3>
+                <p id="maint-status-desc" style="font-size:12px; color:var(--text-secondary); margin-top:2px;">
+                  Người dùng có thể truy cập, nhắn tin, gửi ảnh và gọi điện bình thường.
+                </p>
+              </div>
+            </div>
+
+            <button type="button" class="btn-maint-toggle on" id="btn-toggle-maint">
+              <span id="btn-maint-toggle-icon">🛠️</span>
+              <span id="btn-maint-toggle-text">BẬT CHẾ ĐỘ BẢO TRÌ</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Khung cấu hình chi tiết -->
         <div class="glass-card">
           <div class="card-title">
-            <span>⚙️ Vận hành & Cấu hình máy chủ</span>
+            <span>⚙️ Quản lý vận hành & Cờ tính năng</span>
           </div>
 
-          <form id="system-config-form" style="display:flex; flex-direction:column; gap:20px;">
-            <div style="background:rgba(255, 255, 255, 0.03); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:18px;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                <div>
-                  <strong>Chế độ bảo trì (Maintenance Mode)</strong>
-                  <div style="font-size:12px; color:var(--text-muted);">Khi kích hoạt, người dùng sẽ nhận được thông báo bảo trì qua WebSocket và tạm dừng tương tác.</div>
-                </div>
-                <input type="checkbox" id="cfg-maintenance-mode" style="width:20px; height:20px; cursor:pointer;">
-              </div>
-              <div class="form-group">
-                <label>Thông báo hiển thị:</label>
-                <input type="text" class="form-control" id="cfg-maintenance-msg" value="Hệ thống đang bảo trì định kỳ. Vui lòng quay lại sau ít phút!">
-              </div>
-            </div>
+          <!-- Khu vực tin nhắn thông báo bảo trì -->
+          <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:20px; margin-bottom:24px;">
+            <label style="font-size:14px; font-weight:700; color:var(--text-primary); display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+              <span>📝 Nội dung thông báo hiển thị cho người dùng khi vào App:</span>
+            </label>
+            <textarea id="cfg-maintenance-msg" class="form-control" rows="3" style="font-size:14px; line-height:1.5; resize:vertical;" placeholder="Nhập câu thông báo bảo trì tại đây...">Hệ thống đang bảo trì định kỳ. Vui lòng quay lại sau ít phút!</textarea>
 
-            <div style="background:rgba(255, 255, 255, 0.03); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:18px;">
-              <h4 style="font-size:14px; margin-bottom:14px;">🚩 Cờ tính năng (Feature Flags)</h4>
-              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:14px;">
-                <label style="display:flex; align-items:center; gap:10px; font-size:13px; cursor:pointer;">
-                  <input type="checkbox" id="cfg-allow-registration" checked> Cho phép đăng ký mới
-                </label>
-                <label style="display:flex; align-items:center; gap:10px; font-size:13px; cursor:pointer;">
-                  <input type="checkbox" id="cfg-allow-voice-calls" checked> Cho phép cuộc gọi thoại
-                </label>
-                <label style="display:flex; align-items:center; gap:10px; font-size:13px; cursor:pointer;">
-                  <input type="checkbox" id="cfg-allow-video-calls" checked> Cho phép cuộc gọi video
-                </label>
-                <label style="display:flex; align-items:center; gap:10px; font-size:13px; cursor:pointer;">
-                  <input type="checkbox" id="cfg-allow-file-uploads" checked> Cho phép tải tệp & media
-                </label>
-              </div>
-            </div>
-
-            <div style="display:flex; justify-content:flex-end;">
-              <button type="submit" class="btn btn-primary" id="btn-save-config">
-                <span>💾 Lưu cấu hình hệ thống</span>
+            <!-- Các mẫu câu nhanh -->
+            <div style="display:flex; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap;">
+              <span style="font-size:12px; color:var(--text-muted);">Mẫu câu nhanh:</span>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="setMaintenanceTemplate('Hệ thống đang bảo trì định kỳ. Vui lòng quay lại sau ít phút!')">
+                ⚡ Bảo trì định kỳ
+              </button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="setMaintenanceTemplate('Hệ thống đang nâng cấp tính năng mới. Chat Tho - Fi sẽ trở lại trong ít phút!')">
+                🚀 Nâng cấp tính năng
+              </button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="setMaintenanceTemplate('Máy chủ đang kiểm tra đường truyền khẩn cấp. Quý khách vui lòng thử lại sau!')">
+                🔧 Khắc phục sự cố
               </button>
             </div>
-          </form>
+          </div>
+
+          <!-- Bảng 4 công tắc tính năng dạng Thẻ thông minh (Smart Switch Cards) -->
+          <h4 style="font-size:14px; font-weight:700; margin-bottom:14px; color:var(--text-primary);">
+            🚩 Công tắc tính năng hệ thống (Bấm trực tiếp để BẬT / TẮT)
+          </h4>
+
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:16px; margin-bottom:24px;">
+            <!-- Card 1: Đăng ký mới -->
+            <div class="feature-card active" id="card-feature-reg" onclick="toggleFeature('allowRegistration')">
+              <div class="feature-card-header">
+                <div class="feature-icon">👤</div>
+                <div>
+                  <div class="feature-title">Đăng ký tài khoản mới</div>
+                  <div class="feature-desc">Cho phép người dùng mới tạo tài khoản</div>
+                </div>
+              </div>
+              <div class="feature-status-badge" id="badge-feature-reg">🟢 ĐANG BẬT</div>
+            </div>
+
+            <!-- Card 2: Gọi thoại -->
+            <div class="feature-card active" id="card-feature-voice" onclick="toggleFeature('allowVoiceCalls')">
+              <div class="feature-card-header">
+                <div class="feature-icon">📞</div>
+                <div>
+                  <div class="feature-title">Cuộc gọi thoại (Audio)</div>
+                  <div class="feature-desc">Cho phép gọi đàm thoại âm thanh</div>
+                </div>
+              </div>
+              <div class="feature-status-badge" id="badge-feature-voice">🟢 ĐANG BẬT</div>
+            </div>
+
+            <!-- Card 3: Gọi video -->
+            <div class="feature-card active" id="card-feature-video" onclick="toggleFeature('allowVideoCalls')">
+              <div class="feature-card-header">
+                <div class="feature-icon">📹</div>
+                <div>
+                  <div class="feature-title">Cuộc gọi video (Video)</div>
+                  <div class="feature-desc">Cho phép gọi có hình trực tiếp</div>
+                </div>
+              </div>
+              <div class="feature-status-badge" id="badge-feature-video">🟢 ĐANG BẬT</div>
+            </div>
+
+            <!-- Card 4: Tải file & media -->
+            <div class="feature-card active" id="card-feature-files" onclick="toggleFeature('allowFileUploads')">
+              <div class="feature-card-header">
+                <div class="feature-icon">📁</div>
+                <div>
+                  <div class="feature-title">Gửi ảnh & Tệp Media</div>
+                  <div class="feature-desc">Cho phép gửi hình ảnh, video và tệp</div>
+                </div>
+              </div>
+              <div class="feature-status-badge" id="badge-feature-files">🟢 ĐANG BẬT</div>
+            </div>
+          </div>
+
+          <!-- Nút lưu cấu hình -->
+          <div style="display:flex; justify-content:flex-end; gap:12px;">
+            <button type="button" class="btn btn-primary" id="btn-save-system-config" style="padding:12px 28px; font-size:14px; font-weight:700;">
+              <span>💾 Lưu và Áp dụng tức thì</span>
+            </button>
+          </div>
         </div>
       </section>
 

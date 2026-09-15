@@ -1312,3 +1312,185 @@ textarea.form-control {
   background: rgba(30, 41, 59, 0.9);
 }
 
+/* =========================================================================
+   SYSTEM CONFIGURATION & FEATURE CARDS (NO CHECKBOXES)
+   ========================================================================= */
+
+.btn-maint-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  border: 1px solid transparent;
+  font-family: 'Outfit', sans-serif;
+  letter-spacing: 0.5px;
+}
+
+/* Khi hệ thống đang bình thường -> Nút cho phép BẬT bảo trì */
+.btn-maint-toggle.off {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.3));
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.15);
+}
+
+.btn-maint-toggle.off:hover {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.35), rgba(220, 38, 38, 0.5));
+  border-color: #ef4444;
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35);
+  transform: translateY(-2px);
+}
+
+/* Khi hệ thống đang BẬT bảo trì -> Nút cho phép TẮT bảo trì để mở lại hệ thống */
+.btn-maint-toggle.on {
+  background: linear-gradient(135deg, #10b981, #059669);
+  border-color: #34d399;
+  color: #ffffff;
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.45);
+  animation: pulse-maint-btn 2s infinite ease-in-out;
+}
+
+.btn-maint-toggle.on:hover {
+  background: linear-gradient(135deg, #059669, #047857);
+  box-shadow: 0 0 35px rgba(16, 185, 129, 0.6);
+  transform: translateY(-2px);
+}
+
+@keyframes pulse-maint-btn {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 35px rgba(16, 185, 129, 0.7);
+  }
+}
+
+/* Smart Feature Switch Cards (Thay thế hoàn toàn Checkbox nhỏ xíu) */
+.feature-card {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  user-select: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.feature-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(6, 182, 212, 0.4);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.feature-card.active {
+  background: linear-gradient(145deg, rgba(6, 182, 212, 0.12), rgba(30, 41, 59, 0.75));
+  border-color: rgba(6, 182, 212, 0.6);
+  box-shadow: 0 0 20px rgba(6, 182, 212, 0.18);
+}
+
+.feature-card.active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, #06b6d4, #10b981);
+}
+
+.feature-card.disabled {
+  background: rgba(15, 23, 42, 0.5);
+  border-color: rgba(239, 68, 68, 0.25);
+  opacity: 0.75;
+}
+
+.feature-card.disabled::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: rgba(239, 68, 68, 0.6);
+}
+
+.feature-card-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.feature-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.feature-card.active .feature-icon {
+  background: rgba(6, 182, 212, 0.18);
+  border-color: rgba(6, 182, 212, 0.4);
+}
+
+.feature-card.disabled .feature-icon {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.feature-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 3px;
+}
+
+.feature-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.feature-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 8px;
+  align-self: flex-start;
+  letter-spacing: 0.3px;
+  transition: all 0.2s ease;
+}
+
+.feature-card.active .feature-status-badge {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.feature-card.disabled .feature-status-badge {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
