@@ -1494,3 +1494,138 @@ textarea.form-control {
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
+/* =========================================================================
+   CẦN GẠT BẬT / TẮT (IOS STYLE TOGGLE SWITCH) CỰC KỲ DỄ SỬ DỤNG
+   ========================================================================= */
+
+.ios-switch {
+  width: 50px;
+  height: 28px;
+  border-radius: 9999px;
+  background: #334155;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-block;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ios-switch.on {
+  background: linear-gradient(135deg, #10b981, #059669);
+  border-color: #34d399;
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.4);
+}
+
+.ios-switch.off {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.ios-switch-knob {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ffffff;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.ios-switch.on .ios-switch-knob {
+  transform: translateX(22px);
+  background: #ffffff;
+}
+
+.ios-switch.off .ios-switch-knob {
+  transform: translateX(0px);
+  background: #94a3b8;
+}
+
+/* Cần gạt bảo trì cỡ lớn (Large Switch) */
+.ios-switch.lg {
+  width: 64px;
+  height: 34px;
+}
+
+.ios-switch.lg .ios-switch-knob {
+  width: 26px;
+  height: 26px;
+  top: 3px;
+  left: 3px;
+}
+
+.ios-switch.lg.on {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  border-color: #f87171;
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+}
+
+.ios-switch.lg.on .ios-switch-knob {
+  transform: translateX(30px);
+  background: #ffffff;
+}
+
+.ios-switch.lg.off {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.ios-switch.lg.off .ios-switch-knob {
+  transform: translateX(0px);
+  background: #94a3b8;
+}
+
+/* Hộp điều khiển cần gạt trong thẻ tính năng */
+.switch-control-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.switch-text {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.switch-text.on {
+  color: #34d399;
+}
+
+.switch-text.off {
+  color: #94a3b8;
+}
+
+/* Khung công tắc chế độ bảo trì trên Banner */
+.maint-switch-box {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  padding: 10px 20px;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.maint-switch-box:hover {
+  border-color: rgba(6, 182, 212, 0.5);
+  background: rgba(15, 23, 42, 0.9);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.maint-switch-label {
+  font-size: 14px;
+  font-weight: 800;
+  font-family: 'Outfit', sans-serif;
+  letter-spacing: 0.5px;
+}
+

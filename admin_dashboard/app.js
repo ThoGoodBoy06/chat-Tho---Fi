@@ -1415,16 +1415,17 @@ window.toggleFeature = function (featureKey) {
 
 function updateFeatureCardUI(featureKey, isEnabled) {
   const map = {
-    allowRegistration: { cardId: "card-feature-reg", badgeId: "badge-feature-reg" },
-    allowVoiceCalls: { cardId: "card-feature-voice", badgeId: "badge-feature-voice" },
-    allowVideoCalls: { cardId: "card-feature-video", badgeId: "badge-feature-video" },
-    allowFileUploads: { cardId: "card-feature-files", badgeId: "badge-feature-files" },
+    allowRegistration: { cardId: "card-feature-reg", switchId: "switch-feature-reg", textId: "text-feature-reg" },
+    allowVoiceCalls: { cardId: "card-feature-voice", switchId: "switch-feature-voice", textId: "text-feature-voice" },
+    allowVideoCalls: { cardId: "card-feature-video", switchId: "switch-feature-video", textId: "text-feature-video" },
+    allowFileUploads: { cardId: "card-feature-files", switchId: "switch-feature-files", textId: "text-feature-files" },
   };
   const item = map[featureKey];
   if (!item) return;
 
   const card = document.getElementById(item.cardId);
-  const badge = document.getElementById(item.badgeId);
+  const sw = document.getElementById(item.switchId);
+  const text = document.getElementById(item.textId);
 
   if (card) {
     if (isEnabled) {
@@ -1435,8 +1436,12 @@ function updateFeatureCardUI(featureKey, isEnabled) {
       card.classList.add("disabled");
     }
   }
-  if (badge) {
-    badge.innerHTML = isEnabled ? "🟢 ĐANG BẬT" : "🔴 ĐANG TẮT";
+  if (sw) {
+    sw.className = isEnabled ? "ios-switch on" : "ios-switch off";
+  }
+  if (text) {
+    text.className = isEnabled ? "switch-text on" : "switch-text off";
+    text.textContent = isEnabled ? "🟢 BẬT" : "⚪ TẮT";
   }
 }
 
@@ -1445,9 +1450,8 @@ function updateMaintenanceUI(isMaint) {
   const icon = document.getElementById("maint-status-icon");
   const title = document.getElementById("maint-status-title");
   const desc = document.getElementById("maint-status-desc");
-  const btnToggle = document.getElementById("btn-toggle-maint");
-  const btnText = document.getElementById("btn-maint-toggle-text");
-  const btnIcon = document.getElementById("btn-maint-toggle-icon");
+  const swMaint = document.getElementById("switch-maint");
+  const textMaint = document.getElementById("maint-switch-text");
 
   if (isMaint) {
     if (banner) banner.style.borderLeftColor = "var(--accent-rose)";
@@ -1463,11 +1467,13 @@ function updateMaintenanceUI(isMaint) {
     if (desc) {
       desc.textContent = "Người dùng khi vào app sẽ thấy trang bảo trì và không thể gửi tin hay gọi điện.";
     }
-    if (btnToggle) {
-      btnToggle.className = "btn-maint-toggle on";
+    if (swMaint) {
+      swMaint.className = "ios-switch lg on";
     }
-    if (btnText) btnText.textContent = "TẮT BẢO TRÌ (MỞ LẠI HỆ THỐNG)";
-    if (btnIcon) btnIcon.textContent = "🟢";
+    if (textMaint) {
+      textMaint.textContent = "BẢO TRÌ: ĐANG BẬT 🔴";
+      textMaint.style.color = "#f87171";
+    }
   } else {
     if (banner) banner.style.borderLeftColor = "var(--accent-emerald)";
     if (icon) {
@@ -1482,11 +1488,13 @@ function updateMaintenanceUI(isMaint) {
     if (desc) {
       desc.textContent = "Người dùng có thể truy cập, nhắn tin, gửi ảnh và gọi điện bình thường.";
     }
-    if (btnToggle) {
-      btnToggle.className = "btn-maint-toggle off";
+    if (swMaint) {
+      swMaint.className = "ios-switch lg off";
     }
-    if (btnText) btnText.textContent = "BẬT CHẾ ĐỘ BẢO TRÌ";
-    if (btnIcon) btnIcon.textContent = "🛠️";
+    if (textMaint) {
+      textMaint.textContent = "BẢO TRÌ: ĐANG TẮT 🟢";
+      textMaint.style.color = "var(--text-primary)";
+    }
   }
 }
 

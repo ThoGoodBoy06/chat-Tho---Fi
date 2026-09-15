@@ -637,10 +637,13 @@
               </div>
             </div>
 
-            <button type="button" class="btn-maint-toggle on" id="btn-toggle-maint">
-              <span id="btn-maint-toggle-icon">🛠️</span>
-              <span id="btn-maint-toggle-text">BẬT CHẾ ĐỘ BẢO TRÌ</span>
-            </button>
+            <!-- Cần gạt BẬT / TẮT Bảo trì lớn -->
+            <div class="maint-switch-box" id="btn-toggle-maint" title="Bấm vào để Bật hoặc Tắt chế độ bảo trì">
+              <span class="maint-switch-label" id="maint-switch-text" style="color:var(--text-primary);">BẢO TRÌ: TẮT</span>
+              <div class="ios-switch lg off" id="switch-maint">
+                <div class="ios-switch-knob"></div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -655,7 +658,7 @@
             <label style="font-size:14px; font-weight:700; color:var(--text-primary); display:flex; align-items:center; gap:8px; margin-bottom:8px;">
               <span>📝 Nội dung thông báo hiển thị cho người dùng khi vào App:</span>
             </label>
-            <textarea id="cfg-maintenance-msg" class="form-control" rows="3" style="font-size:14px; line-height:1.5; resize:vertical;" placeholder="Nhập câu thông báo bảo trì tại đây...">Hệ thống đang bảo trì định kỳ. Vui lòng quay lại sau ít phút!</textarea>
+            <textarea id="cfg-maintenance-msg" class="form-control" rows="3" style="width:100%; box-sizing:border-box; font-size:14px; line-height:1.5; resize:vertical;" placeholder="Nhập câu thông báo bảo trì tại đây...">Hệ thống đang bảo trì định kỳ. Vui lòng quay lại sau ít phút!</textarea>
 
             <!-- Các mẫu câu nhanh -->
             <div style="display:flex; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap;">
@@ -672,9 +675,9 @@
             </div>
           </div>
 
-          <!-- Bảng 4 công tắc tính năng dạng Thẻ thông minh (Smart Switch Cards) -->
+          <!-- Bảng 4 công tắc tính năng dạng Cần gạt Bật/Tắt -->
           <h4 style="font-size:14px; font-weight:700; margin-bottom:14px; color:var(--text-primary);">
-            🚩 Công tắc tính năng hệ thống (Bấm trực tiếp để BẬT / TẮT)
+            🚩 Công tắc tính năng hệ thống (Bấm cần gạt hoặc thẻ để BẬT / TẮT)
           </h4>
 
           <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:16px; margin-bottom:24px;">
@@ -687,7 +690,12 @@
                   <div class="feature-desc">Cho phép người dùng mới tạo tài khoản</div>
                 </div>
               </div>
-              <div class="feature-status-badge" id="badge-feature-reg">🟢 ĐANG BẬT</div>
+              <div class="switch-control-group">
+                <span class="switch-text on" id="text-feature-reg">🟢 BẬT</span>
+                <div class="ios-switch on" id="switch-feature-reg">
+                  <div class="ios-switch-knob"></div>
+                </div>
+              </div>
             </div>
 
             <!-- Card 2: Gọi thoại -->
@@ -699,7 +707,12 @@
                   <div class="feature-desc">Cho phép gọi đàm thoại âm thanh</div>
                 </div>
               </div>
-              <div class="feature-status-badge" id="badge-feature-voice">🟢 ĐANG BẬT</div>
+              <div class="switch-control-group">
+                <span class="switch-text on" id="text-feature-voice">🟢 BẬT</span>
+                <div class="ios-switch on" id="switch-feature-voice">
+                  <div class="ios-switch-knob"></div>
+                </div>
+              </div>
             </div>
 
             <!-- Card 3: Gọi video -->
@@ -711,7 +724,12 @@
                   <div class="feature-desc">Cho phép gọi có hình trực tiếp</div>
                 </div>
               </div>
-              <div class="feature-status-badge" id="badge-feature-video">🟢 ĐANG BẬT</div>
+              <div class="switch-control-group">
+                <span class="switch-text on" id="text-feature-video">🟢 BẬT</span>
+                <div class="ios-switch on" id="switch-feature-video">
+                  <div class="ios-switch-knob"></div>
+                </div>
+              </div>
             </div>
 
             <!-- Card 4: Tải file & media -->
@@ -723,7 +741,12 @@
                   <div class="feature-desc">Cho phép gửi hình ảnh, video và tệp</div>
                 </div>
               </div>
-              <div class="feature-status-badge" id="badge-feature-files">🟢 ĐANG BẬT</div>
+              <div class="switch-control-group">
+                <span class="switch-text on" id="text-feature-files">🟢 BẬT</span>
+                <div class="ios-switch on" id="switch-feature-files">
+                  <div class="ios-switch-knob"></div>
+                </div>
+              </div>
             </div>
           </div>
 
