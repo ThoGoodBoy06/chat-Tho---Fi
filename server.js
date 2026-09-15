@@ -107,6 +107,29 @@ if (!fs.existsSync(uploadsPath)) {
 }
 app.use("/uploads", express.static(uploadsPath));
 
+// Phục vụ giao diện Admin Control Center
+const adminDashboardPath = path.join(__dirname, "admin_dashboard");
+app.use("/admin", express.static(adminDashboardPath, {
+    etag: true,
+    lastModified: true,
+    maxAge: "1h",
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith(".html")) {
+            res.setHeader("Cache-Control", "no-cache, must-revalidate");
+        }
+    }
+}));
+app.get(/^\/admin(\/.*)?$/, (req, res, next) => {
+    if (req.method === "GET") {
+        const indexPath = path.join(adminDashboardPath, "index.html");
+        if (fs.existsSync(indexPath)) {
+            res.setHeader("Cache-Control", "no-cache, must-revalidate");
+            return res.sendFile(indexPath);
+        }
+    }
+    next();
+});
+
 app.get("/firebase-messaging-sw.js", (req, res) => {
     const swPath = fs.existsSync(path.join(flutterWebPath, "firebase-messaging-sw.js"))
         ? path.join(flutterWebPath, "firebase-messaging-sw.js")
@@ -725,7 +748,7 @@ app.use((err, req, res, next) => {
 
 // SPA Fallback cho Flutter Web (Tương thích 100% với Express 5.x)
 app.use((req, res, next) => {
-    if (req.method === "GET" && !req.path.startsWith("/api") && !req.path.startsWith("/socket.io") && !req.path.startsWith("/uploads")) {
+    if (req.method === "GET" && !req.path.startsWith("/api") && !req.path.startsWith("/socket.io") && !req.path.startsWith("/uploads") && !req.path.startsWith("/admin")) {
         const indexPath = path.join(staticPath, "index.html");
         if (fs.existsSync(indexPath)) {
             return res.sendFile(indexPath);

@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat Tho - Fi | Admin Control Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=2">
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-icon">⚡</div>
+      <div class="brand-text">
+        <h1 style="font-family: 'Outfit', sans-serif;">CHAT THO - FI</h1>
+        <p>Control Center</p>
+      </div>
+    </div>
+
+    <ul class="nav-menu">
+      <li>
+        <a class="nav-item active" data-tab="overview">
+          <span>📊</span>
+          <span>Tổng quan</span>
+        </a>
+      </li>
+      <li>
+        <a class="nav-item" data-tab="users">
+          <span>👥</span>
+          <span>Người dùng</span>
+        </a>
+      </li>
+      <li>
+        <a class="nav-item" data-tab="conversations">
+          <span>💬</span>
+          <span>Tin nhắn & Hội thoại</span>
+        </a>
+      </li>
+      <li>
+        <a class="nav-item" data-tab="moderation">
+          <span>🚨</span>
+          <span>Kiểm duyệt & Báo cáo</span>
+          <span class="badge-count" id="badge-pending-reports" style="display:none;">0</span>
+        </a>
+      </li>
+      <li>
+        <a class="nav-item" data-tab="notifications">
+          <span>🔔</span>
+          <span>Thông báo FCM</span>
+        </a>
+      </li>
+      <li>
+        <a class="nav-item" data-tab="calls">
+          <span>📞</span>
+          <span>Giám sát cuộc gọi</span>
+          <span class="badge-count" id="badge-active-calls" style="background:rgba(16,185,129,0.2); color:var(--accent-emerald); display:none;">0</span>
+        </a>
+      </li>
+      <li>
+        <a class="nav-item" data-tab="media">
+          <span>🗄️</span>
+          <span>Lưu trữ & Media</span>
+        </a>
+      </li>
+      <li>
+        <a class="nav-item" data-tab="system">
+          <span>⚙️</span>
+          <span>Cấu hình hệ thống</span>
+        </a>
+      </li>
+      <li>
+        <a class="nav-item" data-tab="audit">
+          <span>🛡️</span>
+          <span>Nhật ký quản trị</span>
+        </a>
+      </li>
+    </ul>
+
+    <div class="sidebar-footer">
+      <div class="admin-mini-profile">
+        <img src="/api/users/me/avatar" id="sidebar-admin-avatar" class="admin-mini-avatar" alt="Admin" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'36\' height=\'36\' fill=\'%2364748b\' viewBox=\'0 0 24 24\'><path d=\'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z\'/></svg>'">
+        <div class="admin-mini-info">
+          <span class="admin-mini-name" id="sidebar-admin-name">Administrator</span>
+          <span class="admin-mini-role" id="sidebar-admin-role">SUPER_ADMIN</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT AREA -->
+  <main class="main-content">
+    <!-- Top Header -->
+    <header class="top-header">
+      <div class="header-left">
+        <button id="btn-toggle-sidebar" class="btn btn-secondary btn-sm" style="display:none;">☰</button>
+        <h2 class="page-title" id="page-heading" style="font-family: 'Outfit', sans-serif;">Tổng quan hệ thống</h2>
+      </div>
+
+      <div class="header-right">
+        <div class="system-status-indicator">
+          <span class="status-dot" id="system-status-dot"></span>
+          <span id="system-status-text">Đang kết nối...</span>
+        </div>
+
+        <button class="btn-header-logout" id="btn-logout">
+          <span>Đăng xuất</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Dynamic Body -->
+    <div class="content-area">
+
+      <!-- ================= 1. TAB OVERVIEW ================= -->
+      <section class="tab-panel active" id="tab-overview">
+        <div class="grid-kpi">
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <span class="kpi-title">Tổng người dùng</span>
+              <div class="kpi-icon">👥</div>
+            </div>
+            <div class="kpi-value" id="stat-total-users">-</div>
+            <div class="kpi-sub">
+              <span style="color:var(--accent-emerald);">●</span> <span id="stat-online-users">-</span> đang online
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <span class="kpi-title">Cuộc gọi thời gian thực</span>
+              <div class="kpi-icon">📞</div>
+            </div>
+            <div class="kpi-value" id="stat-active-calls">-</div>
+            <div class="kpi-sub">WebRTC audio / video</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <span class="kpi-title">Báo cáo vi phạm</span>
+              <div class="kpi-icon">🚨</div>
+            </div>
+            <div class="kpi-value" id="stat-pending-reports" style="color:var(--accent-rose);">-</div>
+            <div class="kpi-sub">Chờ kiểm duyệt xử lý</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <span class="kpi-title">Tin nhắn trao đổi</span>
+              <div class="kpi-icon">💬</div>
+            </div>
+            <div class="kpi-value" id="stat-total-messages">-</div>
+            <div class="kpi-sub">Bao gồm chat riêng & nhóm</div>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:24px;">
+          <!-- Quick Server Health -->
+          <div class="glass-card">
+            <div class="card-title">
+              <span>🩺 Tình trạng máy chủ Node.js</span>
+              <span class="badge badge-active" id="overview-server-tag">Sẵn sàng</span>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:14px; font-size:13px;">
+              <div style="display:flex; justify-content:space-between;">
+                <span style="color:var(--text-secondary);">Thời gian hoạt động (Uptime):</span>
+                <strong id="overview-uptime">-</strong>
+              </div>
+              <div style="display:flex; justify-content:space-between;">
+                <span style="color:var(--text-secondary);">Độ trễ Database PostgreSQL:</span>
+                <strong id="overview-db-latency" style="color:var(--accent-emerald);">- ms</strong>
+              </div>
+              <div style="display:flex; justify-content:space-between;">
+                <span style="color:var(--text-secondary);">Kết nối Socket.IO đang mở:</span>
+                <strong id="overview-socket-conns">-</strong>
+              </div>
+              <div style="display:flex; justify-content:space-between;">
+                <span style="color:var(--text-secondary);">Bộ nhớ RAM tiêu thụ (RSS):</span>
+                <strong id="overview-ram">- MB</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Storage Status -->
+          <div class="glass-card">
+            <div class="card-title">
+              <span>☁️ Phân tầng lưu trữ Đám mây</span>
+              <span class="badge badge-admin">Zero Egress</span>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:14px; font-size:13px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                  <strong>Cloudflare R2</strong>
+                  <div style="font-size:11px; color:var(--text-muted);">Video & File lớn (>= 1.5MB)</div>
+                </div>
+                <span class="badge badge-active" id="badge-r2-status">Kích hoạt</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                  <strong>Supabase Storage</strong>
+                  <div style="font-size:11px; color:var(--text-muted);">Avatar & Tin nhắn thoại (< 1.5MB)</div>
+                </div>
+                <span class="badge badge-active" id="badge-supabase-status">Kích hoạt</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                  <strong>Google Firebase FCM</strong>
+                  <div style="font-size:11px; color:var(--text-muted);">Thông báo chuông nền & PWA</div>
+                </div>
+                <span class="badge badge-active">Sẵn sàng</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 2. TAB USERS ================= -->
+      <section class="tab-panel" id="tab-users">
+        <div class="glass-card">
+          <div class="toolbar">
+            <div class="search-box">
+              <span>🔍</span>
+              <input type="text" id="input-search-user" placeholder="Tìm ID, Tên, Username, Email, SĐT...">
+            </div>
+
+            <div class="filter-group">
+              <select class="select-filter" id="filter-user-role">
+                <option value="">Tất cả vai trò</option>
+                <option value="SUPER_ADMIN">Super Admin</option>
+                <option value="ADMIN">Admin</option>
+                <option value="MODERATOR">Moderator</option>
+                <option value="USER">User</option>
+              </select>
+
+              <select class="select-filter" id="filter-user-status">
+                <option value="">Tất cả trạng thái</option>
+                <option value="active">Đang hoạt động</option>
+                <option value="suspended">Bị tạm khóa</option>
+                <option value="pending_deletion">Chờ xóa</option>
+                <option value="deleted">Đã hủy/xóa</option>
+              </select>
+
+              <button class="btn btn-primary" id="btn-open-invite-modal">
+                <span>➕ Tạo link mời (Invite)</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Người dùng</th>
+                  <th>Liên hệ</th>
+                  <th>Vai trò</th>
+                  <th>Trạng thái</th>
+                  <th>Thiết bị</th>
+                  <th>Hoạt động cuối</th>
+                  <th style="text-align:right;">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody id="users-table-body">
+                <tr>
+                  <td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted);">Đang tải danh sách người dùng...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="pagination">
+            <span id="users-page-info">Hiển thị 0 trên 0</span>
+            <div class="pagination-buttons">
+              <button class="btn btn-secondary btn-sm" id="btn-users-prev" disabled>← Trước</button>
+              <button class="btn btn-secondary btn-sm" id="btn-users-next" disabled>Sau →</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= TAB CONVERSATIONS & CHAT INSPECTOR ================= -->
+      <section class="tab-panel" id="tab-conversations">
+        <!-- Sub-navigation: Duyệt theo phòng chat HOẶC Tra cứu Ai gửi cho Ai -->
+        <div class="subtabs-bar" style="display:flex; gap:10px; margin-bottom:16px;">
+          <button class="subtab-btn active" id="btn-subtab-inspector">💬 Duyệt theo Cuộc hội thoại</button>
+          <button class="subtab-btn" id="btn-subtab-lookup">🔍 Tra cứu: Ai gửi cho Ai (Tin nhắn & Hình ảnh)</button>
+        </div>
+
+        <!-- Chế độ 1: Duyệt theo phòng hội thoại -->
+        <div class="chat-split-container" id="view-conversations-inspector">
+          <!-- Left: Conversations List -->
+          <div class="conversations-sidebar">
+            <div class="conversations-sidebar-header">
+              <div class="search-box" style="min-width: unset; width: 100%;">
+                <span>🔍</span>
+                <input type="text" id="input-search-conv" placeholder="Tìm kiếm phòng chat...">
+              </div>
+            </div>
+            <ul class="conversations-list" id="conversations-list-body">
+              <li style="text-align:center; padding:30px; color:var(--text-muted); font-size:13px;">Đang tải danh sách hội thoại...</li>
+            </ul>
+          </div>
+
+          <!-- Right: Chat Inspector -->
+          <div class="chat-inspector">
+            <div class="chat-inspector-header">
+              <div>
+                <h3 id="inspector-chat-title" style="font-size:15px; font-weight:700;">Chọn cuộc hội thoại</h3>
+                <div id="inspector-chat-sub" style="font-size:11px; color:var(--text-muted);">Xem toàn bộ tin nhắn văn bản, hình ảnh, âm thanh, video giữa các bên</div>
+              </div>
+              <button class="btn btn-secondary btn-sm" id="btn-refresh-messages" style="display:none;">
+                🔄 Làm mới
+              </button>
+            </div>
+
+            <div class="chat-inspector-body" id="chat-messages-stream">
+              <div style="text-align:center; margin:auto; color:var(--text-muted); font-size:13px;">
+                👈 Vui lòng chọn một phòng chat từ danh sách bên trái để xem tin nhắn và hình ảnh.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chế độ 2: Tra cứu Ai gửi cho Ai -->
+        <div class="glass-card" id="view-direct-lookup" style="display:none;">
+          <div class="card-title">
+            <span>🔍 Tra cứu chi tiết: Ai đã gửi tin nhắn / hình ảnh cho Ai</span>
+          </div>
+
+          <!-- Filter Toolbar -->
+          <div class="lookup-filter-card" style="background:rgba(255,255,255,0.03); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:16px; margin-bottom:20px;">
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:14px; align-items:end;">
+              <div class="form-group">
+                <label>👤 Người gửi (Sender):</label>
+                <select class="form-control" id="lookup-sender-select">
+                  <option value="">-- Tất cả người gửi --</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>🎯 Người nhận (Receiver):</label>
+                <select class="form-control" id="lookup-receiver-select">
+                  <option value="">-- Tất cả người nhận --</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>🔍 Từ khóa nội dung (Tùy chọn):</label>
+                <input type="text" class="form-control" id="lookup-search-keyword" placeholder="Nhập từ khóa cần tìm...">
+              </div>
+
+              <div class="form-group" style="display:flex; flex-direction:column; gap:8px;">
+                <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:12px;">
+                  <input type="checkbox" id="lookup-only-images" checked>
+                  <span>🖼️ <strong>Chỉ xem Hình ảnh (Photos)</strong></span>
+                </label>
+                <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:12px;">
+                  <input type="checkbox" id="lookup-bidirectional" checked>
+                  <span>🔄 Xem cả 2 chiều (A ➔ B và B ➔ A)</span>
+                </label>
+              </div>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:14px;">
+              <button class="btn btn-secondary btn-sm" id="btn-reset-lookup">Đặt lại</button>
+              <button class="btn btn-primary btn-sm" id="btn-exec-lookup">
+                <span>🚀 Tra cứu ngay</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Kết quả tra cứu -->
+          <div id="lookup-result-summary" style="font-size:13px; color:var(--text-secondary); margin-bottom:14px; font-weight:600;">
+            Chưa thực hiện tra cứu. Hãy chọn người gửi và người nhận rồi bấm "Tra cứu ngay".
+          </div>
+
+          <div class="lookup-stream" id="lookup-results-stream" style="display:flex; flex-direction:column; gap:14px; max-height:600px; overflow-y:auto; padding-right:6px;">
+            <div style="text-align:center; padding:30px; color:var(--text-muted); font-size:13px;">
+              Vui lòng chọn người gửi và người nhận để xem toàn bộ tin nhắn và hình ảnh được gửi qua lại.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 3. TAB MODERATION ================= -->
+      <section class="tab-panel" id="tab-moderation">
+        <div class="glass-card">
+          <div class="toolbar">
+            <div class="filter-group">
+              <select class="select-filter" id="filter-report-status">
+                <option value="">Tất cả trạng thái</option>
+                <option value="PENDING" selected>Chờ xử lý (Pending)</option>
+                <option value="RESOLVED">Đã giải quyết (Resolved)</option>
+                <option value="DISMISSED">Đã bỏ qua (Dismissed)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Người báo cáo</th>
+                  <th>Người bị báo cáo</th>
+                  <th>Lý do vi phạm</th>
+                  <th>Thời gian (UTC+7)</th>
+                  <th>Trạng thái</th>
+                  <th style="text-align:right;">Xử lý</th>
+                </tr>
+              </thead>
+              <tbody id="reports-table-body">
+                <tr>
+                  <td colspan="6" style="text-align:center; padding:30px; color:var(--text-muted);">Đang tải danh sách báo cáo...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 4. TAB NOTIFICATIONS ================= -->
+      <section class="tab-panel" id="tab-notifications">
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap:24px;">
+          <!-- Broadcast Form -->
+          <div class="glass-card">
+            <div class="card-title">
+              <span>📢 Phát thông báo đẩy Google Firebase (FCM)</span>
+            </div>
+
+            <form id="fcm-broadcast-form" style="display:flex; flex-direction:column; gap:16px;">
+              <div class="form-group">
+                <label>Nhóm đối tượng nhận thông báo:</label>
+                <select class="form-control" id="fcm-audience">
+                  <option value="ALL">Tất cả người dùng</option>
+                  <option value="ONLINE">Chỉ người dùng đang Online</option>
+                  <option value="ROLE">Theo vai trò cụ thể</option>
+                </select>
+              </div>
+
+              <div class="form-group" id="fcm-role-group" style="display:none;">
+                <label>Chọn vai trò mục tiêu:</label>
+                <select class="form-control" id="fcm-target-role">
+                  <option value="USER">USER (Người dùng thông thường)</option>
+                  <option value="MODERATOR">MODERATOR</option>
+                  <option value="ADMIN">ADMIN</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Tiêu đề thông báo:</label>
+                <input type="text" class="form-control" id="fcm-title" placeholder="VD: 🔔 Cập nhật tính năng mới Chat Tho-Fi" required>
+              </div>
+
+              <div class="form-group">
+                <label>Nội dung thông báo:</label>
+                <textarea class="form-control" id="fcm-body" placeholder="Nhập nội dung ngắn gọn gửi tới thiết bị..." required></textarea>
+              </div>
+
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                <span style="font-size:12px; color:var(--text-muted);" id="fcm-estimate-text">Ước tính: Đang tính...</span>
+                <button type="submit" class="btn btn-primary" id="btn-submit-fcm">
+                  <span>🚀 Xem trước & Gửi</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Smartphone Live Preview -->
+          <div class="glass-card">
+            <div class="card-title">
+              <span>📱 Mô phỏng hiển thị trên thiết bị</span>
+            </div>
+
+            <div class="fcm-preview-wrapper">
+              <div class="phone-mockup">
+                <div class="phone-notch"></div>
+                <div class="phone-notification">
+                  <div class="notif-header">
+                    <div class="notif-app-icon">⚡</div>
+                    <span class="notif-app-name">Chat Tho - Fi</span>
+                    <span class="notif-time">Bây giờ</span>
+                  </div>
+                  <div class="notif-title" id="preview-notif-title">Tiêu đề thông báo mẫu</div>
+                  <div class="notif-body" id="preview-notif-body">Nội dung thông báo sẽ xuất hiện trên màn hình khóa hoặc thanh trạng thái của người dùng.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 5. TAB CALLS ================= -->
+      <section class="tab-panel" id="tab-calls">
+        <div class="glass-card">
+          <div class="card-title">
+            <span>🔴 Cuộc gọi đang diễn ra theo thời gian thực</span>
+            <span style="font-size:12px; color:var(--accent-emerald);" id="calls-refresh-timer">Tự động cập nhật mỗi 5s</span>
+          </div>
+
+          <div style="background:rgba(99, 102, 241, 0.08); border:1px solid rgba(99, 102, 241, 0.2); border-radius:var(--radius-sm); padding:12px 16px; margin-bottom:18px; font-size:12px; color:#cbd5e1;">
+            🔒 <strong>Bảo mật & Quyền riêng tư:</strong> Bảng điều khiển chỉ giám sát trạng thái kết nối WebRTC (Ringing, Active, Thời lượng). Tuyệt đối không can thiệp, nghe lén hoặc lưu trữ bất kỳ âm thanh / hình ảnh nào của cuộc gọi.
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Mã phòng</th>
+                  <th>Người gọi</th>
+                  <th>Người nhận</th>
+                  <th>Loại</th>
+                  <th>Trạng thái</th>
+                  <th>Thời lượng đàm thoại</th>
+                </tr>
+              </thead>
+              <tbody id="active-calls-table-body">
+                <tr>
+                  <td colspan="6" style="text-align:center; padding:30px; color:var(--text-muted);">Hiện không có cuộc gọi nào đang diễn ra.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="glass-card">
+          <div class="card-title">
+            <span>📞 Lịch sử cuộc gọi nhỡ gần nhất</span>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Người gọi</th>
+                  <th>Phòng chat</th>
+                  <th>Nội dung</th>
+                  <th>Thời gian (UTC+7)</th>
+                </tr>
+              </thead>
+              <tbody id="missed-calls-table-body">
+                <tr>
+                  <td colspan="4" style="text-align:center; padding:30px; color:var(--text-muted);">Đang tải lịch sử...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 6. TAB MEDIA ================= -->
+      <section class="tab-panel" id="tab-media">
+        <div class="grid-kpi">
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <span class="kpi-title">Hình ảnh</span>
+              <div class="kpi-icon">🖼️</div>
+            </div>
+            <div class="kpi-value" id="media-stat-images">-</div>
+            <div class="kpi-sub">HD Images Cloudflare R2</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <span class="kpi-title">Video</span>
+              <div class="kpi-icon">🎥</div>
+            </div>
+            <div class="kpi-value" id="media-stat-videos">-</div>
+            <div class="kpi-sub">Cloudflare R2 (0đ egress)</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <span class="kpi-title">Tin nhắn âm thanh</span>
+              <div class="kpi-icon">🎙️</div>
+            </div>
+            <div class="kpi-value" id="media-stat-audios">-</div>
+            <div class="kpi-sub">Supabase Storage CDN</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <span class="kpi-title">Ảnh đại diện</span>
+              <div class="kpi-icon">👤</div>
+            </div>
+            <div class="kpi-value" id="media-stat-avatars">-</div>
+            <div class="kpi-sub">Bucket avatars</div>
+          </div>
+        </div>
+
+        <div class="glass-card">
+          <div class="card-title">
+            <span>🛡️ Nguyên tắc an toàn dữ liệu Media</span>
+          </div>
+          <p style="font-size:13px; color:var(--text-secondary); line-height:1.6;">
+            Toàn bộ URL riêng tư của tệp media được bảo vệ nghiêm ngặt. Khi xóa vĩnh viễn tài khoản hoặc thu hồi tin nhắn, hệ thống sẽ điều phối xóa các khóa đối tượng (Object Key) tương ứng trên Supabase Storage và Cloudflare R2 sau khi đã xác minh quyền sở hữu từ phía backend.
+          </p>
+        </div>
+
+        <!-- Thư viện Hình ảnh & Media gần đây -->
+        <div class="glass-card">
+          <div class="card-title">
+            <span>🖼️ Thư viện Hình ảnh & Media tải lên gần đây</span>
+            <div class="filter-group">
+              <select class="select-filter" id="filter-gallery-type">
+                <option value="all">Tất cả media</option>
+                <option value="image" selected>Chỉ Hình ảnh</option>
+                <option value="video">Chỉ Video</option>
+                <option value="audio">Chỉ Tin nhắn thoại</option>
+              </select>
+              <button class="btn btn-secondary btn-sm" id="btn-refresh-gallery">🔄 Tải lại</button>
+            </div>
+          </div>
+
+          <div class="media-gallery-grid" id="media-gallery-grid-body">
+            <div style="grid-column: 1/-1; text-align:center; padding:30px; color:var(--text-muted);">Đang tải thư viện media...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 7. TAB SYSTEM ================= -->
+      <section class="tab-panel" id="tab-system">
+        <div class="glass-card">
+          <div class="card-title">
+            <span>⚙️ Vận hành & Cấu hình máy chủ</span>
+          </div>
+
+          <form id="system-config-form" style="display:flex; flex-direction:column; gap:20px;">
+            <div style="background:rgba(255, 255, 255, 0.03); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:18px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <div>
+                  <strong>Chế độ bảo trì (Maintenance Mode)</strong>
+                  <div style="font-size:12px; color:var(--text-muted);">Khi kích hoạt, người dùng sẽ nhận được thông báo bảo trì qua WebSocket và tạm dừng tương tác.</div>
+                </div>
+                <input type="checkbox" id="cfg-maintenance-mode" style="width:20px; height:20px; cursor:pointer;">
+              </div>
+              <div class="form-group">
+                <label>Thông báo hiển thị:</label>
+                <input type="text" class="form-control" id="cfg-maintenance-msg" value="Hệ thống đang bảo trì định kỳ. Vui lòng quay lại sau ít phút!">
+              </div>
+            </div>
+
+            <div style="background:rgba(255, 255, 255, 0.03); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:18px;">
+              <h4 style="font-size:14px; margin-bottom:14px;">🚩 Cờ tính năng (Feature Flags)</h4>
+              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:14px;">
+                <label style="display:flex; align-items:center; gap:10px; font-size:13px; cursor:pointer;">
+                  <input type="checkbox" id="cfg-allow-registration" checked> Cho phép đăng ký mới
+                </label>
+                <label style="display:flex; align-items:center; gap:10px; font-size:13px; cursor:pointer;">
+                  <input type="checkbox" id="cfg-allow-voice-calls" checked> Cho phép cuộc gọi thoại
+                </label>
+                <label style="display:flex; align-items:center; gap:10px; font-size:13px; cursor:pointer;">
+                  <input type="checkbox" id="cfg-allow-video-calls" checked> Cho phép cuộc gọi video
+                </label>
+                <label style="display:flex; align-items:center; gap:10px; font-size:13px; cursor:pointer;">
+                  <input type="checkbox" id="cfg-allow-file-uploads" checked> Cho phép tải tệp & media
+                </label>
+              </div>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end;">
+              <button type="submit" class="btn btn-primary" id="btn-save-config">
+                <span>💾 Lưu cấu hình hệ thống</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ================= 8. TAB AUDIT ================= -->
+      <section class="tab-panel" id="tab-audit">
+        <div class="glass-card">
+          <div class="toolbar">
+            <div class="search-box">
+              <span>🔍</span>
+              <input type="text" id="input-search-audit" placeholder="Tìm theo Admin, Hành động, Đối tượng...">
+            </div>
+            <div class="filter-group">
+              <select class="select-filter" id="filter-audit-action">
+                <option value="">Tất cả hành động</option>
+                <option value="USER_SUSPEND">USER_SUSPEND</option>
+                <option value="USER_ACTIVATE">USER_ACTIVATE</option>
+                <option value="USER_ROLE_CHANGE">USER_ROLE_CHANGE</option>
+                <option value="USER_FORCE_LOGOUT">USER_FORCE_LOGOUT</option>
+                <option value="USER_PENDING_DELETION">USER_PENDING_DELETION</option>
+                <option value="USER_PERMANENT_DELETE">USER_PERMANENT_DELETE</option>
+                <option value="BROADCAST_FCM">BROADCAST_FCM</option>
+                <option value="SYSTEM_CONFIG_UPDATE">SYSTEM_CONFIG_UPDATE</option>
+                <option value="REPORT_STATUS_UPDATE">REPORT_STATUS_UPDATE</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Thời gian (UTC+7)</th>
+                  <th>Quản trị viên</th>
+                  <th>Hành động</th>
+                  <th>Đối tượng</th>
+                  <th>Địa chỉ IP</th>
+                  <th>Chi tiết</th>
+                </tr>
+              </thead>
+              <tbody id="audit-table-body">
+                <tr>
+                  <td colspan="6" style="text-align:center; padding:30px; color:var(--text-muted);">Đang tải nhật ký quản trị...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="pagination">
+            <span id="audit-page-info">Hiển thị 0 trên 0</span>
+            <div class="pagination-buttons">
+              <button class="btn btn-secondary btn-sm" id="btn-audit-prev" disabled>← Trước</button>
+              <button class="btn btn-secondary btn-sm" id="btn-audit-next" disabled>Sau →</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ================= MODALS ================= -->
+
+  <!-- Modal: Tạo Invite Link -->
+  <div class="modal-overlay" id="modal-invite">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Tạo liên kết mời người dùng một lần</h3>
+        <button class="modal-close" data-close="modal-invite">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Email người nhận (Tùy chọn):</label>
+          <input type="email" class="form-control" id="invite-email" placeholder="example@gmail.com">
+        </div>
+        <div class="form-group">
+          <label>Vai trò chỉ định:</label>
+          <select class="form-control" id="invite-role">
+            <option value="USER">USER</option>
+            <option value="MODERATOR">MODERATOR</option>
+            <option value="ADMIN">ADMIN</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Thời gian hiệu lực:</label>
+          <select class="form-control" id="invite-expiry">
+            <option value="24">24 giờ</option>
+            <option value="48" selected>48 giờ</option>
+            <option value="168">7 ngày</option>
+          </select>
+        </div>
+        <div id="invite-result-area" style="display:none; margin-top:10px;">
+          <label style="font-size:12px; color:var(--accent-emerald);">Liên kết mời đã tạo thành công:</label>
+          <div style="display:flex; gap:8px; margin-top:4px;">
+            <input type="text" class="form-control" id="invite-result-link" readonly>
+            <button class="btn btn-secondary" id="btn-copy-invite">Copy</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close="modal-invite">Đóng</button>
+        <button class="btn btn-primary" id="btn-create-invite-submit">Tạo liên kết</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Reset Password Link -->
+  <div class="modal-overlay" id="modal-reset-pwd">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Tạo liên kết đặt lại mật khẩu</h3>
+        <button class="modal-close" data-close="modal-reset-pwd">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:13px; color:var(--text-secondary);">
+          Vì lý do bảo mật, Admin không được phép xem hoặc can thiệp trực tiếp vào mật khẩu thô của người dùng. Hệ thống sẽ tạo một liên kết đặt lại mật khẩu 1 lần có hiệu lực 24 giờ.
+        </p>
+        <div id="reset-pwd-result-area" style="margin-top:10px;">
+          <label style="font-size:12px; color:var(--primary-cyan);">Liên kết đặt lại mật khẩu:</label>
+          <div style="display:flex; gap:8px; margin-top:4px;">
+            <input type="text" class="form-control" id="reset-pwd-result-link" readonly>
+            <button class="btn btn-secondary" id="btn-copy-reset-pwd">Copy</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close="modal-reset-pwd">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Xác nhận Xóa Vĩnh Viễn (Super Admin) -->
+  <div class="modal-overlay" id="modal-delete-permanent">
+    <div class="modal-card" style="border-color:var(--accent-rose);">
+      <div class="modal-header" style="background:rgba(244,63,94,0.1);">
+        <h3 class="modal-title" style="color:var(--accent-rose);">⚠️ CẢNH BÁO: XÓA VĨNH VIỄN TÀI KHOẢN</h3>
+        <button class="modal-close" data-close="modal-delete-permanent">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:13px; color:var(--text-secondary); line-height:1.5;">
+          Thao tác này là **KHÔNG THỂ HOÀN TÁC**. Toàn bộ thông tin cá nhân sẽ bị hủy, thiết bị bị thu hồi vĩnh viễn và các tin nhắn trong hội thoại sẽ được ẩn danh thành "Người dùng đã xóa".
+        </p>
+        <div style="background:rgba(244,63,94,0.1); padding:10px; border-radius:6px; font-size:12px;">
+          Để xác nhận, vui lòng nhập chính xác chuỗi sau:
+          <div style="font-weight:700; color:var(--text-primary); margin-top:4px;" id="delete-phrase-target">XÓA VĨNH VIỄN username</div>
+        </div>
+        <div class="form-group">
+          <input type="text" class="form-control" id="input-confirm-delete" placeholder="Nhập lại chính xác câu xác nhận trên...">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close="modal-delete-permanent">Hủy bỏ</button>
+        <button class="btn btn-danger" id="btn-confirm-permanent-delete" disabled>Xác nhận xóa vĩnh viễn</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Đăng nhập Admin (Nếu chưa có Token) -->
+  <div class="modal-overlay" id="modal-login">
+    <div class="modal-card" style="max-width:420px;">
+      <div class="modal-header">
+        <h3 class="modal-title">🔐 Đăng nhập Admin Control Center</h3>
+      </div>
+      <form id="admin-login-form">
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Tên đăng nhập / Email:</label>
+            <input type="text" class="form-control" id="login-identifier" placeholder="admin" required>
+          </div>
+          <div class="form-group">
+            <label>Mật khẩu quản trị:</label>
+            <input type="password" class="form-control" id="login-password" placeholder="••••••••" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;">Đăng nhập</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Lightbox Xem Ảnh Phóng To -->
+  <div class="lightbox-modal" id="modal-lightbox" style="display:none;">
+    <div class="lightbox-content">
+      <button class="lightbox-close-btn" id="btn-close-lightbox">&times;</button>
+      <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'/>" id="lightbox-image-target" class="lightbox-img" alt="Hình ảnh phóng to">
+      <div class="lightbox-caption" id="lightbox-caption-target"></div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="app.js?v=2"></script>
+</body>
+</html>

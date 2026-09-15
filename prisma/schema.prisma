@@ -93,6 +93,10 @@ model Users {
   coverPhoto                      String?
   bio                             String?
   role                            String                @default("USER")
+  status                          String                @default("active") // "active" | "suspended" | "pending_deletion" | "deleted"
+  tokenVersion                    Int                   @default(0)
+  deletedAt                       DateTime?
+  deletedBy                       String?
   isBlocked                       Boolean?              @default(false)
   isOnline                        Boolean?              @default(false)
   lastActive                      DateTime?             @default(now())
@@ -205,3 +209,59 @@ model Block {
 
   @@unique([blockerId, blockedId])
 }
+
+model AdminAuditLog {
+  id            String   @id @default(uuid())
+  adminId       String
+  adminUsername String
+  action        String
+  targetType    String
+  targetId      String?
+  details       Json?
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime @default(now())
+
+  @@index([adminId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([targetType, targetId])
+}
+
+model UserInvites {
+  id        String    @id @default(uuid())
+  email     String?
+  role      String    @default("USER")
+  token     String    @unique
+  createdBy String
+  expiresAt DateTime
+  usedAt    DateTime?
+  usedBy    String?
+  createdAt DateTime  @default(now())
+
+  @@index([token])
+  @@index([expiresAt])
+}
+
+model PasswordResets {
+  id        String    @id @default(uuid())
+  userId    String
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([token])
+}
+
+model SystemConfig {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@index([key])
+}
+

@@ -661,6 +661,31 @@ class ApiService {
     return [];
   }
 
+  // Tìm kiếm người dùng có kèm danh sách gợi ý tên thông minh
+  static Future<Map<String, dynamic>> searchUsersWithSuggestions(String query) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/users/search?q=${Uri.encodeComponent(query)}&_=${DateTime.now().millisecondsSinceEpoch}'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded['success'] == true) {
+          final users = decoded['data'] is List ? (decoded['data'] as List<dynamic>) : <dynamic>[];
+          final suggestions = decoded['suggestions'] is List
+              ? (decoded['suggestions'] as List<dynamic>).map((e) => e.toString()).toList()
+              : <String>[];
+          return {'users': users, 'suggestions': suggestions};
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.searchUsersWithSuggestions: $e');
+    }
+    return {'users': <dynamic>[], 'suggestions': <String>[]};
+  }
+
+
   // Gửi lời mời kết bạn
   static Future<bool> sendFriendRequest(String targetUserId) async {
     try {

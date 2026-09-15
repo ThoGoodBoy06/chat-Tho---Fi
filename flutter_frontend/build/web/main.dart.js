@@ -99445,6 +99445,7 @@ return A.w($async$yi,r)}}
 A.pZ.prototype={
 aa(){return new A.GT(new A.ef(B.bk,$.aC()),[],B.n)}}
 A.GT.prototype={
+l(){this.Lv();this.vp("");},
 m(){var s=this.e
 if(s!=null)s.ai(0)
 s=this.d
@@ -99456,14 +99457,12 @@ q.w=B.c.by(a)
 s=q.e
 r=s==null?null:s.b!=null
 if(r===!0)s.ai(0)
-if(q.w.length===0){q.K(new A.arp(q))
-return}q.K(new A.arq(q))
+if(q.w.length===0){q.K(new A.arq(q));q.vp("");return}q.K(new A.arq(q))
 q.e=A.c_(B.dy,new A.arr(q))},
 vp(a){return this.alF(a)},
 alF(a){var s=0,r=A.x(t.H),q,p=this,o
 var $async$vp=A.t(function(b,c){if(b===1)return A.u(c,r)
-while(true)switch(s){case 0:if(a.length===0){s=1
-break}s=3
+while(true)switch(s){case 0:s=3
 return A.m(A.Ag(a),$async$vp)
 case 3:o=c
 if(p.c!=null&&a===p.w)p.K(new A.ars(p,o))
@@ -99613,7 +99612,10 @@ p=h==null?l:J.ai(h)
 if(p==null)p=""
 h=[B.iY,B.iW,B.iS,B.iX,B.iU,B.iT,B.iV][B.e.br(Math.abs(B.c.gv(g)),7)]
 o=t.p
-h=A.b([A.a5(l,A.cn(A.a2(j.aak(g),l,l,l,l,l,B.jY,l,l,l),l,l),B.h,l,l,new A.ak(l,l,l,l,l,h,B.a8),l,48,l,l,l,l,48)],o)
+var _avt=i.h(0,"avatar")
+var _hasAvt=_avt!=null&&_avt!=="null"&&_avt.length!==0
+var _avtWidget=_hasAvt?A.a5(l,l,B.h,l,l,new A.ak(B.o,A.a9i(B.e8,new A.eY(_avt,1,l),l),l,l,l,l,B.a8),l,48,l,l,l,l,48):A.a5(l,A.cn(A.a2(j.aak(g),l,l,l,l,l,B.jY,l,l,l),l,l),B.h,l,l,new A.ak(l,l,l,l,l,h,B.a8),l,48,l,l,l,l,48)
+h=A.b([_avtWidget],o)
 if(q)h.push(A.eG(0,A.a5(l,l,B.h,l,l,new A.ak(B.mL,l,A.dx(B.f,2),l,l,l,B.a8),l,14,l,l,l,l,14),l,l,l,0,l,l))
 h=A.dt(B.aF,h,B.r,B.ap)
 n=A.a2(g,l,1,B.a9,l,l,B.nV,l,l,l)

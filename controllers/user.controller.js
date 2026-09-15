@@ -1017,16 +1017,7 @@ exports.searchUsers = async (req, res) => {
     const { q } = req.query;
     const currentUserId = req.user.id;
 
-    if (!q || !q.trim()) return res.json({ success: true, data: [] });
-    const keyword = q.trim();
-
-    // Query tất cả user
-    const allUsers = await prisma.users.findMany({
-      select: { id: true, fullName: true, username: true, phone: true, email: true, isOnline: true, avatar: true },
-      take: 200,
-    });
-
-    // Hàm bỏ dấu Tiếng Việt
+    // Hàm bỏ dấu Tiếng Việt chuẩn hóa
     function removeAccents(str) {
       if (!str) return "";
       return str
@@ -1037,30 +1028,91 @@ exports.searchUsers = async (req, res) => {
         .toLowerCase();
     }
 
+    const keyword = (q || "").trim();
+    const hasQuery = keyword.length > 0;
     const lowerQ = keyword.toLowerCase();
     const cleanQ = removeAccents(lowerQ);
 
-    const users = allUsers.filter((u) => {
-      const name = u.fullName || "";
-      const uname = u.username || "";
-      const phone = u.phone || "";
-      const email = u.email || "";
-
-      const nLower = name.toLowerCase();
-      const nClean = removeAccents(name);
-      const uLower = uname.toLowerCase();
-      const uClean = removeAccents(uname);
-
-      return (
-        nLower.includes(lowerQ) ||
-        nClean.includes(cleanQ) ||
-        uLower.includes(lowerQ) ||
-        uClean.includes(cleanQ) ||
-        phone.includes(keyword) ||
-        email.toLowerCase().includes(lowerQ)
-      );
+    // Query tất cả user
+    const allUsers = await prisma.users.findMany({
+      select: { id: true, fullName: true, username: true, phone: true, email: true, isOnline: true, avatar: true },
+      take: 200,
     });
 
+    let scoredUsers = [];
+    const suggestionsSet = new Set();
+
+    if (!hasQuery) {
+      // Khi không nhập từ khóa: hiển thị tất cả user trừ bản thân
+      scoredUsers = allUsers
+        .filter((u) => u.id !== currentUserId)
+        .map((u) => ({ user: u, score: 0 }));
+    } else {
+      // Khi có từ khóa: tính điểm xếp hạng thông minh
+      for (const u of allUsers) {
+        const name = (u.fullName || "").trim();
+        const uname = (u.username || "").trim();
+        const phone = (u.phone || "").trim();
+        const email = (u.email || "").trim();
+
+        const nLower = name.toLowerCase();
+        const nClean = removeAccents(name);
+        const uLower = uname.toLowerCase();
+        const uClean = removeAccents(uname);
+
+        let score = 0;
+
+        // 1. Tên bắt đầu bằng từ khóa (ví dụ "The", "Thanh Tho")
+        if (nLower.startsWith(lowerQ) || nClean.startsWith(cleanQ)) {
+          score += 1000;
+        }
+
+        // 2. Có từ trong tên bắt đầu bằng từ khóa (ví dụ: "Thanh Tho" -> "Tho", "Bùi Văn Thịnh" -> "Thịnh")
+        const words = nClean.split(/\s+/);
+        for (let i = 0; i < words.length; i++) {
+          if (words[i].startsWith(cleanQ)) {
+            score += 500;
+            break;
+          }
+        }
+
+        // 3. Username bắt đầu bằng từ khóa
+        if (uLower.startsWith(lowerQ) || uClean.startsWith(cleanQ)) {
+          score += 300;
+        }
+
+        // 4. Nếu từ khóa từ 2 ký tự trở lên: cho phép tìm theo cụm từ trong tên hoặc username
+        if (cleanQ.length >= 2) {
+          if (nClean.includes(cleanQ)) {
+            score += 100;
+          }
+          if (uClean.includes(cleanQ)) {
+            score += 50;
+          }
+        }
+
+        // 5. Số điện thoại hoặc email khớp
+        if (phone && phone.includes(keyword)) {
+          score += 40;
+        } else if (email && email.toLowerCase().includes(lowerQ)) {
+          score += 40;
+        }
+
+        if (score > 0) {
+          scoredUsers.push({ user: u, score });
+        }
+      }
+
+      // Sắp xếp ưu tiên: Điểm cao nhất lên đầu
+      scoredUsers.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        const nameA = a.user.fullName || a.user.username || "";
+        const nameB = b.user.fullName || b.user.username || "";
+        return nameA.localeCompare(nameB, "vi");
+      });
+    }
+
+    const users = scoredUsers.map((item) => item.user);
     const targetUserIds = users.map((u) => u.id);
 
     // 1. Kiểm tra trong FriendRequests (ACCEPTED hoặc PENDING)
@@ -1120,6 +1172,7 @@ exports.searchUsers = async (req, res) => {
         }
       }
 
+      const hasCustomAvatar = Boolean(u.avatar && u.avatar.trim());
       return {
         id: u.id,
         fullName: u.fullName || u.username,
@@ -1127,13 +1180,17 @@ exports.searchUsers = async (req, res) => {
         phone: u.phone,
         email: u.email,
         isOnline: u.isOnline,
-        avatar: `/api/users/${u.id}/avatar`,
+        avatar: hasCustomAvatar ? `/api/users/${u.id}/avatar` : null,
+        hasAvatar: hasCustomAvatar,
         status, // "FRIEND", "PENDING", "NONE", "SELF"
         relationship,
       };
     });
 
-    return res.status(200).json({ success: true, data: mappedUsers });
+    return res.status(200).json({
+      success: true,
+      data: mappedUsers,
+    });
   } catch (error) {
     console.error("Lỗi khi tìm kiếm người dùng controller:", error.message);
     return res.status(500).json({ success: false, message: "Lỗi server", error: error.message });

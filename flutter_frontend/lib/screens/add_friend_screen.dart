@@ -17,8 +17,16 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
   final TextEditingController _searchController = TextEditingController();
   Timer? _debounce;
   List<dynamic> _searchResults = [];
+  List<dynamic> _initialUsers = [];
+  List<String> _suggestions = [];
   bool _isSearching = false;
   String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInitialUsers();
+  }
 
   @override
   void dispose() {
@@ -27,13 +35,28 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
     super.dispose();
   }
 
+  Future<void> _loadInitialUsers() async {
+    setState(() => _isSearching = true);
+    final data = await ApiService.searchUsersWithSuggestions('');
+    if (mounted) {
+      setState(() {
+        _initialUsers = (data['users'] as List<dynamic>?) ?? [];
+        if (_query.isEmpty) {
+          _searchResults = List.from(_initialUsers);
+        }
+        _isSearching = false;
+      });
+    }
+  }
+
   void _onSearchChanged(String val) {
     _query = val.trim();
     if (_debounce?.isActive ?? false) _debounce!.cancel();
 
     if (_query.isEmpty) {
       setState(() {
-        _searchResults = [];
+        _searchResults = List.from(_initialUsers);
+        _suggestions = [];
         _isSearching = false;
       });
       return;
@@ -46,14 +69,31 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
   }
 
   Future<void> _performSearch(String q) async {
-    if (q.isEmpty) return;
-    final results = await ApiService.searchUsers(q);
-    if (mounted && q == _query) {
+    final trimmed = q.trim();
+    if (trimmed.isEmpty) {
       setState(() {
-        _searchResults = results;
+        _searchResults = List.from(_initialUsers);
+        _suggestions = [];
+        _isSearching = false;
+      });
+      return;
+    }
+    final data = await ApiService.searchUsersWithSuggestions(trimmed);
+    if (mounted && trimmed == _query) {
+      setState(() {
+        _searchResults = (data['users'] as List<dynamic>?) ?? [];
+        _suggestions = (data['suggestions'] as List<String>?) ?? [];
         _isSearching = false;
       });
     }
+  }
+
+  void _selectSuggestion(String suggestion) {
+    _searchController.text = suggestion;
+    _searchController.selection = TextSelection.fromPosition(TextPosition(offset: suggestion.length));
+    _query = suggestion;
+    setState(() => _isSearching = true);
+    _performSearch(suggestion);
   }
 
   Future<void> _handleSendRequest(Map<String, dynamic> user, int index) async {
@@ -168,6 +208,50 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
     return trimmed[0].toUpperCase();
   }
 
+  Widget _buildUserAvatar(Map<String, dynamic> user, String name) {
+    final avatarUrl = user['avatar']?.toString();
+    final hasAvatar = user['hasAvatar'] == true || (avatarUrl != null && avatarUrl.isNotEmpty && avatarUrl != 'null');
+
+    if (hasAvatar && avatarUrl != null) {
+      final fullUrl = avatarUrl.startsWith('http')
+          ? avatarUrl
+          : '${ApiService.baseUrl.replaceAll('/api', '')}$avatarUrl';
+      return ClipOval(
+        child: Image.network(
+          fullUrl,
+          width: 48,
+          height: 48,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return _buildFallbackAvatar(name);
+          },
+        ),
+      );
+    }
+    return _buildFallbackAvatar(name);
+  }
+
+  Widget _buildFallbackAvatar(String name) {
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: _getAvatarGradient(name),
+      ),
+      child: Center(
+        child: Text(
+          _getInitials(name),
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildActionButton(Map<String, dynamic> user, int index) {
     final status = (user['status'] ?? 'NONE').toString().toUpperCase();
     final relationship = (user['relationship'] ?? 'none').toString().toLowerCase();
@@ -253,6 +337,36 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
     }
   }
 
+  Widget _buildHighlightedText(String text, String query, TextStyle baseStyle, TextStyle highlightStyle) {
+    if (query.isEmpty || !text.toLowerCase().contains(query.toLowerCase())) {
+      return Text(text, style: baseStyle, maxLines: 1, overflow: TextOverflow.ellipsis);
+    }
+
+    final lowerText = text.toLowerCase();
+    final lowerQ = query.toLowerCase();
+    final spans = <TextSpan>[];
+    int start = 0;
+
+    while (start < text.length) {
+      final index = lowerText.indexOf(lowerQ, start);
+      if (index == -1) {
+        spans.add(TextSpan(text: text.substring(start), style: baseStyle));
+        break;
+      }
+      if (index > start) {
+        spans.add(TextSpan(text: text.substring(start, index), style: baseStyle));
+      }
+      spans.add(TextSpan(text: text.substring(index, index + query.length), style: highlightStyle));
+      start = index + query.length;
+    }
+
+    return RichText(
+      text: TextSpan(children: spans),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Provider.of<ThemeProvider>(context).isDarkMode;
@@ -314,6 +428,33 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
             ),
           ),
 
+          // Tiêu đề danh sách gợi ý / kết quả
+          if (_searchResults.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              child: Row(
+                children: [
+                  Icon(
+                    _query.isEmpty ? Icons.people_alt_rounded : Icons.search_rounded,
+                    size: 16,
+                    color: subTextColor,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    _query.isEmpty
+                        ? 'GỢI Ý KẾT BẠN (${_searchResults.length})'
+                        : 'KẾT QUẢ PHÙ HỢP (${_searchResults.length})',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                      color: subTextColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           if (_isSearching)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 24),
@@ -374,24 +515,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
                               children: [
                                 Stack(
                                   children: [
-                                    Container(
-                                      width: 48,
-                                      height: 48,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        gradient: _getAvatarGradient(name),
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          _getInitials(name),
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
+                                    _buildUserAvatar(user, name),
                                     if (isOnline)
                                       Positioned(
                                         right: 0,
@@ -413,15 +537,20 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(
+                                      _buildHighlightedText(
                                         name,
-                                        style: const TextStyle(
-                                          color: Color(0xFF0F172A),
+                                        _query,
+                                        TextStyle(
+                                          color: textColor,
                                           fontWeight: FontWeight.bold,
                                           fontSize: 15,
                                         ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
+                                        const TextStyle(
+                                          color: Color(0xFF0068FF),
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 15,
+                                          backgroundColor: Color(0x220068FF),
+                                        ),
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
