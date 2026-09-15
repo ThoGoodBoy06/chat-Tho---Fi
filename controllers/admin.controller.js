@@ -4,6 +4,7 @@ const bcrypt = require("bcrypt");
 const { v4: uuidv4 } = require("uuid");
 const { logAdminAction } = require("../services/audit.service");
 const admin = require("../firebaseConfig");
+const { getMessaging } = require("firebase-admin/messaging");
 const r2Service = require("../services/r2.service");
 const supabaseService = require("../supabase");
 
@@ -887,13 +888,20 @@ exports.broadcastNotification = async (req, res) => {
     let successCount = 0;
     let failureCount = 0;
 
-    if (tokens.length > 0 && admin && admin.messaging) {
+    let messaging = null;
+    try {
+      messaging = getMessaging();
+    } catch (e) {
+      messaging = null;
+    }
+
+    if (tokens.length > 0 && messaging) {
       // Gửi theo từng batch 500 token
       const batchSize = 500;
       for (let i = 0; i < tokens.length; i += batchSize) {
         const batchTokens = tokens.slice(i, i + batchSize);
         try {
-          const response = await admin.messaging().sendEachForMulticast({
+          const response = await messaging.sendEachForMulticast({
             tokens: batchTokens,
             notification: { title, body },
             data: {
@@ -904,6 +912,14 @@ exports.broadcastNotification = async (req, res) => {
           });
           successCount += response.successCount;
           failureCount += response.failureCount;
+
+          // Tự động dọn dẹp các token đã bị hủy đăng ký (unregistered)
+          response.responses.forEach((resp, idx) => {
+            if (!resp.success && resp.error && resp.error.code === "messaging/registration-token-not-registered") {
+              const deadToken = batchTokens[idx];
+              prisma.userDevices.deleteMany({ where: { fcmToken: deadToken } }).catch(() => {});
+            }
+          });
         } catch (fcmErr) {
           console.error("Lỗi gửi batch FCM:", fcmErr.message);
           failureCount += batchTokens.length;
