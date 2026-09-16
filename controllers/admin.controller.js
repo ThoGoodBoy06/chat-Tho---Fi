@@ -918,6 +918,7 @@ exports.broadcastNotification = async (req, res) => {
               headers: {
                 "apns-push-type": "alert",
                 "apns-priority": "10",
+                "apns-collapse-id": "admin-broadcast",
               },
               payload: {
                 aps: {
@@ -938,7 +939,7 @@ exports.broadcastNotification = async (req, res) => {
                 icon: "/icon.png",
                 badge: "/icon.png",
                 tag: "admin-broadcast",
-                renotify: true,
+                renotify: false,
               },
               fcmOptions: {
                 link: "/",

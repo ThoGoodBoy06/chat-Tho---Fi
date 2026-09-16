@@ -651,7 +651,13 @@ app.post("/api/users/fcm-token", async(req, res) => {
             data: { fcmToken: fcmToken },
         }).catch(() => {});
 
-        // 2. Dọn dẹp token cũ nếu cùng thiết bị (deviceId) gửi token mới
+        // Tự động nhận diện thiết bị Mobile vs Desktop qua User-Agent
+        const userAgent = (req.headers['user-agent'] || '').toLowerCase();
+        const isMobile = /mobile|android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+        const detectedPlatform = isMobile ? 'web_mobile' : (platform === 'ios' || platform === 'android' ? platform : 'web_desktop');
+
+        // 2. Dọn dẹp token cũ nếu cùng thiết bị (deviceId) hoặc cùng nền tảng thiết bị (web_mobile / web_desktop)
+        // Đảm bảo 1 người dùng trên 1 điện thoại chỉ giữ duy nhất 1 token mới nhất (chống PWA + Tab sinh 2 token)
         if (deviceId) {
             await prisma.userDevices.deleteMany({
                 where: {
@@ -662,19 +668,35 @@ app.post("/api/users/fcm-token", async(req, res) => {
             }).catch(() => {});
         }
 
-        // 3. Upsert vào bảng UserDevices hỗ trợ nhận push trên nhiều thiết bị đồng thời
+        await prisma.userDevices.deleteMany({
+            where: {
+                userId: decoded.id,
+                platform: detectedPlatform,
+                fcmToken: { not: fcmToken }
+            }
+        }).catch(() => {});
+
+        // Nếu token này từng được liên kết với user khác, xóa khỏi user cũ
+        await prisma.userDevices.deleteMany({
+            where: {
+                fcmToken: fcmToken,
+                userId: { not: decoded.id }
+            }
+        }).catch(() => {});
+
+        // 3. Upsert vào bảng UserDevices hỗ trợ nhận push chính xác
         await prisma.userDevices.upsert({
             where: { fcmToken: fcmToken },
             update: {
                 userId: decoded.id,
-                platform: platform,
+                platform: detectedPlatform,
                 deviceId: deviceId || null,
                 updatedAt: new Date(),
             },
             create: {
                 userId: decoded.id,
                 fcmToken: fcmToken,
-                platform: platform,
+                platform: detectedPlatform,
                 deviceId: deviceId || null,
             },
         });

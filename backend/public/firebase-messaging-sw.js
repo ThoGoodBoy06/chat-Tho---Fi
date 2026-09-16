@@ -1,5 +1,5 @@
 // Version tracking - giúp trình duyệt nhận diện bản cập nhật mới và hủy cache SW cũ
-const SW_VERSION = "2.2.1789531122334";
+const SW_VERSION = "2.2.1789540000000";
 console.log("[firebase-messaging-sw.js] SW Version Active:", SW_VERSION);
 
 self.addEventListener("install", (event) => {
@@ -75,8 +75,8 @@ messaging.onBackgroundMessage((payload) => {
     badge: "/icon.png",
     data: payload.data,
     vibrate: isCall ? [1000, 500, 1000, 500, 1000, 500, 1000, 500] : [400, 100, 400, 100, 600],
-    tag: isCall ? "incoming-call" : (payload.data?.conversationId || "tho-fi-chat-notification"),
-    renotify: true,
+    tag: isCall ? "incoming-call" : (payload.data?.conversationId ? `conv-${payload.data.conversationId}` : "tho-fi-chat-notification"),
+    renotify: false,
     requireInteraction: isCall ? true : false,
   };
 

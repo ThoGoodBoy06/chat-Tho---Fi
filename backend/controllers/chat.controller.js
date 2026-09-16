@@ -633,12 +633,14 @@ exports.sendMessage = async(req, res) => {
                             channel_id: "chat_messages_v3",
                             sound: "amthanhtinnhan",
                             defaultVibrateTimings: true,
+                            tag: `conv-${conversationId}`,
                         },
                     },
                     apns: {
                         headers: {
                             "apns-push-type": "alert",
                             "apns-priority": "10",
+                            "apns-collapse-id": `conv-${conversationId}`,
                         },
                         payload: {
                             aps: {
@@ -665,7 +667,7 @@ exports.sendMessage = async(req, res) => {
                             badge: `${BASE_HOST_URL}/icon.png`,
                             vibrate: [500, 250, 500, 250, 500],
                             tag: `conv-${conversationId}`,
-                            renotify: true,
+                            renotify: false,
                             sound: "default",
                         },
                         fcmOptions: {
@@ -1083,6 +1085,7 @@ exports.sendPushNotification = async(targetUserIdOrToken, title, body, customDat
     }
 
     const conversationId = (customData && customData.conversationId) || "";
+    const collapseTag = conversationId ? `conv-${conversationId}` : ((customData && customData.type) || "tho-fi-chat-notification");
 
     const payload = {
         tokens: recipientTokens,
@@ -1094,12 +1097,14 @@ exports.sendPushNotification = async(targetUserIdOrToken, title, body, customDat
                 sound: dataOnly ? "ringtone" : "amthanhtinnhan",
                 defaultVibrateTimings: !dataOnly,
                 vibrateTimingsMillis: dataOnly ? [0, 1000, 500, 1000, 500, 1000, 500, 1000, 500] : undefined,
+                tag: collapseTag,
             },
         },
         apns: {
             headers: {
                 "apns-push-type": "alert",
                 "apns-priority": "10",
+                "apns-collapse-id": collapseTag,
             },
             payload: {
                 aps: {
@@ -1121,8 +1126,8 @@ exports.sendPushNotification = async(targetUserIdOrToken, title, body, customDat
                 body: body,
                 icon: `${BASE_HOST_URL}/icon.png`,
                 badge: `${BASE_HOST_URL}/icon.png`,
-                tag: conversationId ? `conv-${conversationId}` : "chat-notification",
-                renotify: true,
+                tag: collapseTag,
+                renotify: dataOnly ? true : false,
                 vibrate: dataOnly ? [1000, 500, 1000, 500] : [500, 250, 500, 250, 500],
                 requireInteraction: dataOnly ? true : false,
                 sound: "default",
