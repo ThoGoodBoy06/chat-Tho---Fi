@@ -91,7 +91,7 @@ class SocketService {
         serverUrl = Uri.base.origin;
       }
     } else {
-      serverUrl = 'https://chat-tho-fi-vn.onrender.com';
+      serverUrl = 'https://chat-tho-fi-vn-9s8u.onrender.com';
     }
 
     socket = IO.io(

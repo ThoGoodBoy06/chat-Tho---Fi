@@ -18,7 +18,7 @@ class ApiService {
       }
       return '${Uri.base.origin}/api';
     }
-    return 'https://chat-tho-fi-vn.onrender.com/api';
+    return 'https://chat-tho-fi-vn-9s8u.onrender.com/api';
   }
 
   static String formatImageUrl(String? url) {

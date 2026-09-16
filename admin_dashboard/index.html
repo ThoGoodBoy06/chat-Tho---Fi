@@ -621,38 +621,76 @@
       <!-- ================= 7. TAB SYSTEM ================= -->
       <section class="tab-panel" id="tab-system">
         <!-- Banner trạng thái lớn trên cùng -->
-        <div class="glass-card" style="margin-bottom: 24px; border-left: 5px solid var(--accent-emerald);" id="maint-banner-card">
+        <div class="glass-card" style="margin-bottom: 24px; border-left: 6px solid #10b981;" id="maint-banner-card">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
             <div style="display:flex; align-items:center; gap:16px;">
-              <div id="maint-status-icon" style="width:52px; height:52px; border-radius:50%; background:rgba(16,185,129,0.15); display:flex; align-items:center; justify-content:center; font-size:26px; border:1px solid rgba(16,185,129,0.3);">
+              <div id="maint-status-icon" style="width:54px; height:54px; border-radius:50%; background:rgba(16,185,129,0.18); display:flex; align-items:center; justify-content:center; font-size:28px; border:2px solid rgba(16,185,129,0.4);">
                 🟢
               </div>
               <div>
                 <h3 id="maint-status-title" style="font-size:18px; font-weight:800; font-family:'Outfit',sans-serif; color:var(--text-primary);">
                   Hệ thống đang hoạt động bình thường
                 </h3>
-                <p id="maint-status-desc" style="font-size:12px; color:var(--text-secondary); margin-top:2px;">
+                <p id="maint-status-desc" style="font-size:13px; color:var(--text-secondary); margin-top:2px;">
                   Người dùng có thể truy cập, nhắn tin, gửi ảnh và gọi điện bình thường.
                 </p>
               </div>
             </div>
 
-            <!-- Cặp Nút TẮT và BẬT Bảo trì rõ ràng -->
-            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-              <button type="button" id="btn-mode-off" class="btn-system-mode active-off" onclick="setSystemMode(false)">
-                🟢 TẮT BẢO TRÌ
-              </button>
-              <button type="button" id="btn-mode-on" class="btn-system-mode" onclick="setSystemMode(true)">
-                🔴 BẬT BẢO TRÌ
-              </button>
+            <!-- Huy hiệu trạng thái to rõ ràng -->
+            <div id="maint-live-badge" style="padding:10px 22px; border-radius:30px; font-size:14px; font-weight:800; font-family:'Outfit',sans-serif; background:rgba(16,185,129,0.2); color:#34d399; border:2px solid #10b981; box-shadow:0 0 15px rgba(16,185,129,0.3); letter-spacing:0.5px;">
+              🟢 ĐANG BÌNH THƯỜNG
             </div>
           </div>
         </div>
 
-        <!-- Khung cấu hình chi tiết -->
+        <!-- Khung chọn chế độ và cấu hình thông báo -->
         <div class="glass-card">
           <div class="card-title">
-            <span>⚙️ Cấu hình thông báo bảo trì</span>
+            <span>⚙️ Chọn trạng thái hoạt động của hệ thống (Bấm vào 1 trong 2 ô dưới đây)</span>
+          </div>
+
+          <!-- BỘ 2 THẺ CHỌN TO RÕ RÀNG: BÌNH THƯỜNG vs BẢO TRÌ -->
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:18px; margin-bottom:24px;">
+            <!-- THẺ 1: TẮT BẢO TRÌ (BÌNH THƯỜNG) -->
+            <div id="card-mode-normal" onclick="setSystemMode(false)" style="padding:20px; border-radius:16px; cursor:pointer; transition:all 0.25s ease; border:2.5px solid #10b981; background:linear-gradient(135deg, rgba(16,185,129,0.2), rgba(15,23,42,0.8)); box-shadow:0 0 25px rgba(16,185,129,0.25); display:flex; flex-direction:column; justify-content:space-between; gap:16px;">
+              <div style="display:flex; align-items:center; gap:14px;">
+                <div style="font-size:32px; width:50px; height:50px; border-radius:12px; background:rgba(16,185,129,0.25); display:flex; align-items:center; justify-content:center; border:1px solid rgba(16,185,129,0.4);">
+                  🟢
+                </div>
+                <div>
+                  <div style="font-size:16px; font-weight:800; color:#34d399; font-family:'Outfit',sans-serif;">
+                    TẮT BẢO TRÌ (Bình thường)
+                  </div>
+                  <div style="font-size:12px; color:var(--text-secondary); margin-top:3px;">
+                    Mở cửa cho người dùng vào app sử dụng đầy đủ tính năng.
+                  </div>
+                </div>
+              </div>
+              <div id="tag-mode-normal" style="padding:6px 14px; border-radius:8px; font-size:13px; font-weight:800; background:#10b981; color:#ffffff; align-self:flex-start; display:inline-flex; align-items:center; gap:6px;">
+                ✔ ĐANG ĐƯỢC CHỌN
+              </div>
+            </div>
+
+            <!-- THẺ 2: BẬT BẢO TRÌ -->
+            <div id="card-mode-maint" onclick="setSystemMode(true)" style="padding:20px; border-radius:16px; cursor:pointer; transition:all 0.25s ease; border:2px solid rgba(255,255,255,0.1); background:rgba(15,23,42,0.6); opacity:0.65; display:flex; flex-direction:column; justify-content:space-between; gap:16px;">
+              <div style="display:flex; align-items:center; gap:14px;">
+                <div style="font-size:32px; width:50px; height:50px; border-radius:12px; background:rgba(239,68,68,0.15); display:flex; align-items:center; justify-content:center; border:1px solid rgba(239,68,68,0.3);">
+                  🔴
+                </div>
+                <div>
+                  <div style="font-size:16px; font-weight:800; color:#f87171; font-family:'Outfit',sans-serif;">
+                    BẬT CHẾ ĐỘ BẢO TRÌ
+                  </div>
+                  <div style="font-size:12px; color:var(--text-muted); margin-top:3px;">
+                    Tạm dừng hệ thống, khóa truy cập người dùng và hiện thông báo bảo trì.
+                  </div>
+                </div>
+              </div>
+              <div id="tag-mode-maint" style="padding:6px 14px; border-radius:8px; font-size:13px; font-weight:800; background:rgba(255,255,255,0.1); color:var(--text-muted); align-self:flex-start; display:inline-flex; align-items:center; gap:6px;">
+                ○ Bấm vào đây để chọn
+              </div>
+            </div>
           </div>
 
           <!-- Khu vực tin nhắn thông báo bảo trì -->
@@ -678,12 +716,12 @@
           </div>
 
           <!-- Hộp thông báo kết quả lưu thành công -->
-          <div id="system-save-alert" style="display:none; padding:14px 18px; border-radius:12px; font-size:14px; font-weight:700; margin-bottom:20px; align-items:center; gap:10px;">
+          <div id="system-save-alert" style="display:none; padding:16px 20px; border-radius:12px; font-size:14px; font-weight:700; margin-bottom:20px; align-items:center; gap:12px;">
           </div>
 
           <!-- Nút lưu cấu hình -->
           <div style="display:flex; justify-content:flex-end; gap:12px;">
-            <button type="button" class="btn btn-primary" id="btn-save-system-config" style="padding:12px 28px; font-size:14px; font-weight:700;">
+            <button type="button" class="btn btn-primary" id="btn-save-system-config" style="padding:14px 32px; font-size:15px; font-weight:800; letter-spacing:0.5px;">
               <span>💾 Lưu và Áp dụng tức thì</span>
             </button>
           </div>

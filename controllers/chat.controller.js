@@ -7,7 +7,7 @@ const { getMessaging } = require("firebase-admin/messaging");
 const fs = require("fs");
 const path = require("path");
 
-const BASE_HOST_URL = (process.env.RENDER_EXTERNAL_URL || "https://chat-tho-fi-vn.onrender.com").replace(/\/$/, "");
+const BASE_HOST_URL = (process.env.RENDER_EXTERNAL_URL || "https://chat-tho-fi-vn-9s8u.onrender.com").replace(/\/$/, "");
 
 // Khởi tạo Firebase Admin (Chỉ chạy 1 lần khi server khởi động)
 if (!getApps().length) {

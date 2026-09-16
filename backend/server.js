@@ -144,7 +144,7 @@ app.post("/api/client_debug", (req, res) => {
 });
 
 // Tự động Self-Ping Render mỗi 10 phút để phòng chống Cold Start (ngủ ngầm trên Render free tier)
-const RENDER_PING_URL = (process.env.RENDER_EXTERNAL_URL || "https://chat-tho-fi-vn.onrender.com").replace(/\/$/, "");
+const RENDER_PING_URL = (process.env.RENDER_EXTERNAL_URL || "https://chat-tho-fi-vn-9s8u.onrender.com").replace(/\/$/, "");
 if (RENDER_PING_URL) {
     setInterval(() => {
         try {

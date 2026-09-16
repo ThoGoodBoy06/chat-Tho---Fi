@@ -1542,7 +1542,7 @@ document.getElementById("btn-save-system-config")?.addEventListener("click", asy
         alertEl.style.background = "rgba(16, 185, 129, 0.18)";
         alertEl.style.border = "1.5px solid #10b981";
         alertEl.style.color = "#ffffff";
-        alertEl.innerHTML = "🟢 <span><b>THÔNG BÁO:</b> Đã lưu thành công! Chế độ bảo trì <b>ĐANG TẮT</b>.<br><small style="color:#6ee7b7;">Hệ thống đang mở cửa bình thường cho tất cả người dùng.</small></span>";
+        alertEl.innerHTML = `🟢 <span><b>THÔNG BÁO:</b> Đã lưu thành công! Chế độ bảo trì <b>ĐANG TẮT</b>.<br><small style="color:#6ee7b7;">Hệ thống đang mở cửa bình thường cho tất cả người dùng.</small></span>`;
       }
     }
 

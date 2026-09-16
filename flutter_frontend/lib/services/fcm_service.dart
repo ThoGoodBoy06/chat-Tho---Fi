@@ -19,7 +19,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     final msgId = data['messageId']?.toString();
     final convId = data['conversationId']?.toString();
     if (msgId != null && msgId.isNotEmpty) {
-      final url = Uri.parse('https://chat-tho-fi-vn.onrender.com/api/chat/messages/mark-delivered');
+      final url = Uri.parse('https://chat-tho-fi-vn-9s8u.onrender.com/api/chat/messages/mark-delivered');
       await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
