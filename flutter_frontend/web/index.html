@@ -2740,6 +2740,27 @@
         return audioCtx;
       }
 
+      
+      // Intercept RTCPeerConnection addTrack to prevent Dart WebRTC wrapper failures
+      const _origAddTrack = window.RTCPeerConnection.prototype.addTrack;
+      window.RTCPeerConnection.prototype.addTrack = function(track, stream) {
+        console.log("🛠️ [Native Intercept] addTrack called for:", track ? track.kind : 'unknown');
+        try {
+          return _origAddTrack.apply(this, arguments);
+        } catch (err) {
+          console.warn("⚠️ [Native Intercept] addTrack error (likely Dart wrapper type mismatch):", err);
+          try {
+            if (stream) {
+              console.log("🛠️ [Native Intercept] Using fallback addStream()...");
+              this.addStream(stream);
+              console.log("✅ [Native Intercept] Fallback addStream succeeded!");
+            }
+          } catch(err2) {
+            console.error("❌ [Native Intercept] addStream fallback failed:", err2);
+          }
+        }
+      };
+
       function unlockAudio() {
         try {
           var ctx = getAudioCtx();
