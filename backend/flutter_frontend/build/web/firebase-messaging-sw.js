@@ -1,5 +1,5 @@
 // Version tracking - giúp trình duyệt nhận diện bản cập nhật mới và hủy cache SW cũ
-const SW_VERSION = "2.1.1789282392944";
+const SW_VERSION = "2.2.1789531122334";
 console.log("[firebase-messaging-sw.js] SW Version Active:", SW_VERSION);
 
 self.addEventListener("install", (event) => {
@@ -38,9 +38,30 @@ messaging.onBackgroundMessage((payload) => {
   console.log("[firebase-messaging-sw.js] Đã nhận tin nhắn chạy ngầm", payload);
   // [Auto-Dismiss] Huỷ thông báo cuộc gọi đến khi đối phương tắt máy
   if (payload.data?.type === "call_ended" || payload.data?.type === "CALL_ENDED") {
-    return self.registration.getNotifications({ tag: "incoming-call" }).then((notifications) => {
-      notifications.forEach((n) => n.close());
-    });
+    return Promise.all([
+      self.registration.getNotifications().then((notifications) => {
+        notifications.forEach((n) => {
+          if (n.tag === "incoming-call" || (n.title && n.title.includes("gọi"))) {
+            n.close();
+          }
+        });
+      }),
+      self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+        clients.forEach((client) => {
+          client.postMessage({ type: "call_ended" });
+        });
+      })
+    ]);
+  }
+
+  // 🛡️ CHỐNG TRÙNG LẶP THÔNG BÁO (DUPLICATE NOTIFICATION PREVENTER):
+  // Khi tin nhắn đã có 'notification' (hoặc webpush.notification), Firebase Web SDK
+  // ngầm ĐÃ TỰ ĐỘNG hiển thị thông báo ra màn hình người dùng.
+  // Nếu gọi self.registration.showNotification() nữa sẽ sinh ra 2 thông báo cùng lúc!
+  // Chỉ tự tay hiển thị thủ công khi đây là DATA-ONLY message (như cuộc gọi đến INCOMING_CALL).
+  if (payload.notification) {
+    console.log("[firebase-messaging-sw.js] Bỏ qua showNotification thủ công vì Firebase SDK đã tự render.");
+    return;
   }
 
   const isCall = payload.data?.type === "incoming_call" || payload.data?.type === "INCOMING_CALL";

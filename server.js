@@ -878,7 +878,18 @@ app.post("/api/users/fcm-token", async(req, res) => {
             data: { fcmToken: fcmToken },
         }).catch(() => {});
 
-        // 2. Upsert vào bảng UserDevices hỗ trợ nhận push trên nhiều thiết bị đồng thời
+        // 2. Dọn dẹp token cũ nếu cùng thiết bị (deviceId) gửi token mới (chống 1 máy lưu 2 token)
+        if (deviceId) {
+            await prisma.userDevices.deleteMany({
+                where: {
+                    userId: decoded.id,
+                    deviceId: deviceId,
+                    fcmToken: { not: fcmToken }
+                }
+            }).catch(() => {});
+        }
+
+        // 3. Upsert vào bảng UserDevices hỗ trợ nhận push trên nhiều thiết bị đồng thời
         await prisma.userDevices.upsert({
             where: { fcmToken: fcmToken },
             update: {

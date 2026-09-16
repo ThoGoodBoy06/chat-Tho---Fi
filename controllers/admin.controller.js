@@ -904,6 +904,46 @@ exports.broadcastNotification = async (req, res) => {
           const response = await messaging.sendEachForMulticast({
             tokens: batchTokens,
             notification: { title, body },
+            android: {
+              priority: "high",
+              notification: {
+                channelId: "chat_messages_v3",
+                channel_id: "chat_messages_v3",
+                sound: "default",
+                defaultVibrateTimings: true,
+                tag: "admin-broadcast",
+              },
+            },
+            apns: {
+              headers: {
+                "apns-push-type": "alert",
+                "apns-priority": "10",
+              },
+              payload: {
+                aps: {
+                  alert: { title, body },
+                  sound: "default",
+                  badge: 1,
+                },
+              },
+            },
+            webpush: {
+              headers: {
+                Urgency: "high",
+                TTL: "86400",
+              },
+              notification: {
+                title,
+                body,
+                icon: "/icon.png",
+                badge: "/icon.png",
+                tag: "admin-broadcast",
+                renotify: true,
+              },
+              fcmOptions: {
+                link: "/",
+              },
+            },
             data: {
               ...data,
               type: "ADMIN_BROADCAST",

@@ -1,5 +1,5 @@
 // Version tracking - giúp trình duyệt nhận diện bản cập nhật mới và hủy cache SW cũ
-const SW_VERSION = "2.1.1789282392943";
+const SW_VERSION = "2.2.1789531122334";
 console.log("[firebase-messaging-sw.js] SW Version Active:", SW_VERSION);
 
 self.addEventListener("install", (event) => {
@@ -52,6 +52,16 @@ messaging.onBackgroundMessage((payload) => {
         });
       })
     ]);
+  }
+
+  // 🛡️ CHỐNG TRÙNG LẶP THÔNG BÁO (DUPLICATE NOTIFICATION PREVENTER):
+  // Khi tin nhắn đã có 'notification' (hoặc webpush.notification), Firebase Web SDK
+  // ngầm ĐÃ TỰ ĐỘNG hiển thị thông báo ra màn hình người dùng.
+  // Nếu gọi self.registration.showNotification() nữa sẽ sinh ra 2 thông báo cùng lúc!
+  // Chỉ tự tay hiển thị thủ công khi đây là DATA-ONLY message (như cuộc gọi đến INCOMING_CALL).
+  if (payload.notification) {
+    console.log("[firebase-messaging-sw.js] Bỏ qua showNotification thủ công vì Firebase SDK đã tự render.");
+    return;
   }
 
   const isCall = payload.data?.type === "incoming_call" || payload.data?.type === "INCOMING_CALL";
