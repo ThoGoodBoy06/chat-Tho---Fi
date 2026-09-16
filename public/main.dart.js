@@ -8906,33 +8906,62 @@ return s}throw A.d(A.bF("Incorrect number or type of arguments",null))},
 b41(a){var s=new window.RTCIceCandidate(new A.Ko([],[]).lh(a))
 s.toString
 return s},
-b42(a){var s=new window.RTCPeerConnection(new A.Ko([],[]).lh(a));
-try{
-  window._activePeerConnection=s;
-  s.addEventListener("track",function(e){
-    console.log("🔊 [Native P2P Track]:",e.track?e.track.kind:"unknown");
-    if(e.track){
-      e.track.enabled=true;
-      var stm=(e.streams&&e.streams[0])?e.streams[0]:new MediaStream([e.track]);
-      if(stm&&window._callAudioEngine&&window._callAudioEngine.playRemoteStream){
-        window._callAudioEngine.playRemoteStream(stm);
+b42(a){
+  var rtcCfg = null;
+  try {
+    rtcCfg = new A.Ko([],[]).lh(a) || {};
+    rtcCfg.iceServers = [
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:stun1.l.google.com:19302" },
+      { urls: "stun:stun2.l.google.com:19302" },
+      { urls: "stun:stun.cloudflare.com:3478" },
+      {
+        urls: [
+          "turn:openrelay.metered.ca:80",
+          "turn:openrelay.metered.ca:443",
+          "turn:openrelay.metered.ca:443?transport=tcp"
+        ],
+        username: "openrelayproject",
+        credential: "openrelayproject"
       }
-      e.track.addEventListener("unmute",function(){
-        console.log("🔊 [AudioTrack UNMUTED]:",e.track.id);
-        if(window._callAudioEngine&&window._callAudioEngine.playRemoteStream){
+    ];
+    rtcCfg.iceCandidatePoolSize = 10;
+  } catch(e) { rtcCfg = new A.Ko([],[]).lh(a); }
+  var s=new window.RTCPeerConnection(rtcCfg);
+  try {
+    window._activePeerConnection=s;
+    s.addEventListener("iceconnectionstatechange", function() {
+      console.log("⚡ [Native P2P ICE State]:", s.iceConnectionState);
+      if (s.iceConnectionState === "failed" && s.restartIce) {
+        console.log("⚠️ [Native P2P ICE] failed -> executing restartIce()...");
+        try { s.restartIce(); } catch(err) {}
+      }
+    });
+    s.addEventListener("track", function(e) {
+      console.log("🔊 [Native P2P Track]:", e.track ? e.track.kind : "unknown", e.streams);
+      var stm = (e.streams && e.streams[0]) ? e.streams[0] : (e.track ? new MediaStream([e.track]) : null);
+      if (stm) {
+        if (window.attachRemoteStream) {
+          window.attachRemoteStream(stm);
+        }
+        if (window._callAudioEngine && window._callAudioEngine.playRemoteStream) {
           window._callAudioEngine.playRemoteStream(stm);
         }
-      });
-    }
-  });
-  s.addEventListener("addstream",function(e){
-    console.log("🔊 [Native P2P AddStream]:",e.stream?e.stream.id:"null");
-    if(e.stream&&window._callAudioEngine&&window._callAudioEngine.playRemoteStream){
-      window._callAudioEngine.playRemoteStream(e.stream);
-    }
-  });
-}catch(hkErr){console.warn("Lỗi hook RTCPeerConnection:",hkErr);}
-return s},
+      }
+    });
+    s.addEventListener("addstream", function(e) {
+      console.log("🔊 [Native P2P AddStream]:", e.stream ? e.stream.id : "null");
+      if (e.stream) {
+        if (window.attachRemoteStream) {
+          window.attachRemoteStream(e.stream);
+        }
+        if (window._callAudioEngine && window._callAudioEngine.playRemoteStream) {
+          window._callAudioEngine.playRemoteStream(e.stream);
+        }
+      }
+    });
+  } catch(hkErr) { console.warn("Lỗi hook RTCPeerConnection b42:", hkErr); }
+  return s},
 b5N(a,b){var s=new WebSocket(a)
 s.toString
 return s},
@@ -102250,7 +102279,7 @@ $1(a){var s=this.a.r
 A.bQ("\u26a1 WebRTC ICE Connection State: "+A.f(s==null?null:s.iceConnectionState))},
 $S:13}
 A.avB.prototype={
-$1(a){try{if(window._callAudioEngine){window._callAudioEngine.unlockCallAudio();window._callAudioEngine.stopCallRingtones();}else A.FS();}catch(_){A.FS();}
+$1(a){try{if(window._callAudioEngine){try{if(window.unlockAudio)window.unlockAudio();}catch(_){};if(window._callAudioEngine)window._callAudioEngine.unlockCallAudio();window._callAudioEngine.stopCallRingtones();}else A.FS();}catch(_){A.FS();}
 this.b.$1(new A.avA(this.a))
 this.c.$0()},
 $S:20}

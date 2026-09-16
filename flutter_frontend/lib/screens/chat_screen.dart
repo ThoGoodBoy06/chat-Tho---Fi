@@ -5138,7 +5138,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                     canDismiss = true;
                                     SoundService.stopAllCallSounds();
                                     try {
-                                      final engine = (html.window as dynamic)._callAudioEngine;
+                                      final jsWin = html.window as dynamic;
+                                      if (jsWin.unlockAudio != null) {
+                                        jsWin.unlockAudio();
+                                      }
+                                      final engine = jsWin._callAudioEngine;
                                       if (engine != null && engine.unlockCallAudio != null) {
                                         engine.unlockCallAudio();
                                       }
@@ -5221,7 +5225,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     }
 
     try {
-      final engine = (html.window as dynamic)._callAudioEngine;
+      final jsWin = html.window as dynamic;
+      if (jsWin.unlockAudio != null) {
+        jsWin.unlockAudio();
+      }
+      final engine = jsWin._callAudioEngine;
       if (engine != null && engine.unlockCallAudio != null) {
         engine.unlockCallAudio();
       }
@@ -5321,7 +5329,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       try {
         SoundService.stopAllCallSounds();
         try {
-          final engine = (html.window as dynamic)._callAudioEngine;
+          final jsWin = html.window as dynamic;
+          if (jsWin.stopCallAudio != null) {
+            jsWin.stopCallAudio();
+          }
+          final engine = jsWin._callAudioEngine;
           if (engine != null && engine.destroyCallAudio != null) {
             engine.destroyCallAudio();
           }
@@ -5465,11 +5477,18 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                     {'urls': 'stun:stun.l.google.com:19302'},
                     {'urls': 'stun:stun1.l.google.com:19302'},
                     {'urls': 'stun:stun2.l.google.com:19302'},
-                    {'urls': 'stun:stun3.l.google.com:19302'},
-                    {'urls': 'stun:stun4.l.google.com:19302'},
                     {'urls': 'stun:stun.cloudflare.com:3478'},
+                    {
+                      'urls': [
+                        'turn:openrelay.metered.ca:80',
+                        'turn:openrelay.metered.ca:443',
+                        'turn:openrelay.metered.ca:443?transport=tcp',
+                      ],
+                      'username': 'openrelayproject',
+                      'credential': 'openrelayproject',
+                    },
                   ],
-                  'iceCandidatePoolSize': 0
+                  'iceCandidatePoolSize': 10
                 };
                 pc = await html.RtcPeerConnection(config);
 
@@ -5533,6 +5552,16 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                       pc!.addTrack(track, localStream!);
                     } catch (_) {}
                   }
+                  // Đảm bảo Transceiver audio được gán với direction: sendrecv
+                  try {
+                    final audioTracks = localStream!.getAudioTracks();
+                    if (audioTracks.isNotEmpty) {
+                      final dynamic pcDynamic = pc;
+                      if (pcDynamic.addTransceiver != null) {
+                        pcDynamic.addTransceiver(audioTracks.first, {'direction': 'sendrecv'});
+                      }
+                    }
+                  } catch (_) {}
                 }
 
                 void handleRemoteStream(html.MediaStream? stream) {
@@ -5540,6 +5569,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                   try {
                     for (var track in stream.getAudioTracks()) {
                       (track as dynamic).enabled = true;
+                    }
+                  } catch (_) {}
+                  // Gắn vào Native Audio Helper
+                  try {
+                    final jsWin = html.window as dynamic;
+                    if (jsWin.attachRemoteStream != null) {
+                      jsWin.attachRemoteStream(stream);
                     }
                   } catch (_) {}
                   if (remoteAudio != null) {
@@ -5597,8 +5633,17 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 });
 
                 pc?.onIceConnectionStateChange.listen((_) {
-                  print('⚡ WebRTC ICE Connection State: ${pc?.iceConnectionState}');
-                  // 🌟 Giữ nguyên phòng đàm thoại, không tự động tắt máy khi mạng biến động
+                  final state = pc?.iceConnectionState ?? '';
+                  print('⚡ WebRTC ICE Connection State: $state');
+                  if (state == 'failed') {
+                    print('⚠️ WebRTC ICE failed -> attempting restartIce()...');
+                    try {
+                      final dynamic pcDynamic = pc;
+                      if (pcDynamic.restartIce != null) {
+                        pcDynamic.restartIce();
+                      }
+                    } catch (_) {}
+                  }
                 });
 
                 if (pendingSignals.isNotEmpty) {
