@@ -16,8 +16,8 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
   <!-- High Priority Preloads for Instant Native Startup -->
-  <link rel="preload" href="flutter_bootstrap.js?v=audio_perfect_1789544481717" as="script">
-  <link rel="preload" href="main.dart.js?v=audio_perfect_1789544481717" as="script">
+  <link rel="preload" href="flutter_bootstrap.js?v=audio_master_1789544913774" as="script">
+  <link rel="preload" href="main.dart.js?v=audio_master_1789544913774" as="script">
   <link rel="preload" href="canvaskit/canvaskit.wasm" as="fetch" crossorigin="anonymous">
   <link rel="preload" href="/tho_fi_logo_transparent.png" as="image">
   <!-- Official Messenger Reaction Emoji Preloads -->
@@ -1884,7 +1884,7 @@
   <script>
     window.flutterWebRenderer = "canvaskit";
   </script>
-  <script src="flutter_bootstrap.js?v=audio_perfect_1789544481717" async></script>
+  <script src="flutter_bootstrap.js?v=audio_master_1789544913774" async></script>
 
   <script id="messenger-theme-picker-script">
     window._openMessengerThemePicker = function (convId, convName) {
@@ -2863,7 +2863,7 @@
             }
           } catch(err) {}
         },
-        playRemoteStream: function (stream) {
+                playRemoteStream: function (stream) {
           if (!stream) return;
           var audioTracks = stream.getAudioTracks ? stream.getAudioTracks() : [];
           if (audioTracks.length === 0) {
@@ -2871,98 +2871,80 @@
             return;
           }
 
-          // Dừng chuông và tút tút ngay lập tức
+          // Dừng toàn bộ chuông gọi và chuông chờ
           this.stopCallRingtones();
 
-          // Kích hoạt tất cả track audio và gắn listener unmute
+          // Kích hoạt tất cả audio tracks
           audioTracks.forEach(function (track) {
             track.enabled = true;
             console.log('🎤 [AudioTrack LIVE]:', track.id, 'label:', track.label, 'muted:', track.muted);
             track.addEventListener('unmute', function () {
               console.log('🔊 [AudioTrack UNMUTED - PACKETS FLOWING!]:', track.id);
-              var me = document.getElementById('remoteAudioMediaElement');
-              if (me) { me.muted = false; me.volume = 1.0; me.play().catch(function () {}); }
               var ra = document.getElementById('remoteAudioPlayer');
-              if (ra) { ra.muted = false; ra.volume = 1.0; ra.play().catch(function () {}); }
+              if (ra) {
+                ra.muted = false;
+                ra.volume = 1.0;
+                ra.play().catch(function () {});
+              }
             });
           });
 
           window._activeRemoteStreamId = stream.id;
+          console.log('🔊 [_callAudioEngine] Kết nối âm thanh ra loa qua #remoteAudioPlayer duy nhất...');
 
-          console.log('🔊 [_callAudioEngine] Kết nối luồng đàm thoại 2 chiều ra loa ngoài...');
-
-          // KÊNH 1: Thẻ Video playsinline (Tối ưu cho iOS Safari và WebKit di động)
-          var mediaEl = document.getElementById('remoteAudioMediaElement');
-          if (!mediaEl) {
-            mediaEl = document.createElement('video');
-            mediaEl.id = 'remoteAudioMediaElement';
-            mediaEl.setAttribute('playsinline', 'true');
-            mediaEl.setAttribute('webkit-playsinline', 'true');
-            mediaEl.autoplay = true;
-            mediaEl.style.cssText = 'position:fixed;bottom:0;right:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:999999;';
-            document.body.appendChild(mediaEl);
-          }
-          mediaEl.srcObject = stream;
-          mediaEl.muted = false;
-          mediaEl.volume = 1.0;
-          var pMedia = mediaEl.play();
-          if (pMedia && pMedia.catch) pMedia.catch(function (e) { console.warn('mediaEl play:', e); });
-
-          // KÊNH 2: Thẻ Audio tiêu chuẩn
+          // 🌟 KÊNH PHÁT DUY NHẤT: Thẻ Audio tiêu chuẩn, tránh chồng chéo nhiều thẻ gây triệt tiêu âm thanh (phase cancellation)
           var audioEl = document.getElementById('remoteAudioPlayer');
           if (!audioEl) {
             audioEl = document.createElement('audio');
             audioEl.id = 'remoteAudioPlayer';
             audioEl.autoplay = true;
             audioEl.setAttribute('playsinline', 'true');
+            audioEl.setAttribute('webkit-playsinline', 'true');
             audioEl.style.cssText = 'position:fixed;bottom:0;right:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:999999;';
             document.body.appendChild(audioEl);
           }
           audioEl.srcObject = stream;
           audioEl.muted = false;
           audioEl.volume = 1.0;
-          var pAudio = audioEl.play();
-          if (pAudio && pAudio.catch) pAudio.catch(function (e) { console.warn('audioEl play:', e); });
 
-          // KÊNH 3: Web Audio API nếu audio context đang chạy
-          try {
-            var ctx = getAudioCtx();
-            if (ctx && ctx.state === 'running') {
-              if (window._remoteAudioSourceNode) {
-                try { window._remoteAudioSourceNode.disconnect(); } catch (_) {}
-              }
-              window._remoteAudioSourceNode = ctx.createMediaStreamSource(stream);
-              window._remoteAudioSourceNode.connect(ctx.destination);
-              console.log('✅ [_callAudioEngine] Web Audio API đã nối trực tiếp ra loa hệ điều hành!');
+          function showUnmuteOverlay() {
+            var btn = document.getElementById('callAudioUnmuteBanner');
+            if (!btn) {
+              btn = document.createElement('div');
+              btn.id = 'callAudioUnmuteBanner';
+              btn.innerHTML = '🔊 <b>Bấm vào đây để bật tiếng cuộc gọi</b>';
+              btn.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:#10B981;color:#fff;padding:12px 24px;border-radius:24px;font-size:15px;font-family:sans-serif;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,0.6);z-index:2147483647;cursor:pointer;animation:pulse 1.5s infinite;';
+              btn.onclick = function () {
+                if (audioEl) {
+                  audioEl.muted = false;
+                  audioEl.volume = 1.0;
+                  audioEl.play().catch(function () {});
+                }
+                var c = getAudioCtx();
+                if (c && c.state === 'suspended') c.resume().catch(function () {});
+                btn.remove();
+              };
+              document.body.appendChild(btn);
             }
-          } catch (ctxErr) {
-            console.warn('Web Audio API note:', ctxErr);
           }
 
-          // Kiểm tra và hiển thị nút trợ giúp bật tiếng nếu trình duyệt chặn tự phát âm thanh
+          var pAudio = audioEl.play();
+          if (pAudio && pAudio.catch) {
+            pAudio.catch(function (e) {
+              console.warn('⚠️ audioEl.play() cần tương tác người dùng:', e);
+              showUnmuteOverlay();
+            });
+          }
+
           setTimeout(function () {
-            if ((mediaEl && mediaEl.paused) || (audioEl && audioEl.paused)) {
-              console.warn('⚠️ Trình duyệt chặn autoplay! Hiển thị nút bật tiếng...');
-              var btn = document.getElementById('callAudioUnmuteBanner');
-              if (!btn) {
-                btn = document.createElement('div');
-                btn.id = 'callAudioUnmuteBanner';
-                btn.innerHTML = '🔊 <b>Bấm vào đây để bật tiếng cuộc gọi</b>';
-                btn.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:#10B981;color:#fff;padding:12px 24px;border-radius:24px;font-size:15px;font-family:sans-serif;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,0.6);z-index:2147483647;cursor:pointer;animation:pulse 1.5s infinite;';
-                btn.onclick = function () {
-                  if (mediaEl) { mediaEl.muted = false; mediaEl.volume = 1.0; mediaEl.play().catch(function () {}); }
-                  if (audioEl) { audioEl.muted = false; audioEl.volume = 1.0; audioEl.play().catch(function () {}); }
-                  var c = getAudioCtx();
-                  if (c && c.state === 'suspended') c.resume().catch(function () {});
-                  btn.remove();
-                };
-                document.body.appendChild(btn);
-              }
+            if (audioEl && audioEl.paused) {
+              showUnmuteOverlay();
             } else {
               var btn = document.getElementById('callAudioUnmuteBanner');
               if (btn) btn.remove();
             }
           }, 800);
+        }, 800);
         }};
     })();
   </script>
@@ -2975,7 +2957,7 @@
       // Đăng ký Service Worker để Chrome/Edge và Android kích hoạt cờ cài đặt ứng dụng (PWA)
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function () {
-          navigator.serviceWorker.register('/flutter_service_worker.js?v=audio_perfect_1789544481717.2.1').then(function (reg) {
+          navigator.serviceWorker.register('/flutter_service_worker.js?v=audio_master_1789544913774.2.1').then(function (reg) {
             console.log('[PWA] Service Worker đăng ký thành công cho PWA');
           }).catch(function (err) {
             console.warn('[PWA] Service Worker registration failed:', err);

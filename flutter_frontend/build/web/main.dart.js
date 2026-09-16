@@ -8909,20 +8909,6 @@ return s},
 b42(a){var s=new window.RTCPeerConnection(new A.Ko([],[]).lh(a));
 try{
   window._activePeerConnection=s;
-  s.addEventListener("icecandidate",function(e){
-    if(e&&e.candidate&&e.candidate.candidate){
-      var pid=window._currentCallPartnerId||window._currentCallerId||(window._activeCallInfo&&window._activeCallInfo.partnerId)||"";
-      console.log("⚡ [Native P2P ICE] Gửi candidate tới:",pid,e.candidate.candidate);
-      if(typeof $!=="undefined"&&$.bj&&pid){
-        try{
-          var r=(typeof t!=="undefined"&&t.N)?t.N:null;
-          if(typeof A!=="undefined"&&A.V&&r&&t.X&&t.K){
-            $.bj.cn("webrtc_signal",A.V(["connectedUserId",pid,"signal",A.V(["type","candidate","candidate",e.candidate.candidate,"sdpMid",e.candidate.sdpMid,"sdpMLineIndex",e.candidate.sdpMLineIndex],r,t.X)],r,t.K));
-          }
-        }catch(err){console.warn("Lỗi emit candidate:",err);}
-      }
-    }
-  });
   s.addEventListener("track",function(e){
     console.log("🔊 [Native P2P Track]:",e.track?e.track.kind:"unknown");
     if(e.track){
@@ -8932,7 +8918,7 @@ try{
         window._callAudioEngine.playRemoteStream(stm);
       }
       e.track.addEventListener("unmute",function(){
-        console.log("🔊 [AudioTrack UNMUTED - PACKETS FLOWING!]:",e.track.id);
+        console.log("🔊 [AudioTrack UNMUTED]:",e.track.id);
         if(window._callAudioEngine&&window._callAudioEngine.playRemoteStream){
           window._callAudioEngine.playRemoteStream(stm);
         }

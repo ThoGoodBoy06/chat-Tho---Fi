@@ -5387,6 +5387,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               try {
                 final type = signal['type']?.toString();
                 if (type == 'offer') {
+                  if (pc!.signalingState != 'stable') {
+                    print('⚠️ Bỏ qua offer trùng lặp vì signalingState là: ' + pc!.signalingState.toString());
+                    return;
+                  }
                   await pc!.setRemoteDescription({
                     'type': 'offer',
                     'sdp': signal['sdp'],
@@ -5408,6 +5412,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                     }
                   });
                 } else if (type == 'answer') {
+                  if (pc!.signalingState != 'have-local-offer') {
+                    print('⚠️ Bỏ qua answer trùng lặp vì signalingState là: ' + pc!.signalingState.toString());
+                    return;
+                  }
                   await pc!.setRemoteDescription({
                     'type': 'answer',
                     'sdp': signal['sdp'],
@@ -5518,6 +5526,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 if (localStream != null && pc != null) {
                   for (var track in localStream!.getTracks()) {
                     try {
+                      (track as dynamic).enabled = true;
                       pc!.addTrack(track, localStream!);
                     } catch (_) {}
                   }

@@ -1027,14 +1027,11 @@ module.exports = (io) => {
         senderId: socket.userId,
       };
 
-      io.to(connectedUserId).emit("webrtc_signal", signalPayload);
       const targetSocketId = userSockets.get(connectedUserId);
-      if (targetSocketId && targetSocketId !== connectedUserId) {
+      if (targetSocketId) {
         io.to(targetSocketId).emit("webrtc_signal", signalPayload);
-      }
-      const activeInfo = activeCalls.get(socket.userId) || (connectedUserId ? activeCalls.get(connectedUserId) : null);
-      if (activeInfo && activeInfo.conversationId) {
-        socket.to(activeInfo.conversationId).emit("webrtc_signal", signalPayload);
+      } else {
+        io.to(connectedUserId).emit("webrtc_signal", signalPayload);
       }
     });
 
