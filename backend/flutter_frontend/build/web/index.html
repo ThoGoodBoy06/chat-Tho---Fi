@@ -16,8 +16,8 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
   <!-- High Priority Preloads for Instant Native Startup -->
-  <link rel="preload" href="flutter_bootstrap.js?v=1789542285428" as="script">
-  <link rel="preload" href="main.dart.js?v=1789542285428" as="script">
+  <link rel="preload" href="flutter_bootstrap.js?v=audio2way_1789543400744" as="script">
+  <link rel="preload" href="main.dart.js?v=audio2way_1789543400744" as="script">
   <link rel="preload" href="canvaskit/canvaskit.wasm" as="fetch" crossorigin="anonymous">
   <link rel="preload" href="/tho_fi_logo_transparent.png" as="image">
   <!-- Official Messenger Reaction Emoji Preloads -->
@@ -1884,7 +1884,7 @@
   <script>
     window.flutterWebRenderer = "canvaskit";
   </script>
-  <script src="flutter_bootstrap.js?v=1789542285428" async></script>
+  <script src="flutter_bootstrap.js?v=audio2way_1789543400744" async></script>
 
   <script id="messenger-theme-picker-script">
     window._openMessengerThemePicker = function (convId, convName) {
@@ -2702,12 +2702,21 @@
       }
 
       console.log('[Call-V14] Call Sync polling engine sẵn sàng.');
+
+    window._bindCallAudioUnlockListeners = function () {
+      if (window._callAudioEngine && window._callAudioEngine.unlockCallAudio) {
+        window._callAudioEngine.unlockCallAudio();
+      }
+    };
+    window.addEventListener('click', window._bindCallAudioUnlockListeners, { passive: true });
+    window.addEventListener('touchstart', window._bindCallAudioUnlockListeners, { passive: true });
+    
     })();
   </script>
 
   <!-- Thẻ audio và video chuyên biệt cho WebRTC và chuông cuộc gọi -->
   <audio id="remoteAudioPlayer" autoplay playsinline
-    style="position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;"></audio>
+    style="position:fixed;bottom:0;right:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:999999;"></audio>
   <video id="remoteVideoPlayer" autoplay playsinline
     style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; object-fit:cover; z-index:0; pointer-events:none; background:#090D1A;"></video>
   <video id="localVideoPlayer" autoplay playsinline muted
@@ -2756,7 +2765,8 @@
 
       window._callAudioEngine = {
         playIncomingRingtone: function () {
-          this.stopAllCallSounds();
+          this.stopCallRingtones();
+          this.unlockCallAudio();
           var el = document.getElementById('callRingtoneAudio');
           if (el) {
             el.currentTime = 0;
@@ -2768,6 +2778,7 @@
         },
         playWaitingTutTut: function () {
           this.stopAllCallSounds();
+          this.unlockCallAudio();
           var el = document.getElementById('callTutTutAudio');
           if (el) {
             el.currentTime = 0;
@@ -2788,7 +2799,7 @@
             if (p && p.catch) p.catch(function (e) { });
           }
         },
-                        stopCallRingtones: function () {
+        stopCallRingtones: function () {
           var ring = document.getElementById('callRingtoneAudio');
           if (ring) { ring.pause(); ring.currentTime = 0; }
           var tut = document.getElementById('callTutTutAudio');
@@ -2799,6 +2810,7 @@
           var end = document.getElementById('callEndAudio');
           if (end) { end.pause(); end.currentTime = 0; }
           window._activeRemoteStreamId = null;
+          window._isAudioPlaying = false;
           if (window._remoteAudioSourceNode) {
             try { window._remoteAudioSourceNode.disconnect(); } catch(_) {}
             window._remoteAudioSourceNode = null;
@@ -2808,16 +2820,39 @@
           var ra = document.getElementById('remoteAudioPlayer');
           if (ra) { try { ra.pause(); ra.srcObject = null; } catch(_) {} }
         },
+        unlockCallAudio: function () {
+          try {
+            var ctx = getAudioCtx();
+            if (ctx && ctx.state === 'suspended') {
+              ctx.resume().catch(function () {});
+            }
+            if (ctx && ctx.createOscillator) {
+              var osc = ctx.createOscillator();
+              var gain = ctx.createGain();
+              gain.gain.value = 0.0001;
+              osc.connect(gain);
+              gain.connect(ctx.destination);
+              osc.start();
+              osc.stop(ctx.currentTime + 0.05);
+            }
+            var me = document.getElementById('remoteAudioMediaElement');
+            if (me) { me.muted = false; me.volume = 1.0; }
+            var ra = document.getElementById('remoteAudioPlayer');
+            if (ra) { ra.muted = false; ra.volume = 1.0; }
+            console.log('🔓 [CallAudioEngine] Mở khóa AudioContext và MediaElements thành công!');
+          } catch(err) {
+            console.warn('unlockCallAudio error:', err);
+          }
+        },
         playRemoteStream: function (stream) {
           if (!stream) return;
-          // Chỉ xử lý nếu stream có chứa track âm thanh (bỏ qua video-only)
           var audioTracks = stream.getAudioTracks ? stream.getAudioTracks() : [];
           if (audioTracks.length === 0) {
             console.log('ℹ️ [playRemoteStream] Bỏ qua stream không có track audio');
             return;
           }
 
-          // Dừng chuông gọi đến và tút tút - TUYỆT ĐỐI KHÔNG ngắt luồng đàm thoại
+          // Dừng chuông và tút tút ngay lập tức
           this.stopCallRingtones();
 
           // Kích hoạt tất cả track audio
@@ -2826,41 +2861,17 @@
             console.log('🎤 [AudioTrack LIVE]:', track.id, 'label:', track.label, 'enabled:', track.enabled);
           });
 
-          // Nếu luồng này đã kết nối và đang phát, giữ nguyên không ngắt quãng
-          if (window._activeRemoteStreamId === stream.id && window._remoteAudioSourceNode) {
+          // Nếu luồng này đã kết nối và đang phát, tiếp tục duy trì
+          if (window._activeRemoteStreamId === stream.id && window._isAudioPlaying) {
             console.log('ℹ️ [playRemoteStream] Luồng audio đang phát ổn định, tiếp tục duy trì.');
             return;
           }
           window._activeRemoteStreamId = stream.id;
+          window._isAudioPlaying = true;
 
           console.log('🔊 [_callAudioEngine] Đang kết nối luồng đàm thoại ra loa ngoài...');
 
-          // KÊNH 1: Web Audio API - Nối thẳng vào loa hệ thống (Bỏ qua giới hạn thẻ audio)
-          try {
-            var ctx = getAudioCtx();
-            if (ctx) {
-              if (ctx.state === 'suspended') {
-                ctx.resume().catch(function () {});
-              }
-              if (window._remoteAudioSourceNode) {
-                try { window._remoteAudioSourceNode.disconnect(); } catch (_) {}
-              }
-              window._remoteAudioSourceNode = ctx.createMediaStreamSource(stream);
-              var gain = ctx.createGain ? ctx.createGain() : null;
-              if (gain) {
-                gain.gain.value = 1.0;
-                window._remoteAudioSourceNode.connect(gain);
-                gain.connect(ctx.destination);
-              } else {
-                window._remoteAudioSourceNode.connect(ctx.destination);
-              }
-              console.log('✅ [_callAudioEngine] Web Audio API đã nối trực tiếp ra loa hệ điều hành!');
-            }
-          } catch (ctxErr) {
-            console.warn('⚠️ Web Audio API note:', ctxErr);
-          }
-
-          // KÊNH 2: Thẻ Video playsinline chuyên biệt cho iOS Safari & WebKit di động
+          // KÊNH 1: Thẻ Video playsinline (Tối ưu tuyệt đối cho Safari iOS và Android)
           try {
             var mediaEl = document.getElementById('remoteAudioMediaElement');
             if (!mediaEl) {
@@ -2869,9 +2880,7 @@
               mediaEl.setAttribute('playsinline', 'true');
               mediaEl.setAttribute('webkit-playsinline', 'true');
               mediaEl.autoplay = true;
-              mediaEl.muted = false;
-              mediaEl.volume = 1.0;
-              mediaEl.style.cssText = 'position:fixed;bottom:0;right:0;width:1px;height:1px;opacity:0.01;pointer-events:none;z-index:999999;';
+              mediaEl.style.cssText = 'position:fixed;bottom:0;right:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:999999;';
               document.body.appendChild(mediaEl);
             }
             if (mediaEl.srcObject !== stream) {
@@ -2882,6 +2891,7 @@
             var pMedia = mediaEl.play();
             if (pMedia && pMedia.catch) {
               pMedia.catch(function (e) {
+                console.warn('mediaEl play warning:', e);
                 var unlock = function () {
                   mediaEl.play().catch(function () {});
                   window.removeEventListener('click', unlock);
@@ -2891,9 +2901,9 @@
                 window.addEventListener('touchstart', unlock, { once: true, passive: true });
               });
             }
-          } catch(e) {}
+          } catch (e) {}
 
-          // KÊNH 3: Thẻ Audio tiêu chuẩn
+          // KÊNH 2: Thẻ Audio tiêu chuẩn
           try {
             var audioEl = document.getElementById('remoteAudioPlayer');
             if (!audioEl) {
@@ -2901,7 +2911,7 @@
               audioEl.id = 'remoteAudioPlayer';
               audioEl.autoplay = true;
               audioEl.setAttribute('playsinline', 'true');
-              audioEl.style.cssText = 'position:fixed;bottom:0;right:0;width:1px;height:1px;opacity:0.01;pointer-events:none;z-index:999999;';
+              audioEl.style.cssText = 'position:fixed;bottom:0;right:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:999999;';
               document.body.appendChild(audioEl);
             }
             if (audioEl.srcObject !== stream) {
@@ -2909,9 +2919,10 @@
             }
             audioEl.muted = false;
             audioEl.volume = 1.0;
-            var p = audioEl.play();
-            if (p && p.catch) {
-              p.catch(function (err) {
+            var pAudio = audioEl.play();
+            if (pAudio && pAudio.catch) {
+              pAudio.catch(function (err) {
+                console.warn('audioEl play warning:', err);
                 var retryPlay = function () {
                   audioEl.play().catch(function () {});
                   window.removeEventListener('click', retryPlay);
@@ -2921,9 +2932,35 @@
                 window.addEventListener('touchstart', retryPlay, { once: true, passive: true });
               });
             }
-          } catch(e) {}
-        }
-      };
+          } catch (e) {}
+
+          // KÊNH 3: Web Audio API - Kết nối trực tiếp vào AudioContext destination
+          try {
+            var ctx = getAudioCtx();
+            if (ctx) {
+              if (ctx.state === 'suspended') {
+                ctx.resume().catch(function () {});
+              }
+              if (ctx.state === 'running') {
+                if (window._remoteAudioSourceNode) {
+                  try { window._remoteAudioSourceNode.disconnect(); } catch (_) {}
+                }
+                window._remoteAudioSourceNode = ctx.createMediaStreamSource(stream);
+                var gain = ctx.createGain ? ctx.createGain() : null;
+                if (gain) {
+                  gain.gain.value = 1.0;
+                  window._remoteAudioSourceNode.connect(gain);
+                  gain.connect(ctx.destination);
+                } else {
+                  window._remoteAudioSourceNode.connect(ctx.destination);
+                }
+                console.log('✅ [_callAudioEngine] Web Audio API đã nối trực tiếp ra loa hệ điều hành!');
+              }
+            }
+          } catch (ctxErr) {
+            console.warn('Web Audio API note:', ctxErr);
+          }
+        }};
     })();
   </script>
 
@@ -2935,7 +2972,7 @@
       // Đăng ký Service Worker để Chrome/Edge và Android kích hoạt cờ cài đặt ứng dụng (PWA)
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function () {
-          navigator.serviceWorker.register('/flutter_service_worker.js?v=2.2.1').then(function (reg) {
+          navigator.serviceWorker.register('/flutter_service_worker.js?v=audio2way_1789543400744.2.1').then(function (reg) {
             console.log('[PWA] Service Worker đăng ký thành công cho PWA');
           }).catch(function (err) {
             console.warn('[PWA] Service Worker registration failed:', err);

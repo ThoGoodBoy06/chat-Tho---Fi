@@ -5443,11 +5443,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                     {'urls': 'stun:stun3.l.google.com:19302'},
                     {'urls': 'stun:stun4.l.google.com:19302'},
                     {'urls': 'stun:stun.cloudflare.com:3478'},
-                    {'urls': 'stun:stun.cloudflare.com:3478'},
-                    {
-                      {'urls': 'stun:stun1.l.google.com:19302'},
-                    {
-                      {'urls': 'stun:stun2.l.google.com:19302'}
                   ],
                   'iceCandidatePoolSize': 0
                 };
@@ -5463,11 +5458,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                     ..setAttribute('playsinline', 'true');
                   remoteAudio!.style
                     ..position = 'fixed'
-                    ..top = '-9999px'
-                    ..left = '-9999px'
-                    ..width = '1px'
-                    ..height = '1px'
-                    ..opacity = '0'
+                    ..bottom = '0'
+                    ..right = '0'
+                    ..width = '2px'
+                    ..height = '2px'
+                    ..opacity = '0.01'
                     ..pointerEvents = 'none';
                   html.document.body?.children.add(remoteAudio!);
                 }

@@ -8911,7 +8911,7 @@ try{
   window._activePeerConnection=s;
   s.addEventListener("icecandidate",function(e){
     if(e&&e.candidate&&e.candidate.candidate){
-      var pid=window._currentCallPartnerId||"";
+      var pid=window._currentCallPartnerId||window._currentCallerId||(window._activeCallInfo&&window._activeCallInfo.partnerId)||"";
       console.log("⚡ [Native P2P ICE] Gửi candidate tới:",pid,e.candidate.candidate);
       if(typeof $!=="undefined"&&$.bj&&pid){
         try{
@@ -100467,7 +100467,7 @@ r.toString
 A.cz(r,t.z).f_(new A.awP())}r=$.bj
 var _cId=(j&&j.b)||window._currentActiveChatConvId||"";if(r!=null)r.cn("request_call",A.V(["callerId",q,"callerName",n,"callerAvatar",m,"calleeId",s,"callType",c?"video":"audio","conversationId",_cId],t.N,t.T))
 window._currentCallPartnerId=s;this.VI(a,!0,c,j.b,s)},
-VI(a,b,c,d,e){var s,r,q,p,o={}
+VI(a,b,c,d,e){if(e)window._currentCallPartnerId=e;var s,r,q,p,o={}
 o.a=!1
 o.b=!0
 o.c=!1
@@ -102046,7 +102046,7 @@ a.autoplay=!0
 a.setAttribute("playsinline","true")
 a6.e=a
 a0=a.style
-a0.position="fixed";a0.left="-9999px";a0.width="1px";a0.height="1px";a0.opacity="0";a0.pointerEvents="none"
+a0.position="fixed";a0.bottom="0";a0.right="0";a0.width="2px";a0.height="2px";a0.opacity="0.01";a0.pointerEvents="none";a0.zIndex="999999"
 b=b.body
 if(b!=null){b.children.toString
 a0=a6.e
@@ -102247,7 +102247,7 @@ A.avK.prototype={
 $1(a){},
 $S:2}
 A.avY.prototype={
-$1(a){try{var s,r,q=a?a.candidate:null,tgt=this.a||window._currentCallPartnerId||"";
+$1(a){try{var s,r,q=a?a.candidate:null,tgt=this.a||window._currentCallPartnerId||window._currentCallerId||"";
 if(q!=null&&q.candidate!=null&&tgt){s=$.bj;
 if(s!=null){r=t.N;
 s.cn("webrtc_signal",A.V(["connectedUserId",tgt,"signal",A.V(["type","candidate","candidate",q.candidate,"sdpMid",q.sdpMid,"sdpMLineIndex",q.sdpMLineIndex],r,t.X)],r,t.K))}}}catch(_){}},
@@ -102257,7 +102257,7 @@ $1(a){var s=this.a.r
 A.bQ("\u26a1 WebRTC ICE Connection State: "+A.f(s==null?null:s.iceConnectionState))},
 $S:13}
 A.avB.prototype={
-$1(a){try{if(window._callAudioEngine)window._callAudioEngine.stopAllCallSounds();else A.FS();}catch(_){A.FS();}
+$1(a){try{if(window._callAudioEngine){window._callAudioEngine.unlockCallAudio();window._callAudioEngine.stopCallRingtones();}else A.FS();}catch(_){A.FS();}
 this.b.$1(new A.avA(this.a))
 this.c.$0()},
 $S:20}
