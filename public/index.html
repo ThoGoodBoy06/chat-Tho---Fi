@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <base href="/">
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="Chat Tho-Fi Application">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
-  
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+
   <!-- Fast CDN Preconnects -->
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -58,7 +60,7 @@
       video: null,
       animationFrameId: null,
       isScanning: false,
-      start: async function(containerId) {
+      start: async function (containerId) {
         this.pause();
         this.isScanning = true;
         console.log('[WebQrScanner] Initializing camera for container:', containerId);
@@ -73,7 +75,7 @@
               stream = await navigator.mediaDevices.getUserMedia({
                 video: { facingMode: "environment" }
               });
-            } catch(err1) {
+            } catch (err1) {
               console.warn('[WebQrScanner] FacingMode environment failed, trying simple video constraint:', err1);
               stream = await navigator.mediaDevices.getUserMedia({ video: true });
             }
@@ -142,12 +144,12 @@
 
           this.animationFrameId = requestAnimationFrame(tick);
           return true;
-        } catch(err) {
+        } catch (err) {
           console.error('[WebQrScanner] Error accessing camera (NotAllowedError/NotFoundError):', err);
           return false;
         }
       },
-      scanImage: function(dataUrl) {
+      scanImage: function (dataUrl) {
         const img = new Image();
         img.onload = () => {
           const canvas = document.createElement('canvas');
@@ -171,7 +173,7 @@
         };
         img.src = dataUrl;
       },
-      pause: function() {
+      pause: function () {
         this.isScanning = false;
         if (this.animationFrameId) {
           cancelAnimationFrame(this.animationFrameId);
@@ -182,11 +184,11 @@
             this.video.pause();
             this.video.srcObject = null;
             this.video.remove();
-          } catch(e) {}
+          } catch (e) { }
           this.video = null;
         }
       },
-      stop: function() {
+      stop: function () {
         this.pause();
         if (this.stream) {
           try {
@@ -194,7 +196,7 @@
               track.stop();
               console.log('[WebQrScanner] Camera track stopped:', track.label);
             });
-          } catch(e) {
+          } catch (e) {
             console.error('[WebQrScanner] Error stopping tracks:', e);
           }
           this.stream = null;
@@ -203,11 +205,11 @@
     };
   </script>
   <script>
-    window.isNotificationSupported = function() {
+    window.isNotificationSupported = function () {
       return ('Notification' in window) && ('serviceWorker' in navigator);
     };
 
-    window.registerFCMAndGetToken = async function(vapidKey) {
+    window.registerFCMAndGetToken = async function (vapidKey) {
       if (!('Notification' in window)) {
         console.warn('[FCM Web] Notification API không được hỗ trợ trên trình duyệt này.');
         return null;
@@ -262,7 +264,7 @@
       return null;
     };
 
-    window.getWebDeviceId = function() {
+    window.getWebDeviceId = function () {
       let deviceId = localStorage.getItem('tho_fi_web_device_id');
       if (!deviceId) {
         deviceId = 'web_' + Math.random().toString(36).substring(2, 15) + '_' + Date.now();
@@ -272,9 +274,46 @@
     };
   </script>
 
+  <!-- 🚀 GPU Hardware Acceleration & FPS Booster -->
+  <script>
+    (function () {
+      // 1. Tối ưu hóa WebGL Context cho CanvasKit (GPU rời, độ trễ thấp, tối đa FPS)
+      try {
+        const origGetContext = HTMLCanvasElement.prototype.getContext;
+        HTMLCanvasElement.prototype.getContext = function (type, attributes) {
+          if (type === 'webgl2' || type === 'webgl') {
+            attributes = Object.assign({
+              powerPreference: 'high-performance',
+              desynchronized: true,
+              antialias: true,
+              alpha: false,
+              preserveDrawingBuffer: false,
+              failIfMajorPerformanceCaveat: false
+            }, attributes || {});
+          }
+          return origGetContext.call(this, type, attributes);
+        };
+      } catch (e) {
+        console.warn('[FPS Booster] WebGL Context hook warning:', e);
+      }
+
+      // 2. Tối ưu Touch & Scroll Events (Passive Listeners loại bỏ jank)
+      try {
+        const passiveOpt = { passive: true, capture: false };
+        ['touchstart', 'touchmove', 'wheel'].forEach(function (evt) {
+          window.addEventListener(evt, function () {}, passiveOpt);
+        });
+      } catch (e) { }
+    })();
+  </script>
+
   <style>
     /* Universal Frosted Glass & Backdrop Blur for iOS Safari & All Browsers */
-    flt-backdrop, flt-backdrop-interior, flt-backdrop-filter, [style*="backdrop-filter"], [style*="-webkit-backdrop-filter"] {
+    flt-backdrop,
+    flt-backdrop-interior,
+    flt-backdrop-filter,
+    [style*="backdrop-filter"],
+    [style*="-webkit-backdrop-filter"] {
       -webkit-backdrop-filter: blur(14px) !important;
       backdrop-filter: blur(14px) !important;
       background-color: rgba(0, 0, 0, 0.22) !important;
@@ -285,7 +324,9 @@
     * {
       box-sizing: border-box;
     }
-    html, body {
+
+    html,
+    body {
       width: 100%;
       height: 100%;
       margin: 0;
@@ -304,16 +345,29 @@
       -webkit-user-select: none;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
-    flutter-view, flt-glass-pane, canvas {
+
+    /* Ép tăng tốc phần cứng GPU và tối ưu 60FPS - 120FPS cho CanvasKit */
+    flutter-view,
+    flt-glass-pane,
+    flt-scene-host,
+    canvas {
       width: 100% !important;
       height: 100% !important;
       position: absolute !important;
       top: 0 !important;
       left: 0 !important;
       outline: none !important;
-      transform: translateZ(0);
-      -webkit-transform: translateZ(0);
+      transform: translate3d(0, 0, 0);
+      -webkit-transform: translate3d(0, 0, 0);
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      perspective: 1000px;
+      -webkit-perspective: 1000px;
+      will-change: transform;
+      contain: strict;
+      image-rendering: -webkit-optimize-contrast;
     }
+
     #loading-screen {
       display: flex;
       flex-direction: column;
@@ -330,6 +384,7 @@
       user-select: none;
       -webkit-user-select: none;
     }
+
     .splash-container {
       display: flex;
       flex-direction: column;
@@ -337,6 +392,7 @@
       text-align: center;
       animation: splashFadeIn 0.4s ease-out;
     }
+
     .splash-logo-box {
       width: 92px;
       height: 92px;
@@ -349,11 +405,13 @@
       margin-bottom: 18px;
       animation: logoPulse 2.2s infinite ease-in-out;
     }
+
     .splash-logo {
       width: 72px;
       height: 72px;
       object-fit: contain;
     }
+
     .splash-title {
       font-size: 21px;
       font-weight: 700;
@@ -361,6 +419,7 @@
       letter-spacing: -0.3px;
       margin-bottom: 4px;
     }
+
     .splash-subtitle {
       font-size: 13px;
       font-weight: 500;
@@ -368,6 +427,7 @@
       margin-bottom: 24px;
       letter-spacing: -0.1px;
     }
+
     .splash-bar-wrap {
       width: 110px;
       height: 4px;
@@ -376,6 +436,7 @@
       overflow: hidden;
       position: relative;
     }
+
     .splash-bar-inner {
       position: absolute;
       top: 0;
@@ -386,20 +447,47 @@
       border-radius: 99px;
       animation: splashSlide 1.2s infinite ease-in-out;
     }
+
     @keyframes splashSlide {
-      0% { left: -40%; width: 30%; }
-      50% { width: 50%; }
-      100% { left: 110%; width: 30%; }
+      0% {
+        left: -40%;
+        width: 30%;
+      }
+
+      50% {
+        width: 50%;
+      }
+
+      100% {
+        left: 110%;
+        width: 30%;
+      }
     }
+
     @keyframes logoPulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.03); }
+
+      0%,
+      100% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.03);
+      }
     }
+
     @keyframes splashFadeIn {
-      from { opacity: 0; transform: translateY(6px); }
-      to { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
-  
+
     /* Màn Chào Mừng Phong Cách Google Gemini */
     .ai-welcome-container {
       position: fixed;
@@ -420,11 +508,13 @@
       transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1), transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
       background: transparent;
     }
+
     .ai-welcome-container.active {
       display: flex;
       opacity: 1;
       transform: translateY(0);
     }
+
     .ai-welcome-content {
       display: flex;
       flex-direction: column;
@@ -434,12 +524,14 @@
       margin: 0 auto;
       transform: translateY(-24px);
     }
+
     .ai-welcome-logo-wrapper {
       position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
     }
+
     .ai-welcome-logo-wrapper::after {
       content: '';
       position: absolute;
@@ -451,10 +543,19 @@
       z-index: -1;
       animation: aiGlowPulse 3.5s ease-in-out infinite alternate;
     }
+
     @keyframes aiGlowPulse {
-      0% { transform: scale(0.9); opacity: 0.5; }
-      100% { transform: scale(1.3); opacity: 1; }
+      0% {
+        transform: scale(0.9);
+        opacity: 0.5;
+      }
+
+      100% {
+        transform: scale(1.3);
+        opacity: 1;
+      }
     }
+
     .ai-welcome-logo {
       width: 96px;
       height: 96px;
@@ -462,10 +563,17 @@
       filter: drop-shadow(0 10px 22px rgba(0, 104, 255, 0.32));
       animation: aiLogoFloat 3s ease-in-out infinite alternate;
     }
+
     @keyframes aiLogoFloat {
-      0% { transform: translateY(0px); }
-      100% { transform: translateY(-7px); }
+      0% {
+        transform: translateY(0px);
+      }
+
+      100% {
+        transform: translateY(-7px);
+      }
     }
+
     .ai-welcome-title {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       font-size: 26px;
@@ -476,39 +584,39 @@
       text-align: center;
       transition: color 0.2s;
     }
+
     body.dark .ai-welcome-title,
     .dark .ai-welcome-title {
       color: #f8fafc;
     }
-
   </style>
 
   <script>
     // Dismiss splash screen smoothly when Flutter first frame is rendered
-    window.dismissSplashScreen = function() {
+    window.dismissSplashScreen = function () {
       var el = document.getElementById('loading-screen');
       if (el && !el.dataset.dismissed) {
         el.dataset.dismissed = 'true';
         el.style.opacity = '0';
         el.style.pointerEvents = 'none';
-        setTimeout(function() {
+        setTimeout(function () {
           if (el && el.parentNode) el.parentNode.removeChild(el);
         }, 360);
       }
     };
 
-    window.addEventListener('flutter-first-frame', function() {
+    window.addEventListener('flutter-first-frame', function () {
       window.dismissSplashScreen();
     });
 
     // Safety auto-dismiss for splash loading screen after Flutter starts
-    setTimeout(function() {
+    setTimeout(function () {
       window.dismissSplashScreen();
     }, 4500);
 
     // iOS Standalone Link Handling: Ngăn Safari mở tab mới khi bấm link/chuyển trang
     if (("standalone" in window.navigator) && window.navigator.standalone) {
-      document.addEventListener('click', function(e) {
+      document.addEventListener('click', function (e) {
         var ctarget = e.target;
         while (ctarget && ctarget.nodeName !== 'A') {
           ctarget = ctarget.parentNode;
@@ -527,20 +635,20 @@
   <!-- Hỗ trợ rung cuộc gọi đến chu kỳ 1s rung - 0.5s nghỉ -->
   <script>
     window._callVibrateTimer = null;
-    window._startCallVibration = function() {
+    window._startCallVibration = function () {
       if (window._callVibrateTimer) clearInterval(window._callVibrateTimer);
       function doVib() {
         try {
           if (navigator && typeof navigator.vibrate === 'function') {
             navigator.vibrate([1000, 500]);
           }
-        } catch(_) {}
+        } catch (_) { }
       }
       doVib();
       window._callVibrateTimer = setInterval(doVib, 1500);
       console.log('📳 [Vibration] Đã bắt đầu rung chu kỳ cuộc gọi đến!');
     };
-    window._stopCallVibration = function() {
+    window._stopCallVibration = function () {
       if (window._callVibrateTimer) {
         clearInterval(window._callVibrateTimer);
         window._callVibrateTimer = null;
@@ -549,17 +657,19 @@
         if (navigator && typeof navigator.vibrate === 'function') {
           navigator.vibrate(0);
         }
-      } catch(_) {}
+      } catch (_) { }
       console.log('📳 [Vibration] Đã dừng rung cuộc gọi.');
     };
   </script>
 
 </head>
+
 <body>
   <div id="loading-screen">
     <div class="splash-container">
       <div class="splash-logo-box">
-        <img src="/tho_fi_logo_transparent.png" alt="Chat Tho-Fi" class="splash-logo" onerror="this.src='/icon-192.png'">
+        <img src="/tho_fi_logo_transparent.png" alt="Chat Tho-Fi" class="splash-logo"
+          onerror="this.src='/icon-192.png'">
       </div>
       <div class="splash-title">Chat Tho-Fi</div>
       <div class="splash-subtitle">Kết nối tức thì • Siêu mượt mà</div>
@@ -569,9 +679,6 @@
     </div>
   </div>
 
-  <audio id="remoteAudioPlayer" autoplay playsinline style="display:none;"></audio>
-  <video id="remoteVideoPlayer" autoplay playsinline style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; object-fit:cover; z-index:2147483646; background:#090D1A;"></video>
-  <video id="localVideoPlayer" autoplay playsinline muted style="display:none; position:fixed; top:24px; right:24px; width:130px; height:170px; object-fit:cover; z-index:2147483647; border-radius:16px; border:2px solid rgba(255,255,255,0.8); box-shadow:0 10px 30px rgba(0,0,0,0.6); transform: scaleX(-1);"></video>
   <script>
     const ChatSounds = {
       _ctx: null,
@@ -580,7 +687,7 @@
           this._ctx = new (window.AudioContext || window.webkitAudioContext)();
         }
         if (this._ctx.state === 'suspended') {
-          this._ctx.resume().catch(() => {});
+          this._ctx.resume().catch(() => { });
         }
         return this._ctx;
       },
@@ -600,7 +707,7 @@
           gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
           osc.start(now);
           osc.stop(now + 0.15);
-        } catch(e){}
+        } catch (e) { }
       },
       playReceive() {
         try {
@@ -618,7 +725,7 @@
           gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
           osc.start(now);
           osc.stop(now + 0.2);
-        } catch(e){}
+        } catch (e) { }
       },
       playReact() {
         try {
@@ -636,7 +743,7 @@
           gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
           osc.start(now);
           osc.stop(now + 0.09);
-        } catch(e){}
+        } catch (e) { }
       }
     };
   </script>
@@ -657,10 +764,12 @@
       pointer-events: none;
       transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
+
     .ai-drawer-backdrop.active {
       opacity: 1;
       pointer-events: auto;
     }
+
     .ai-drawer-panel {
       position: fixed;
       top: 0;
@@ -677,14 +786,17 @@
       border-right: 1px solid rgba(0, 0, 0, 0.08);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
+
     .ai-drawer-panel.dark {
       background: #1e293b;
       color: #ffffff;
       border-right: 1px solid #334155;
     }
+
     .ai-drawer-panel.active {
       transform: translateX(350px);
     }
+
     #ai-menu-button {
       position: fixed;
       top: 10px;
@@ -703,22 +815,26 @@
       z-index: 2147483645;
       transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
+
     #ai-menu-button:hover {
       background: #0068FF;
       color: #ffffff;
       transform: scale(1.06);
       box-shadow: 0 4px 14px rgba(0, 104, 255, 0.35);
     }
+
     #ai-menu-button.dark {
       background: #1e293b;
       color: #38bdf8;
       border-color: #334155;
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
     }
+
     #ai-menu-button.dark:hover {
       background: #0068FF;
       color: #ffffff;
     }
+
     .ai-confirm-backdrop {
       position: fixed;
       top: 0;
@@ -736,9 +852,11 @@
       box-sizing: border-box;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
+
     .ai-confirm-backdrop.active {
       display: flex;
     }
+
     .ai-confirm-box {
       background: #ffffff;
       border-radius: 20px;
@@ -749,16 +867,26 @@
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.28);
       animation: aiModalZoom 0.22s cubic-bezier(0.16, 1, 0.3, 1);
     }
+
     body.dark .ai-confirm-box,
     .dark .ai-confirm-box {
       background: #1e293b;
       color: #ffffff;
       border: 1px solid #334155;
     }
+
     @keyframes aiModalZoom {
-      from { transform: scale(0.9); opacity: 0; }
-      to { transform: scale(1); opacity: 1; }
+      from {
+        transform: scale(0.9);
+        opacity: 0;
+      }
+
+      to {
+        transform: scale(1);
+        opacity: 1;
+      }
     }
+
     .ai-confirm-icon {
       width: 52px;
       height: 52px;
@@ -769,34 +897,41 @@
       justify-content: center;
       margin: 0 auto 14px;
     }
+
     body.dark .ai-confirm-icon,
     .dark .ai-confirm-icon {
       background: #3f1d24;
     }
+
     .ai-confirm-title {
       font-size: 17px;
       font-weight: 700;
       color: #0f172a;
       margin-bottom: 8px;
     }
+
     body.dark .ai-confirm-title,
     .dark .ai-confirm-title {
       color: #f8fafc;
     }
+
     .ai-confirm-desc {
       font-size: 13.5px;
       color: #64748b;
       line-height: 1.45;
       margin-bottom: 20px;
     }
+
     body.dark .ai-confirm-desc,
     .dark .ai-confirm-desc {
       color: #94a3b8;
     }
+
     .ai-confirm-actions {
       display: flex;
       gap: 10px;
     }
+
     .ai-confirm-btn-cancel {
       flex: 1;
       padding: 10px;
@@ -808,11 +943,13 @@
       font-weight: 600;
       cursor: pointer;
     }
+
     body.dark .ai-confirm-btn-cancel,
     .dark .ai-confirm-btn-cancel {
       background: #334155;
       color: #cbd5e1;
     }
+
     .ai-confirm-btn-danger {
       flex: 1;
       padding: 10px;
@@ -825,9 +962,11 @@
       cursor: pointer;
       box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
     }
+
     .ai-confirm-btn-danger:hover {
       background: #dc2626;
     }
+
     .ai-drawer-header {
       padding: 16px 18px 12px;
       display: flex;
@@ -835,9 +974,11 @@
       justify-content: space-between;
       border-bottom: 1px solid rgba(0, 0, 0, 0.06);
     }
+
     .ai-drawer-panel.dark .ai-drawer-header {
       border-bottom-color: #334155;
     }
+
     .ai-drawer-title {
       display: flex;
       align-items: center;
@@ -846,9 +987,11 @@
       font-size: 16px;
       color: #0f172a;
     }
+
     .ai-drawer-panel.dark .ai-drawer-title {
       color: #f8fafc;
     }
+
     .ai-drawer-close {
       background: none;
       border: none;
@@ -861,9 +1004,11 @@
       align-items: center;
       justify-content: center;
     }
+
     .ai-drawer-close:hover {
       background: rgba(0, 0, 0, 0.05);
     }
+
     .ai-new-chat-btn {
       margin: 12px 16px;
       padding: 11px 16px;
@@ -881,13 +1026,16 @@
       box-shadow: 0 4px 12px rgba(0, 104, 255, 0.28);
       transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
+
     .ai-new-chat-btn:hover {
       transform: translateY(-1px);
       box-shadow: 0 6px 16px rgba(0, 104, 255, 0.38);
     }
+
     .ai-new-chat-btn:active {
       transform: scale(0.98);
     }
+
     .ai-section-label {
       padding: 6px 18px 4px;
       font-size: 11px;
@@ -896,6 +1044,7 @@
       color: #94a3b8;
       text-transform: uppercase;
     }
+
     .ai-sessions-list {
       flex: 1;
       overflow-y: auto;
@@ -904,6 +1053,7 @@
       flex-direction: column;
       gap: 6px;
     }
+
     .ai-session-item {
       display: flex;
       align-items: center;
@@ -915,26 +1065,32 @@
       border: 1px solid #f1f5f9;
       transition: background 0.15s, border-color 0.15s;
     }
+
     .ai-drawer-panel.dark .ai-session-item {
       background: #0f172a;
       border-color: #1e293b;
     }
+
     .ai-session-item:hover {
       background: #eef2ff;
       border-color: #c7d2fe;
     }
+
     .ai-drawer-panel.dark .ai-session-item:hover {
       background: #1e293b;
       border-color: #334155;
     }
+
     .ai-session-item.active {
       background: #eff6ff;
       border-color: #93c5fd;
     }
+
     .ai-drawer-panel.dark .ai-session-item.active {
       background: #1e3a5f;
       border-color: #0068ff;
     }
+
     .ai-session-info {
       flex: 1;
       min-width: 0;
@@ -942,6 +1098,7 @@
       flex-direction: column;
       gap: 2px;
     }
+
     .ai-session-name {
       font-size: 13.5px;
       font-weight: 600;
@@ -950,13 +1107,16 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
+
     .ai-drawer-panel.dark .ai-session-name {
       color: #f1f5f9;
     }
+
     .ai-session-time {
       font-size: 11px;
       color: #94a3b8;
     }
+
     .ai-session-delete-btn {
       background: none;
       border: none;
@@ -967,11 +1127,13 @@
       opacity: 0.7;
       transition: opacity 0.15s, color 0.15s;
     }
+
     .ai-session-delete-btn:hover {
       opacity: 1;
       color: #ef4444;
       background: rgba(239, 68, 68, 0.1);
     }
+
     .ai-drawer-empty {
       text-align: center;
       padding: 40px 20px;
@@ -996,10 +1158,12 @@
       opacity: 0;
       transition: opacity 0.2s ease;
     }
+
     .ai-confirm-backdrop.active {
       display: flex;
       opacity: 1;
     }
+
     .ai-confirm-box {
       background: #ffffff;
       width: 88%;
@@ -1014,15 +1178,18 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       box-sizing: border-box;
     }
+
     body.dark .ai-confirm-box,
     .dark .ai-confirm-box {
       background: #1e293b;
       border-color: #334155;
       color: #f1f5f9;
     }
+
     .ai-confirm-backdrop.active .ai-confirm-box {
       transform: scale(1);
     }
+
     .ai-confirm-icon {
       width: 52px;
       height: 52px;
@@ -1033,34 +1200,41 @@
       justify-content: center;
       margin: 0 auto 16px;
     }
+
     body.dark .ai-confirm-icon,
     .dark .ai-confirm-icon {
       background: rgba(239, 68, 68, 0.2);
     }
+
     .ai-confirm-title {
       font-size: 17px;
       font-weight: 700;
       color: #0f172a;
       margin-bottom: 8px;
     }
+
     body.dark .ai-confirm-title,
     .dark .ai-confirm-title {
       color: #f8fafc;
     }
+
     .ai-confirm-desc {
       font-size: 13.5px;
       color: #64748b;
       line-height: 1.5;
       margin-bottom: 22px;
     }
+
     body.dark .ai-confirm-desc,
     .dark .ai-confirm-desc {
       color: #94a3b8;
     }
+
     .ai-confirm-actions {
       display: flex;
       gap: 10px;
     }
+
     .ai-confirm-btn-cancel,
     .ai-confirm-btn-danger {
       flex: 1;
@@ -1072,26 +1246,32 @@
       border: none;
       transition: all 0.15s;
     }
+
     .ai-confirm-btn-cancel {
       background: #f1f5f9;
       color: #475569;
     }
+
     .ai-confirm-btn-cancel:hover {
       background: #e2e8f0;
     }
+
     body.dark .ai-confirm-btn-cancel,
     .dark .ai-confirm-btn-cancel {
       background: #334155;
       color: #cbd5e1;
     }
+
     body.dark .ai-confirm-btn-cancel:hover,
     .dark .ai-confirm-btn-cancel:hover {
       background: #475569;
     }
+
     .ai-confirm-btn-danger {
       background: #ef4444;
       color: #ffffff;
     }
+
     .ai-confirm-btn-danger:hover {
       background: #dc2626;
     }
@@ -1108,9 +1288,11 @@
       animation: aiFadeIn 0.25s ease-out;
       pointer-events: none;
     }
+
     .ai-typing-float.active {
       display: flex;
     }
+
     .ai-typing-avatar {
       width: 28px;
       height: 28px;
@@ -1120,6 +1302,7 @@
       border: 1.5px solid #0068ff;
       background: #ffffff;
     }
+
     .ai-typing-bubble {
       background: #ffffff;
       padding: 10px 16px;
@@ -1129,11 +1312,13 @@
       align-items: center;
       gap: 5px;
     }
+
     body.dark .ai-typing-bubble,
     .dark .ai-typing-bubble {
       background: #1e293b;
       box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
     }
+
     .ai-typing-dot {
       width: 7px;
       height: 7px;
@@ -1142,21 +1327,42 @@
       display: inline-block;
       animation: aiDotBounce 1.2s infinite ease-in-out;
     }
-    .ai-typing-dot:nth-child(1) { animation-delay: 0s; }
-    .ai-typing-dot:nth-child(2) { animation-delay: 0.18s; }
-    .ai-typing-dot:nth-child(3) { animation-delay: 0.36s; }
+
+    .ai-typing-dot:nth-child(1) {
+      animation-delay: 0s;
+    }
+
+    .ai-typing-dot:nth-child(2) {
+      animation-delay: 0.18s;
+    }
+
+    .ai-typing-dot:nth-child(3) {
+      animation-delay: 0.36s;
+    }
 
     @keyframes aiDotBounce {
-      0%, 80%, 100% {
+
+      0%,
+      80%,
+      100% {
         transform: translateY(0);
       }
+
       40% {
         transform: translateY(-7px);
       }
     }
+
     @keyframes aiFadeIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
   </style>
 
@@ -1174,8 +1380,13 @@
         <span style="font-size:18px;line-height:1;">+</span>
         <span>Cuộc trò chuyện mới</span>
       </button>
-      <button onclick="window.deleteAllAiSessions()" style="background:#fee2e2; color:#ef4444; border:1px solid #fca5a5; border-radius:10px; padding:8px 12px; font-size:13px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:5px;" title="Xóa toàn bộ lịch sử">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+      <button onclick="window.deleteAllAiSessions()"
+        style="background:#fee2e2; color:#ef4444; border:1px solid #fca5a5; border-radius:10px; padding:8px 12px; font-size:13px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:5px;"
+        title="Xóa toàn bộ lịch sử">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
         <span>Xóa hết</span>
       </button>
     </div>
@@ -1190,10 +1401,17 @@
   <div id="ai-confirm-modal" class="ai-confirm-backdrop">
     <div class="ai-confirm-box">
       <div class="ai-confirm-icon">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          <line x1="10" y1="11" x2="10" y2="17"></line>
+          <line x1="14" y1="11" x2="14" y2="17"></line>
+        </svg>
       </div>
       <div class="ai-confirm-title">Xóa cuộc trò chuyện?</div>
-      <div class="ai-confirm-desc">Bạn có chắc chắn muốn xóa cuộc trò chuyện này không? Thao tác này không thể hoàn tác.</div>
+      <div class="ai-confirm-desc">Bạn có chắc chắn muốn xóa cuộc trò chuyện này không? Thao tác này không thể hoàn tác.
+      </div>
       <div class="ai-confirm-actions">
         <button class="ai-confirm-btn-cancel" onclick="window.closeAiConfirmModal()">Hủy</button>
         <button id="ai-confirm-btn-ok" class="ai-confirm-btn-danger">Xóa</button>
@@ -1201,7 +1419,7 @@
     </div>
   </div>
 
-  
+
   <div id="ai-welcome-view" class="ai-welcome-container">
     <div class="ai-welcome-content">
       <div class="ai-welcome-logo-wrapper">
@@ -1248,24 +1466,24 @@
             }
           }
         }
-      } catch(e) {}
+      } catch (e) { }
       try {
         const rawU = localStorage.getItem('flutter.username') || localStorage.getItem('username');
         if (rawU) {
           const u = rawU.replace(/"/g, '').trim();
           if (u) return u.charAt(0).toUpperCase() + u.slice(1);
         }
-      } catch(e) {}
+      } catch (e) { }
       return 'Tho';
     }
 
-    window.pickRandomAiGreeting = function() {
+    window.pickRandomAiGreeting = function () {
       const name = getAiUserName();
       const template = AI_GREETINGS[Math.floor(Math.random() * AI_GREETINGS.length)];
       return template.replace(/{name}/g, name);
     };
 
-    window.updateAiWelcomeState = function() {
+    window.updateAiWelcomeState = function () {
       const el = document.getElementById('ai-welcome-view');
       if (!el) return;
 
@@ -1285,8 +1503,8 @@
     };
 
 
-    window.scrollAiChatToBottom = function() {
-      setTimeout(function() {
+    window.scrollAiChatToBottom = function () {
+      setTimeout(function () {
         const pane = document.querySelector('flt-glass-pane') || document.body;
         const target = (pane && pane.shadowRoot) ? (pane.shadowRoot.querySelector('canvas') || pane.shadowRoot) : pane;
         if (target) {
@@ -1302,7 +1520,7 @@
           }
         }
       }, 150);
-      setTimeout(function() {
+      setTimeout(function () {
         const pane = document.querySelector('flt-glass-pane') || document.body;
         const target = (pane && pane.shadowRoot) ? (pane.shadowRoot.querySelector('canvas') || pane.shadowRoot) : pane;
         if (target) {
@@ -1321,7 +1539,7 @@
     };
 
     let _lastAiRefreshTime = 0;
-    window.refreshAiTabHistory = async function() {
+    window.refreshAiTabHistory = async function () {
       const now = Date.now();
       if (now - _lastAiRefreshTime < 800) return;
       _lastAiRefreshTime = now;
@@ -1340,7 +1558,7 @@
             const s = window._chatScreenState;
             s.cx.length = 0;
             if (Array.isArray(data.messages) && data.messages.length > 0) {
-              data.messages.forEach(function(m) {
+              data.messages.forEach(function (m) {
                 if (window._dartMapHelper) {
                   s.cx.push(window._dartMapHelper(m.role === 'user' ? 'user' : 'ai', m.content || ''));
                 }
@@ -1362,7 +1580,7 @@
       }
     };
 
-    window.updateAiMenuBtnState = function(isActive) {
+    window.updateAiMenuBtnState = function (isActive) {
       window._isAiTabActive = !!isActive;
       if (isActive) {
         window.refreshAiTabHistory();
@@ -1372,7 +1590,7 @@
       }
     };
 
-    window.showAiConfirm = function({ title, desc, onConfirm }) {
+    window.showAiConfirm = function ({ title, desc, onConfirm }) {
       const modal = document.getElementById('ai-confirm-modal');
       if (!modal) {
         if (typeof onConfirm === 'function') onConfirm();
@@ -1381,24 +1599,24 @@
       if (title) modal.querySelector('.ai-confirm-title').textContent = title;
       if (desc) modal.querySelector('.ai-confirm-desc').textContent = desc;
       const okBtn = document.getElementById('ai-confirm-btn-ok');
-      okBtn.onclick = function() {
+      okBtn.onclick = function () {
         window.closeAiConfirmModal();
         if (typeof onConfirm === 'function') onConfirm();
       };
       modal.classList.add('active');
     };
 
-    window.closeAiConfirmModal = function() {
+    window.closeAiConfirmModal = function () {
       const modal = document.getElementById('ai-confirm-modal');
       if (modal) modal.classList.remove('active');
     };
 
-    window.clearCurrentAiChat = async function() {
+    window.clearCurrentAiChat = async function () {
       console.log('🚀 Clearing current AI chat...');
       try {
         const tk = getAiAuthToken();
         const convId = window._currentAiConversationId;
-        
+
         if (convId) {
           await fetch('/api/ai/chat/session/' + convId, {
             method: 'DELETE',
@@ -1430,7 +1648,7 @@
       }
     };
 
-    window.openAiHistory = function() {
+    window.openAiHistory = function () {
       console.log('🚀 openAiHistory called!');
       try {
         const isDark = (document.body && document.body.classList.contains('dark')) || (localStorage.getItem('flutter.isDarkMode') === 'true');
@@ -1449,7 +1667,7 @@
       }
     };
 
-    window.closeAiHistory = function() {
+    window.closeAiHistory = function () {
       console.log('🚀 closeAiHistory called!');
       try {
         const panel = document.getElementById('ai-drawer-panel');
@@ -1469,13 +1687,13 @@
           if (raw.startsWith('"') && raw.endsWith('"')) tk = JSON.parse(raw);
           else tk = raw;
         }
-      } catch(e) {
+      } catch (e) {
         tk = localStorage.getItem('flutter.authToken') || localStorage.getItem('authToken') || '';
       }
       return (tk || '').replace(/^"+|"+$/g, '').trim();
     }
 
-    window.fetchAiSessions = async function() {
+    window.fetchAiSessions = async function () {
       const container = document.getElementById('ai-sessions-list');
       if (!container) return;
       try {
@@ -1489,13 +1707,13 @@
             return;
           }
           container.innerHTML = '';
-          data.sessions.forEach(function(s) {
+          data.sessions.forEach(function (s) {
             const isActive = window._currentAiConversationId === s.id;
             const item = document.createElement('div');
             item.className = 'ai-session-item' + (isActive ? ' active' : '');
-            
+
             const timeStr = s.createdAt ? new Date(s.createdAt).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '';
-            
+
             item.innerHTML = `
               <div class="ai-session-info" style="cursor:pointer;" onclick="window.selectAiSession('${s.id}')">
                 <div class="ai-session-name">${escapeAiHtml(s.name || 'Cuộc trò chuyện mới')}</div>
@@ -1508,7 +1726,7 @@
             container.appendChild(item);
           });
         }
-      } catch(e) {
+      } catch (e) {
         container.innerHTML = '<div class="ai-drawer-empty">Không thể tải lịch sử trò chuyện.</div>';
       }
     };
@@ -1519,7 +1737,7 @@
       return div.innerHTML;
     }
 
-    window.createNewAiSession = async function() {
+    window.createNewAiSession = async function () {
       try {
         const res = await fetch('/api/ai/chat/session/new', {
           method: 'POST',
@@ -1541,12 +1759,12 @@
             window.fetchAiSessions();
           }
         }
-      } catch(e) {
+      } catch (e) {
         console.error('Lỗi tạo phiên chat mới:', e);
       }
     };
 
-    window.selectAiSession = async function(id) {
+    window.selectAiSession = async function (id) {
       try {
         window._currentAiConversationId = id;
         window.closeAiHistory();
@@ -1561,7 +1779,7 @@
             if (data.messages.length === 0) {
               // Để trống để hiện màn chào mừng Gemini
             } else {
-              data.messages.forEach(function(m) {
+              data.messages.forEach(function (m) {
                 if (window._dartMapHelper) {
                   s.cx.push(window._dartMapHelper(m.role === 'user' ? 'user' : 'ai', m.content || ''));
                 }
@@ -1573,12 +1791,12 @@
             window.updateAiWelcomeState();
           }
         }
-      } catch(e) {
+      } catch (e) {
         console.error('Lỗi tải tin nhắn phiên chat:', e);
       }
     };
 
-    window.deleteAiSession = function(id, evt) {
+    window.deleteAiSession = function (id, evt) {
       if (evt) {
         evt.stopPropagation();
         evt.preventDefault();
@@ -1586,7 +1804,7 @@
       window.showAiConfirm({
         title: 'Xóa cuộc trò chuyện?',
         desc: 'Bạn có chắc chắn muốn xóa cuộc trò chuyện này không? Thao tác này không thể hoàn tác.',
-        onConfirm: async function() {
+        onConfirm: async function () {
           console.log('🚀 Deleting session:', id);
           try {
             const res = await fetch('/api/ai/chat/session/' + id, {
@@ -1612,18 +1830,18 @@
             } else {
               alert(data?.error || 'Không thể xóa cuộc trò chuyện.');
             }
-          } catch(e) {
+          } catch (e) {
             console.error('Lỗi xóa phiên chat:', e);
           }
         }
       });
     };
 
-    window.deleteAllAiSessions = function() {
+    window.deleteAllAiSessions = function () {
       window.showAiConfirm({
         title: 'Xóa toàn bộ lịch sử?',
         desc: 'Bạn có chắc chắn muốn xóa tất cả các cuộc trò chuyện AI không? Thao tác này không thể hoàn tác.',
-        onConfirm: async function() {
+        onConfirm: async function () {
           console.log('🚀 Deleting all AI sessions...');
           try {
             const res = await fetch('/api/ai/chat/sessions/all', {
@@ -1646,14 +1864,14 @@
             } else {
               alert(data?.error || 'Không thể xóa toàn bộ lịch sử.');
             }
-          } catch(e) {
+          } catch (e) {
             console.error('Lỗi xóa toàn bộ phiên chat:', e);
           }
         }
       });
     };
 
-    window.showAiThinking = function(show) {
+    window.showAiThinking = function (show) {
       const el = document.getElementById('ai-typing-float');
       if (!el) return;
       if (show) {
@@ -1668,177 +1886,177 @@
   </script>
   <script src="flutter_bootstrap.js?v=1789399816616" async></script>
 
-<script id="messenger-theme-picker-script">
-window._openMessengerThemePicker = function(convId, convName) {
-  var oldOverlay = document.getElementById('messenger-theme-picker-overlay');
-  if (oldOverlay) oldOverlay.remove();
+  <script id="messenger-theme-picker-script">
+    window._openMessengerThemePicker = function (convId, convName) {
+      var oldOverlay = document.getElementById('messenger-theme-picker-overlay');
+      if (oldOverlay) oldOverlay.remove();
 
-  // Đảm bảo luôn lấy được convId chính xác
-  if (!convId && window.$ && window.$._currentActiveChatConvId) {
-    convId = window.$._currentActiveChatConvId;
-  }
-  if (!convId && window.$ && window.$._activeChatScreenState && window.$._activeChatScreenState._activeChatConvId) {
-    convId = window.$._activeChatScreenState._activeChatConvId;
-  }
-  if (!convId && typeof localStorage !== 'undefined') {
-    convId = localStorage.getItem('last_active_conv_id') || '';
-  }
-
-  var themes = [
-    { id: 'classic', name: 'Mặc định (Classic)', color1: '#0084FF', color2: '#0068FF' },
-    { id: 'sunset', name: 'Hoàng hôn (Sunset)', color1: '#FF512F', color2: '#DD2476' },
-    { id: 'ocean', name: 'Đại dương (Ocean)', color1: '#00B4DB', color2: '#0083B0' },
-    { id: 'berry', name: 'Quả mọng (Berry)', color1: '#8A2387', color2: '#E94057' },
-    { id: 'emerald', name: 'Ngọc bích (Emerald)', color1: '#11998E', color2: '#38EF7D' },
-    { id: 'love', name: 'Tình yêu (Love)', color1: '#FF3377', color2: '#FF6584' }
-  ];
-
-  // 1. Xác định currentTheme chuẩn xác
-  var savedLocal = (convId && localStorage.getItem('chat_theme_' + convId)) || localStorage.getItem('chat_current_theme');
-  var currentTheme = (window.$ && window.$._convThemes && window.$._convThemes[convId]) ||
-                     (window.$ && window.$._currentActiveChatTheme) ||
-                     savedLocal ||
-                     'classic';
-  if (currentTheme === 'default' || !currentTheme) currentTheme = 'classic';
-  console.log('🔍 [Theme Modal] convId:', convId, 'currentTheme:', currentTheme);
-
-  var overlay = document.createElement('div');
-  overlay.id = 'messenger-theme-picker-overlay';
-  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.6);backdrop-filter:blur(8px);z-index:9999999;display:flex;align-items:flex-end;justify-content:center;opacity:0;transition:opacity 0.25s ease;';
-
-  var sheet = document.createElement('div');
-  sheet.style.cssText = 'background:#ffffff;width:100%;max-width:440px;border-top-left-radius:24px;border-top-right-radius:24px;padding:16px 20px 28px;box-shadow:0 -12px 35px rgba(0,0,0,0.25);transform:translateY(100%);transition:transform 0.25s cubic-bezier(0.16,1,0.3,1);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;user-select:none;';
-
-  var html = '<div style="display:flex;justify-content:center;margin-bottom:12px;"><div style="width:40px;height:4px;background:#E2E8F0;border-radius:2px;"></div></div>';
-  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">';
-  html += '<h3 style="margin:0;font-size:18px;font-weight:700;color:#0F172A;">Chủ đề đoạn chat</h3>';
-  html += '<button id="close-theme-btn" style="border:none;background:#F1F5F9;width:32px;height:32px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#64748B;font-size:16px;font-weight:bold;">✕</button>';
-  html += '</div>';
-  html += '<p style="margin:0 0 16px;font-size:13px;color:#64748B;">Chọn màu chủ đề để áp dụng ngay lập tức cho cả hai bên</p>';
-  html += '<div style="display:flex;flex-direction:column;gap:8px;">';
-
-  themes.forEach(function(t) {
-    var isSel = (t.id === currentTheme);
-    html += '<div class="theme-row" data-theme="' + t.id + '" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:16px;cursor:pointer;transition:background 0.15s;background:' + (isSel ? '#F8FAFC' : 'transparent') + ';border:' + (isSel ? '1.5px solid #0084FF' : '1.5px solid transparent') + ';">';
-    html += '<div style="display:flex;align-items:center;gap:14px;">';
-    html += '<div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,' + t.color1 + ',' + t.color2 + ');box-shadow:0 3px 8px ' + t.color1 + '55;border:2px solid #fff;"></div>';
-    html += '<span style="font-size:15px;font-weight:' + (isSel ? '700' : '500') + ';color:#0F172A;">' + t.name + '</span>';
-    html += '</div>';
-    if (isSel) {
-      html += '<div style="width:24px;height:24px;border-radius:50%;background:#0084FF;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:bold;">✓</div>';
-    } else {
-      html += '<div style="width:24px;height:24px;"></div>';
-    }
-    html += '</div>';
-  });
-  html += '</div>';
-
-  sheet.innerHTML = html;
-  overlay.appendChild(sheet);
-  document.body.appendChild(overlay);
-
-  requestAnimationFrame(function() {
-    overlay.style.opacity = '1';
-    sheet.style.transform = 'translateY(0)';
-  });
-
-  function closeOverlay() {
-    overlay.style.opacity = '0';
-    sheet.style.transform = 'translateY(100%)';
-    setTimeout(function() { overlay.remove(); }, 250);
-  }
-
-  overlay.addEventListener('click', function(e) {
-    if (e.target === overlay) closeOverlay();
-  });
-  document.getElementById('close-theme-btn').addEventListener('click', closeOverlay);
-
-  var rows = sheet.querySelectorAll('.theme-row');
-  rows.forEach(function(row) {
-    row.addEventListener('click', function() {
-      var selectedTheme = this.getAttribute('data-theme');
-      console.log('🎯 [Client] Chọn theme:', selectedTheme, 'cho conversationId:', convId);
-
-      // 1. Lưu ngay vào localStorage
-      if (convId) {
-        localStorage.setItem('chat_theme_' + convId, selectedTheme);
+      // Đảm bảo luôn lấy được convId chính xác
+      if (!convId && window.$ && window.$._currentActiveChatConvId) {
+        convId = window.$._currentActiveChatConvId;
       }
-      localStorage.setItem('chat_current_theme', selectedTheme);
+      if (!convId && window.$ && window.$._activeChatScreenState && window.$._activeChatScreenState._activeChatConvId) {
+        convId = window.$._activeChatScreenState._activeChatConvId;
+      }
+      if (!convId && typeof localStorage !== 'undefined') {
+        convId = localStorage.getItem('last_active_conv_id') || '';
+      }
 
-      // 2. Cập nhật ngay trên bộ nhớ Dart/JS và kích hoạt Flutter State re-render tức thì
-      if (window.$) {
-        if (!window.$._convThemes) window.$._convThemes = {};
-        if (convId) window.$._convThemes[convId] = selectedTheme;
-        window.$._currentActiveChatTheme = selectedTheme;
+      var themes = [
+        { id: 'classic', name: 'Mặc định (Classic)', color1: '#0084FF', color2: '#0068FF' },
+        { id: 'sunset', name: 'Hoàng hôn (Sunset)', color1: '#FF512F', color2: '#DD2476' },
+        { id: 'ocean', name: 'Đại dương (Ocean)', color1: '#00B4DB', color2: '#0083B0' },
+        { id: 'berry', name: 'Quả mọng (Berry)', color1: '#8A2387', color2: '#E94057' },
+        { id: 'emerald', name: 'Ngọc bích (Emerald)', color1: '#11998E', color2: '#38EF7D' },
+        { id: 'love', name: 'Tình yêu (Love)', color1: '#FF3377', color2: '#FF6584' }
+      ];
 
-        // Kích hoạt setState trên Flutter ChatScreen
-        if (window.$._activeChatScreenState) {
-          window.$._activeChatScreenState.Q = false; // Đảm bảo đóng emoji
-          if (typeof window.$._activeChatScreenState.K === 'function' && window.A && window.A.ax1) {
+      // 1. Xác định currentTheme chuẩn xác
+      var savedLocal = (convId && localStorage.getItem('chat_theme_' + convId)) || localStorage.getItem('chat_current_theme');
+      var currentTheme = (window.$ && window.$._convThemes && window.$._convThemes[convId]) ||
+        (window.$ && window.$._currentActiveChatTheme) ||
+        savedLocal ||
+        'classic';
+      if (currentTheme === 'default' || !currentTheme) currentTheme = 'classic';
+      console.log('🔍 [Theme Modal] convId:', convId, 'currentTheme:', currentTheme);
+
+      var overlay = document.createElement('div');
+      overlay.id = 'messenger-theme-picker-overlay';
+      overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.6);backdrop-filter:blur(8px);z-index:9999999;display:flex;align-items:flex-end;justify-content:center;opacity:0;transition:opacity 0.25s ease;';
+
+      var sheet = document.createElement('div');
+      sheet.style.cssText = 'background:#ffffff;width:100%;max-width:440px;border-top-left-radius:24px;border-top-right-radius:24px;padding:16px 20px 28px;box-shadow:0 -12px 35px rgba(0,0,0,0.25);transform:translateY(100%);transition:transform 0.25s cubic-bezier(0.16,1,0.3,1);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;user-select:none;';
+
+      var html = '<div style="display:flex;justify-content:center;margin-bottom:12px;"><div style="width:40px;height:4px;background:#E2E8F0;border-radius:2px;"></div></div>';
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">';
+      html += '<h3 style="margin:0;font-size:18px;font-weight:700;color:#0F172A;">Chủ đề đoạn chat</h3>';
+      html += '<button id="close-theme-btn" style="border:none;background:#F1F5F9;width:32px;height:32px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#64748B;font-size:16px;font-weight:bold;">✕</button>';
+      html += '</div>';
+      html += '<p style="margin:0 0 16px;font-size:13px;color:#64748B;">Chọn màu chủ đề để áp dụng ngay lập tức cho cả hai bên</p>';
+      html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+
+      themes.forEach(function (t) {
+        var isSel = (t.id === currentTheme);
+        html += '<div class="theme-row" data-theme="' + t.id + '" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:16px;cursor:pointer;transition:background 0.15s;background:' + (isSel ? '#F8FAFC' : 'transparent') + ';border:' + (isSel ? '1.5px solid #0084FF' : '1.5px solid transparent') + ';">';
+        html += '<div style="display:flex;align-items:center;gap:14px;">';
+        html += '<div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,' + t.color1 + ',' + t.color2 + ');box-shadow:0 3px 8px ' + t.color1 + '55;border:2px solid #fff;"></div>';
+        html += '<span style="font-size:15px;font-weight:' + (isSel ? '700' : '500') + ';color:#0F172A;">' + t.name + '</span>';
+        html += '</div>';
+        if (isSel) {
+          html += '<div style="width:24px;height:24px;border-radius:50%;background:#0084FF;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:bold;">✓</div>';
+        } else {
+          html += '<div style="width:24px;height:24px;"></div>';
+        }
+        html += '</div>';
+      });
+      html += '</div>';
+
+      sheet.innerHTML = html;
+      overlay.appendChild(sheet);
+      document.body.appendChild(overlay);
+
+      requestAnimationFrame(function () {
+        overlay.style.opacity = '1';
+        sheet.style.transform = 'translateY(0)';
+      });
+
+      function closeOverlay() {
+        overlay.style.opacity = '0';
+        sheet.style.transform = 'translateY(100%)';
+        setTimeout(function () { overlay.remove(); }, 250);
+      }
+
+      overlay.addEventListener('click', function (e) {
+        if (e.target === overlay) closeOverlay();
+      });
+      document.getElementById('close-theme-btn').addEventListener('click', closeOverlay);
+
+      var rows = sheet.querySelectorAll('.theme-row');
+      rows.forEach(function (row) {
+        row.addEventListener('click', function () {
+          var selectedTheme = this.getAttribute('data-theme');
+          console.log('🎯 [Client] Chọn theme:', selectedTheme, 'cho conversationId:', convId);
+
+          // 1. Lưu ngay vào localStorage
+          if (convId) {
+            localStorage.setItem('chat_theme_' + convId, selectedTheme);
+          }
+          localStorage.setItem('chat_current_theme', selectedTheme);
+
+          // 2. Cập nhật ngay trên bộ nhớ Dart/JS và kích hoạt Flutter State re-render tức thì
+          if (window.$) {
+            if (!window.$._convThemes) window.$._convThemes = {};
+            if (convId) window.$._convThemes[convId] = selectedTheme;
+            window.$._currentActiveChatTheme = selectedTheme;
+
+            // Kích hoạt setState trên Flutter ChatScreen
+            if (window.$._activeChatScreenState) {
+              window.$._activeChatScreenState.Q = false; // Đảm bảo đóng emoji
+              if (typeof window.$._activeChatScreenState.K === 'function' && window.A && window.A.ax1) {
+                try {
+                  window.$._activeChatScreenState.K(new window.A.ax1());
+                } catch (e) { }
+              }
+            }
+          }
+
+          // 3. Phát socket realtime cho cả hai bên
+          var socketPayload = null;
+          if (window.A && typeof window.A.V === 'function' && window.t && window.t.N) {
             try {
-              window.$._activeChatScreenState.K(new window.A.ax1());
-            } catch(e) {}
+              socketPayload = window.A.V(["conversationId", convId, "theme", selectedTheme], window.t.N, window.t.N);
+            } catch (e) { }
           }
-        }
-      }
-
-      // 3. Phát socket realtime cho cả hai bên
-      var socketPayload = null;
-      if (window.A && typeof window.A.V === 'function' && window.t && window.t.N) {
-        try {
-          socketPayload = window.A.V(["conversationId", convId, "theme", selectedTheme], window.t.N, window.t.N);
-        } catch(e) {}
-      }
-      if (!socketPayload) {
-        socketPayload = { conversationId: convId, theme: selectedTheme };
-      }
-
-      if (window.$ && window.$.bj && typeof window.$.bj.cn === 'function') {
-        try {
-          window.$.bj.cn("update_conversation_theme", socketPayload);
-          console.log('⚡ [Client] Đã phát socket update_conversation_theme thành công!');
-        } catch(e) {
-          console.error('Lỗi phát socket theme:', e);
-        }
-      }
-
-      // 4. Gửi REST API lưu bền vững vào database
-      try {
-        var rawToken = localStorage.getItem('flutter.authToken') || 
-                       localStorage.getItem('authToken') || 
-                       localStorage.getItem('flutter.token') || 
-                       localStorage.getItem('token') || '';
-        var cleanToken = rawToken;
-        try {
-          cleanToken = JSON.parse(rawToken);
-        } catch(e) {
-          if (cleanToken.startsWith('"') && cleanToken.endsWith('"')) {
-            cleanToken = cleanToken.slice(1, -1);
+          if (!socketPayload) {
+            socketPayload = { conversationId: convId, theme: selectedTheme };
           }
-        }
 
-        if (cleanToken && convId) {
-          var backendUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? '' : 'https://chat-tho-fi-vn-9s8u.onrender.com';
-        fetch(backendUrl + '/api/chat/conversations/' + convId + '/theme', {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer ' + cleanToken
-            },
-            body: JSON.stringify({ theme: selectedTheme })
-          }).then(function(res) { return res.json(); })
-            .then(function(data) { console.log('✅ API theme response:', data); })
-            .catch(function(err) { console.error('⚠️ Lỗi API theme:', err); });
-        }
-      } catch(e) {
-        console.error('Lỗi token/fetch:', e);
-      }
+          if (window.$ && window.$.bj && typeof window.$.bj.cn === 'function') {
+            try {
+              window.$.bj.cn("update_conversation_theme", socketPayload);
+              console.log('⚡ [Client] Đã phát socket update_conversation_theme thành công!');
+            } catch (e) {
+              console.error('Lỗi phát socket theme:', e);
+            }
+          }
 
-      closeOverlay();
-    });
-  });
-};
-</script>
+          // 4. Gửi REST API lưu bền vững vào database
+          try {
+            var rawToken = localStorage.getItem('flutter.authToken') ||
+              localStorage.getItem('authToken') ||
+              localStorage.getItem('flutter.token') ||
+              localStorage.getItem('token') || '';
+            var cleanToken = rawToken;
+            try {
+              cleanToken = JSON.parse(rawToken);
+            } catch (e) {
+              if (cleanToken.startsWith('"') && cleanToken.endsWith('"')) {
+                cleanToken = cleanToken.slice(1, -1);
+              }
+            }
+
+            if (cleanToken && convId) {
+              var backendUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? '' : 'https://chat-tho-fi-vn-9s8u.onrender.com';
+              fetch(backendUrl + '/api/chat/conversations/' + convId + '/theme', {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': 'Bearer ' + cleanToken
+                },
+                body: JSON.stringify({ theme: selectedTheme })
+              }).then(function (res) { return res.json(); })
+                .then(function (data) { console.log('✅ API theme response:', data); })
+                .catch(function (err) { console.error('⚠️ Lỗi API theme:', err); });
+            }
+          } catch (e) {
+            console.error('Lỗi token/fetch:', e);
+          }
+
+          closeOverlay();
+        });
+      });
+    };
+  </script>
 
 
   <!-- Modal Quản Lý Thông Báo & Web Push iOS -->
@@ -1860,10 +2078,12 @@ window._openMessengerThemePicker = function(convId, convName) {
       pointer-events: none;
       transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
+
     #notif-modal-overlay.active {
       opacity: 1;
       pointer-events: auto;
     }
+
     #notif-modal-sheet {
       width: 100%;
       max-width: 500px;
@@ -1879,9 +2099,11 @@ window._openMessengerThemePicker = function(convId, convName) {
       overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
+
     #notif-modal-overlay.active #notif-modal-sheet {
       transform: translateY(0);
     }
+
     .notif-drag-bar {
       width: 40px;
       height: 4px;
@@ -1889,6 +2111,7 @@ window._openMessengerThemePicker = function(convId, convName) {
       border-radius: 2px;
       margin: 12px auto 6px;
     }
+
     .notif-header {
       padding: 10px 20px 14px;
       display: flex;
@@ -1896,11 +2119,13 @@ window._openMessengerThemePicker = function(convId, convName) {
       justify-content: space-between;
       border-bottom: 1px solid #f1f5f9;
     }
+
     .notif-header-left {
       display: flex;
       align-items: center;
       gap: 12px;
     }
+
     .notif-header-icon {
       width: 42px;
       height: 42px;
@@ -1912,17 +2137,20 @@ window._openMessengerThemePicker = function(convId, convName) {
       color: #fff;
       font-size: 20px;
     }
+
     .notif-header-title {
       font-size: 17px;
       font-weight: 700;
       color: #0f172a;
       line-height: 1.2;
     }
+
     .notif-header-sub {
       font-size: 12.5px;
       color: #64748b;
       margin-top: 2px;
     }
+
     .notif-close-btn {
       width: 32px;
       height: 32px;
@@ -1936,6 +2164,7 @@ window._openMessengerThemePicker = function(convId, convName) {
       align-items: center;
       justify-content: center;
     }
+
     .notif-content {
       padding: 18px 20px;
       overflow-y: auto;
@@ -1944,6 +2173,7 @@ window._openMessengerThemePicker = function(convId, convName) {
       flex-direction: column;
       gap: 14px;
     }
+
     .notif-status-box {
       padding: 14px 16px;
       border-radius: 16px;
@@ -1952,16 +2182,19 @@ window._openMessengerThemePicker = function(convId, convName) {
       gap: 12px;
       border: 1px solid transparent;
     }
+
     .notif-status-box.active {
       background: #ecfdf5;
       border-color: #a7f3d0;
       color: #065f46;
     }
+
     .notif-status-box.inactive {
       background: #fffbeb;
       border-color: #fde68a;
       color: #92400e;
     }
+
     .notif-btn-main {
       width: 100%;
       height: 48px;
@@ -1978,10 +2211,12 @@ window._openMessengerThemePicker = function(convId, convName) {
       cursor: pointer;
       transition: background 0.2s, transform 0.1s;
     }
+
     .notif-btn-main:active {
       transform: scale(0.98);
       background: #0056d6;
     }
+
     .notif-btn-outline {
       width: 100%;
       height: 44px;
@@ -1998,13 +2233,16 @@ window._openMessengerThemePicker = function(convId, convName) {
       cursor: pointer;
       transition: background 0.2s;
     }
+
     .notif-btn-outline:active {
       background: rgba(0, 104, 255, 0.08);
     }
+
     .notif-test-row {
       display: flex;
       gap: 10px;
     }
+
     .notif-test-btn {
       flex: 1;
       height: 42px;
@@ -2020,6 +2258,7 @@ window._openMessengerThemePicker = function(convId, convName) {
       gap: 6px;
       cursor: pointer;
     }
+
     .notif-guide-card {
       background: #f8fafc;
       border: 1px solid #e2e8f0;
@@ -2027,6 +2266,7 @@ window._openMessengerThemePicker = function(convId, convName) {
       padding: 14px 16px;
       font-size: 12.5px;
     }
+
     .notif-guide-title {
       font-weight: 700;
       color: #0f172a;
@@ -2035,6 +2275,7 @@ window._openMessengerThemePicker = function(convId, convName) {
       align-items: center;
       gap: 6px;
     }
+
     .notif-guide-step {
       display: flex;
       gap: 8px;
@@ -2042,6 +2283,7 @@ window._openMessengerThemePicker = function(convId, convName) {
       line-height: 1.35;
       color: #475569;
     }
+
     .notif-step-badge {
       width: 18px;
       height: 18px;
@@ -2139,28 +2381,28 @@ window._openMessengerThemePicker = function(convId, convName) {
     let _testRingtoneAudio = null;
     let _testVibrationInterval = null;
 
-    window.showNotificationModal = function() {
+    window.showNotificationModal = function () {
       const overlay = document.getElementById('notif-modal-overlay');
       if (!overlay) return;
       window.updateNotificationModalState();
       overlay.classList.add('active');
     };
 
-    window.closeNotificationModal = function() {
+    window.closeNotificationModal = function () {
       const overlay = document.getElementById('notif-modal-overlay');
       if (overlay) overlay.classList.remove('active');
       window.stopTestCallSound();
     };
 
     // Đóng khi bấm ra ngoài vùng đen
-    document.addEventListener('click', function(e) {
+    document.addEventListener('click', function (e) {
       const overlay = document.getElementById('notif-modal-overlay');
       if (overlay && e.target === overlay) {
         window.closeNotificationModal();
       }
     });
 
-    window.updateNotificationModalState = function() {
+    window.updateNotificationModalState = function () {
       const isGranted = ('Notification' in window) && (Notification.permission === 'granted');
       const statusBox = document.getElementById('notif-status-box');
       const statusIcon = document.getElementById('notif-status-icon');
@@ -2187,7 +2429,7 @@ window._openMessengerThemePicker = function(convId, convName) {
       }
     };
 
-    window.handleActivateNotificationClick = async function() {
+    window.handleActivateNotificationClick = async function () {
       const btn = document.getElementById('notif-activate-btn');
       const btnText = document.getElementById('notif-activate-text');
       const originalText = btnText ? btnText.textContent : '';
@@ -2239,7 +2481,7 @@ window._openMessengerThemePicker = function(convId, convName) {
       }
     };
 
-    window.handleTestPushClick = async function() {
+    window.handleTestPushClick = async function () {
       const btn = document.getElementById('notif-test-push-btn');
       const originalHtml = btn ? btn.innerHTML : '';
       try {
@@ -2278,7 +2520,7 @@ window._openMessengerThemePicker = function(convId, convName) {
       }
     };
 
-    window.handleToggleTestCallSound = function() {
+    window.handleToggleTestCallSound = function () {
       const btnText = document.getElementById('notif-test-call-text');
       const btnIcon = document.getElementById('notif-test-call-icon');
       const btn = document.getElementById('notif-test-call-btn');
@@ -2292,7 +2534,7 @@ window._openMessengerThemePicker = function(convId, convName) {
             _testRingtoneAudio.loop = true;
           }
           _testRingtoneAudio.currentTime = 0;
-          _testRingtoneAudio.play().catch(() => {});
+          _testRingtoneAudio.play().catch(() => { });
 
           // Rung chu kỳ 1000ms rung, 500ms nghỉ
           if (navigator.vibrate) {
@@ -2316,7 +2558,7 @@ window._openMessengerThemePicker = function(convId, convName) {
       }
     };
 
-    window.stopTestCallSound = function() {
+    window.stopTestCallSound = function () {
       if (_testRingtoneAudio) {
         _testRingtoneAudio.pause();
         _testRingtoneAudio.currentTime = 0;
@@ -2332,18 +2574,18 @@ window._openMessengerThemePicker = function(convId, convName) {
       if (btn) btn.style.background = '#f8fafc';
     };
 
-    window.handleTestMessageSound = function() {
+    window.handleTestMessageSound = function () {
       try {
         const audio = new Audio('/amthanhtinnhan.mp3');
-        audio.play().catch(() => {});
+        audio.play().catch(() => { });
         if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
       } catch (e) {
         console.error(e);
       }
     };
-      // [Call Sync] Lắng nghe tín hiệu call_ended từ Service Worker để đóng màn hình gọi ngay lập tức
+    // [Call Sync] Lắng nghe tín hiệu call_ended từ Service Worker để đóng màn hình gọi ngay lập tức
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.addEventListener('message', function(event) {
+      navigator.serviceWorker.addEventListener('message', function (event) {
         if (event.data && (event.data.type === 'call_ended' || event.data.type === 'CALL_ENDED')) {
           console.log('🔴 [SW Message] Cuộc gọi đã kết thúc -> Đóng toàn bộ chuông và màn hình cuộc gọi!');
           if (window.dismissIncomingCallNow) {
@@ -2355,21 +2597,21 @@ window._openMessengerThemePicker = function(convId, convName) {
   </script>
 
   <script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.addEventListener('message', function(e) {
-    if (e.data && (e.data.type === 'call_ended' || e.data.type === 'CALL_ENDED')) {
-      if (window.dismissIncomingCallNow) window.dismissIncomingCallNow();
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', function (e) {
+        if (e.data && (e.data.type === 'call_ended' || e.data.type === 'CALL_ENDED')) {
+          if (window.dismissIncomingCallNow) window.dismissIncomingCallNow();
+        }
+      });
     }
-  });
-}
-</script>
+  </script>
 
-<script>
+  <script>
     // ============================================================
     // [Call Sync V14] Standalone polling + dismiss
     // Không phụ thuộc main.dart.js, chạy ngay từ index.html
     // ============================================================
-    (function() {
+    (function () {
       var _pollInterval = null;
       var _pollDelay = 600; // ms
 
@@ -2382,10 +2624,10 @@ if ('serviceWorker' in navigator) {
           ? 'https://chat-tho-fi-vn-9s8u.onrender.com'
           : '';
         fetch(bUrl + '/api/call/status?callerId=' + encodeURIComponent(callerId)
-            + '&calleeId=' + encodeURIComponent(calleeId)
-            + '&t=' + Date.now(), { cache: 'no-store' })
-          .then(function(r) { return r.json(); })
-          .then(function(data) {
+          + '&calleeId=' + encodeURIComponent(calleeId)
+          + '&t=' + Date.now(), { cache: 'no-store' })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
             if (data && data.active === false) {
               console.log('[Call-V14] Cuộc gọi đã kết thúc trên server -> Dismiss ngay!');
               _stopPoll();
@@ -2393,19 +2635,19 @@ if ('serviceWorker' in navigator) {
                 window.dismissIncomingCallNow();
               } else {
                 // Thử lại sau 200ms nếu dismissIncomingCallNow chưa sẵn sàng
-                setTimeout(function() {
+                setTimeout(function () {
                   if (window.dismissIncomingCallNow) window.dismissIncomingCallNow();
                 }, 200);
               }
             }
           })
-          .catch(function() {});
+          .catch(function () { });
       }
 
       function _startPoll() {
         _stopPoll();
         console.log('[Call-V14] Bắt đầu polling trạng thái cuộc gọi mỗi 600ms...');
-        _pollInterval = setInterval(function() {
+        _pollInterval = setInterval(function () {
           var isShowing = window._incomingCallShowing || window._incomingRejectAction || window._incomingCallContext;
           if (!isShowing) {
             _stopPoll();
@@ -2426,7 +2668,7 @@ if ('serviceWorker' in navigator) {
       }
 
       // Expose ra global để main.dart.js có thể gọi
-      window._startCallStatusPolling = function(callerId, calleeId) {
+      window._startCallStatusPolling = function (callerId, calleeId) {
         window._currentCallerId = callerId;
         _startPoll();
       };
@@ -2444,13 +2686,13 @@ if ('serviceWorker' in navigator) {
       }
 
       window.addEventListener('focus', _onResume);
-      document.addEventListener('visibilitychange', function() {
+      document.addEventListener('visibilitychange', function () {
         if (document.visibilityState === 'visible') _onResume();
       });
 
       // Lắng nghe postMessage từ Service Worker (call_ended push notification)
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.addEventListener('message', function(event) {
+        navigator.serviceWorker.addEventListener('message', function (event) {
           if (event.data && (event.data.type === 'call_ended' || event.data.type === 'CALL_ENDED')) {
             console.log('[Call-V14] Service Worker báo call_ended -> Dismiss ngay!');
             _stopPoll();
@@ -2463,339 +2705,343 @@ if ('serviceWorker' in navigator) {
     })();
   </script>
 
-<!-- Thẻ audio chuyên biệt cho WebRTC và chuông cuộc gọi -->
-<audio id="remoteAudioPlayer" autoplay playsinline style="position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;"></audio>
-<audio id="callRingtoneAudio" loop preload="auto" src="/ringtone.mp3" style="display:none;"></audio>
-<audio id="callTutTutAudio" loop preload="auto" src="/tuttut.mp3" style="display:none;"></audio>
-<audio id="callEndAudio" preload="auto" src="/amthanhtat.mp3" style="display:none;"></audio>
+  <!-- Thẻ audio và video chuyên biệt cho WebRTC và chuông cuộc gọi -->
+  <audio id="remoteAudioPlayer" autoplay playsinline
+    style="position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;"></audio>
+  <video id="remoteVideoPlayer" autoplay playsinline
+    style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; object-fit:cover; z-index:0; pointer-events:none; background:#090D1A;"></video>
+  <video id="localVideoPlayer" autoplay playsinline muted
+    style="display:none; position:fixed; top:24px; right:24px; width:130px; height:170px; object-fit:cover; z-index:2147483647; border-radius:16px; border:2px solid rgba(255,255,255,0.8); box-shadow:0 10px 30px rgba(0,0,0,0.6); transform: scaleX(-1); pointer-events:none;"></video>
+  <audio id="callRingtoneAudio" loop preload="auto" src="/ringtone.mp3" style="display:none;"></audio>
+  <audio id="callTutTutAudio" loop preload="auto" src="/tuttut.mp3" style="display:none;"></audio>
+  <audio id="callEndAudio" preload="auto" src="/amthanhtat.mp3" style="display:none;"></audio>
 
-<script id="call-audio-engine-script">
-(function() {
-  var audioCtx = null;
-  var remoteSourceNode = null;
+  <script id="call-audio-engine-script">
+    (function () {
+      var audioCtx = null;
 
-  function getAudioCtx() {
-    if (!audioCtx || audioCtx.state === 'closed') {
-      var AC = window.AudioContext || window.webkitAudioContext;
-      if (AC) audioCtx = new AC();
-    }
-    if (audioCtx && audioCtx.state === 'suspended') {
-      audioCtx.resume().catch(function() {});
-    }
-    return audioCtx;
-  }
-
-  function unlockAudio() {
-    var ctx = getAudioCtx();
-    ['remoteAudioPlayer', 'callRingtoneAudio', 'callTutTutAudio', 'callEndAudio'].forEach(function(id) {
-      var el = document.getElementById(id);
-      if (el) {
-        el.muted = false;
-        var p = el.play();
-        if (p && p.then) {
-          p.then(function() {
-            if (id !== 'remoteAudioPlayer') el.pause();
-          }).catch(function() {});
+      function getAudioCtx() {
+        if (!audioCtx || audioCtx.state === 'closed') {
+          var AC = window.AudioContext || window.webkitAudioContext;
+          if (AC) audioCtx = new AC();
         }
-      }
-    });
-  }
-  ['click', 'touchstart', 'keydown'].forEach(function(evt) {
-    window.addEventListener(evt, unlockAudio, { once: true, passive: true });
-  });
-
-  window._callAudioEngine = {
-    playIncomingRingtone: function() {
-      this.stopAllCallSounds();
-      var el = document.getElementById('callRingtoneAudio');
-      if (el) {
-        el.currentTime = 0;
-        el.muted = false;
-        el.volume = 1.0;
-        var p = el.play();
-        if (p && p.catch) p.catch(function(e) {});
-      }
-    },
-    playWaitingTutTut: function() {
-      this.stopAllCallSounds();
-      var el = document.getElementById('callTutTutAudio');
-      if (el) {
-        el.currentTime = 0;
-        el.muted = false;
-        el.volume = 1.0;
-        var p = el.play();
-        if (p && p.catch) p.catch(function(e) {});
-      }
-    },
-    playCallEndSound: function() {
-      this.stopAllCallSounds();
-      var el = document.getElementById('callEndAudio');
-      if (el) {
-        el.currentTime = 0;
-        el.muted = false;
-        el.volume = 1.0;
-        var p = el.play();
-        if (p && p.catch) p.catch(function(e) {});
-      }
-    },
-    stopAllCallSounds: function() {
-      var ring = document.getElementById('callRingtoneAudio');
-      if (ring) { ring.pause(); ring.currentTime = 0; }
-      var tut = document.getElementById('callTutTutAudio');
-      if (tut) { tut.pause(); tut.currentTime = 0; }
-    },
-    playRemoteStream: function(stream) {
-      if (!stream) return;
-      try {
-        var audioEl = document.getElementById('remoteAudioPlayer');
-        if (!audioEl) {
-          audioEl = document.createElement('audio');
-          audioEl.id = 'remoteAudioPlayer';
-          audioEl.autoplay = true;
-          audioEl.setAttribute('playsinline', 'true');
-          audioEl.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;';
-          document.body.appendChild(audioEl);
+        if (audioCtx && audioCtx.state === 'suspended') {
+          audioCtx.resume().catch(function () { });
         }
-        audioEl.srcObject = stream;
-        audioEl.muted = false;
-        audioEl.volume = 1.0;
-        var p = audioEl.play();
-        if (p && p.catch) p.catch(function() {});
-      } catch(e) {}
+        return audioCtx;
+      }
 
-      try {
-        var ctx = getAudioCtx();
-        if (ctx) {
-          if (remoteSourceNode) {
-            try { remoteSourceNode.disconnect(); } catch(_) {}
+      function unlockAudio() {
+        try {
+          var ctx = getAudioCtx();
+          if (ctx && ctx.state === 'suspended') {
+            ctx.resume().catch(function () { });
           }
-          remoteSourceNode = ctx.createMediaStreamSource(stream);
-          remoteSourceNode.connect(ctx.destination);
+        } catch (_) {}
+      }
+      ['click', 'touchstart'].forEach(function (evt) {
+        window.addEventListener(evt, unlockAudio, { once: true, passive: true });
+      });
+
+      // Đảm bảo không có âm thanh nào tự phát khi khởi tạo trang
+      try {
+        ['callRingtoneAudio', 'callTutTutAudio', 'callEndAudio'].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el) {
+            el.pause();
+            el.currentTime = 0;
+          }
+        });
+      } catch (_) {}
+
+      window._callAudioEngine = {
+        playIncomingRingtone: function () {
+          this.stopAllCallSounds();
+          var el = document.getElementById('callRingtoneAudio');
+          if (el) {
+            el.currentTime = 0;
+            el.muted = false;
+            el.volume = 1.0;
+            var p = el.play();
+            if (p && p.catch) p.catch(function (e) { });
+          }
+        },
+        playWaitingTutTut: function () {
+          this.stopAllCallSounds();
+          var el = document.getElementById('callTutTutAudio');
+          if (el) {
+            el.currentTime = 0;
+            el.muted = false;
+            el.volume = 1.0;
+            var p = el.play();
+            if (p && p.catch) p.catch(function (e) { });
+          }
+        },
+        playCallEndSound: function () {
+          this.stopAllCallSounds();
+          var el = document.getElementById('callEndAudio');
+          if (el) {
+            el.currentTime = 0;
+            el.muted = false;
+            el.volume = 1.0;
+            var p = el.play();
+            if (p && p.catch) p.catch(function (e) { });
+          }
+        },
+                stopAllCallSounds: function () {
+          var ring = document.getElementById('callRingtoneAudio');
+          if (ring) { ring.pause(); ring.currentTime = 0; }
+          var tut = document.getElementById('callTutTutAudio');
+          if (tut) { tut.pause(); tut.currentTime = 0; }
+          var end = document.getElementById('callEndAudio');
+          if (end) { end.pause(); end.currentTime = 0; }
+          if (window._remoteAudioSourceNode) {
+            try { window._remoteAudioSourceNode.disconnect(); } catch(_) {}
+            window._remoteAudioSourceNode = null;
+          }
+          var me = document.getElementById('remoteAudioMediaElement');
+          if (me) { try { me.pause(); me.srcObject = null; } catch(_) {} }
+          var ra = document.getElementById('remoteAudioPlayer');
+          if (ra) { try { ra.pause(); ra.srcObject = null; } catch(_) {} }
+        },
+        playRemoteStream: function (stream) {
+          if (!stream) return;
+          this.stopAllCallSounds();
+          console.log('🔊 [_callAudioEngine] Đang kích hoạt toàn bộ luồng đàm thoại 2 chiều...');
+          try {
+            if (stream.getAudioTracks) {
+              stream.getAudioTracks().forEach(function (track) {
+                track.enabled = true;
+                console.log('🎤 [playRemoteStream] Audio Track:', track.label, 'enabled:', track.enabled, 'readyState:', track.readyState);
+              });
+            }
+
+            // KÊNH 1: Web Audio API - Bơm trực tiếp vào loa hệ thống (Bỏ qua giới hạn thẻ audio)
+            try {
+              var ctx = getAudioCtx();
+              if (ctx) {
+                if (ctx.state === 'suspended') {
+                  ctx.resume().catch(function () {});
+                }
+                if (window._remoteAudioSourceNode) {
+                  try { window._remoteAudioSourceNode.disconnect(); } catch(_) {}
+                }
+                window._remoteAudioSourceNode = ctx.createMediaStreamSource(stream);
+                var gain = ctx.createGain ? ctx.createGain() : null;
+                if (gain) {
+                  gain.gain.value = 1.0;
+                  window._remoteAudioSourceNode.connect(gain);
+                  gain.connect(ctx.destination);
+                } else {
+                  window._remoteAudioSourceNode.connect(ctx.destination);
+                }
+                console.log('✅ [_callAudioEngine] Web Audio API đã nối trực tiếp ra loa ngoài!');
+              }
+            } catch (ctxErr) {
+              console.warn('⚠️ Web Audio API stream bridge note:', ctxErr);
+            }
+
+            // KÊNH 2: Thẻ Video playsinline chuyên dụng cho iOS Safari & Mobile WebKit
+            try {
+              var mediaEl = document.getElementById('remoteAudioMediaElement');
+              if (!mediaEl) {
+                mediaEl = document.createElement('video');
+                mediaEl.id = 'remoteAudioMediaElement';
+                mediaEl.setAttribute('playsinline', 'true');
+                mediaEl.setAttribute('webkit-playsinline', 'true');
+                mediaEl.autoplay = true;
+                mediaEl.muted = false;
+                mediaEl.volume = 1.0;
+                mediaEl.style.cssText = 'position:fixed;bottom:0;right:0;width:1px;height:1px;opacity:0.01;pointer-events:none;z-index:999999;';
+                document.body.appendChild(mediaEl);
+              }
+              mediaEl.srcObject = stream;
+              mediaEl.muted = false;
+              mediaEl.volume = 1.0;
+              var pMedia = mediaEl.play();
+              if (pMedia && pMedia.catch) {
+                pMedia.catch(function (e) {
+                  console.warn('⚠️ Remote media element play deferred:', e);
+                  var unlock = function () {
+                    mediaEl.play().catch(function () {});
+                    window.removeEventListener('click', unlock);
+                    window.removeEventListener('touchstart', unlock);
+                  };
+                  window.addEventListener('click', unlock, { once: true, passive: true });
+                  window.addEventListener('touchstart', unlock, { once: true, passive: true });
+                });
+              }
+            } catch(e) {}
+
+            // KÊNH 3: Thẻ Audio tiêu chuẩn
+            var audioEl = document.getElementById('remoteAudioPlayer');
+            if (!audioEl) {
+              audioEl = document.createElement('audio');
+              audioEl.id = 'remoteAudioPlayer';
+              document.body.appendChild(audioEl);
+            }
+            audioEl.autoplay = true;
+            audioEl.setAttribute('playsinline', 'true');
+            audioEl.style.cssText = 'position:fixed;bottom:0;right:0;width:1px;height:1px;opacity:0.01;pointer-events:none;z-index:999999;';
+            audioEl.srcObject = stream;
+            audioEl.muted = false;
+            audioEl.volume = 1.0;
+
+            var p = audioEl.play();
+            if (p && p.catch) {
+              p.catch(function (err) {
+                var retryPlay = function () {
+                  audioEl.play().catch(function () {});
+                  window.removeEventListener('click', retryPlay);
+                  window.removeEventListener('touchstart', retryPlay);
+                };
+                window.addEventListener('click', retryPlay, { once: true, passive: true });
+                window.addEventListener('touchstart', retryPlay, { once: true, passive: true });
+              });
+            }
+            console.log('✅ [_callAudioEngine] Đã kích hoạt 3 kênh phát âm thanh ra loa ngoài!');
+          } catch (e) {
+            console.error('❌ [_callAudioEngine] Lỗi phát âm thanh:', e);
+          }
         }
-      } catch(ctxErr) {}
-    }
-  };
-})();
-</script>
+      };
+    })();
+  </script>
 
-  
-  <!-- PWA Install Modal & Automation (Android & Desktop Only - No iOS) -->
-  <style>
-    #pwa-install-modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0, 0, 0, 0.45);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      z-index: 999999;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.25s ease;
-    }
-    #pwa-install-modal-overlay.active {
-      opacity: 1;
-      pointer-events: auto;
-    }
-    #pwa-install-modal-sheet {
-      background: #ffffff;
-      border-radius: 20px;
-      width: 90%;
-      max-width: 440px;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-      overflow: hidden;
-      animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-  </style>
-
-  <div id="pwa-install-modal-overlay" onclick="if(event.target===this)window.closePwaInstallModal()">
-    <div id="pwa-install-modal-sheet">
-      <div class="notif-drag-bar"></div>
-      <div class="notif-header">
-        <div class="notif-header-left">
-          <div class="notif-header-icon" style="background: rgba(0, 104, 255, 0.1); color: #0068ff;">📲</div>
-          <div>
-            <div class="notif-header-title">Cài đặt ứng dụng Chat Tho-Fi</div>
-            <div class="notif-header-sub">Thêm vào màn hình chính để dùng như App</div>
-          </div>
-        </div>
-        <button class="notif-close-btn" onclick="window.closePwaInstallModal()">✕</button>
-      </div>
-
-      <div class="notif-content">
-        <!-- Hướng dẫn Android -->
-        <div id="pwa-guide-android" class="notif-guide-card" style="display: none;">
-          <div class="notif-guide-title">
-            <span>🤖</span> Hướng dẫn cài đặt trên Android
-          </div>
-          <div class="notif-guide-step">
-            <div class="notif-step-badge">1</div>
-            <div>Nhấn vào biểu tượng <b>3 dấu chấm (⋮)</b> ở góc trên bên phải trình duyệt Chrome.</div>
-          </div>
-          <div class="notif-guide-step">
-            <div class="notif-step-badge">2</div>
-            <div>Chọn <b>"Cài đặt ứng dụng"</b> (hoặc <b>"Thêm vào Màn hình chính"</b>).</div>
-          </div>
-          <div class="notif-guide-step">
-            <div class="notif-step-badge">3</div>
-            <div>Bấm <b>Cài đặt</b> để hoàn tất. Biểu tượng Chat Tho-Fi sẽ xuất hiện ngay ngoài màn hình điện thoại!</div>
-          </div>
-        </div>
-
-        <!-- Hướng dẫn Desktop (Máy tính) -->
-        <div id="pwa-guide-desktop" class="notif-guide-card" style="display: none;">
-          <div class="notif-guide-title">
-            <span>💻</span> Hướng dẫn cài đặt trên Máy tính
-          </div>
-          <div class="notif-guide-step">
-            <div class="notif-step-badge">1</div>
-            <div>Nhìn lên góc phải thanh địa chỉ (URL) của trình duyệt Chrome hoặc Edge.</div>
-          </div>
-          <div class="notif-guide-step">
-            <div class="notif-step-badge">2</div>
-            <div>Nhấn vào biểu tượng <b>Cài đặt (⊕ hoặc biểu tượng máy tính có mũi tên tải xuống)</b>.</div>
-          </div>
-          <div class="notif-guide-step">
-            <div class="notif-step-badge">3</div>
-            <div>Bấm <b>Cài đặt</b> để mở ứng dụng riêng biệt ngoài màn hình Desktop!</div>
-          </div>
-        </div>
-
-        <button class="notif-btn-main" style="margin-top: 16px;" onclick="window.closePwaInstallModal()">
-          <span>Đã hiểu</span>
-        </button>
-      </div>
-    </div>
-  </div>
 
   <script>
-    (function() {
+    (function () {
       let deferredInstallPrompt = null;
 
+      // Đăng ký Service Worker để Chrome/Edge và Android kích hoạt cờ cài đặt ứng dụng (PWA)
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('/flutter_service_worker.js?v=2.2.1').then(function (reg) {
+            console.log('[PWA] Service Worker đăng ký thành công cho PWA');
+          }).catch(function (err) {
+            console.warn('[PWA] Service Worker registration failed:', err);
+          });
+        });
+      }
+
       // Lắng nghe sự kiện trước khi trình duyệt hiển thị prompt mặc định
-      window.addEventListener('beforeinstallprompt', function(e) {
+      window.addEventListener('beforeinstallprompt', function (e) {
         e.preventDefault();
         deferredInstallPrompt = e;
         window.deferredInstallPrompt = e;
         console.log('[PWA] Đã bắt được sự kiện beforeinstallprompt!');
       });
 
-      window.addEventListener('appinstalled', function() {
+      window.addEventListener('appinstalled', function () {
         deferredInstallPrompt = null;
         window.deferredInstallPrompt = null;
         console.log('[PWA] Ứng dụng đã được cài đặt thành công!');
-        window.closePwaInstallModal();
+        window.hidePwaFloatingBar();
       });
 
-      // Điều kiện: CHỈ áp dụng cho Android và Máy tính, KHÔNG áp dụng cho iOS
-      window.canInstallPwa = function() {
+      // Điều kiện: Cho phép hiển thị trên cả Điện thoại (Android) và Máy tính
+      window.canInstallPwa = function () {
         try {
-          const ua = (navigator.userAgent || '').toLowerCase();
-          // 1. Tuyệt đối không hiển thị trên iOS (iPhone / iPad)
-          if (/iphone|ipad|ipod/.test(ua)) {
-            return false;
-          }
-          // 2. Không hiển thị nếu đã mở dạng ứng dụng standalone
           if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
             return false;
           }
-          // 3. Áp dụng cho Android và Máy tính
-          const isAndroid = /android/.test(ua);
-          const isDesktop = !/mobile|tablet|ipod|iphone|android/.test(ua);
-          return isAndroid || isDesktop;
+          return true;
         } catch (e) {
-          return false;
+          return true;
         }
       };
 
-      // Xử lý khi người dùng bấm nút Cài đặt ứng dụng
-      window.triggerPwaInstall = async function() {
+      // Xử lý khi người dùng bấm nút: Tự động kích hoạt cài đặt vào điện thoại hoặc máy tính
+      window.triggerPwaInstall = async function () {
         console.log('[PWA] Người dùng bấm Cài đặt ứng dụng');
-        
-        // Nếu có prompt hoãn lại từ trình duyệt
-        if (deferredInstallPrompt) {
+        const promptEvent = deferredInstallPrompt || window.deferredInstallPrompt;
+        if (promptEvent) {
           try {
-            deferredInstallPrompt.prompt();
-            const choiceResult = await deferredInstallPrompt.userChoice;
+            promptEvent.prompt();
+            const choiceResult = await promptEvent.userChoice;
             console.log('[PWA] Kết quả chọn của người dùng:', choiceResult.outcome);
             if (choiceResult.outcome === 'accepted') {
               deferredInstallPrompt = null;
               window.deferredInstallPrompt = null;
+              window.hidePwaFloatingBar();
             }
-            return;
           } catch (err) {
             console.warn('[PWA] Lỗi gọi prompt:', err);
           }
-        }
-
-        // Nếu chưa có prompt trực tiếp, mở modal hướng dẫn
-        window.showPwaInstallModal();
-      };
-
-      window.showPwaInstallModal = function() {
-        const modal = document.getElementById('pwa-install-modal-overlay');
-        if (!modal) return;
-        const ua = (navigator.userAgent || '').toLowerCase();
-        const isAndroid = /android/.test(ua);
-        
-        const androidGuide = document.getElementById('pwa-guide-android');
-        const desktopGuide = document.getElementById('pwa-guide-desktop');
-        
-        if (isAndroid) {
-          if (androidGuide) androidGuide.style.display = 'block';
-          if (desktopGuide) desktopGuide.style.display = 'none';
         } else {
-          if (androidGuide) androidGuide.style.display = 'none';
-          if (desktopGuide) desktopGuide.style.display = 'block';
+          console.log('[PWA] Đang chuẩn bị trình cài đặt...');
         }
-        modal.classList.add('active');
       };
 
-      window.closePwaInstallModal = function() {
-        const modal = document.getElementById('pwa-install-modal-overlay');
-        if (modal) modal.classList.remove('active');
+      let _pwaBarShowTimer = null;
+      window.showPwaFloatingBarWhenReady = function () {
+        if (_pwaBarShowTimer) clearTimeout(_pwaBarShowTimer);
+        // Đợi 200ms để Flutter vẽ hoàn chỉnh các ô nhập Username & Mật khẩu lên màn hình
+        _pwaBarShowTimer = setTimeout(function () {
+          const bar = document.getElementById('pwa-floating-install-bar');
+          if (!bar) return;
+
+          // 1. Nếu màn hình khởi động (Splash / Loading) đang hiển thị -> Tuyệt đối ẩn
+          const splash = document.getElementById('loading-screen');
+          if (splash && splash.dataset.dismissed !== 'true') return;
+
+          // 2. Nếu đang mở trong app độc lập (Standalone PWA) -> Không hiện
+          const isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || (window.navigator && window.navigator.standalone === true);
+          if (isStandalone) return;
+
+          // 3. Nếu đã đăng nhập có token -> Không hiện
+          const token = localStorage.getItem('flutter.authToken');
+          if (token) return;
+
+          // Nếu thanh đã hiển thị rồi thì không lặp lại animation
+          if (bar.classList.contains('visible') && !bar.classList.contains('hidden')) return;
+
+          // CHÍNH XÁC: Kích hoạt hiệu ứng trượt mượt mà từ dưới lên trên!
+          bar.classList.remove('hidden');
+          bar.classList.add('visible');
+        }, 200);
+      };
+
+      window.hidePwaFloatingBar = function () {
+        if (_pwaBarShowTimer) clearTimeout(_pwaBarShowTimer);
+        const bar = document.getElementById('pwa-floating-install-bar');
+        if (bar) {
+          bar.classList.remove('visible');
+          bar.classList.add('hidden');
+        }
       };
 
       function checkPwaFloatingBanner() {
-        const bar = document.getElementById('pwa-floating-install-bar');
-        if (!bar) return;
-        const isAuth = !!(localStorage.getItem('flutter.authToken') || localStorage.getItem('authToken'));
-        if (!isAuth && window.canInstallPwa && window.canInstallPwa()) {
-          bar.classList.add('show');
-        } else {
-          bar.classList.remove('show');
+        // Tự động ẩn nếu người dùng đã đăng nhập vào trong màn hình chat
+        const token = localStorage.getItem('flutter.authToken');
+        const isChatActive = !!(window._chatScreenState || (window.$ && window.$._activeChatScreenState) || window._currentUser);
+        if (token || isChatActive) {
+          window.hidePwaFloatingBar();
         }
       }
-      setInterval(checkPwaFloatingBanner, 1500);
-      setTimeout(checkPwaFloatingBanner, 1000);
+
+      window.checkPwaFloatingBanner = checkPwaFloatingBanner;
+      setInterval(checkPwaFloatingBanner, 600);
     })();
   </script>
 
-  <!-- Floating PWA Install Action Bar (Android & Desktop Only) -->
+  <!-- Floating PWA Install Action Bar (Android, iOS & Desktop) -->
   <style>
     .pwa-floating-bar {
       position: fixed;
-      bottom: 24px;
+      bottom: calc(20px + env(safe-area-inset-bottom, 0px));
       left: 50%;
-      transform: translateX(-50%) translateY(120px);
-      z-index: 99998;
+      transform: translateX(-50%) translateY(calc(100% + 80px));
+      z-index: 2147483640;
       width: calc(100% - 32px);
-      max-width: 420px;
-      background: linear-gradient(135deg, #0068ff 0%, #004ecc 100%);
+      max-width: 400px;
+      background: linear-gradient(135deg, #0068ff 0%, #0050d8 100%);
       color: #ffffff;
-      border-radius: 18px;
+      border-radius: 20px;
       padding: 12px 18px;
-      box-shadow: 0 12px 32px rgba(0, 104, 255, 0.38), 0 3px 10px rgba(0, 0, 0, 0.12);
+      box-shadow: 0 14px 36px rgba(0, 104, 255, 0.38), 0 3px 10px rgba(0, 0, 0, 0.12);
       cursor: pointer;
-      opacity: 0;
-      pointer-events: none;
-      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-      border: 1.5px solid rgba(255, 255, 255, 0.3);
+      border: 1.5px solid rgba(255, 255, 255, 0.28);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -2803,64 +3049,112 @@ if ('serviceWorker' in navigator) {
       box-sizing: border-box;
       user-select: none;
       -webkit-tap-highlight-color: transparent;
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 0.4s ease, opacity 0.3s ease, box-shadow 0.25s ease;
+      will-change: transform, opacity;
     }
-    .pwa-floating-bar.show {
-      transform: translateX(-50%) translateY(0);
-      opacity: 1;
-      pointer-events: auto;
+
+    /* Hiệu ứng xuất hiện trượt từ dưới lên trên (Slide Up Entrance with smooth bounce) */
+    .pwa-floating-bar.visible {
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      transform: translateX(-50%) translateY(0) !important;
+      animation: pwaSlideUpEntrance 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
-    .pwa-floating-bar:hover {
-      transform: translateX(-50%) translateY(-3px);
-      box-shadow: 0 16px 40px rgba(0, 104, 255, 0.48);
+
+    .pwa-floating-bar.hidden {
+      opacity: 0 !important;
+      pointer-events: none !important;
+      transform: translateX(-50%) translateY(calc(100% + 80px)) !important;
+      animation: none !important;
     }
-    .pwa-floating-bar:active {
-      transform: translateX(-50%) scale(0.98);
+
+    @keyframes pwaSlideUpEntrance {
+      0% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(calc(100% + 80px));
+      }
+      65% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(-6px);
+      }
+      85% {
+        transform: translateX(-50%) translateY(2px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
     }
+
+    .pwa-floating-bar.visible:hover {
+      animation: none !important;
+      transform: translateX(-50%) translateY(-3px) !important;
+      box-shadow: 0 18px 44px rgba(0, 104, 255, 0.48);
+    }
+
+    .pwa-floating-bar.visible:active {
+      animation: none !important;
+      transform: translateX(-50%) translateY(1px) scale(0.98) !important;
+    }
+
     .pwa-floating-left {
       display: flex;
       align-items: center;
       gap: 12px;
       min-width: 0;
     }
+
     .pwa-floating-icon-wrap {
-      width: 38px;
-      height: 38px;
+      width: 40px;
+      height: 40px;
       background: rgba(255, 255, 255, 0.22);
       border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 20px;
+      font-size: 22px;
       flex-shrink: 0;
     }
+
     .pwa-floating-title {
       font-weight: 800;
-      font-size: 14px;
+      font-size: 14.5px;
       letter-spacing: 0.4px;
       color: #ffffff;
-      line-height: 1.2;
+      line-height: 1.25;
     }
+
     .pwa-floating-subtitle {
-      font-size: 11px;
-      color: rgba(255, 255, 255, 0.88);
+      font-size: 11.5px;
+      color: rgba(255, 255, 255, 0.9);
       margin-top: 2px;
+      font-weight: 500;
     }
+
     .pwa-floating-btn-pill {
       background: #ffffff;
       color: #0068ff;
       font-weight: 800;
-      font-size: 12.5px;
-      padding: 7px 14px;
+      font-size: 13px;
+      padding: 7px 16px;
       border-radius: 20px;
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 5px;
       flex-shrink: 0;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
     }
+
+    @media (max-height: 480px) {
+      .pwa-floating-bar {
+        display: none !important;
+      }
+    }
   </style>
 
-  <div id="pwa-floating-install-bar" class="pwa-floating-bar" onclick="window.triggerPwaInstall()">
+  <div id="pwa-floating-install-bar" class="pwa-floating-bar hidden" onclick="window.triggerPwaInstall()">
     <div class="pwa-floating-left">
       <div class="pwa-floating-icon-wrap">📲</div>
       <div>
@@ -2874,4 +3168,5 @@ if ('serviceWorker' in navigator) {
     </div>
   </div>
 </body>
+
 </html>

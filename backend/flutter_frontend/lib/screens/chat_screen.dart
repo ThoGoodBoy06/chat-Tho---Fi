@@ -5140,7 +5140,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                     final audioPlayer = html.document.getElementById('remoteAudioPlayer') as html.AudioElement?;
                                     audioPlayer?.muted = false;
                                     audioPlayer?.volume = 1.0;
-                                    audioPlayer?.play().catchError((_) {});
                                     SocketService.socket?.emit('accept_call', {'callerId': callerId});
                                     if (dialogContext.mounted) {
                                       final nav = Navigator.of(dialogContext, rootNavigator: true);
@@ -5218,7 +5217,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     final audioPlayer = html.document.getElementById('remoteAudioPlayer') as html.AudioElement?;
     audioPlayer?.muted = false;
     audioPlayer?.volume = 1.0;
-    audioPlayer?.play().catchError((_) {});
 
     SocketService.socket?.emit('request_call', {
       'callerId': callerId,
@@ -5261,6 +5259,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     StreamSubscription? rejectSub;
     StreamSubscription? endSub;
     StreamSubscription? signalSub;
+    Timer? callerStatusPollTimer;
     html.RtcPeerConnection? pc;
     html.MediaStream? localStream;
     html.AudioElement? remoteAudio;
@@ -5313,6 +5312,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         rejectSub?.cancel();
         endSub?.cancel();
         signalSub?.cancel();
+        callerStatusPollTimer?.cancel();
 
         final localVideo = html.document.getElementById('localVideoPlayer') as html.VideoElement?;
         final remoteVideo = html.document.getElementById('remoteVideoPlayer') as html.VideoElement?;
@@ -5375,7 +5375,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             Future<void> processSignal(Map<String, dynamic> data) async {
               final signal = data['signal'];
               if (signal == null) return;
-              if (pc == null) {
+              if (pc == null || (!isCaller && localStream == null && signal['type'] == 'offer')) {
                 pendingSignals.add(data);
                 return;
               }
@@ -5387,7 +5387,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                     'sdp': signal['sdp'],
                   });
                   await processIceQueue();
-                  final answer = await pc!.createAnswer();
+                  final answer = await pc!.createAnswer({
+                    'offerToReceiveAudio': true,
+                    'offerToReceiveVideo': isVideo,
+                  });
                   await pc!.setLocalDescription({
                     'type': answer.type,
                     'sdp': answer.sdp,
@@ -5452,7 +5455,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                       'credential': 'openrelayproject'
                     }
                   ],
-                  'iceCandidatePoolSize': 10
+                  'iceCandidatePoolSize': 0
                 };
                 pc = await html.RtcPeerConnection(config);
 
@@ -5464,20 +5467,30 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                     ..id = 'remoteAudioPlayer'
                     ..autoplay = true
                     ..setAttribute('playsinline', 'true');
-                  remoteAudio!.style.display = 'none';
+                  remoteAudio!.style
+                    ..position = 'fixed'
+                    ..top = '-9999px'
+                    ..left = '-9999px'
+                    ..width = '1px'
+                    ..height = '1px'
+                    ..opacity = '0'
+                    ..pointerEvents = 'none';
                   html.document.body?.children.add(remoteAudio!);
                 }
                 remoteAudio!.muted = false;
                 remoteAudio!.volume = 1.0;
-                remoteAudio!.play().catchError((_) {});
 
                 try {
                   localStream = await html.window.navigator.mediaDevices?.getUserMedia({
-                    'audio': true,
+                    'audio': {
+                      'echoCancellation': true,
+                      'noiseSuppression': true,
+                      'autoGainControl': true,
+                    },
                     'video': isVideo ? {'facingMode': 'user'} : false,
                   });
                 } catch (camErr) {
-                  print('⚠️ Flexible camera request failed: $camErr, trying raw boolean...');
+                  print('⚠️ Flexible audio/camera request failed: $camErr, trying fallback...');
                   try {
                     localStream = await html.window.navigator.mediaDevices?.getUserMedia({
                       'audio': true,
@@ -5507,26 +5520,40 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                   }
                 }
 
+                void handleRemoteStream(html.MediaStream? stream) {
+                  if (stream == null) return;
+                  try {
+                    for (var track in stream.getAudioTracks()) {
+                      (track as dynamic).enabled = true;
+                    }
+                  } catch (_) {}
+                  if (remoteAudio != null) {
+                    remoteAudio!.srcObject = stream;
+                    remoteAudio!.muted = false;
+                    remoteAudio!.volume = 1.0;
+                    remoteAudio!.play().catchError((e) => print('⚠️ Audio Play Error: $e'));
+                  }
+                  try {
+                    final engine = (html.window as dynamic)._callAudioEngine;
+                    if (engine != null) {
+                      engine.playRemoteStream(stream);
+                    }
+                  } catch (_) {}
+                  if (isVideo) {
+                    final remoteVideo = getOrCreateVideo('remoteVideoPlayer', isLocal: false);
+                    remoteVideo.srcObject = stream;
+                    remoteVideo.style.display = 'block';
+                    remoteVideo.play().catchError((e) {
+                      Future.delayed(const Duration(milliseconds: 300), () {
+                        remoteVideo.play().catchError((_) {});
+                      });
+                    });
+                  }
+                }
+
                 pc?.onAddStream.listen((event) {
                   print('🔊 WebRTC onAddStream fired! Stream: ${event.stream?.id}');
-                  if (event.stream != null) {
-                    if (remoteAudio != null) {
-                      remoteAudio!.srcObject = event.stream!;
-                      remoteAudio!.muted = false;
-                      remoteAudio!.volume = 1.0;
-                      remoteAudio!.play().catchError((e) => print('⚠️ Audio Play Error: $e'));
-                    }
-                    if (isVideo) {
-                      final remoteVideo = getOrCreateVideo('remoteVideoPlayer', isLocal: false);
-                      remoteVideo.srcObject = event.stream!;
-                      remoteVideo.style.display = 'block';
-                      remoteVideo.play().catchError((e) {
-                        Future.delayed(const Duration(milliseconds: 300), () {
-                          remoteVideo.play().catchError((_) {});
-                        });
-                      });
-                    }
-                  }
+                  handleRemoteStream(event.stream);
                 });
 
                 pc?.onTrack.listen((event) {
@@ -5537,25 +5564,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                   } else if (event.track != null) {
                     stream = html.MediaStream([event.track!]);
                   }
-
-                  if (stream != null) {
-                    if (remoteAudio != null) {
-                      remoteAudio!.srcObject = stream;
-                      remoteAudio!.muted = false;
-                      remoteAudio!.volume = 1.0;
-                      remoteAudio!.play().catchError((e) => print('⚠️ Audio Play Error: $e'));
-                    }
-                    if (isVideo) {
-                      final remoteVideo = getOrCreateVideo('remoteVideoPlayer', isLocal: false);
-                      remoteVideo.srcObject = stream;
-                      remoteVideo.style.display = 'block';
-                      remoteVideo.play().catchError((e) {
-                        Future.delayed(const Duration(milliseconds: 300), () {
-                          remoteVideo.play().catchError((_) {});
-                        });
-                      });
-                    }
-                  }
+                  handleRemoteStream(stream);
                 });
 
                 pc?.onIceCandidate.listen((event) {
@@ -5601,7 +5610,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 }
 
                 if (isCaller) {
-                  final offer = await pc!.createOffer();
+                  final offer = await pc!.createOffer({
+                    'offerToReceiveAudio': true,
+                    'offerToReceiveVideo': isVideo,
+                  });
                   await pc!.setLocalDescription({
                     'type': offer.type,
                     'sdp': offer.sdp,
@@ -5620,12 +5632,40 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             }
 
             acceptSub ??= SocketService.onCallAccepted.listen((_) {
+              callerStatusPollTimer?.cancel();
               SoundService.stopAllCallSounds();
               setDialogState(() {
                 callStatus = 'Đang đàm thoại';
               });
               initWebRTC();
             });
+
+            if (isCaller) {
+              callerStatusPollTimer ??= Timer.periodic(const Duration(milliseconds: 1000), (t) async {
+                if (callStatus == 'Đang đàm thoại' || pc != null) {
+                  t.cancel();
+                  return;
+                }
+                try {
+                  final bUrl = (kIsWeb && (html.window.location.hostname.contains('pages.dev') ||
+                                          html.window.location.hostname.contains('workers.dev') ||
+                                          html.window.location.hostname.contains('cloudflare')))
+                      ? 'https://chat-tho-fi-vn-9s8u.onrender.com'
+                      : '';
+                  final res = await html.HttpRequest.getString('$bUrl/api/call/status?callerId=$callerId&calleeId=$targetUserId&t=${DateTime.now().millisecondsSinceEpoch}');
+                  final data = jsonDecode(res);
+                  if (data['isAccepted'] == true && callStatus != 'Đang đàm thoại') {
+                    print('🔄 [Caller Fallback] Callee đã bắt máy -> Chuyển sang đàm thoại!');
+                    t.cancel();
+                    SoundService.stopAllCallSounds();
+                    setDialogState(() {
+                      callStatus = 'Đang đàm thoại';
+                    });
+                    initWebRTC();
+                  }
+                } catch (_) {}
+              });
+            }
 
             rejectSub ??= SocketService.onCallRejected.listen((data) {
               setDialogState(() {

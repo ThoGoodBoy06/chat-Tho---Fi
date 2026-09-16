@@ -954,13 +954,25 @@ module.exports = (io) => {
     });
 
     // 7. User B chấp nhận cuộc gọi
-    socket.on("accept_call", async ({ callerId }) => {
-      const activeCaller = activeCalls.get(callerId) || {};
+    socket.on("accept_call", async (payload = {}) => {
+      let d = payload;
+      if (typeof d === "string") {
+        try { d = JSON.parse(d); } catch (_) { d = { callerId: payload }; }
+      }
+      d = d || {};
+      const callerId = d.callerId || d.targetUserId || d.connectedUserId || (activeCalls.get(socket.userId) && activeCalls.get(socket.userId).partnerId);
+
+      const activeCaller = (callerId ? activeCalls.get(callerId) : null) || {};
       const activeCallee = activeCalls.get(socket.userId) || {};
-      activeCalls.set(socket.userId, { ...activeCallee, partnerId: callerId, isAccepted: true });
-      activeCalls.set(callerId, { ...activeCaller, partnerId: socket.userId, isAccepted: true });
+      if (socket.userId) activeCalls.set(socket.userId, { ...activeCallee, partnerId: callerId, isAccepted: true });
+      if (callerId) activeCalls.set(callerId, { ...activeCaller, partnerId: socket.userId, isAccepted: true });
+
+      const convId = activeCallee?.conversationId || activeCaller?.conversationId || d.conversationId;
+      const callerSocketId = callerId ? userSockets.get(callerId) : null;
+
+      console.log(`✅ [accept_call] Callee ${socket.userId} đã nghe máy từ Caller ${callerId} (callerSocketId: ${callerSocketId}, room: ${convId})`);
+
       try {
-        // Lấy thông tin của người vừa chấp nhận cuộc gọi (callee) từ DB
         const callee = await prisma.users.findUnique({
           where: { id: socket.userId },
           select: { id: true, fullName: true },
@@ -971,22 +983,58 @@ module.exports = (io) => {
           avatar: `/api/users/${callee.id}/avatar`
         } : null;
 
-        // Gửi sự kiện chấp nhận kèm thông tin của callee về cho caller (qua room)
-        io.to(callerId).emit("call_accepted", {
+        const acceptEventData = {
+          callerId: callerId,
+          calleeId: socket.userId,
           calleeInfo: mappedCallee,
-        });
+          isAccepted: true,
+          conversationId: convId,
+        };
+
+        if (callerId) {
+          io.to(callerId).emit("call_accepted", acceptEventData);
+          if (callerSocketId && callerSocketId !== callerId) {
+            io.to(callerSocketId).emit("call_accepted", acceptEventData);
+          }
+        }
+        if (convId) {
+          socket.to(convId).emit("call_accepted", acceptEventData);
+        }
       } catch (error) {
         console.error("Lỗi lấy thông tin người nhận cuộc gọi:", error);
-        io.to(callerId).emit("call_accepted", { calleeInfo: null });
+        if (callerId) {
+          io.to(callerId).emit("call_accepted", { calleeInfo: null, isAccepted: true });
+        }
       }
     });
 
     // 8. Chuyển tiếp tín hiệu WebRTC (Offer, Answer, ICE Candidate)
-    socket.on("webrtc_signal", ({ connectedUserId, signal }) => {
-      io.to(connectedUserId).emit("webrtc_signal", {
+    socket.on("webrtc_signal", (data = {}) => {
+      let d = data;
+      if (typeof d === "string") {
+        try { d = JSON.parse(d); } catch (_) {}
+      }
+      d = d || {};
+      const connectedUserId = d.connectedUserId || d.to || d.targetUserId || (activeCalls.get(socket.userId) && activeCalls.get(socket.userId).partnerId);
+      const signal = d.signal;
+      if (!connectedUserId || !signal) {
+        console.warn(`⚠️ [webrtc_signal] Thiếu target hoặc signal từ ${socket.userId}`);
+        return;
+      }
+
+      const signalType = signal.type || (signal.candidate ? 'candidate' : 'unknown');
+      console.log(`⚡ [webrtc_signal] ${signalType} từ ${socket.userId} -> ${connectedUserId}`);
+
+      const signalPayload = {
         signal,
         senderId: socket.userId,
-      });
+      };
+
+      io.to(connectedUserId).emit("webrtc_signal", signalPayload);
+      const targetSocketId = userSockets.get(connectedUserId);
+      if (targetSocketId && targetSocketId !== connectedUserId) {
+        io.to(targetSocketId).emit("webrtc_signal", signalPayload);
+      }
     });
 
     // 9. Kết thúc cuộc gọi (gửi thông báo cho cả 2 phía để tự động đóng màn hình)

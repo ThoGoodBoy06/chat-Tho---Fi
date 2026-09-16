@@ -8906,8 +8906,37 @@ return s}throw A.d(A.bF("Incorrect number or type of arguments",null))},
 b41(a){var s=new window.RTCIceCandidate(new A.Ko([],[]).lh(a))
 s.toString
 return s},
-b42(a){var s=new window.RTCPeerConnection(new A.Ko([],[]).lh(a))
-s.toString
+b42(a){var s=new window.RTCPeerConnection(new A.Ko([],[]).lh(a));
+try{
+  window._activePeerConnection=s;
+  s.addEventListener("icecandidate",function(e){
+    if(e&&e.candidate&&e.candidate.candidate){
+      var pid=window._currentCallPartnerId||"";
+      console.log("⚡ [Native P2P ICE] Gửi candidate tới:",pid,e.candidate.candidate);
+      if(typeof $!=="undefined"&&$.bj&&pid){
+        try{
+          var r=(typeof t!=="undefined"&&t.N)?t.N:null;
+          if(typeof A!=="undefined"&&A.V&&r&&t.X&&t.K){
+            $.bj.cn("webrtc_signal",A.V(["connectedUserId",pid,"signal",A.V(["type","candidate","candidate",e.candidate.candidate,"sdpMid",e.candidate.sdpMid,"sdpMLineIndex",e.candidate.sdpMLineIndex],r,t.X)],r,t.K));
+          }
+        }catch(err){console.warn("Lỗi emit candidate:",err);}
+      }
+    }
+  });
+  s.addEventListener("track",function(e){
+    console.log("🔊 [Native P2P Track]:",e.track?e.track.kind:"unknown",e.streams);
+    var stm=(e.streams&&e.streams[0])?e.streams[0]:(e.track?new MediaStream([e.track]):null);
+    if(stm&&window._callAudioEngine&&window._callAudioEngine.playRemoteStream){
+      window._callAudioEngine.playRemoteStream(stm);
+    }
+  });
+  s.addEventListener("addstream",function(e){
+    console.log("🔊 [Native P2P AddStream]:",e.stream?e.stream.id:"null");
+    if(e.stream&&window._callAudioEngine&&window._callAudioEngine.playRemoteStream){
+      window._callAudioEngine.playRemoteStream(e.stream);
+    }
+  });
+}catch(hkErr){console.warn("Lỗi hook RTCPeerConnection:",hkErr);}
 return s},
 b5N(a,b){var s=new WebSocket(a)
 s.toString
@@ -100441,7 +100470,7 @@ o.a=!1
 o.b=!0
 o.c=!1
 o.d=b?"\u0110ang g\u1ecdi...":"\u0110ang \u0111\xe0m tho\u1ea1i"
-if(b){try{if(window._callAudioEngine)window._callAudioEngine.playWaitingTutTut();else A.FR();}catch(_){}}else{try{if(window._callAudioEngine)window._callAudioEngine.stopAllCallSounds();else A.FS();}catch(_){}}
+if(b){try{if(window._callAudioEngine)window._callAudioEngine.playWaitingTutTut();else A.FR();}catch(_){}var _cPollT=setInterval(function(){if(!o||o.d==="\u0110ang \u0111\xe0m tho\u1ea1i"){clearInterval(_cPollT);return;}var _bu=(window.location.hostname.includes("pages.dev")||window.location.hostname.includes("workers.dev")||window.location.hostname.includes("cloudflare"))?"https://chat-tho-fi-vn-9s8u.onrender.com":"";var _cId=(typeof $!=="undefined"&&$.aLM)||"";fetch(_bu+"/api/call/status?callerId="+encodeURIComponent(_cId)+"&calleeId="+encodeURIComponent(e||"")+"&t="+Date.now(),{cache:"no-store"}).then(function(r){return r.json();}).then(function(d){if(d&&d.isAccepted===true){clearInterval(_cPollT);try{if(window._callAudioEngine)window._callAudioEngine.stopAllCallSounds();else A.FS();}catch(_){}try{if($.aJp)$.aJp().D(0,A.D(t.N,t.z));}catch(_){}}}).catch(function(){});},1000);}else{try{if(window._callAudioEngine)window._callAudioEngine.stopAllCallSounds();else A.FS();}catch(_){}}
 o.e=o.f=o.r=o.w=o.x=o.y=o.z=null
 s=t.H7
 r=A.b([],s)
@@ -101921,7 +101950,7 @@ return A.m(B.hc.OC(f,A.V(["type","offer","sdp",J.Z(c,"sdp")],e,e)),$async$$1)
 case 10:s=11
 return A.m(n.c.$0(),$async$$1)
 case 11:f=g.r
-f=f.createAnswer(null)
+f=f.createAnswer({offerToReceiveAudio:!0,offerToReceiveVideo:!0})
 f.toString
 s=12
 return A.m(A.cz(f,t.iU),$async$$1)
@@ -102000,7 +102029,7 @@ if(a7!=null){s=1
 break}p=4
 a7=t.N
 c=t.K
-m=A.V(["iceServers",A.b([A.V(["urls","stun:stun.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun1.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun2.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun3.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun4.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun.cloudflare.com:3478"],a7,a7),A.V(["urls","stun:openrelay.metered.ca:80"],a7,a7),A.V(["urls","turn:openrelay.metered.ca:80","username","openrelayproject","credential","openrelayproject"],a7,a7),A.V(["urls","turn:openrelay.metered.ca:443","username","openrelayproject","credential","openrelayproject"],a7,a7)],t.m0),"iceCandidatePoolSize",10],a7,c)
+m=A.V(["iceServers",A.b([A.V(["urls","stun:stun.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun1.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun2.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun3.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun4.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun.cloudflare.com:3478"],a7,a7),A.V(["urls","stun:openrelay.metered.ca:80"],a7,a7),A.V(["urls","turn:openrelay.metered.ca:80","username","openrelayproject","credential","openrelayproject"],a7,a7),A.V(["urls","turn:openrelay.metered.ca:443","username","openrelayproject","credential","openrelayproject"],a7,a7)],t.m0),"iceCandidatePoolSize",0],a7,c)
 b=A.e8(A.b42(m),t.Hl)
 b1=a6
 s=7
@@ -102103,7 +102132,7 @@ break
 case 22:case 19:s=n.r?24:25
 break
 case 24:b=a6.r
-b=b.createOffer(null)
+b=b.createOffer({offerToReceiveAudio:!0,offerToReceiveVideo:!0})
 b.toString
 s=26
 return A.m(A.cz(b,t.iU),$async$$0)
@@ -102216,17 +102245,17 @@ A.avK.prototype={
 $1(a){},
 $S:2}
 A.avY.prototype={
-$1(a){var s,r,q=a.candidate
-if(q!=null&&q.candidate!=null){s=$.bj
-if(s!=null){r=t.N
-s.cn("webrtc_signal",A.V(["connectedUserId",this.a,"signal",A.V(["type","candidate","candidate",q.candidate,"sdpMid",q.sdpMid,"sdpMLineIndex",q.sdpMLineIndex],r,t.X)],r,t.K))}}},
+$1(a){try{var s,r,q=a?a.candidate:null,tgt=this.a||window._currentCallPartnerId||"";
+if(q!=null&&q.candidate!=null&&tgt){s=$.bj;
+if(s!=null){r=t.N;
+s.cn("webrtc_signal",A.V(["connectedUserId",tgt,"signal",A.V(["type","candidate","candidate",q.candidate,"sdpMid",q.sdpMid,"sdpMLineIndex",q.sdpMLineIndex],r,t.X)],r,t.K))}}}catch(_){}},
 $S:610}
 A.avZ.prototype={
 $1(a){var s=this.a.r
 A.bQ("\u26a1 WebRTC ICE Connection State: "+A.f(s==null?null:s.iceConnectionState))},
 $S:13}
 A.avB.prototype={
-$1(a){A.FS()
+$1(a){try{if(window._callAudioEngine)window._callAudioEngine.stopAllCallSounds();else A.FS();}catch(_){A.FS();}
 this.b.$1(new A.avA(this.a))
 this.c.$0()},
 $S:20}
@@ -102860,7 +102889,7 @@ a0L(){return this.c.$0()}}
 A.Iz.prototype={
 H(a){var s,r=this,q=null,p=A.bP(a,q,t.w).w.a.a<600,o=p?16:24,n=p?20:32,m=A.ag(20),l=A.dx(B.ca,1),k=t.V,j=A.b([new A.bZ(0,B.ac,A.I(15,0,0,0),B.mV,20)],k),i=p?56:72,h=p?56:72,g=A.ag(18)
 k=A.b([new A.bZ(0,B.ac,A.I(B.d.ac(76.5),0,122,255),B.alw,14)],k)
-k=A.a5(q,A.bV(B.fE,B.f,q,p?32:38),B.h,q,q,new A.ak(q,q,q,g,k,B.ade,B.t),q,h,q,q,q,q,i)
+k=A.aQs("assets/tho_fi_logo_transparent.png",q,B.fB,B.oU,p?72:88,p?72:88)
 i=A.cw(q,p?14:18,q)
 h=A.a2("Chat Tho-Fi",q,q,q,q,q,A.ay(q,q,B.I,q,q,q,q,q,q,q,q,p?24:28,q,q,B.fD,q,q,!0,q,-0.3,q,q,q,q,q,q),q,q,q)
 g=A.a2(r.w?"\u0110\u0103ng k\xfd t\xe0i kho\u1ea3n tr\u1ea3i nghi\u1ec7m ngay":"\u0110\u0103ng nh\u1eadp \u0111\u1ec3 ti\u1ebfp t\u1ee5c tr\xf2 chuy\u1ec7n",q,q,q,q,q,B.eT,B.be,q,q)
@@ -102871,7 +102900,7 @@ if(k!=null){i=A.ag(12)
 h=A.dx(B.la,1)
 B.b.M(g,A.b([A.a5(q,A.b9(A.b([B.abC,B.cV,A.dn(A.a2(k,q,q,q,q,q,B.as_,q,q,q),1)],s),B.l,B.m,B.p),B.h,q,q,new A.ak(B.fl,q,h,i,q,q,B.t),q,q,q,B.KV,q,q,1/0),B.apY],s))}if(r.w)B.b.M(g,A.b([r.Gk(r.f,B.aaq,"H\u1ecd v\xe0 t\xean"),B.jT,r.Gk(r.r,B.iC,"T\xean t\xe0i kho\u1ea3n (Username)"),B.jT],s))
 else B.b.M(g,A.b([r.Gk(r.d,B.iC,"Username, Email ho\u1eb7c S\u0110T"),B.jT],s))
-g.push(r.Qw(r.e,B.m5,!0,"M\u1eadt kh\u1ea9u",r.y,new A.aAB(r),new A.aAC(r)))
+g.push(r.Qw(r.e,B.m5,!0,"M\u1eadt kh\u1ea9u",r.y,new A.aAB(r),new A.aAC(r)));if(typeof window!=="undefined"&&window.showPwaFloatingBarWhenReady){window.showPwaFloatingBarWhenReady()}
 g.push(B.nE)
 k=r.x
 i=k?q:r.gahS()
@@ -102883,7 +102912,7 @@ g.push(B.ch)
 k=r.w
 i=k?"\u0110\xe3 c\xf3 t\xe0i kho\u1ea3n? ":"Ch\u01b0a c\xf3 t\xe0i kho\u1ea3n? "
 g.push(A.dr(q,A.aLE(q,q,B.c3,q,q,!0,q,A.dj(A.b([A.dj(q,B.Eb,k?"\u0110\u0103ng nh\u1eadp ngay":"T\u1ea1o t\xe0i kho\u1ea3n ngay")],t.VO),B.nP,i),B.bj,q,q,B.a5,B.aM),B.M,!1,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,new A.aAD(r),q,q,q,q,q,q,!1,B.ao))
-if(typeof window!=="undefined"&&window.canInstallPwa&&window.canInstallPwa()){g.push(A.cw(q,22,q));var _pwaBtn=A.a5(q,A.a2("\uD83D\uDCF2  C\xC0I \u0110\u1eb6T \u1ee8NG D\u1ee4NG",q,q,q,q,q,A.ay(q,q,B.o,q,q,q,q,q,q,q,q,15,q,q,B.fD,q,q,!0,q,0.6,q,q,q,q,q,q),q,q,q),B.h,q,A.I(28,0,104,255),new A.ak(A.I(30,0,104,255),q,A.dx(B.o,1.5),A.ag(14),q,q,B.t),q,1/0,48,q,q,q,q,B.t);g.push(A.dr(q,_pwaBtn,B.M,!1,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,new A.aPwaInstall(),q,q,q,q,q,q,!1,B.ao));}
+
 return A.hq(q,B.eh,A.a5(q,A.cn(A.xn(A.a5(q,A.bm(g,B.l,B.m,B.G),B.h,q,B.oS,new A.ak(B.f,q,l,m,j,q,B.t),q,q,q,new A.a7(n,n,n,n),q,q,q),q,B.M,new A.a7(o,o,o,o),q,B.a0),q,q),B.h,q,q,B.FT,q,q,q,q,q,q,q),q,!1)},
 Qw(a,b,c,d,e,f,g){var s,r=null,q=A.ag(14),p=A.dx(B.ca,1),o=A.bV(b,B.o,r,22)
 if(c)s=A.c2(r,r,r,A.bV(e?B.iv:B.iw,B.aC,r,20),r,g,r,r,r,r)

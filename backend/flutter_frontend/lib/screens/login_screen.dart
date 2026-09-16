@@ -64,27 +64,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // App Logo
-                  Container(
-                    width: isMobile ? 56 : 72,
-                    height: isMobile ? 56 : 72,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF007AFF), Color(0xFF0055FF)],
-                      ),
-                      borderRadius: BorderRadius.circular(18),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF007AFF).withOpacity(0.3),
-                          blurRadius: 14,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      Icons.chat_bubble_rounded,
-                      size: isMobile ? 32 : 38,
-                      color: Colors.white,
-                    ),
+                  Image.asset(
+                    'assets/tho_fi_logo_transparent.png',
+                    width: isMobile ? 72 : 88,
+                    height: isMobile ? 72 : 88,
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.high,
                   ),
                   SizedBox(height: isMobile ? 14 : 18),
                   Text(
@@ -208,51 +193,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             style: const TextStyle(color: Color(0xFF0068FF), fontWeight: FontWeight.bold),
                           ),
                         ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 22),
-
-                  // Nút Cài đặt ứng dụng to, nổi bật, chuyên nghiệp (Android & Máy tính)
-                  Container(
-                    width: double.infinity,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF0F6FF),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFF0068FF), width: 1.5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF0068FF).withOpacity(0.08),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(14),
-                        onTap: () {
-                          web_utils.triggerPwaInstall();
-                        },
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            Text('📲', style: TextStyle(fontSize: 18)),
-                            SizedBox(width: 8),
-                            Text(
-                              'CÀI ĐẶT ỨNG DỤNG',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF0068FF),
-                                letterSpacing: 0.6,
-                              ),
-                            ),
-                          ],
-                        ),
                       ),
                     ),
                   ),
