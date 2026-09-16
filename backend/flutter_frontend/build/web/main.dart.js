@@ -8927,13 +8927,13 @@ b42(a){
     ];
     rtcCfg.iceCandidatePoolSize = 10;
   } catch(e) { rtcCfg = new A.Ko([],[]).lh(a); }
-  var s=new window.RTCPeerConnection(rtcCfg);
+  var s = new window.RTCPeerConnection(rtcCfg);
   try {
-    window._activePeerConnection=s;
+    window._activePeerConnection = s;
     s.addEventListener("iceconnectionstatechange", function() {
       console.log("⚡ [Native P2P ICE State]:", s.iceConnectionState);
       if (s.iceConnectionState === "failed" && s.restartIce) {
-        console.log("⚠️ [Native P2P ICE] failed -> executing restartIce()...");
+        console.log("⚠️ [Native P2P ICE] failed -> calling restartIce()...");
         try { s.restartIce(); } catch(err) {}
       }
     });
