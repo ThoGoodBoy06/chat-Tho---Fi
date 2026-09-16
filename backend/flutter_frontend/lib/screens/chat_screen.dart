@@ -5458,9 +5458,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                     {'urls': 'stun:stun.cloudflare.com:3478'},
                     {
                       'urls': [
-                        'turns:openrelay.metered.ca:443?transport=tcp',
+                        'turn:openrelay.metered.ca:80',
+                        'turn:openrelay.metered.ca:443',
                         'turn:openrelay.metered.ca:443?transport=tcp',
-                        'turn:openrelay.metered.ca:80?transport=tcp',
+                        'turns:openrelay.metered.ca:443?transport=tcp',
                       ],
                       'username': 'openrelayproject',
                       'credential': 'openrelayproject',
@@ -5595,22 +5596,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
                 pc?.onIceConnectionStateChange.listen((_) {
                   print('⚡ WebRTC ICE Connection State: ${pc?.iceConnectionState}');
-                  final iceState = pc?.iceConnectionState;
-                  if (iceState == 'disconnected' || iceState == 'closed') {
-                    Future.delayed(const Duration(milliseconds: 10000), () {
-                      if (pc?.iceConnectionState == 'disconnected' || pc?.iceConnectionState == 'closed') {
-                        print('🔴 Mất kết nối ICE quá 10s -> Tự động đóng phòng gọi');
-                        cleanupCall();
-                        try {
-                          Navigator.of(dialogContext, rootNavigator: true).pop();
-                        } catch (_) {
-                          try {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          } catch (_) {}
-                        }
-                      }
-                    });
-                  }
+                  // 🌟 Giữ nguyên phòng đàm thoại, không tự động tắt máy khi mạng biến động
                 });
 
                 if (pendingSignals.isNotEmpty) {

@@ -1027,12 +1027,9 @@ module.exports = (io) => {
         senderId: socket.userId,
       };
 
-      const targetSocketId = userSockets.get(connectedUserId);
-      if (targetSocketId) {
-        io.to(targetSocketId).emit("webrtc_signal", signalPayload);
-      } else {
-        io.to(connectedUserId).emit("webrtc_signal", signalPayload);
-      }
+      // 🌟 Gửi đến TOÀN BỘ các socket kết nối của connectedUserId (room socket.userId)
+      // Đảm bảo tab đang đàm thoại của đối phương luôn nhận được tín hiệu 100%
+      io.to(connectedUserId).emit("webrtc_signal", signalPayload);
     });
 
     // 9. Kết thúc cuộc gọi (gửi thông báo cho cả 2 phía để tự động đóng màn hình)
