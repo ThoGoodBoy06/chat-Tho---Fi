@@ -972,43 +972,40 @@ module.exports = (io) => {
 
       console.log(`✅ [accept_call] Callee ${socket.userId} đã nghe máy từ Caller ${callerId} (callerSocketId: ${callerSocketId}, room: ${convId})`);
 
-      try {
-        const callee = await prisma.users.findUnique({
-          where: { id: socket.userId },
-          select: { id: true, fullName: true },
-        });
+      const acceptEventData = {
+        callerId: callerId,
+        calleeId: socket.userId,
+        calleeInfo: null,
+        isAccepted: true,
+        conversationId: convId,
+      };
 
-        const mappedCallee = callee ? {
-          ...callee,
-          avatar: `/api/users/${callee.id}/avatar`
-        } : null;
-
-        const acceptEventData = {
-          callerId: callerId,
-          calleeId: socket.userId,
-          calleeInfo: mappedCallee,
-          isAccepted: true,
-          conversationId: convId,
-        };
-
-        if (callerId) {
-          io.to(callerId).emit("call_accepted", acceptEventData);
-          if (callerSocketId && callerSocketId !== callerId) {
-            io.to(callerSocketId).emit("call_accepted", acceptEventData);
-          }
-        }
-        if (convId) {
-          socket.to(convId).emit("call_accepted", acceptEventData);
-        }
-      } catch (error) {
-        console.error("Lỗi lấy thông tin người nhận cuộc gọi:", error);
-        if (callerId) {
-          io.to(callerId).emit("call_accepted", { calleeInfo: null, isAccepted: true });
+      // ⚡ PHÁT TÍN HIỆU NGAY TỨC THÌ (0ms) - BÊN GỌI DỪNG TÚT TÚT & NỐI THOẠI NGAY LẬP TỨC
+      if (callerId) {
+        io.to(callerId).emit("call_accepted", acceptEventData);
+        if (callerSocketId && callerSocketId !== callerId) {
+          io.to(callerSocketId).emit("call_accepted", acceptEventData);
         }
       }
+      if (convId) {
+        socket.to(convId).emit("call_accepted", acceptEventData);
+      }
+
+      // Lấy avatar & fullName async ở background (không block luồng nghe máy)
+      prisma.users.findUnique({
+        where: { id: socket.userId },
+        select: { id: true, fullName: true },
+      }).then((callee) => {
+        if (callee && callerId) {
+          const withInfo = {
+            ...acceptEventData,
+            calleeInfo: { ...callee, avatar: `/api/users/${callee.id}/avatar` }
+          };
+          io.to(callerId).emit("call_accepted", withInfo);
+        }
+      }).catch(() => {});
     });
 
-    // 8. Chuyển tiếp tín hiệu WebRTC (Offer, Answer, ICE Candidate)
     socket.on("webrtc_signal", (data = {}) => {
       let d = data;
       if (typeof d === "string") {
@@ -1034,6 +1031,10 @@ module.exports = (io) => {
       const targetSocketId = userSockets.get(connectedUserId);
       if (targetSocketId && targetSocketId !== connectedUserId) {
         io.to(targetSocketId).emit("webrtc_signal", signalPayload);
+      }
+      const activeInfo = activeCalls.get(socket.userId) || (connectedUserId ? activeCalls.get(connectedUserId) : null);
+      if (activeInfo && activeInfo.conversationId) {
+        socket.to(activeInfo.conversationId).emit("webrtc_signal", signalPayload);
       }
     });
 

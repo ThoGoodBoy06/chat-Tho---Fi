@@ -5443,17 +5443,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                     {'urls': 'stun:stun3.l.google.com:19302'},
                     {'urls': 'stun:stun4.l.google.com:19302'},
                     {'urls': 'stun:stun.cloudflare.com:3478'},
-                    {'urls': 'stun:openrelay.metered.ca:80'},
+                    {'urls': 'stun:stun.cloudflare.com:3478'},
                     {
-                      'urls': 'turn:openrelay.metered.ca:80',
-                      'username': 'openrelayproject',
-                      'credential': 'openrelayproject'
-                    },
+                      {'urls': 'stun:stun1.l.google.com:19302'},
                     {
-                      'urls': 'turn:openrelay.metered.ca:443',
-                      'username': 'openrelayproject',
-                      'credential': 'openrelayproject'
-                    }
+                      {'urls': 'stun:stun2.l.google.com:19302'}
                   ],
                   'iceCandidatePoolSize': 0
                 };

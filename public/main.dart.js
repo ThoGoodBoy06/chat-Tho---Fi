@@ -102029,7 +102029,7 @@ if(a7!=null){s=1
 break}p=4
 a7=t.N
 c=t.K
-m=A.V(["iceServers",A.b([A.V(["urls","stun:stun.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun1.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun2.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun3.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun4.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun.cloudflare.com:3478"],a7,a7),A.V(["urls","stun:openrelay.metered.ca:80"],a7,a7),A.V(["urls","turn:openrelay.metered.ca:80","username","openrelayproject","credential","openrelayproject"],a7,a7),A.V(["urls","turn:openrelay.metered.ca:443","username","openrelayproject","credential","openrelayproject"],a7,a7)],t.m0),"iceCandidatePoolSize",0],a7,c)
+m=A.V(["iceServers",A.b([A.V(["urls","stun:stun.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun1.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun2.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun3.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun4.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun.cloudflare.com:3478"],a7,a7),A.V(["urls","stun:stun.cloudflare.com:3478"],a7,a7),A.V(["urls","stun:stun1.l.google.com:19302","username","openrelayproject","credential","openrelayproject"],a7,a7),A.V(["urls","stun:stun2.l.google.com:19302","username","openrelayproject","credential","openrelayproject"],a7,a7)],t.m0),"iceCandidatePoolSize",0],a7,c)
 b=A.e8(A.b42(m),t.Hl)
 b1=a6
 s=7
