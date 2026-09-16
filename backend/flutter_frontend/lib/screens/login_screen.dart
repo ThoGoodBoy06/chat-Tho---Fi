@@ -212,27 +212,47 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 22),
 
-                  // Nút Cài đặt ứng dụng (PWA Install - Chỉ áp dụng Android và Máy tính, không áp dụng iOS)
-                  GestureDetector(
-                    onTap: () {
-                      web_utils.triggerPwaInstall();
-                    },
-                    child: RichText(
-                      text: const TextSpan(
-                        text: '📲 ',
-                        style: TextStyle(fontSize: 14),
-                        children: [
-                          TextSpan(
-                            text: 'Cài đặt ứng dụng',
-                            style: TextStyle(
-                              color: Color(0xFF0068FF),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
+                  // Nút Cài đặt ứng dụng to, nổi bật, chuyên nghiệp (Android & Máy tính)
+                  Container(
+                    width: double.infinity,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0F6FF),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFF0068FF), width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF0068FF).withOpacity(0.08),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () {
+                          web_utils.triggerPwaInstall();
+                        },
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Text('📲', style: TextStyle(fontSize: 18)),
+                            SizedBox(width: 8),
+                            Text(
+                              'CÀI ĐẶT ỨNG DỤNG',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF0068FF),
+                                letterSpacing: 0.6,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),

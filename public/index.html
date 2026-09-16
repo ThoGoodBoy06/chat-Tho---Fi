@@ -2760,7 +2760,118 @@ if ('serviceWorker' in navigator) {
         const modal = document.getElementById('pwa-install-modal-overlay');
         if (modal) modal.classList.remove('active');
       };
+
+      function checkPwaFloatingBanner() {
+        const bar = document.getElementById('pwa-floating-install-bar');
+        if (!bar) return;
+        const isAuth = !!(localStorage.getItem('flutter.authToken') || localStorage.getItem('authToken'));
+        if (!isAuth && window.canInstallPwa && window.canInstallPwa()) {
+          bar.classList.add('show');
+        } else {
+          bar.classList.remove('show');
+        }
+      }
+      setInterval(checkPwaFloatingBanner, 1500);
+      setTimeout(checkPwaFloatingBanner, 1000);
     })();
   </script>
+
+  <!-- Floating PWA Install Action Bar (Android & Desktop Only) -->
+  <style>
+    .pwa-floating-bar {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(120px);
+      z-index: 99998;
+      width: calc(100% - 32px);
+      max-width: 420px;
+      background: linear-gradient(135deg, #0068ff 0%, #004ecc 100%);
+      color: #ffffff;
+      border-radius: 18px;
+      padding: 12px 18px;
+      box-shadow: 0 12px 32px rgba(0, 104, 255, 0.38), 0 3px 10px rgba(0, 0, 0, 0.12);
+      cursor: pointer;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      border: 1.5px solid rgba(255, 255, 255, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .pwa-floating-bar.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .pwa-floating-bar:hover {
+      transform: translateX(-50%) translateY(-3px);
+      box-shadow: 0 16px 40px rgba(0, 104, 255, 0.48);
+    }
+    .pwa-floating-bar:active {
+      transform: translateX(-50%) scale(0.98);
+    }
+    .pwa-floating-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+    .pwa-floating-icon-wrap {
+      width: 38px;
+      height: 38px;
+      background: rgba(255, 255, 255, 0.22);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    .pwa-floating-title {
+      font-weight: 800;
+      font-size: 14px;
+      letter-spacing: 0.4px;
+      color: #ffffff;
+      line-height: 1.2;
+    }
+    .pwa-floating-subtitle {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.88);
+      margin-top: 2px;
+    }
+    .pwa-floating-btn-pill {
+      background: #ffffff;
+      color: #0068ff;
+      font-weight: 800;
+      font-size: 12.5px;
+      padding: 7px 14px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    }
+  </style>
+
+  <div id="pwa-floating-install-bar" class="pwa-floating-bar" onclick="window.triggerPwaInstall()">
+    <div class="pwa-floating-left">
+      <div class="pwa-floating-icon-wrap">📲</div>
+      <div>
+        <div class="pwa-floating-title">CÀI ĐẶT ỨNG DỤNG</div>
+        <div class="pwa-floating-subtitle">Thêm vào Màn hình chính ngay</div>
+      </div>
+    </div>
+    <div class="pwa-floating-btn-pill">
+      <span>Cài đặt</span>
+      <span style="font-size: 14px;">➔</span>
+    </div>
+  </div>
 </body>
 </html>
