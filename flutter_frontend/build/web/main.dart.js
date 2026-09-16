@@ -104108,26 +104108,7 @@ if(window.dismissIncomingCallNow){
 },
 $S:2}
 A.ao3.prototype={
-$1(a){try{
-  if(t.f.b(a))$.aNV().D(0,A.cI(a,t.N,t.z));
-  var sig=a?(a.signal||a):null;
-  if(sig&&window._activePeerConnection){
-    var pc=window._activePeerConnection;
-    var type=sig.type;
-    var sdp=sig.sdp;
-    var cand=sig.candidate;
-    if(type==='offer'&&sdp&&pc.signalingState==='stable'){
-      pc.setRemoteDescription(new window.RTCSessionDescription({type:'offer',sdp:sdp})).catch(function(e){console.warn('Direct offer note:',e);});
-    }else if(type==='answer'&&sdp&&pc.signalingState==='have-local-offer'){
-      pc.setRemoteDescription(new window.RTCSessionDescription({type:'answer',sdp:sdp})).catch(function(e){console.warn('Direct answer note:',e);});
-    }else if((type==='candidate'||cand)&&cand){
-      var cStr=typeof cand==='object'?(cand.candidate||''):cand;
-      if(cStr&&pc.remoteDescription){
-        pc.addIceCandidate(new window.RTCIceCandidate({candidate:cStr,sdpMid:sig.sdpMid,sdpMLineIndex:sig.sdpMLineIndex})).catch(function(){});
-      }
-    }
-  }
-}catch(_){}},
+$1(a){try{if(t.f.b(a))$.aNV().D(0,A.cI(a,t.N,t.z))}catch(_){}},
 $S:2}
 A.ao4.prototype={
 $1(a){if(t.f.b(a))$.aJv().D(0,A.cI(a,t.N,t.z))},

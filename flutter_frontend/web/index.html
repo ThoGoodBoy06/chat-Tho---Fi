@@ -16,8 +16,8 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
   <!-- High Priority Preloads for Instant Native Startup -->
-  <link rel="preload" href="flutter_bootstrap.js?v=audio_final_1789543956795" as="script">
-  <link rel="preload" href="main.dart.js?v=audio_final_1789543956795" as="script">
+  <link rel="preload" href="flutter_bootstrap.js?v=audio_perfect_1789544481717" as="script">
+  <link rel="preload" href="main.dart.js?v=audio_perfect_1789544481717" as="script">
   <link rel="preload" href="canvaskit/canvaskit.wasm" as="fetch" crossorigin="anonymous">
   <link rel="preload" href="/tho_fi_logo_transparent.png" as="image">
   <!-- Official Messenger Reaction Emoji Preloads -->
@@ -1884,7 +1884,7 @@
   <script>
     window.flutterWebRenderer = "canvaskit";
   </script>
-  <script src="flutter_bootstrap.js?v=audio_final_1789543956795" async></script>
+  <script src="flutter_bootstrap.js?v=audio_perfect_1789544481717" async></script>
 
   <script id="messenger-theme-picker-script">
     window._openMessengerThemePicker = function (convId, convName) {
@@ -2777,7 +2777,7 @@
           }
         },
         playWaitingTutTut: function () {
-          this.stopAllCallSounds();
+          this.stopCallRingtones();
           this.unlockCallAudio();
           var el = document.getElementById('callTutTutAudio');
           if (el) {
@@ -2789,7 +2789,7 @@
           }
         },
         playCallEndSound: function () {
-          this.stopAllCallSounds();
+          this.stopCallRingtones();
           var el = document.getElementById('callEndAudio');
           if (el) {
             el.currentTime = 0;
@@ -2805,7 +2805,14 @@
           var tut = document.getElementById('callTutTutAudio');
           if (tut) { tut.pause(); tut.currentTime = 0; }
         },
+        // 🌟 CỰC KỲ QUAN TRỌNG: stopAllCallSounds CHỈ dừng chuông & tút tút, TUYỆT ĐỐI KHÔNG ĐƯỢC ngắt luồng đàm thoại!
         stopAllCallSounds: function () {
+          this.stopCallRingtones();
+          var end = document.getElementById('callEndAudio');
+          if (end) { end.pause(); end.currentTime = 0; }
+        },
+        // 🌟 CHỈ gọi destroyCallAudio khi cuộc gọi THỰC SỰ KẾT THÚC (end_call / hangup)
+        destroyCallAudio: function () {
           this.stopCallRingtones();
           var end = document.getElementById('callEndAudio');
           if (end) { end.pause(); end.currentTime = 0; }
@@ -2821,6 +2828,7 @@
           if (ra) { try { ra.pause(); ra.srcObject = null; } catch(_) {} }
           var btn = document.getElementById('callAudioUnmuteBanner');
           if (btn) { try { btn.remove(); } catch(_) {} }
+          console.log('🛑 [CallAudioEngine] Đã hủy toàn bộ luồng âm thanh sau khi tắt máy');
         },
         unlockCallAudio: function () {
           try {
@@ -2853,10 +2861,7 @@
                 ra.play().catch(function () {});
               }
             }
-            console.log('🔓 [CallAudioEngine] Mở khóa AudioContext và gán silent stream thành công!');
-          } catch(err) {
-            console.warn('unlockCallAudio error:', err);
-          }
+          } catch(err) {}
         },
         playRemoteStream: function (stream) {
           if (!stream) return;
@@ -2876,9 +2881,9 @@
             track.addEventListener('unmute', function () {
               console.log('🔊 [AudioTrack UNMUTED - PACKETS FLOWING!]:', track.id);
               var me = document.getElementById('remoteAudioMediaElement');
-              if (me) me.play().catch(function () {});
+              if (me) { me.muted = false; me.volume = 1.0; me.play().catch(function () {}); }
               var ra = document.getElementById('remoteAudioPlayer');
-              if (ra) ra.play().catch(function () {});
+              if (ra) { ra.muted = false; ra.volume = 1.0; ra.play().catch(function () {}); }
             });
           });
 
@@ -2897,9 +2902,7 @@
             mediaEl.style.cssText = 'position:fixed;bottom:0;right:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:999999;';
             document.body.appendChild(mediaEl);
           }
-          if (mediaEl.srcObject !== stream) {
-            mediaEl.srcObject = stream;
-          }
+          mediaEl.srcObject = stream;
           mediaEl.muted = false;
           mediaEl.volume = 1.0;
           var pMedia = mediaEl.play();
@@ -2915,9 +2918,7 @@
             audioEl.style.cssText = 'position:fixed;bottom:0;right:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:999999;';
             document.body.appendChild(audioEl);
           }
-          if (audioEl.srcObject !== stream) {
-            audioEl.srcObject = stream;
-          }
+          audioEl.srcObject = stream;
           audioEl.muted = false;
           audioEl.volume = 1.0;
           var pAudio = audioEl.play();
@@ -2949,8 +2950,8 @@
                 btn.innerHTML = '🔊 <b>Bấm vào đây để bật tiếng cuộc gọi</b>';
                 btn.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:#10B981;color:#fff;padding:12px 24px;border-radius:24px;font-size:15px;font-family:sans-serif;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,0.6);z-index:2147483647;cursor:pointer;animation:pulse 1.5s infinite;';
                 btn.onclick = function () {
-                  if (mediaEl) mediaEl.play().catch(function () {});
-                  if (audioEl) audioEl.play().catch(function () {});
+                  if (mediaEl) { mediaEl.muted = false; mediaEl.volume = 1.0; mediaEl.play().catch(function () {}); }
+                  if (audioEl) { audioEl.muted = false; audioEl.volume = 1.0; audioEl.play().catch(function () {}); }
                   var c = getAudioCtx();
                   if (c && c.state === 'suspended') c.resume().catch(function () {});
                   btn.remove();
@@ -2974,7 +2975,7 @@
       // Đăng ký Service Worker để Chrome/Edge và Android kích hoạt cờ cài đặt ứng dụng (PWA)
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function () {
-          navigator.serviceWorker.register('/flutter_service_worker.js?v=audio_final_1789543956795.2.1').then(function (reg) {
+          navigator.serviceWorker.register('/flutter_service_worker.js?v=audio_perfect_1789544481717.2.1').then(function (reg) {
             console.log('[PWA] Service Worker đăng ký thành công cho PWA');
           }).catch(function (err) {
             console.warn('[PWA] Service Worker registration failed:', err);

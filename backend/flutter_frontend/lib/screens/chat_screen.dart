@@ -5308,6 +5308,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     void cleanupCall() {
       try {
         SoundService.stopAllCallSounds();
+        try {
+          final engine = (html.window as dynamic)._callAudioEngine;
+          if (engine != null && engine.destroyCallAudio != null) {
+            engine.destroyCallAudio();
+          }
+        } catch (_) {}
         acceptSub?.cancel();
         rejectSub?.cancel();
         endSub?.cancel();
@@ -5332,7 +5338,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         if (remoteAudio != null) {
           remoteAudio!.pause();
           remoteAudio!.srcObject = null;
-          remoteAudio!.remove();
           remoteAudio = null;
         }
 
