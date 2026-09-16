@@ -5137,6 +5137,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                     incomingEndSub?.cancel();
                                     canDismiss = true;
                                     SoundService.stopAllCallSounds();
+                                    try {
+                                      final engine = (html.window as dynamic)._callAudioEngine;
+                                      if (engine != null && engine.unlockCallAudio != null) {
+                                        engine.unlockCallAudio();
+                                      }
+                                    } catch (_) {}
                                     final audioPlayer = html.document.getElementById('remoteAudioPlayer') as html.AudioElement?;
                                     audioPlayer?.muted = false;
                                     audioPlayer?.volume = 1.0;
@@ -5214,6 +5220,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       return;
     }
 
+    try {
+      final engine = (html.window as dynamic)._callAudioEngine;
+      if (engine != null && engine.unlockCallAudio != null) {
+        engine.unlockCallAudio();
+      }
+    } catch (_) {}
     final audioPlayer = html.document.getElementById('remoteAudioPlayer') as html.AudioElement?;
     audioPlayer?.muted = false;
     audioPlayer?.volume = 1.0;
