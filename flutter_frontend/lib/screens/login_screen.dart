@@ -211,6 +211,31 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
+
+                  const SizedBox(height: 16),
+
+                  // Nút Cài đặt ứng dụng (PWA Install - Chỉ áp dụng Android và Máy tính, không áp dụng iOS)
+                  GestureDetector(
+                    onTap: () {
+                      web_utils.triggerPwaInstall();
+                    },
+                    child: RichText(
+                      text: const TextSpan(
+                        text: '📲 ',
+                        style: TextStyle(fontSize: 14),
+                        children: [
+                          TextSpan(
+                            text: 'Cài đặt ứng dụng',
+                            style: TextStyle(
+                              color: Color(0xFF0068FF),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),

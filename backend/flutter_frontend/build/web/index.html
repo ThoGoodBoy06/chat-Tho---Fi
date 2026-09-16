@@ -2579,5 +2579,188 @@ if ('serviceWorker' in navigator) {
 </script>
 
   
+  <!-- PWA Install Modal & Automation (Android & Desktop Only - No iOS) -->
+  <style>
+    #pwa-install-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 999999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+    #pwa-install-modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    #pwa-install-modal-sheet {
+      background: #ffffff;
+      border-radius: 20px;
+      width: 90%;
+      max-width: 440px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+      overflow: hidden;
+      animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+  </style>
+
+  <div id="pwa-install-modal-overlay" onclick="if(event.target===this)window.closePwaInstallModal()">
+    <div id="pwa-install-modal-sheet">
+      <div class="notif-drag-bar"></div>
+      <div class="notif-header">
+        <div class="notif-header-left">
+          <div class="notif-header-icon" style="background: rgba(0, 104, 255, 0.1); color: #0068ff;">📲</div>
+          <div>
+            <div class="notif-header-title">Cài đặt ứng dụng Chat Tho-Fi</div>
+            <div class="notif-header-sub">Thêm vào màn hình chính để dùng như App</div>
+          </div>
+        </div>
+        <button class="notif-close-btn" onclick="window.closePwaInstallModal()">✕</button>
+      </div>
+
+      <div class="notif-content">
+        <!-- Hướng dẫn Android -->
+        <div id="pwa-guide-android" class="notif-guide-card" style="display: none;">
+          <div class="notif-guide-title">
+            <span>🤖</span> Hướng dẫn cài đặt trên Android
+          </div>
+          <div class="notif-guide-step">
+            <div class="notif-step-badge">1</div>
+            <div>Nhấn vào biểu tượng <b>3 dấu chấm (⋮)</b> ở góc trên bên phải trình duyệt Chrome.</div>
+          </div>
+          <div class="notif-guide-step">
+            <div class="notif-step-badge">2</div>
+            <div>Chọn <b>"Cài đặt ứng dụng"</b> (hoặc <b>"Thêm vào Màn hình chính"</b>).</div>
+          </div>
+          <div class="notif-guide-step">
+            <div class="notif-step-badge">3</div>
+            <div>Bấm <b>Cài đặt</b> để hoàn tất. Biểu tượng Chat Tho-Fi sẽ xuất hiện ngay ngoài màn hình điện thoại!</div>
+          </div>
+        </div>
+
+        <!-- Hướng dẫn Desktop (Máy tính) -->
+        <div id="pwa-guide-desktop" class="notif-guide-card" style="display: none;">
+          <div class="notif-guide-title">
+            <span>💻</span> Hướng dẫn cài đặt trên Máy tính
+          </div>
+          <div class="notif-guide-step">
+            <div class="notif-step-badge">1</div>
+            <div>Nhìn lên góc phải thanh địa chỉ (URL) của trình duyệt Chrome hoặc Edge.</div>
+          </div>
+          <div class="notif-guide-step">
+            <div class="notif-step-badge">2</div>
+            <div>Nhấn vào biểu tượng <b>Cài đặt (⊕ hoặc biểu tượng máy tính có mũi tên tải xuống)</b>.</div>
+          </div>
+          <div class="notif-guide-step">
+            <div class="notif-step-badge">3</div>
+            <div>Bấm <b>Cài đặt</b> để mở ứng dụng riêng biệt ngoài màn hình Desktop!</div>
+          </div>
+        </div>
+
+        <button class="notif-btn-main" style="margin-top: 16px;" onclick="window.closePwaInstallModal()">
+          <span>Đã hiểu</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      let deferredInstallPrompt = null;
+
+      // Lắng nghe sự kiện trước khi trình duyệt hiển thị prompt mặc định
+      window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        deferredInstallPrompt = e;
+        window.deferredInstallPrompt = e;
+        console.log('[PWA] Đã bắt được sự kiện beforeinstallprompt!');
+      });
+
+      window.addEventListener('appinstalled', function() {
+        deferredInstallPrompt = null;
+        window.deferredInstallPrompt = null;
+        console.log('[PWA] Ứng dụng đã được cài đặt thành công!');
+        window.closePwaInstallModal();
+      });
+
+      // Điều kiện: CHỈ áp dụng cho Android và Máy tính, KHÔNG áp dụng cho iOS
+      window.canInstallPwa = function() {
+        try {
+          const ua = (navigator.userAgent || '').toLowerCase();
+          // 1. Tuyệt đối không hiển thị trên iOS (iPhone / iPad)
+          if (/iphone|ipad|ipod/.test(ua)) {
+            return false;
+          }
+          // 2. Không hiển thị nếu đã mở dạng ứng dụng standalone
+          if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+            return false;
+          }
+          // 3. Áp dụng cho Android và Máy tính
+          const isAndroid = /android/.test(ua);
+          const isDesktop = !/mobile|tablet|ipod|iphone|android/.test(ua);
+          return isAndroid || isDesktop;
+        } catch (e) {
+          return false;
+        }
+      };
+
+      // Xử lý khi người dùng bấm nút Cài đặt ứng dụng
+      window.triggerPwaInstall = async function() {
+        console.log('[PWA] Người dùng bấm Cài đặt ứng dụng');
+        
+        // Nếu có prompt hoãn lại từ trình duyệt
+        if (deferredInstallPrompt) {
+          try {
+            deferredInstallPrompt.prompt();
+            const choiceResult = await deferredInstallPrompt.userChoice;
+            console.log('[PWA] Kết quả chọn của người dùng:', choiceResult.outcome);
+            if (choiceResult.outcome === 'accepted') {
+              deferredInstallPrompt = null;
+              window.deferredInstallPrompt = null;
+            }
+            return;
+          } catch (err) {
+            console.warn('[PWA] Lỗi gọi prompt:', err);
+          }
+        }
+
+        // Nếu chưa có prompt trực tiếp, mở modal hướng dẫn
+        window.showPwaInstallModal();
+      };
+
+      window.showPwaInstallModal = function() {
+        const modal = document.getElementById('pwa-install-modal-overlay');
+        if (!modal) return;
+        const ua = (navigator.userAgent || '').toLowerCase();
+        const isAndroid = /android/.test(ua);
+        
+        const androidGuide = document.getElementById('pwa-guide-android');
+        const desktopGuide = document.getElementById('pwa-guide-desktop');
+        
+        if (isAndroid) {
+          if (androidGuide) androidGuide.style.display = 'block';
+          if (desktopGuide) desktopGuide.style.display = 'none';
+        } else {
+          if (androidGuide) androidGuide.style.display = 'none';
+          if (desktopGuide) desktopGuide.style.display = 'block';
+        }
+        modal.classList.add('active');
+      };
+
+      window.closePwaInstallModal = function() {
+        const modal = document.getElementById('pwa-install-modal-overlay');
+        if (modal) modal.classList.remove('active');
+      };
+    })();
+  </script>
 </body>
 </html>

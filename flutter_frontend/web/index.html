@@ -15,7 +15,7 @@
 
   <!-- High Priority Preloads for Instant Native Startup -->
   <link rel="preload" href="flutter_bootstrap.js?v=1789399816616" as="script">
-  <link rel="preload" href="main.dart.js?v=1789237512757_v2" as="script">
+  <link rel="preload" href="main.dart.js?v=1789317861513" as="script">
   <link rel="preload" href="canvaskit/canvaskit.wasm" as="fetch" crossorigin="anonymous">
   <link rel="preload" href="/tho_fi_logo_transparent.png" as="image">
   <!-- Official Messenger Reaction Emoji Preloads -->
@@ -523,6 +523,37 @@
       }, false);
     }
   </script>
+
+  <!-- Hỗ trợ rung cuộc gọi đến chu kỳ 1s rung - 0.5s nghỉ -->
+  <script>
+    window._callVibrateTimer = null;
+    window._startCallVibration = function() {
+      if (window._callVibrateTimer) clearInterval(window._callVibrateTimer);
+      function doVib() {
+        try {
+          if (navigator && typeof navigator.vibrate === 'function') {
+            navigator.vibrate([1000, 500]);
+          }
+        } catch(_) {}
+      }
+      doVib();
+      window._callVibrateTimer = setInterval(doVib, 1500);
+      console.log('📳 [Vibration] Đã bắt đầu rung chu kỳ cuộc gọi đến!');
+    };
+    window._stopCallVibration = function() {
+      if (window._callVibrateTimer) {
+        clearInterval(window._callVibrateTimer);
+        window._callVibrateTimer = null;
+      }
+      try {
+        if (navigator && typeof navigator.vibrate === 'function') {
+          navigator.vibrate(0);
+        }
+      } catch(_) {}
+      console.log('📳 [Vibration] Đã dừng rung cuộc gọi.');
+    };
+  </script>
+
 </head>
 <body>
   <div id="loading-screen">
@@ -1254,8 +1285,88 @@
     };
 
 
+    window.scrollAiChatToBottom = function() {
+      setTimeout(function() {
+        const pane = document.querySelector('flt-glass-pane') || document.body;
+        const target = (pane && pane.shadowRoot) ? (pane.shadowRoot.querySelector('canvas') || pane.shadowRoot) : pane;
+        if (target) {
+          for (let k = 0; k < 12; k++) {
+            target.dispatchEvent(new WheelEvent('wheel', {
+              deltaY: 3000,
+              deltaMode: 0,
+              bubbles: true,
+              cancelable: true,
+              clientX: window.innerWidth / 2,
+              clientY: window.innerHeight / 2
+            }));
+          }
+        }
+      }, 150);
+      setTimeout(function() {
+        const pane = document.querySelector('flt-glass-pane') || document.body;
+        const target = (pane && pane.shadowRoot) ? (pane.shadowRoot.querySelector('canvas') || pane.shadowRoot) : pane;
+        if (target) {
+          for (let k = 0; k < 12; k++) {
+            target.dispatchEvent(new WheelEvent('wheel', {
+              deltaY: 3000,
+              deltaMode: 0,
+              bubbles: true,
+              cancelable: true,
+              clientX: window.innerWidth / 2,
+              clientY: window.innerHeight / 2
+            }));
+          }
+        }
+      }, 400);
+    };
+
+    let _lastAiRefreshTime = 0;
+    window.refreshAiTabHistory = async function() {
+      const now = Date.now();
+      if (now - _lastAiRefreshTime < 800) return;
+      _lastAiRefreshTime = now;
+      try {
+        const tk = getAiAuthToken();
+        if (!tk) return;
+        const res = await fetch('/api/ai/chat/history', {
+          headers: { 'Authorization': 'Bearer ' + tk }
+        });
+        const data = await res.json();
+        if (data && data.success) {
+          if (data.conversationId) {
+            window._currentAiConversationId = data.conversationId;
+          }
+          if (window._chatScreenState && window._chatScreenState.cx) {
+            const s = window._chatScreenState;
+            s.cx.length = 0;
+            if (Array.isArray(data.messages) && data.messages.length > 0) {
+              data.messages.forEach(function(m) {
+                if (window._dartMapHelper) {
+                  s.cx.push(window._dartMapHelper(m.role === 'user' ? 'user' : 'ai', m.content || ''));
+                }
+              });
+            }
+            if (s.c != null && typeof window._dartSetStateHelper === 'function') {
+              s.K(new window._dartSetStateHelper());
+            }
+            if (Array.isArray(data.messages) && data.messages.length > 0) {
+              window.scrollAiChatToBottom();
+            }
+          }
+          if (typeof window.updateAiWelcomeState === 'function') {
+            window.updateAiWelcomeState();
+          }
+        }
+      } catch (err) {
+        console.warn('Lỗi refresh AI history:', err);
+      }
+    };
+
     window.updateAiMenuBtnState = function(isActive) {
       window._isAiTabActive = !!isActive;
+      if (isActive) {
+        window.refreshAiTabHistory();
+      }
       if (typeof window.updateAiWelcomeState === 'function') {
         window.updateAiWelcomeState();
       }
@@ -1361,7 +1472,7 @@
       } catch(e) {
         tk = localStorage.getItem('flutter.authToken') || localStorage.getItem('authToken') || '';
       }
-      return tk;
+      return (tk || '').replace(/^"+|"+$/g, '').trim();
     }
 
     window.fetchAiSessions = async function() {
@@ -1551,6 +1662,9 @@
         el.classList.remove('active');
       }
     };
+  </script>
+  <script>
+    window.flutterWebRenderer = "canvaskit";
   </script>
   <script src="flutter_bootstrap.js?v=1789399816616" async></script>
 
@@ -2227,8 +2341,127 @@ window._openMessengerThemePicker = function(convId, convName) {
         console.error(e);
       }
     };
+      // [Call Sync] Lắng nghe tín hiệu call_ended từ Service Worker để đóng màn hình gọi ngay lập tức
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', function(event) {
+        if (event.data && (event.data.type === 'call_ended' || event.data.type === 'CALL_ENDED')) {
+          console.log('🔴 [SW Message] Cuộc gọi đã kết thúc -> Đóng toàn bộ chuông và màn hình cuộc gọi!');
+          if (window.dismissIncomingCallNow) {
+            window.dismissIncomingCallNow();
+          }
+        }
+      });
+    }
   </script>
 
+  <script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', function(e) {
+    if (e.data && (e.data.type === 'call_ended' || e.data.type === 'CALL_ENDED')) {
+      if (window.dismissIncomingCallNow) window.dismissIncomingCallNow();
+    }
+  });
+}
+</script>
+
+<script>
+    // ============================================================
+    // [Call Sync V14] Standalone polling + dismiss
+    // Không phụ thuộc main.dart.js, chạy ngay từ index.html
+    // ============================================================
+    (function() {
+      var _pollInterval = null;
+      var _pollDelay = 600; // ms
+
+      function _doCallStatusCheck() {
+        var callerId = window._currentCallerId || '';
+        var calleeId = window._currentUserId || (typeof $ !== 'undefined' && $.aLM) || '';
+        if (!callerId && !calleeId) return;
+        if (window._activeCallShowing) { _stopPoll(); return; }
+        var bUrl = (window.location.hostname.includes('pages.dev') || window.location.hostname.includes('workers.dev') || window.location.hostname.includes('cloudflare'))
+          ? 'https://chat-tho-fi-vn-9s8u.onrender.com'
+          : '';
+        fetch(bUrl + '/api/call/status?callerId=' + encodeURIComponent(callerId)
+            + '&calleeId=' + encodeURIComponent(calleeId)
+            + '&t=' + Date.now(), { cache: 'no-store' })
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            if (data && data.active === false) {
+              console.log('[Call-V14] Cuộc gọi đã kết thúc trên server -> Dismiss ngay!');
+              _stopPoll();
+              if (window.dismissIncomingCallNow) {
+                window.dismissIncomingCallNow();
+              } else {
+                // Thử lại sau 200ms nếu dismissIncomingCallNow chưa sẵn sàng
+                setTimeout(function() {
+                  if (window.dismissIncomingCallNow) window.dismissIncomingCallNow();
+                }, 200);
+              }
+            }
+          })
+          .catch(function() {});
+      }
+
+      function _startPoll() {
+        _stopPoll();
+        console.log('[Call-V14] Bắt đầu polling trạng thái cuộc gọi mỗi 600ms...');
+        _pollInterval = setInterval(function() {
+          var isShowing = window._incomingCallShowing || window._incomingRejectAction || window._incomingCallContext;
+          if (!isShowing) {
+            _stopPoll();
+            return;
+          }
+          _doCallStatusCheck();
+        }, _pollDelay);
+        // Check ngay lập tức lần đầu sau 300ms
+        setTimeout(_doCallStatusCheck, 300);
+      }
+
+      function _stopPoll() {
+        if (_pollInterval) {
+          clearInterval(_pollInterval);
+          _pollInterval = null;
+          console.log('[Call-V14] Đã dừng polling.');
+        }
+      }
+
+      // Expose ra global để main.dart.js có thể gọi
+      window._startCallStatusPolling = function(callerId, calleeId) {
+        window._currentCallerId = callerId;
+        _startPoll();
+      };
+      window._stopCallStatusPolling = _stopPoll;
+
+      // Khi app focus lại / visible lại: check ngay
+      function _onResume() {
+        var isShowing = window._incomingCallShowing || window._incomingRejectAction;
+        if (isShowing) {
+          console.log('[Call-V14] App visible lại, kiểm tra trạng thái cuộc gọi...');
+          _doCallStatusCheck();
+          // Cũng restart poll nếu đã bị dừng
+          if (!_pollInterval) _startPoll();
+        }
+      }
+
+      window.addEventListener('focus', _onResume);
+      document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') _onResume();
+      });
+
+      // Lắng nghe postMessage từ Service Worker (call_ended push notification)
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', function(event) {
+          if (event.data && (event.data.type === 'call_ended' || event.data.type === 'CALL_ENDED')) {
+            console.log('[Call-V14] Service Worker báo call_ended -> Dismiss ngay!');
+            _stopPoll();
+            if (window.dismissIncomingCallNow) window.dismissIncomingCallNow();
+          }
+        });
+      }
+
+      console.log('[Call-V14] Call Sync polling engine sẵn sàng.');
+    })();
+  </script>
 
 <!-- Thẻ audio chuyên biệt cho WebRTC và chuông cuộc gọi -->
 <audio id="remoteAudioPlayer" autoplay playsinline style="position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;"></audio>
@@ -2345,5 +2578,189 @@ window._openMessengerThemePicker = function(convId, convName) {
 })();
 </script>
 
+  
+  <!-- PWA Install Modal & Automation (Android & Desktop Only - No iOS) -->
+  <style>
+    #pwa-install-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 999999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+    #pwa-install-modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    #pwa-install-modal-sheet {
+      background: #ffffff;
+      border-radius: 20px;
+      width: 90%;
+      max-width: 440px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+      overflow: hidden;
+      animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+  </style>
+
+  <div id="pwa-install-modal-overlay" onclick="if(event.target===this)window.closePwaInstallModal()">
+    <div id="pwa-install-modal-sheet">
+      <div class="notif-drag-bar"></div>
+      <div class="notif-header">
+        <div class="notif-header-left">
+          <div class="notif-header-icon" style="background: rgba(0, 104, 255, 0.1); color: #0068ff;">📲</div>
+          <div>
+            <div class="notif-header-title">Cài đặt ứng dụng Chat Tho-Fi</div>
+            <div class="notif-header-sub">Thêm vào màn hình chính để dùng như App</div>
+          </div>
+        </div>
+        <button class="notif-close-btn" onclick="window.closePwaInstallModal()">✕</button>
+      </div>
+
+      <div class="notif-content">
+        <!-- Hướng dẫn Android -->
+        <div id="pwa-guide-android" class="notif-guide-card" style="display: none;">
+          <div class="notif-guide-title">
+            <span>🤖</span> Hướng dẫn cài đặt trên Android
+          </div>
+          <div class="notif-guide-step">
+            <div class="notif-step-badge">1</div>
+            <div>Nhấn vào biểu tượng <b>3 dấu chấm (⋮)</b> ở góc trên bên phải trình duyệt Chrome.</div>
+          </div>
+          <div class="notif-guide-step">
+            <div class="notif-step-badge">2</div>
+            <div>Chọn <b>"Cài đặt ứng dụng"</b> (hoặc <b>"Thêm vào Màn hình chính"</b>).</div>
+          </div>
+          <div class="notif-guide-step">
+            <div class="notif-step-badge">3</div>
+            <div>Bấm <b>Cài đặt</b> để hoàn tất. Biểu tượng Chat Tho-Fi sẽ xuất hiện ngay ngoài màn hình điện thoại!</div>
+          </div>
+        </div>
+
+        <!-- Hướng dẫn Desktop (Máy tính) -->
+        <div id="pwa-guide-desktop" class="notif-guide-card" style="display: none;">
+          <div class="notif-guide-title">
+            <span>💻</span> Hướng dẫn cài đặt trên Máy tính
+          </div>
+          <div class="notif-guide-step">
+            <div class="notif-step-badge">1</div>
+            <div>Nhìn lên góc phải thanh địa chỉ (URL) của trình duyệt Chrome hoặc Edge.</div>
+          </div>
+          <div class="notif-guide-step">
+            <div class="notif-step-badge">2</div>
+            <div>Nhấn vào biểu tượng <b>Cài đặt (⊕ hoặc biểu tượng máy tính có mũi tên tải xuống)</b>.</div>
+          </div>
+          <div class="notif-guide-step">
+            <div class="notif-step-badge">3</div>
+            <div>Bấm <b>Cài đặt</b> để mở ứng dụng riêng biệt ngoài màn hình Desktop!</div>
+          </div>
+        </div>
+
+        <button class="notif-btn-main" style="margin-top: 16px;" onclick="window.closePwaInstallModal()">
+          <span>Đã hiểu</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      let deferredInstallPrompt = null;
+
+      // Lắng nghe sự kiện trước khi trình duyệt hiển thị prompt mặc định
+      window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        deferredInstallPrompt = e;
+        window.deferredInstallPrompt = e;
+        console.log('[PWA] Đã bắt được sự kiện beforeinstallprompt!');
+      });
+
+      window.addEventListener('appinstalled', function() {
+        deferredInstallPrompt = null;
+        window.deferredInstallPrompt = null;
+        console.log('[PWA] Ứng dụng đã được cài đặt thành công!');
+        window.closePwaInstallModal();
+      });
+
+      // Điều kiện: CHỈ áp dụng cho Android và Máy tính, KHÔNG áp dụng cho iOS
+      window.canInstallPwa = function() {
+        try {
+          const ua = (navigator.userAgent || '').toLowerCase();
+          // 1. Tuyệt đối không hiển thị trên iOS (iPhone / iPad)
+          if (/iphone|ipad|ipod/.test(ua)) {
+            return false;
+          }
+          // 2. Không hiển thị nếu đã mở dạng ứng dụng standalone
+          if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+            return false;
+          }
+          // 3. Áp dụng cho Android và Máy tính
+          const isAndroid = /android/.test(ua);
+          const isDesktop = !/mobile|tablet|ipod|iphone|android/.test(ua);
+          return isAndroid || isDesktop;
+        } catch (e) {
+          return false;
+        }
+      };
+
+      // Xử lý khi người dùng bấm nút Cài đặt ứng dụng
+      window.triggerPwaInstall = async function() {
+        console.log('[PWA] Người dùng bấm Cài đặt ứng dụng');
+        
+        // Nếu có prompt hoãn lại từ trình duyệt
+        if (deferredInstallPrompt) {
+          try {
+            deferredInstallPrompt.prompt();
+            const choiceResult = await deferredInstallPrompt.userChoice;
+            console.log('[PWA] Kết quả chọn của người dùng:', choiceResult.outcome);
+            if (choiceResult.outcome === 'accepted') {
+              deferredInstallPrompt = null;
+              window.deferredInstallPrompt = null;
+            }
+            return;
+          } catch (err) {
+            console.warn('[PWA] Lỗi gọi prompt:', err);
+          }
+        }
+
+        // Nếu chưa có prompt trực tiếp, mở modal hướng dẫn
+        window.showPwaInstallModal();
+      };
+
+      window.showPwaInstallModal = function() {
+        const modal = document.getElementById('pwa-install-modal-overlay');
+        if (!modal) return;
+        const ua = (navigator.userAgent || '').toLowerCase();
+        const isAndroid = /android/.test(ua);
+        
+        const androidGuide = document.getElementById('pwa-guide-android');
+        const desktopGuide = document.getElementById('pwa-guide-desktop');
+        
+        if (isAndroid) {
+          if (androidGuide) androidGuide.style.display = 'block';
+          if (desktopGuide) desktopGuide.style.display = 'none';
+        } else {
+          if (androidGuide) androidGuide.style.display = 'none';
+          if (desktopGuide) desktopGuide.style.display = 'block';
+        }
+        modal.classList.add('active');
+      };
+
+      window.closePwaInstallModal = function() {
+        const modal = document.getElementById('pwa-install-modal-overlay');
+        if (modal) modal.classList.remove('active');
+      };
+    })();
+  </script>
 </body>
 </html>

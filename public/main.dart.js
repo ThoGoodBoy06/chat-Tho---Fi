@@ -102883,6 +102883,7 @@ g.push(B.ch)
 k=r.w
 i=k?"\u0110\xe3 c\xf3 t\xe0i kho\u1ea3n? ":"Ch\u01b0a c\xf3 t\xe0i kho\u1ea3n? "
 g.push(A.dr(q,A.aLE(q,q,B.c3,q,q,!0,q,A.dj(A.b([A.dj(q,B.Eb,k?"\u0110\u0103ng nh\u1eadp ngay":"T\u1ea1o t\xe0i kho\u1ea3n ngay")],t.VO),B.nP,i),B.bj,q,q,B.a5,B.aM),B.M,!1,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,new A.aAD(r),q,q,q,q,q,q,!1,B.ao))
+if(typeof window!=="undefined"&&window.canInstallPwa&&window.canInstallPwa()){g.push(A.cw(q,16,q));g.push(A.dr(q,A.aLE(q,q,B.c3,q,q,!0,q,A.dj(A.b([A.dj(q,B.Eb,"C\xe0i \u0111\u1eb7t \u1ee9ng d\u1ee5ng")],t.VO),B.nP,"\uD83D\uDCF2 "),B.bj,q,q,B.a5,B.aM),B.M,!1,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,new A.aPwaInstall(),q,q,q,q,q,q,!1,B.ao));}
 return A.hq(q,B.eh,A.a5(q,A.cn(A.xn(A.a5(q,A.bm(g,B.l,B.m,B.G),B.h,q,B.oS,new A.ak(B.f,q,l,m,j,q,B.t),q,q,q,new A.a7(n,n,n,n),q,q,q),q,B.M,new A.a7(o,o,o,o),q,B.a0),q,q),B.h,q,q,B.FT,q,q,q,q,q,q,q),q,!1)},
 Qw(a,b,c,d,e,f,g){var s,r=null,q=A.ag(14),p=A.dx(B.ca,1),o=A.bV(b,B.o,r,22)
 if(c)s=A.c2(r,r,r,A.bV(e?B.iv:B.iw,B.aC,r,20),r,g,r,r,r,r)
@@ -102987,6 +102988,10 @@ $S:0}
 A.aAB.prototype={
 $1(a){return this.a.iS()},
 $S:618}
+A.aPwaInstall=function aPwaInstall(){};
+A.aPwaInstall.prototype={
+$0(){if(typeof window!=="undefined"&&window.triggerPwaInstall){window.triggerPwaInstall()}},
+$S:0};
 A.aAD.prototype={
 $0(){var s=this.a
 s.K(new A.aAz(s))},
