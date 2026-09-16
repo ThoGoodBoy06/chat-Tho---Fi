@@ -5443,8 +5443,17 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                     {'urls': 'stun:stun3.l.google.com:19302'},
                     {'urls': 'stun:stun4.l.google.com:19302'},
                     {'urls': 'stun:stun.cloudflare.com:3478'},
+                    {
+                      'urls': [
+                        'turns:openrelay.metered.ca:443?transport=tcp',
+                        'turn:openrelay.metered.ca:443?transport=tcp',
+                        'turn:openrelay.metered.ca:80?transport=tcp',
+                      ],
+                      'username': 'openrelayproject',
+                      'credential': 'openrelayproject',
+                    },
                   ],
-                  'iceCandidatePoolSize': 0
+                  'iceCandidatePoolSize': 10
                 };
                 pc = await html.RtcPeerConnection(config);
 
@@ -5574,9 +5583,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                   print('⚡ WebRTC ICE Connection State: ${pc?.iceConnectionState}');
                   final iceState = pc?.iceConnectionState;
                   if (iceState == 'disconnected' || iceState == 'closed') {
-                    Future.delayed(const Duration(milliseconds: 1500), () {
+                    Future.delayed(const Duration(milliseconds: 10000), () {
                       if (pc?.iceConnectionState == 'disconnected' || pc?.iceConnectionState == 'closed') {
-                        print('🔴 Mất kết nối ICE -> Tự động đóng phòng gọi');
+                        print('🔴 Mất kết nối ICE quá 10s -> Tự động đóng phòng gọi');
                         cleanupCall();
                         try {
                           Navigator.of(dialogContext, rootNavigator: true).pop();

@@ -8925,11 +8925,18 @@ try{
   });
   s.addEventListener("track",function(e){
     console.log("🔊 [Native P2P Track]:",e.track?e.track.kind:"unknown");
-    if(e.track&&e.track.kind==="audio"){
+    if(e.track){
+      e.track.enabled=true;
       var stm=(e.streams&&e.streams[0])?e.streams[0]:new MediaStream([e.track]);
       if(stm&&window._callAudioEngine&&window._callAudioEngine.playRemoteStream){
         window._callAudioEngine.playRemoteStream(stm);
       }
+      e.track.addEventListener("unmute",function(){
+        console.log("🔊 [AudioTrack UNMUTED - PACKETS FLOWING!]:",e.track.id);
+        if(window._callAudioEngine&&window._callAudioEngine.playRemoteStream){
+          window._callAudioEngine.playRemoteStream(stm);
+        }
+      });
     }
   });
   s.addEventListener("addstream",function(e){
@@ -102031,7 +102038,7 @@ if(a7!=null){s=1
 break}p=4
 a7=t.N
 c=t.K
-m=A.V(["iceServers",A.b([A.V(["urls","stun:stun.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun1.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun2.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun3.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun4.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun.cloudflare.com:3478"],a7,a7),A.V(["urls","stun:stun.cloudflare.com:3478"],a7,a7),A.V(["urls","stun:stun1.l.google.com:19302","username","openrelayproject","credential","openrelayproject"],a7,a7),A.V(["urls","stun:stun2.l.google.com:19302","username","openrelayproject","credential","openrelayproject"],a7,a7)],t.m0),"iceCandidatePoolSize",0],a7,c)
+m=A.V(["iceServers",A.b([A.V(["urls","stun:stun.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun1.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun2.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun3.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun4.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun.cloudflare.com:3478"],a7,a7),A.V(["urls","turns:openrelay.metered.ca:443?transport=tcp","username","openrelayproject","credential","openrelayproject"],a7,a7),A.V(["urls","turn:openrelay.metered.ca:80?transport=tcp","username","openrelayproject","credential","openrelayproject"],a7,a7)],t.m0),"iceCandidatePoolSize",10],a7,c)
 b=A.e8(A.b42(m),t.Hl)
 b1=a6
 s=7
@@ -104101,7 +104108,26 @@ if(window.dismissIncomingCallNow){
 },
 $S:2}
 A.ao3.prototype={
-$1(a){if(t.f.b(a))$.aNV().D(0,A.cI(a,t.N,t.z))},
+$1(a){try{
+  if(t.f.b(a))$.aNV().D(0,A.cI(a,t.N,t.z));
+  var sig=a?(a.signal||a):null;
+  if(sig&&window._activePeerConnection){
+    var pc=window._activePeerConnection;
+    var type=sig.type;
+    var sdp=sig.sdp;
+    var cand=sig.candidate;
+    if(type==='offer'&&sdp&&pc.signalingState==='stable'){
+      pc.setRemoteDescription(new window.RTCSessionDescription({type:'offer',sdp:sdp})).catch(function(e){console.warn('Direct offer note:',e);});
+    }else if(type==='answer'&&sdp&&pc.signalingState==='have-local-offer'){
+      pc.setRemoteDescription(new window.RTCSessionDescription({type:'answer',sdp:sdp})).catch(function(e){console.warn('Direct answer note:',e);});
+    }else if((type==='candidate'||cand)&&cand){
+      var cStr=typeof cand==='object'?(cand.candidate||''):cand;
+      if(cStr&&pc.remoteDescription){
+        pc.addIceCandidate(new window.RTCIceCandidate({candidate:cStr,sdpMid:sig.sdpMid,sdpMLineIndex:sig.sdpMLineIndex})).catch(function(){});
+      }
+    }
+  }
+}catch(_){}},
 $S:2}
 A.ao4.prototype={
 $1(a){if(t.f.b(a))$.aJv().D(0,A.cI(a,t.N,t.z))},
