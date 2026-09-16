@@ -8924,10 +8924,12 @@ try{
     }
   });
   s.addEventListener("track",function(e){
-    console.log("🔊 [Native P2P Track]:",e.track?e.track.kind:"unknown",e.streams);
-    var stm=(e.streams&&e.streams[0])?e.streams[0]:(e.track?new MediaStream([e.track]):null);
-    if(stm&&window._callAudioEngine&&window._callAudioEngine.playRemoteStream){
-      window._callAudioEngine.playRemoteStream(stm);
+    console.log("🔊 [Native P2P Track]:",e.track?e.track.kind:"unknown");
+    if(e.track&&e.track.kind==="audio"){
+      var stm=(e.streams&&e.streams[0])?e.streams[0]:new MediaStream([e.track]);
+      if(stm&&window._callAudioEngine&&window._callAudioEngine.playRemoteStream){
+        window._callAudioEngine.playRemoteStream(stm);
+      }
     }
   });
   s.addEventListener("addstream",function(e){
