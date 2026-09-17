@@ -1,21 +1,35 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:html' as html;
+import '../models/models.dart';
 
 class ApiService {
   static String get baseUrl {
     if (kIsWeb) {
-      final location = html.window.location;
-      final host = location.hostname;
-      if ((host == 'localhost' || host == '127.0.0.1') && location.port != '3000') {
-        final protocol = location.protocol.isEmpty ? 'http:' : location.protocol;
-        return '$protocol//$host:3000/api';
+      final host = Uri.base.host;
+      final port = Uri.base.port;
+      if ((host == 'localhost' || host == '127.0.0.1') && port != 3000) {
+        final scheme = Uri.base.scheme.isEmpty ? 'http' : Uri.base.scheme;
+        return '$scheme://$host:3000/api';
+      }
+      if (host.contains('pages.dev') || host.contains('workers.dev') || host.contains('cloudflare') || host.contains('web.app')) {
+        return 'https://chat-tho-fi-vn-9s8u.onrender.com/api';
       }
       return '${Uri.base.origin}/api';
     }
     return 'https://chat-tho-fi-vn-9s8u.onrender.com/api';
+  }
+
+  static String formatImageUrl(String? url) {
+    if (url == null || url.isEmpty) return '';
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('blob:')) {
+      return url;
+    }
+    final cleanBase = baseUrl.replaceAll('/api', '');
+    final cleanPath = url.startsWith('/') ? url : '/$url';
+    return '$cleanBase$cleanPath';
   }
 
   static Future<String?> getToken() async {
@@ -47,7 +61,7 @@ class ApiService {
       Uri.parse('$baseUrl/auth/login'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'identifier': identifier, 'password': password}),
-    );
+    ).timeout(const Duration(seconds: 30));
     return jsonDecode(response.body);
   }
 
@@ -57,7 +71,7 @@ class ApiService {
       Uri.parse('$baseUrl/auth/register'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(data),
-    );
+    ).timeout(const Duration(seconds: 30));
     return jsonDecode(response.body);
   }
 
@@ -67,7 +81,7 @@ class ApiService {
     final response = await http.get(
       Uri.parse('$baseUrl/auth/me'),
       headers: headers,
-    );
+    ).timeout(const Duration(seconds: 15));
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     }
@@ -75,12 +89,162 @@ class ApiService {
   }
 
   // Fetch Conversations
-  static Future<List<dynamic>> getConversations() async {
+  static Future<List<dynamic>?> getConversations() async {
+    final headers = await _getHeaders();
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/chat/conversations'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 25));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded != null && decoded['data'] is List) {
+          return decoded['data'] as List<dynamic>;
+        } else if (decoded is List) {
+          return decoded as List<dynamic>;
+        }
+      } else if (response.statusCode == 401) {
+        debugPrint('⚠️ Token 401 Unauthorized khi lấy danh sách chat. Xóa token cũ.');
+        await clearToken();
+        return [];
+      } else {
+        debugPrint('⚠️ Lỗi API getConversations status: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Exeption getConversations: $e');
+    }
+    return null;
+  }
+
+  // Fetch Messages for a conversation
+  static Future<Map<String, dynamic>> getMessages(String conversationId, {int limit = 50}) async {
     final headers = await _getHeaders();
     final response = await http.get(
+      Uri.parse('$baseUrl/chat/$conversationId/messages?limit=$limit'),
+      headers: headers,
+    ).timeout(const Duration(seconds: 15));
+    if (response.statusCode == 200) {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    }
+    return {'data': []};
+  }
+
+  // Mark all unread messages as read in a conversation
+  static Future<void> markAsRead(String conversationId) async {
+    try {
+      final headers = await _getHeaders();
+      await http.post(
+        Uri.parse('$baseUrl/chat/conversations/$conversationId/read'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 15));
+    } catch (e) {
+      debugPrint('Error in ApiService.markAsRead: $e');
+    }
+  }
+
+  // Mark message as delivered via HTTP
+  static Future<void> markAsDelivered(String messageId, {String? conversationId}) async {
+    try {
+      final headers = await _getHeaders();
+      await http.post(
+        Uri.parse('$baseUrl/chat/messages/mark-delivered'),
+        headers: headers,
+        body: jsonEncode({
+          'messageId': messageId,
+          if (conversationId != null) 'conversationId': conversationId,
+        }),
+      ).timeout(const Duration(seconds: 10));
+    } catch (e) {
+      debugPrint('Error in ApiService.markAsDelivered: $e');
+    }
+  }
+
+  // Delete conversation (soft delete on current user's side)
+  static Future<bool> deleteConversation(String conversationId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.delete(
+        Uri.parse('$baseUrl/chat/conversations/$conversationId'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 15));
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('Error deleteConversation API: $e');
+      return false;
+    }
+  }
+
+  // Create or get 1-on-1 private conversation
+  static Future<Map<String, dynamic>> createConversation(String receiverId) async {
+    final headers = await _getHeaders();
+    final response = await http.post(
       Uri.parse('$baseUrl/chat/conversations'),
       headers: headers,
+      body: jsonEncode({'receiverId': receiverId}),
+    ).timeout(const Duration(seconds: 45));
+    return jsonDecode(response.body);
+  }
+
+  // Send Message
+  static Future<Map<String, dynamic>> sendMessage(
+      String conversationId, String content, {String type = 'text', String? replyMessageId}) async {
+    final headers = await _getHeaders();
+    final bodyMap = <String, dynamic>{
+      'content': content,
+      'type': type,
+    };
+    if (replyMessageId != null && replyMessageId.isNotEmpty) {
+      bodyMap['replyMessageId'] = replyMessageId;
+    }
+    final response = await http.post(
+      Uri.parse('$baseUrl/chat/$conversationId/messages'),
+      headers: headers,
+      body: jsonEncode(bodyMap),
+    ).timeout(const Duration(seconds: 45));
+    return jsonDecode(response.body);
+  }
+
+  // Upload Media (Image, Video, Audio, File)
+  static Future<Map<String, dynamic>> uploadMedia(
+      String conversationId, Uint8List fileBytes, String fileName, String mimeType) async {
+    final token = await getToken();
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/chat/$conversationId/upload-media'),
     );
+    if (token != null) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
+
+    MediaType? contentType;
+    if (mimeType.isNotEmpty && mimeType.contains('/')) {
+      final parts = mimeType.split('/');
+      contentType = MediaType(parts[0], parts[1]);
+    }
+
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        'file',
+        fileBytes,
+        filename: fileName,
+        contentType: contentType,
+      ),
+    );
+    request.fields['mimeType'] = mimeType;
+    final streamedResponse = await request.send().timeout(const Duration(seconds: 180));
+    final response = await http.Response.fromStream(streamedResponse);
+    return jsonDecode(response.body);
+  }
+
+  // Get all users (Contacts)
+  static Future<List<dynamic>> getUsers() async {
+    final headers = await _getHeaders();
+    final response = await http.get(
+      Uri.parse('$baseUrl/users'),
+      headers: headers,
+    ).timeout(const Duration(seconds: 45));
     if (response.statusCode == 200) {
       final decoded = jsonDecode(response.body);
       if (decoded is Map<String, dynamic> && decoded['data'] is List) {
@@ -92,41 +256,693 @@ class ApiService {
     return [];
   }
 
-  // Fetch Messages for a conversation
-  static Future<Map<String, dynamic>> getMessages(String conversationId, {int limit = 50}) async {
-    final headers = await _getHeaders();
-    final response = await http.get(
-      Uri.parse('$baseUrl/chat/$conversationId/messages?limit=$limit'),
-      headers: headers,
-    );
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body) as Map<String, dynamic>;
+  // Get accepted friends only (Danh bạ bạn bè thực sự đã kết bạn)
+  static Future<List<dynamic>> getFriends() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/users/friends?_=${DateTime.now().millisecondsSinceEpoch}'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic> && decoded['data'] is List) {
+          return decoded['data'] as List<dynamic>;
+        } else if (decoded is List) {
+          return decoded as List<dynamic>;
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.getFriends: $e');
     }
-    return {'data': []};
+    return [];
   }
 
-  // Create or get 1-on-1 private conversation
-  static Future<Map<String, dynamic>> createConversation(String receiverId) async {
-    final headers = await _getHeaders();
-    final response = await http.post(
-      Uri.parse('$baseUrl/chat/conversations'),
-      headers: headers,
-      body: jsonEncode({'receiverId': receiverId}),
-    );
-    return jsonDecode(response.body);
+  // Update FCM Device Token (Hỗ trợ Đa thiết bị PWA & Mobile)
+  static Future<bool> updateFcmToken(String fcmToken, {String platform = 'web', String? deviceId}) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/users/fcm-token'),
+        headers: headers,
+        body: jsonEncode({
+          'fcmToken': fcmToken,
+          'platform': platform,
+          if (deviceId != null) 'deviceId': deviceId,
+        }),
+      ).timeout(const Duration(seconds: 15));
+      debugPrint('🔥 [ApiService] Response updateFcmToken status: ${response.statusCode}');
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.updateFcmToken: $e');
+      return false;
+    }
   }
 
-  // Send Message
-  static Future<Map<String, dynamic>> sendMessage(String conversationId, String content, {String type = 'text'}) async {
-    final headers = await _getHeaders();
-    final response = await http.post(
-      Uri.parse('$baseUrl/chat/$conversationId/messages'),
-      headers: headers,
-      body: jsonEncode({
-        'content': content,
-        'type': type,
-      }),
-    );
-    return jsonDecode(response.body);
+  // Gửi thông báo thử nghiệm đến thiết bị (Test Push)
+  static Future<Map<String, dynamic>> sendTestPushNotification() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/users/test-push'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 15));
+      return jsonDecode(response.body);
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.sendTestPushNotification: $e');
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  // Change password API
+  static Future<Map<String, dynamic>> changePassword(String currentPassword, String newPassword) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/users/change-password'),
+        headers: headers,
+        body: jsonEncode({
+          'currentPassword': currentPassword,
+          'newPassword': newPassword,
+        }),
+      ).timeout(const Duration(seconds: 15));
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'message': data['message'] ?? 'Đổi mật khẩu thành công!'};
+      } else {
+        return {'success': false, 'message': data['message'] ?? 'Đổi mật khẩu thất bại'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Lỗi kết nối máy chủ: $e'};
+    }
+  }
+
+  // Update Profile API
+  static Future<bool> updateProfile({String? fullName, String? bio}) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.put(
+        Uri.parse('$baseUrl/users/profile'),
+        headers: headers,
+        body: jsonEncode({
+          if (fullName != null) 'fullName': fullName,
+          if (bio != null) 'bio': bio,
+        }),
+      ).timeout(const Duration(seconds: 15));
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.updateProfile: $e');
+      return false;
+    }
+  }
+
+  // Update Avatar API
+  static Future<bool> updateAvatar(String base64Image) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/users/avatar'),
+        headers: headers,
+        body: jsonEncode({'avatar': base64Image}),
+      ).timeout(const Duration(seconds: 45));
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.updateAvatar: $e');
+      return false;
+    }
+  }
+
+  // Update Cover Image API
+  static Future<bool> updateCoverImage(String base64Image) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/users/cover'),
+        headers: headers,
+        body: jsonEncode({'coverPhoto': base64Image}),
+      ).timeout(const Duration(seconds: 45));
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.updateCoverImage: $e');
+      return false;
+    }
+  }
+
+  // React to Message API Fallback
+  static Future<Map<String, dynamic>> reactToMessage(String messageId, String emoji) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/chat/messages/$messageId/react'),
+        headers: headers,
+        body: jsonEncode({'reaction': emoji}),
+      ).timeout(const Duration(seconds: 15));
+      return jsonDecode(response.body);
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.reactToMessage: $e');
+      return {};
+    }
+  }
+
+  // Recall Message API: PUT /api/chat/messages/:messageId/recall
+  static Future<bool> recallMessage(String messageId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.put(
+        Uri.parse('$baseUrl/chat/messages/$messageId/recall'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 15));
+      if (response.statusCode == 200) {
+        return true;
+      }
+      debugPrint('⚠️ Lỗi ApiService.recallMessage status: ${response.statusCode}');
+    } catch (e) {
+      debugPrint('⚠️ Exception ApiService.recallMessage: $e');
+    }
+    return false;
+  }
+
+  // Update Nickname in Conversation
+  static Future<bool> updateNickname(String conversationId, String userId, String? nickname) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.put(
+        Uri.parse('$baseUrl/chat/conversations/$conversationId/members/$userId/nickname'),
+        headers: headers,
+        body: jsonEncode({'nickname': nickname}),
+      ).timeout(const Duration(seconds: 15));
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.updateNickname: $e');
+      return false;
+    }
+  }
+
+  // --- ADMIN APIs ---
+
+  // Lấy thống kê tổng quan (Overview Stats)
+  static Future<AdminStatsModel?> getAdminStats() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/admin/stats'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded['success'] == true && decoded['data'] != null) {
+          return AdminStatsModel.fromJson(Map<String, dynamic>.from(decoded['data']));
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.getAdminStats: $e');
+    }
+    return null;
+  }
+
+  // Lấy danh sách người dùng (Admin User Management)
+  static Future<Map<String, dynamic>> getAdminUsers({String search = '', int page = 1, int limit = 20}) async {
+    try {
+      final headers = await _getHeaders();
+      final queryParams = 'search=${Uri.encodeComponent(search)}&page=$page&limit=$limit';
+      final response = await http.get(
+        Uri.parse('$baseUrl/admin/users?$queryParams'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.getAdminUsers: $e');
+    }
+    return {'success': false, 'data': []};
+  }
+
+  // Khóa/Mở khóa hoặc Đổi Role người dùng
+  static Future<bool> updateUserStatus(String userId, {bool? isBlocked, String? role}) async {
+    try {
+      final headers = await _getHeaders();
+      final bodyMap = <String, dynamic>{};
+      if (isBlocked != null) bodyMap['isBlocked'] = isBlocked;
+      if (role != null) bodyMap['role'] = role;
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/admin/users/$userId/status'),
+        headers: headers,
+        body: jsonEncode(bodyMap),
+      ).timeout(const Duration(seconds: 15));
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.updateUserStatus: $e');
+      return false;
+    }
+  }
+
+  // Lấy danh sách tất cả các cuộc trò chuyện
+  static Future<List<dynamic>> getAdminConversations() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/admin/conversations'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded['success'] == true && decoded['data'] is List) {
+          return decoded['data'] as List<dynamic>;
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.getAdminConversations: $e');
+    }
+    return [];
+  }
+
+  // Xem chi tiết lịch sử tin nhắn của 1 cuộc trò chuyện
+  static Future<List<MessageModel>> getAdminMessages(String conversationId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/admin/conversations/$conversationId/messages'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded['success'] == true && decoded['data'] is List) {
+          return (decoded['data'] as List)
+              .map((m) => MessageModel.fromJson(Map<String, dynamic>.from(m)))
+              .toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.getAdminMessages: $e');
+    }
+    return [];
+  }
+
+  // Xóa / Thu hồi tin nhắn vi phạm
+  static Future<bool> deleteAdminMessage(String messageId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.delete(
+        Uri.parse('$baseUrl/admin/messages/$messageId'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 15));
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.deleteAdminMessage: $e');
+      return false;
+    }
+  }
+
+  // Lấy danh sách báo cáo vi phạm
+  static Future<List<ReportModel>> getAdminReports() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/admin/reports'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded['success'] == true && decoded['data'] is List) {
+          return (decoded['data'] as List)
+              .map((r) => ReportModel.fromJson(Map<String, dynamic>.from(r)))
+              .toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.getAdminReports: $e');
+    }
+    return [];
+  }
+
+  // Cập nhật trạng thái báo cáo
+  static Future<bool> updateReportStatus(String reportId, String status) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.put(
+        Uri.parse('$baseUrl/admin/reports/$reportId'),
+        headers: headers,
+        body: jsonEncode({'status': status}),
+      ).timeout(const Duration(seconds: 15));
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.updateReportStatus: $e');
+      return false;
+    }
+  }
+
+  // Lấy danh sách lời mời kết bạn PENDING
+  static Future<List<dynamic>> getPendingFriendRequests() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/users/friend-requests'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded['success'] == true && decoded['data'] is List) {
+          return decoded['data'] as List<dynamic>;
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.getPendingFriendRequests: $e');
+    }
+    return [];
+  }
+
+  // Chấp nhận lời mời kết bạn
+  static Future<bool> acceptFriendRequest(String requestId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/users/friend-requests/$requestId/accept'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        return decoded['success'] == true;
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.acceptFriendRequest: $e');
+    }
+    return false;
+  }
+
+  // Từ chối lời mời kết bạn
+  static Future<bool> rejectFriendRequest(String requestId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/users/friend-requests/$requestId/reject'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        return decoded['success'] == true;
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.rejectFriendRequest: $e');
+    }
+    return false;
+  }
+
+  // Tìm kiếm người dùng theo từ khóa (Tên, username, SĐT, email)
+  static Future<List<dynamic>> searchUsers(String query) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/users/search?q=${Uri.encodeComponent(query)}&_=${DateTime.now().millisecondsSinceEpoch}'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded['success'] == true && decoded['data'] is List) {
+          return decoded['data'] as List<dynamic>;
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.searchUsers: $e');
+    }
+    return [];
+  }
+
+  // Tìm kiếm người dùng có kèm danh sách gợi ý tên thông minh
+  static Future<Map<String, dynamic>> searchUsersWithSuggestions(String query) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/users/search?q=${Uri.encodeComponent(query)}&_=${DateTime.now().millisecondsSinceEpoch}'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded['success'] == true) {
+          final users = decoded['data'] is List ? (decoded['data'] as List<dynamic>) : <dynamic>[];
+          final suggestions = decoded['suggestions'] is List
+              ? (decoded['suggestions'] as List<dynamic>).map((e) => e.toString()).toList()
+              : <String>[];
+          return {'users': users, 'suggestions': suggestions};
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.searchUsersWithSuggestions: $e');
+    }
+    return {'users': <dynamic>[], 'suggestions': <String>[]};
+  }
+
+
+  // Gửi lời mời kết bạn
+  static Future<bool> sendFriendRequest(String targetUserId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/users/friend-requests'),
+        headers: headers,
+        body: jsonEncode({'receiverId': targetUserId}),
+      ).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        return decoded['success'] == true;
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.sendFriendRequest: $e');
+    }
+    return false;
+  }
+
+  // Xóa bạn bè
+  static Future<bool> deleteFriend(String friendId) async {
+    try {
+      final headers = await _getHeaders();
+      var response = await http.delete(
+        Uri.parse('$baseUrl/users/friends/$friendId'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode != 200) {
+        response = await http.post(
+          Uri.parse('$baseUrl/users/friends/$friendId/delete'),
+          headers: headers,
+          body: jsonEncode({'friendId': friendId}),
+        ).timeout(const Duration(seconds: 15));
+      }
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        return decoded['success'] == true;
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.deleteFriend: $e');
+    }
+    return false;
+  }
+
+  // Hủy lời mời kết bạn đã gửi
+  static Future<bool> cancelFriendRequest(String receiverId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/users/friend-requests/$receiverId/cancel'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        return decoded['success'] == true;
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.cancelFriendRequest: $e');
+    }
+    return false;
+  }
+
+  // Lookup user by ID (for QR scan or profile view)
+  static Future<Map<String, dynamic>?> lookupUserById(String userId) async {
+    try {
+      String cleanId = userId.trim();
+      if (cleanId.startsWith('@')) {
+        cleanId = cleanId.substring(1).trim();
+      }
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/users/${Uri.encodeComponent(cleanId)}/lookup?_=${DateTime.now().millisecondsSinceEpoch}'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 15));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded['success'] == true && decoded['data'] != null) {
+          return decoded['data'] as Map<String, dynamic>;
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.lookupUserById: $e');
+    }
+    return null;
+  }
+
+  // AI Assistant: Send question
+  static Future<Map<String, dynamic>> sendAiMessage(String prompt, {String? conversationId}) async {
+    try {
+      final headers = await _getHeaders();
+      final bodyMap = {'prompt': prompt};
+      if (conversationId != null) bodyMap['conversationId'] = conversationId;
+      final response = await http.post(
+        Uri.parse('$baseUrl/ai/chat'),
+        headers: headers,
+        body: jsonEncode(bodyMap),
+      ).timeout(const Duration(seconds: 45));
+
+      final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+      if (response.statusCode == 200 && decoded['success'] == true) {
+        return {
+          'success': true,
+          'text': decoded['text'] ?? '',
+          'conversationId': decoded['conversationId'],
+        };
+      }
+      return {'success': false, 'error': decoded['error'] ?? 'Lỗi kết nối tới Trợ lý AI'};
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.sendAiMessage: $e');
+      return {'success': false, 'error': 'Không thể kết nối máy chủ AI: $e'};
+    }
+  }
+
+  // AI Assistant: Get sessions list
+  static Future<List<Map<String, dynamic>>> getAiSessions() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/ai/chat/sessions'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        if (decoded['success'] == true && decoded['sessions'] is List) {
+          return List<Map<String, dynamic>>.from(decoded['sessions']);
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.getAiSessions: $e');
+    }
+    return [];
+  }
+
+  // AI Assistant: Create new session
+  static Future<Map<String, dynamic>?> createAiSession() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/ai/chat/session/new'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        if (decoded['success'] == true && decoded['session'] != null) {
+          return Map<String, dynamic>.from(decoded['session']);
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.createAiSession: $e');
+    }
+    return null;
+  }
+
+  // AI Assistant: Delete a session
+  static Future<bool> deleteAiSession(String id) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.delete(
+        Uri.parse('$baseUrl/ai/chat/session/$id'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        return decoded['success'] == true;
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.deleteAiSession: $e');
+    }
+    return false;
+  }
+
+  // AI Assistant: Get history
+  static Future<Map<String, dynamic>> getAiHistory({String? conversationId}) async {
+    try {
+      final headers = await _getHeaders();
+      final url = conversationId != null
+          ? '$baseUrl/ai/chat/history?conversationId=$conversationId'
+          : '$baseUrl/ai/chat/history';
+      final response = await http.get(
+        Uri.parse(url),
+        headers: headers,
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        if (decoded['success'] == true && decoded['messages'] is List) {
+          final List<Map<String, String>> result = [];
+          for (var item in decoded['messages']) {
+            result.add({
+              'sender': item['role'] == 'user' ? 'user' : 'ai',
+              'content': item['content']?.toString() ?? '',
+            });
+          }
+          return {
+            'success': true,
+            'conversationId': decoded['conversationId'],
+            'conversationName': decoded['conversationName'],
+            'messages': result,
+          };
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.getAiHistory: $e');
+    }
+    return {'success': false, 'messages': <Map<String, String>>[]};
+  }
+
+  // AI Assistant: Reset history
+  static Future<bool> resetAiHistory({String? conversationId}) async {
+    try {
+      final headers = await _getHeaders();
+      final url = conversationId != null
+          ? '$baseUrl/ai/chat/history?conversationId=$conversationId'
+          : '$baseUrl/ai/chat/history';
+      final response = await http.delete(
+        Uri.parse(url),
+        headers: headers,
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        return decoded['success'] == true;
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.resetAiHistory: $e');
+    }
+    return false;
+  }
+
+  // Cập nhật chủ đề cuộc trò chuyện (Chat Theme)
+  static Future<Map<String, dynamic>> updateConversationTheme(String conversationId, String theme) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.patch(
+        Uri.parse('$baseUrl/chat/conversations/$conversationId/theme'),
+        headers: headers,
+        body: jsonEncode({'theme': theme}),
+      ).timeout(const Duration(seconds: 15));
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      debugPrint('⚠️ Error ApiService.updateConversationTheme: $e');
+      return {'success': false, 'message': e.toString()};
+    }
   }
 }

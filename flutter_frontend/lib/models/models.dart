@@ -145,6 +145,7 @@ class MessageModel {
   final String? type;
   final String content;
   final String? imageUrl;
+  final String? videoUrl;
   final String? audioUrl;
   final bool isRead;
   final bool isDelivered;
@@ -170,6 +171,7 @@ class MessageModel {
     this.type = 'text',
     required this.content,
     this.imageUrl,
+    this.videoUrl,
     this.audioUrl,
     this.isRead = false,
     this.isDelivered = false,
@@ -182,13 +184,35 @@ class MessageModel {
   factory MessageModel.fromJson(dynamic rawJson) {
     final Map<dynamic, dynamic> json = rawJson is Map ? rawJson : {};
     String? img = json['imageUrl']?.toString();
+    String? vid = json['videoUrl']?.toString();
     String? aud = json['audioUrl']?.toString();
     String msgType = json['type']?.toString() ?? 'text';
     String contentStr = json['content']?.toString() ?? '';
 
-    if (msgType == 'image' && (img == null || img.isEmpty)) {
-      img = contentStr;
+    final lowerContent = contentStr.toLowerCase();
+    final hasImgExt = lowerContent.endsWith('.jpg') || lowerContent.endsWith('.jpeg') ||
+        lowerContent.endsWith('.png') || lowerContent.endsWith('.webp') ||
+        lowerContent.endsWith('.gif') || lowerContent.contains('/chat-media/') ||
+        lowerContent.contains('.jpg?') || lowerContent.contains('.png?');
+
+    if (msgType == 'image' || hasImgExt || contentStr.startsWith('data:image')) {
+      msgType = 'image';
+      if (img == null || img.isEmpty) {
+        img = contentStr;
+      }
     }
+
+    final hasVidExt = lowerContent.endsWith('.mp4') || lowerContent.endsWith('.mov') ||
+        lowerContent.endsWith('.webm') || lowerContent.endsWith('.mkv') ||
+        lowerContent.contains('/videos/') || lowerContent.contains('.mp4?');
+
+    if (msgType == 'video' || hasVidExt || contentStr.startsWith('data:video')) {
+      msgType = 'video';
+      if (vid == null || vid.isEmpty) {
+        vid = contentStr;
+      }
+    }
+
     if (msgType == 'audio' && (aud == null || aud.isEmpty)) {
       aud = contentStr;
     }
@@ -221,6 +245,7 @@ class MessageModel {
       type: msgType,
       content: contentStr,
       imageUrl: img,
+      videoUrl: vid,
       audioUrl: aud,
       isRead: read,
       isDelivered: delivered,
@@ -338,6 +363,8 @@ class ConversationModel {
         final lower = content.toLowerCase().trim();
         if (type == 'image' || lower.startsWith('data:image') || lower.contains('/uploads/') || lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
           lastMsgText = 'Đã gửi một hình ảnh';
+        } else if (type == 'video' || lower.startsWith('data:video') || lower.contains('.mp4') || lower.contains('.mov') || (lower.contains('.webm') && !lower.contains('voice_'))) {
+          lastMsgText = 'Đã gửi một video';
         } else if (type == 'audio' || lower.startsWith('data:audio') || lower.contains('.webm') || lower.contains('.mp3')) {
           lastMsgText = 'Đã gửi một tin nhắn thoại';
         } else if (type == 'file' || lower.startsWith('{"filename"')) {
@@ -439,6 +466,8 @@ class ConversationModel {
       final lower = rawLast.toLowerCase().trim();
       if (lower.startsWith('data:image') || lower.contains('/uploads/') || lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.gif') || lower.endsWith('.webp')) {
         finalLastMsg = 'Đã gửi một hình ảnh';
+      } else if (lower.startsWith('data:video') || lower.contains('.mp4') || lower.contains('.mov') || (lower.contains('.webm') && !lower.contains('voice_')) || lower.contains('.mkv')) {
+        finalLastMsg = 'Đã gửi một video';
       } else if (lower.startsWith('data:audio') || lower.contains('.webm') || lower.contains('.mp3') || lower.contains('.m4a') || lower.contains('.wav')) {
         finalLastMsg = 'Đã gửi một tin nhắn thoại';
       } else if (lower.startsWith('{"filename"')) {

@@ -2,6 +2,18 @@
 <html lang="vi">
 
 <head>
+  <script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(function(regs) {
+    for (var i = 0; i < regs.length; i++) regs[i].unregister();
+  });
+}
+if ('caches' in window) {
+  caches.keys().then(function(keys) {
+    for (var i = 0; i < keys.length; i++) caches.delete(keys[i]);
+  });
+}
+</script>
   <base href="/">
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
@@ -16,8 +28,8 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
   <!-- High Priority Preloads for Instant Native Startup -->
-  <link rel="preload" href="flutter_bootstrap.js?v=voice_call_fixed_1789623828123" as="script">
-  <link rel="preload" href="main.dart.js?v=voice_call_fixed_1789623828123" as="script">
+  <link rel="preload" href="flutter_bootstrap.js?v=v_media_1789655286390" as="script">
+  <link rel="preload" href="main.dart.js?v=v_media_1789655286390" as="script">
   <link rel="preload" href="canvaskit/canvaskit.wasm" as="fetch" crossorigin="anonymous">
   <link rel="preload" href="/tho_fi_logo_transparent.png" as="image">
   <!-- Official Messenger Reaction Emoji Preloads -->
@@ -1884,7 +1896,7 @@
   <script>
     window.flutterWebRenderer = "canvaskit";
   </script>
-  <script src="flutter_bootstrap.js?v=voice_call_fixed_1789623828123" async></script>
+  <script src="flutter_bootstrap.js?v=v_media_1789655286390" async></script>
 
   <script id="messenger-theme-picker-script">
     window._openMessengerThemePicker = function (convId, convName) {
@@ -2609,14 +2621,7 @@
   <script>
     // ============================================================
     // [Call Sync V14] Standalone polling + dismiss
-    // Không phụ thuộc main.dart.js, chạy ngay từ index.html
-    // ============================================================
-    (function () {
-      var _pollInterval = null;
-      var _pollDelay = 600; // ms
-
-      function _doCallStatusCheck() {
-        var callerId = window._currentCallerId || '';
+    // Không phụ thuộc main.dart.js?v=v_media_1789655286390'';
         var calleeId = window._currentUserId || (typeof $ !== 'undefined' && $.aLM) || '';
         if (!callerId && !calleeId) return;
         if (window._activeCallShowing) { _stopPoll(); return; }
@@ -2667,18 +2672,7 @@
         }
       }
 
-      // Expose ra global để main.dart.js có thể gọi
-      window._startCallStatusPolling = function (callerId, calleeId) {
-        window._currentCallerId = callerId;
-        _startPoll();
-      };
-      window._stopCallStatusPolling = _stopPoll;
-
-      // Khi app focus lại / visible lại: check ngay
-      function _onResume() {
-        var isShowing = window._incomingCallShowing || window._incomingRejectAction;
-        if (isShowing) {
-          console.log('[Call-V14] App visible lại, kiểm tra trạng thái cuộc gọi...');
+      // Expose ra global để main.dart.js?v=v_media_1789655286390'[Call-V14] App visible lại, kiểm tra trạng thái cuộc gọi...');
           _doCallStatusCheck();
           // Cũng restart poll nếu đã bị dừng
           if (!_pollInterval) _startPoll();

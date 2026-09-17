@@ -401,23 +401,26 @@ exports.sendMessage = async(req, res) => {
 
         let finalContent = content;
 
-        // --- TÍCH HỢP SUPABASE STORAGE ---
-        // Kiểm tra nếu tin nhắn là ảnh, âm thanh hoặc file chứa chuỗi base64
-        if (type === "image" || type === "audio" || type === "file") {
+        // --- TÍCH HỢP STORAGE DISPATCHER (CLOUDFLARE R2 + SUPABASE) ---
+        // Kiểm tra nếu tin nhắn là ảnh, video, âm thanh hoặc file chứa chuỗi base64
+        if (type === "image" || type === "video" || type === "audio" || type === "file") {
             try {
-                const { uploadBase64 } = require("../supabase");
+                const storageService = require("../services/storage.service");
                 if (type === "image" && content.startsWith("data:image")) {
-                    console.log("📸 Đang tải ảnh lên Supabase Storage...");
-                    finalContent = await uploadBase64(content, "image");
+                    console.log("📸 Đang tải ảnh lên Storage...");
+                    finalContent = await storageService.processUpload(content, "image", "image.jpg", conversationId);
+                } else if (type === "video" && content.startsWith("data:video")) {
+                    console.log("🎬 Đang tải video lên Cloudflare R2...");
+                    finalContent = await storageService.processUpload(content, "video", "video.mp4", conversationId);
                 } else if (type === "audio" && content.startsWith("data:audio")) {
                     console.log("🎙️ Đang tải tin nhắn thoại lên Supabase Storage...");
-                    finalContent = await uploadBase64(content, "audio");
+                    finalContent = await storageService.processUpload(content, "audio", "audio.webm", conversationId);
                 } else if (type === "file") {
                     try {
                         const fileData = JSON.parse(content);
                         if (fileData && fileData.base64 && fileData.base64.startsWith("data:")) {
-                            console.log(`📁 Đang tải file lên Supabase Storage: ${fileData.fileName}`);
-                            const publicUrl = await uploadBase64(fileData.base64, "file", fileData.fileName);
+                            console.log(`📁 Đang tải file lên Storage: ${fileData.fileName}`);
+                            const publicUrl = await storageService.processUpload(fileData.base64, "file", fileData.fileName, conversationId);
 
                             // Tạo lại JSON string mới chứa publicUrl thay vì lưu base64 nặng
                             finalContent = JSON.stringify({
@@ -431,7 +434,7 @@ exports.sendMessage = async(req, res) => {
                     }
                 }
             } catch (uploadError) {
-                console.error("❌ Lỗi upload media lên Supabase (Sẽ fallback lưu base64 vào DB):", uploadError);
+                console.error("❌ Lỗi upload media (Sẽ fallback lưu base64 vào DB):", uploadError);
                 // Fallback: Giữ nguyên finalContent = content để lưu base64 tránh mất tin nhắn của user
             }
         }
@@ -473,22 +476,31 @@ exports.sendMessage = async(req, res) => {
             data: { isRead: true },
         }).catch(() => {});
 
+        let isImageContent = type === "image" || (typeof finalContent === "string" && (
+            finalContent.startsWith("data:image") ||
+            finalContent.includes(".jpg") || finalContent.includes(".jpeg") ||
+            finalContent.includes(".png") || finalContent.includes(".webp") ||
+            finalContent.includes(".gif") || finalContent.includes("/chat-media/")
+        ));
+        let isVideoContent = type === "video" || (typeof finalContent === "string" && (
+            finalContent.startsWith("data:video") ||
+            finalContent.includes(".mp4") || finalContent.includes(".mov") ||
+            finalContent.includes(".webm") || finalContent.includes(".mkv")
+        ));
+        if (isImageContent) type = "image";
+        else if (isVideoContent) type = "video";
+
         const newMessage = await prisma.messages.create({
             data: {
                 id: uuidv4(),
-
                 conversationId,
-
                 senderId,
-
                 content: finalContent,
-
                 type: type || "text",
-
+                imageUrl: isImageContent ? finalContent : null,
+                videoUrl: isVideoContent ? finalContent : null,
                 replyMessageId: replyMessageId || null,
-
                 isRead: false,
-
                 isDelivered: true,
             },
 
@@ -527,6 +539,8 @@ exports.sendMessage = async(req, res) => {
         // Map avatar sang URL tĩnh
         const mappedMessage = {
             ...newMessage,
+            imageUrl: isImageContent ? finalContent : (newMessage.imageUrl || null),
+            videoUrl: isVideoContent ? finalContent : (newMessage.videoUrl || null),
             Users: newMessage.Users ? {
                 ...newMessage.Users,
                 avatar: `/api/users/${newMessage.Users.id}/avatar`,
@@ -1983,7 +1997,7 @@ exports.blockUser = async (req, res) => {
     }
 };
 
-// API Upload Media (Ảnh, Âm thanh, File) lên Supabase Storage
+// API Upload Media (Ảnh, Video, Âm thanh, File) tối ưu đa tầng (Cloudflare R2 + Supabase)
 exports.uploadMedia = async (req, res) => {
     try {
         const senderId = req.user ? req.user.id || req.user.userId : req.userId;
@@ -1996,30 +2010,62 @@ exports.uploadMedia = async (req, res) => {
 
         let buffer;
         let originalName = "";
-        let mimeType = "image/jpeg";
+        let mimeType = "";
 
         if (file) {
             buffer = file.buffer;
             originalName = file.originalname || `upload_${Date.now()}`;
-            mimeType = file.mimetype || "image/jpeg";
+            mimeType = file.mimetype || "";
         } else if (req.body.fileBytes) {
             buffer = Buffer.from(req.body.fileBytes, "base64");
             originalName = req.body.fileName || `upload_${Date.now()}`;
             if (req.body.mimeType) mimeType = req.body.mimeType;
         }
 
-        let type = "image";
-        if (mimeType.startsWith("audio/")) {
-            type = "audio";
-        } else if (mimeType.startsWith("video/")) {
-            type = "video";
-        } else if (req.body.type) {
-            type = req.body.type;
+        // Ưu tiên req.body.mimeType nếu file.mimetype bị mặc định là application/octet-stream
+        if ((!mimeType || mimeType === "application/octet-stream") && req.body.mimeType) {
+            mimeType = req.body.mimeType;
         }
 
+        // Tự động suy luận MIME type chuẩn xác từ phần mở rộng file (extension)
+        const ext = (originalName.split(".").pop() || "").toLowerCase();
+        const videoExts = ["mp4", "mov", "webm", "mkv", "avi", "3gp", "m4v"];
+        const imageExts = ["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg", "heic", "heif"];
+        const audioExts = ["mp3", "wav", "webm", "ogg", "m4a", "aac", "flac"];
+
+        if (!mimeType || mimeType === "application/octet-stream") {
+            if (videoExts.includes(ext)) {
+                mimeType = ext === "mov" ? "video/quicktime" : `video/${ext}`;
+            } else if (imageExts.includes(ext)) {
+                mimeType = (ext === "jpg" || ext === "jpeg") ? "image/jpeg" : `image/${ext}`;
+            } else if (audioExts.includes(ext)) {
+                mimeType = ext === "mp3" ? "audio/mpeg" : `audio/${ext}`;
+            } else {
+                mimeType = "application/octet-stream";
+            }
+        }
+
+        let type = "image";
+        if (mimeType.startsWith("video/") || videoExts.includes(ext)) {
+            type = "video";
+            if (!mimeType.startsWith("video/")) mimeType = "video/mp4";
+        } else if (mimeType.startsWith("audio/") || (originalName.startsWith("voice_") && ext === "webm") || audioExts.includes(ext)) {
+            type = "audio";
+            if (!mimeType.startsWith("audio/")) mimeType = "audio/webm";
+        } else if (mimeType.startsWith("image/") || imageExts.includes(ext)) {
+            type = "image";
+            if (!mimeType.startsWith("image/")) mimeType = "image/jpeg";
+        } else if (req.body.type) {
+            type = req.body.type;
+        } else {
+            type = "file";
+        }
+
+        console.log(`📤 [uploadMedia] Nhận tệp: "${originalName}" | Dung lượng: ${(buffer.length / 1024).toFixed(1)} KB | MIME: ${mimeType} | Loại: ${type}`);
+
         const storageService = require("../services/storage.service");
-        const base64Str = `data:${mimeType};base64,${buffer.toString("base64")}`;
-        const publicUrl = await storageService.processUpload(base64Str, type, originalName, conversationId);
+        // Sử dụng processUploadBuffer trực tiếp: Không tốn RAM chuyển sang Base64 string
+        const publicUrl = await storageService.processUploadBuffer(buffer, mimeType, type, originalName, conversationId);
 
         const newMessage = await prisma.messages.create({
             data: {
@@ -2056,7 +2102,7 @@ exports.uploadMedia = async (req, res) => {
         }
     } catch (error) {
         console.error("❌ Lỗi uploadMedia:", error);
-        res.status(500).json({ success: false, message: "Lỗi server", error: error.message });
+        res.status(500).json({ success: false, message: "Lỗi server khi tải tệp", error: error.message });
     }
 };
 
@@ -2397,5 +2443,57 @@ exports.changeConversationTheme = async (req, res) => {
     } catch (error) {
         console.error("❌ Lỗi changeConversationTheme:", error);
         return res.status(500).json({ success: false, message: "Lỗi server", error: error.message });
+    }
+};
+
+// ═══════════════════════════════════════════════════════
+// 12. TẢI TRỰC TIẾP MEDIA VÀO MÁY (Direct Media Download Proxy)
+// ═══════════════════════════════════════════════════════
+exports.downloadMediaProxy = async (req, res) => {
+    try {
+        let { url, filename } = req.query;
+        if (!url) {
+            return res.status(400).send("Thiếu tham số URL");
+        }
+
+        // Tên tệp an toàn
+        let safeFilename = filename ? path.basename(filename) : ("media_" + Date.now());
+        safeFilename = safeFilename.replace(/[^a-zA-Z0-9._-]/g, "_");
+
+        // Nếu là tệp cục bộ
+        if (url.startsWith("/uploads/") || url.startsWith("uploads/")) {
+            const relPath = url.startsWith("/") ? url.slice(1) : url;
+            const localPath = path.join(__dirname, "..", relPath);
+            if (fs.existsSync(localPath)) {
+                return res.download(localPath, safeFilename);
+            }
+        }
+
+        // Tải từ URL từ xa (Cloudflare R2, Supabase, Render...)
+        let targetUrl = url;
+        if (!targetUrl.startsWith("http://") && !targetUrl.startsWith("https://")) {
+            const port = process.env.PORT || 5000;
+            targetUrl = "http://localhost:" + port + (targetUrl.startsWith("/") ? "" : "/") + targetUrl;
+        }
+
+        const response = await fetch(targetUrl);
+        if (!response.ok) {
+            return res.status(response.status).send("Không thể tải tệp từ nguồn: HTTP " + response.status);
+        }
+
+        const contentType = response.headers.get("content-type") || "application/octet-stream";
+        res.setHeader("Content-Disposition", 'attachment; filename="' + safeFilename + '"');
+        res.setHeader("Content-Type", contentType);
+
+        const contentLength = response.headers.get("content-length");
+        if (contentLength) {
+            res.setHeader("Content-Length", contentLength);
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        return res.send(Buffer.from(arrayBuffer));
+    } catch (err) {
+        console.error("❌ Lỗi downloadMediaProxy:", err);
+        return res.status(500).send("Lỗi máy chủ khi tải tệp: " + err.message);
     }
 };

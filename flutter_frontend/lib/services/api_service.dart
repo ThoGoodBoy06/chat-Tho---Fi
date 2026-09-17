@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 
@@ -205,7 +206,7 @@ class ApiService {
     return jsonDecode(response.body);
   }
 
-  // Upload Media (Image, Audio, File)
+  // Upload Media (Image, Video, Audio, File)
   static Future<Map<String, dynamic>> uploadMedia(
       String conversationId, Uint8List fileBytes, String fileName, String mimeType) async {
     final token = await getToken();
@@ -216,15 +217,23 @@ class ApiService {
     if (token != null) {
       request.headers['Authorization'] = 'Bearer $token';
     }
+
+    MediaType? contentType;
+    if (mimeType.isNotEmpty && mimeType.contains('/')) {
+      final parts = mimeType.split('/');
+      contentType = MediaType(parts[0], parts[1]);
+    }
+
     request.files.add(
       http.MultipartFile.fromBytes(
         'file',
         fileBytes,
         filename: fileName,
+        contentType: contentType,
       ),
     );
     request.fields['mimeType'] = mimeType;
-    final streamedResponse = await request.send().timeout(const Duration(seconds: 60));
+    final streamedResponse = await request.send().timeout(const Duration(seconds: 180));
     final response = await http.Response.fromStream(streamedResponse);
     return jsonDecode(response.body);
   }

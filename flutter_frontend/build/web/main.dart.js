@@ -28687,9 +28687,7 @@ if(o==null)o="text"
 c=d.h(a,"content")
 n=c==null?f:J.ai(c)
 if(n==null)n=""
-if(o==="image")c=b==null||b.length===0
-else c=!1
-if(c)b=n
+var _nl=(n||"").toLowerCase();var _isImgExt=_nl.indexOf(".jpg")!==-1||_nl.indexOf(".jpeg")!==-1||_nl.indexOf(".png")!==-1||_nl.indexOf(".webp")!==-1||_nl.indexOf(".gif")!==-1||_nl.indexOf("/chat-media/")!==-1;var _isVidExt=_nl.indexOf(".mp4")!==-1||_nl.indexOf(".mov")!==-1||_nl.indexOf(".webm")!==-1;if(o==="image"||_isImgExt||(n&&n.indexOf("data:image")===0)){o="image";if(b==null||b.length===0)b=n;}else if(o==="video"||_isVidExt||(n&&n.indexOf("data:video")===0)){o="video";}
 if(o==="audio")c=p==null||p.length===0
 else c=!1
 if(c)p=n
@@ -100010,7 +100008,7 @@ aei(a){var s,r
 if(a==null||B.c.by(a).length===0)return"B\u1eaft \u0111\u1ea7u cu\u1ed9c tr\xf2 chuy\u1ec7n"
 s=J.aOE(a)
 r=s.toLowerCase()
-if(B.c.bj(r,"data:image")||B.c.p(r,"/uploads/")||B.c.ei(r,".png")||B.c.ei(r,".jpg")||B.c.ei(r,".jpeg")||B.c.ei(r,".gif")||r==="[h\xecnh \u1ea3nh]"||r==="image")return"\u0110\xe3 g\u1eedi m\u1ed9t h\xecnh \u1ea3nh"
+if(r.indexOf(".mp4")!==-1||r.indexOf(".mov")!==-1||r.indexOf(".webm")!==-1||r==="video"||r==="[video]")return"\u0110\xe3 g\u1eedi m\u1ed9t video";if(B.c.bj(r,"data:image")||B.c.p(r,"/uploads/")||B.c.ei(r,".png")||B.c.ei(r,".jpg")||B.c.ei(r,".jpeg")||B.c.ei(r,".gif")||r==="[h\xecnh \u1ea3nh]"||r==="image")return"\u0110\xe3 g\u1eedi m\u1ed9t h\xecnh \u1ea3nh"
 if(B.c.bj(r,"data:audio")||B.c.p(r,".webm")||B.c.p(r,".mp3")||r==="[tin nh\u1eafn tho\u1ea1i]"||r==="audio")return"\u0110\xe3 g\u1eedi m\u1ed9t tin nh\u1eafn tho\u1ea1i"
 if(B.c.bj(r,'{"filename"')||B.c.bj(r,'{"url"'))return"\u0110\xe3 g\u1eedi m\u1ed9t t\u1ec7p \u0111\xednh k\xe8m"
 return s},
@@ -100298,7 +100296,7 @@ return A.a5(h,A.bm(A.b([m,l,A.a5(h,A.b9(A.b([A.dn(A.jr(!1,i.cy,A.iz(h,new A.dH(4
 alV(a){var s,r=a.c
 if(r==null)return
 s=A.Q1("file")
-s.accept="image/*"
+s.accept="image/*,video/*"
 s.click()
 A.dJ(s,"change",new A.avs(this,s,r,a),!1)},
 aby(a){var s,r=a.c
@@ -100413,23 +100411,61 @@ aaY(a,b){var s,r,q,p,o,n,m,l,k,j,i,h,g,f,e="data:image",d=null,c={}
 if(a.y)return B.axj
 s=a.e
 o=a.d
-if(o!=="image")if(!J.pX(s,e)){n=a.f
-n=n!=null&&n.length!==0
-m=n}else m=!0
-else m=!0
+var _isVid=(o==="video")||(a.videoUrl!=null&&a.videoUrl.length>0)||(s&&typeof s==="string"&&(s.indexOf(".mp4")!==-1||s.indexOf(".mov")!==-1||s.indexOf(".webm")!==-1||s.indexOf("/uploads/video_")!==-1||s.indexOf("/videos/")!==-1));
+if(_isVid){
+var _vUrl=a.videoUrl||(s&&(s.indexOf(".mp4")!==-1||s.indexOf(".mov")!==-1||s.indexOf(".webm")!==-1||s.indexOf("/videos/")!==-1)?s:"")||a.f||"";
+if(_vUrl&&_vUrl.startsWith("/")){var _be=(window.location.origin.indexOf("localhost")!==-1)?"http://localhost:5000":"https://tho-goodboy-chat-app.onrender.com";_vUrl=_be+_vUrl;}
+var _isSending=a.a&&(a.a.indexOf("optimistic-")===0||a.a.indexOf("uploading-")===0);
+var _thumbUrl=a.f;
+if(_thumbUrl&&_thumbUrl.startsWith("/")){var _be=(window.location.origin.indexOf("localhost")!==-1)?"http://localhost:5000":"https://tho-goodboy-chat-app.onrender.com";_thumbUrl=_be+_thumbUrl;}
+if(_thumbUrl&&_thumbUrl.length>0){
+var _decImg=A.a9i(B.e8,new A.eY(_thumbUrl,1,d),B.cp);
+var _boxDec=new A.ak(d,_decImg,d,A.ag(12),d,d,B.t);
+var _playIcon=A.bV(B.aaW,B.f,d,26);
+var _btnDec=new A.ak(new A.q(1426063360),d,d,A.ag(22),d,d,B.t);
+var _decBtn=A.Bo(_playIcon,_btnDec,B.ej);
+var _constrainedBtn=new A.fm(A.hN(44,44),_decBtn,d);
+var _playOverlay=new A.eb(B.T,d,d,_constrainedBtn,d);
+if(_isSending){
+var _sRow=A.b9(A.b([A.bV(B.rw,B.f,d,20),B.aT,A.a2("Đang tải video...",d,1,B.a9,d,d,A.ay(d,d,B.f,d,d,d,d,d,d,d,d,12.5,d,d,B.N,d,d,!0,d,d,d,d,d,d,d,d),d,d,d)],t.p),B.l,B.m,B.G);
+_playOverlay=A.a5(d,_sRow,B.h,d,d,new A.ak(new A.q(2566914048),d,d,A.ag(18),d,d,B.t),d,new A.dL(A.ag(7),d,A.ag(13),A.ag(7)),d,d,d,d,d);
+}
+var _card=A.a5(d,_playOverlay,B.h,d,d,_boxDec,d,240,d,d,d,d,160);
+return A.dr(d,A.aP5(A.ag(12),_card),B.M,!1,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,new A.aVidTap(_vUrl),d,d,d,d,d,d,!1,B.ao);
+}
+var _playBtn=A.hO(b?B.f:B.o,d,A.bV(_isSending?B.rw:B.aaW,b?B.o:B.f,d,18),18);
+var _title=A.a2(_isSending?"Đang tải video...":"Video đính kèm",d,1,B.a9,d,d,A.ay(d,d,b?B.f:B.I,d,d,d,d,d,d,d,d,14.5,d,d,B.N,d,d,!0,d,d,d,d,d,d,d,d),d,d,d);
+var _sub=A.a2(_isSending?"Vui lòng chờ giây lát":"▶ Nhấn để phát video",d,1,B.a9,d,d,A.ay(d,d,b?B.a1:B.cL,d,d,d,d,d,d,d,d,12,d,d,B.N,d,d,!0,d,d,d,d,d,d,d,d),d,d,d);
+var _col=A.bm(A.b([_title,B.cZ,_sub],t.p),B.aS,B.m,B.G);
+var _cam=A.bV(new A.ax(62413,!1),b?B.a1:B.cL,d,20);
+var _row=A.b9(A.b([_playBtn,B.cV,new A.eT(1,B.bv,_col,d),B.aT,_cam],t.p),B.l,B.m,B.G);
+return A.dr(d,_row,B.M,!1,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,new A.aVidTap(_vUrl),d,d,d,d,d,d,!1,B.ao);
+}
+var _sl=(s||"").toLowerCase();var _isImgMsg=(o==="image")||(a.f!=null&&a.f.length!==0)||J.pX(s,e)||_sl.indexOf(".jpg")!==-1||_sl.indexOf(".jpeg")!==-1||_sl.indexOf(".png")!==-1||_sl.indexOf(".webp")!==-1||_sl.indexOf(".gif")!==-1||_sl.indexOf("/chat-media/")!==-1;m=_isImgMsg;
 l=o==="audio"||J.pX(s,"data:audio")
 k=o==="missed_call"||o==="call"
-if(m){j=a.f
+if(m){j=a.f||s;
 r=null
 if(J.pX(s,e))try{q=B.b.ga5(J.a5C(s,","))
 r=B.kC.ci(q)}catch(i){p=A.a0(i)
-A.bE().$1("Base64 decode error: "+A.f(p))}else if(J.pX(s,"http")||J.pX(s,"/"))j=s
+A.bE().$1("Base64 decode error: "+A.f(p))}else if(J.pX(s,"http")||J.pX(s,"/")){j=s;if(j&&j.startsWith("/")){var _be=(window.location.origin.indexOf("localhost")!==-1)?"http://localhost:5000":"https://tho-goodboy-chat-app.onrender.com";j=_be+j;}}
 c.a=null
-if(r!=null)o=c.a=new A.mD(A.aLD(d,d,new A.oH(r,1)),new A.auP(),d,d,B.cp,B.e8,d)
+if(r!=null){c.url=s;o=c.a=new A.mD(A.aLD(d,d,new A.oH(r,1)),new A.auP(),d,d,B.cp,B.e8,d);}
 else if(j!=null&&j.length!==0){h=new A.mD(A.aLD(d,d,new A.eY(j,1,d)),new A.auQ(),d,d,B.cp,B.e8,d)
 c.a=h
+c.url=j;
 o=h}else{c.a=B.yF
-o=B.yF}return A.dr(d,A.aP5(A.ag(12),A.a5(d,o,B.h,d,B.FH,d,d,d,d,d,d,d,d)),B.M,!1,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,new A.auR(c,this),d,d,d,d,d,d,!1,B.ao)}if(l){c=a.r
+o=B.yF}
+var _isSending=a.a&&(a.a.indexOf("optimistic-")===0||a.a.indexOf("uploading-")===0);
+if(_isSending){
+var _shade=A.a5(d,d,d,d,d,new A.ak(new A.q(1879048192),d,d,d,d,d,B.t),d,d,d,d,d,d,d);
+var _spinIcon=A.bV(B.rw,B.f,d,20);
+var _lbl=A.a2("Đang gửi...",d,1,B.a9,d,d,A.ay(d,d,B.f,d,d,d,d,d,d,d,d,12.5,d,d,B.N,d,d,!0,d,d,d,d,d,d,d,d),d,d,d);
+var _pillContent=A.b9(A.b([_spinIcon,B.aT,_lbl],t.p),B.l,B.m,B.G);
+var _pill=A.a5(d,_pillContent,B.h,d,d,new A.ak(new A.q(2566914048),d,d,A.ag(18),d,d,B.t),d,new A.dL(A.ag(7),d,A.ag(13),A.ag(7)),d,d,d,d,d);
+o=A.dt(B.h,A.b([o,_shade,_pill],t.p),B.r,B.ap);
+}
+return A.dr(d,A.aP5(A.ag(12),A.a5(d,o,B.h,d,B.FH,d,d,d,d,d,d,d,d)),B.M,!1,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,d,new A.auR(c,this),d,d,d,d,d,d,!1,B.ao)}if(l){c=a.r
 if(c!=null&&c.length!==0){c.toString
 g=c}else g=s
 return new A.GM(g,b,d)}if(o==="file"){c=A.bV(B.aaN,b?B.f:B.o,d,d)
@@ -100628,7 +100664,11 @@ j=s?$.getThemeColor():B.f
 i=A.ag(18)
 h=A.b([new A.bZ(0,B.ac,A.I(36,0,0,0),B.dU,16)],o)
 g=t.p
-h=A.b([A.a5(d,A.a2(l.e,d,d,d,d,d,A.ay(d,d,s?B.f:B.I,d,d,d,d,d,d,d,d,15,d,d,d,d,d,!0,d,d,d,d,d,d,d,d),d,d,d),B.h,d,new A.ao(0,k.a.a*0.72,0,1/0),new A.ak(j,d,d,i,h,d,B.t),d,d,d,B.qA,d,d,d)],g)
+var _lel=(l.e||"").toLowerCase();var _isImgCtx=(l.d==="image")||(l.f!=null&&l.f.length!==0)||_lel.indexOf(".jpg")!==-1||_lel.indexOf(".jpeg")!==-1||_lel.indexOf(".png")!==-1||_lel.indexOf(".webp")!==-1||_lel.indexOf(".gif")!==-1||_lel.indexOf("/chat-media/")!==-1;
+var _ctxBody=_isImgCtx?e.a.aaY(l,s):A.a2(l.e,d,d,d,d,d,A.ay(d,d,s?B.f:B.I,d,d,d,d,d,d,d,d,15,d,d,d,d,d,!0,d,d,d,d,d,d,d,d),d,d,d);
+var _ctxPad=_isImgCtx?B.K:B.qA;
+var _ctxBg=_isImgCtx?B.F:j;
+h=A.b([A.a5(d,_ctxBody,B.h,d,new A.ao(0,k.a.a*0.72,0,1/0),new A.ak(_ctxBg,d,d,i,h,d,B.t),d,d,d,_ctxPad,d,d,d)],g)
 k=l.Q
 if(k.gbH(k)){j=s?d:8
 i=s?8:d
@@ -100682,6 +100722,7 @@ $S:0}
 A.awu.prototype={
 $0(){var s,r=this.a
 A.b1(r,!1).bO(0,null)
+var _u=this.b.videoUrl||this.b.f||this.b.e||"";var _isM=(this.b.d==="image"||this.b.d==="video"||_u.indexOf(".jpg")!==-1||_u.indexOf(".png")!==-1||_u.indexOf(".mp4")!==-1||_u.indexOf(".webm")!==-1||_u.indexOf("/chat-media/")!==-1);if(_isM&&window.downloadMediaDirectly){window.downloadMediaDirectly(_u);}
 s=window.navigator.clipboard
 if(s!=null){s=s.writeText(this.b.e)
 s.toString
@@ -101134,7 +101175,7 @@ else n=!0
 if(s)if(!B.c.bj(a.e,b)){a0=a.f
 a0=a0!=null&&a0.length!==0
 m=a0}else m=!0
-else m=!0
+else m=!0;var _ael=(a.e||"").toLowerCase();var _isVidMsg=(a.d==="video")||(a.videoUrl!=null&&a.videoUrl.length>0)||_ael.indexOf(".mp4")!==-1||_ael.indexOf(".mov")!==-1||_ael.indexOf(".webm")!==-1||_ael.indexOf("/videos/")!==-1;var _hasThumb=a.f!=null&&a.f.length>0;if(_ael.indexOf(".jpg")!==-1||_ael.indexOf(".jpeg")!==-1||_ael.indexOf(".png")!==-1||_ael.indexOf(".webp")!==-1||_ael.indexOf(".gif")!==-1||_ael.indexOf("/chat-media/")!==-1||(_isVidMsg&&_hasThumb))m=!0;
 if(o&&!a.y){a0=A.bP(a1,c,t.w).w
 return A.a5(c,A.a2(a.e,c,c,c,c,c,B.auh,c,c,c),B.h,c,new A.ao(0,a0.a.a*0.72,0,1/0),c,c,c,c,B.lN,c,c,c)}a0=A.bP(a1,c,t.w).w
 if(m)s=B.K
@@ -101499,20 +101540,58 @@ $1(a){return this.a2L(a)},
 a2L(a){var s=0,r=A.x(t.H),q=this,p,o,n,m,l,k
 var $async$$1=A.t(function(b,c){if(b===1)return A.u(c,r)
 while(true)switch(s){case 0:l=q.a
-k=t.F
-s=k.b(B.cc.gks(l))?2:3
-break
-case 2:n=k.a(B.cc.gks(l))
+var _raw=l.result||B.cc.gks(l)
+var _u8=(_raw instanceof Uint8Array)?_raw:(_raw instanceof ArrayBuffer?new Uint8Array(_raw):(_raw&&_raw.buffer?new Uint8Array(_raw.buffer):new Uint8Array(0)))
+n=_u8
 l=q.c
-k=l.name
-k.toString
-l=l.type
-l.toString
+k=l.name||"file"
+l=l.type||""
+var _optId="optimistic-"+Date.now();
+var _isVidSend=l&&(l.indexOf("video")!==-1||(k&&k.match(/\.(mp4|mov|webm|mkv)$/i)));
+if(_isVidSend&&n.length>0){
+try{
+var _optMsg=A.wf({id:_optId,conversationId:q.b.a,content:"video",videoUrl:"",type:"video",createdAt:new Date().toISOString()});
+q.d.vZ(_optMsg);
+}catch(_){}
+}
+var _isImg=!l||l.indexOf("image")!==-1||(k&&k.match(/\.(jpg|jpeg|png|gif|webp)$/i));
+if(_isImg&&n.length>0){
+try{
+var _b64="",_chunk=0x8000;
+for(var _ci=0;_ci<n.length;_ci+=_chunk){
+_b64+=String.fromCharCode.apply(null,n.subarray(_ci,Math.min(_ci+_chunk,n.length)));
+}
+var _dUrl="data:"+(l||"image/jpeg")+";base64,"+btoa(_b64);
+var _optMsg=A.wf({id:_optId,conversationId:q.b.a,content:_dUrl,imageUrl:_dUrl,type:"image",createdAt:new Date().toISOString()});
+q.d.vZ(_optMsg);
+}catch(_){}
+}
 s=4
 return A.m(A.q3(q.b.a,n,k,l),$async$$1)
 case 4:p=c
-if(J.e(J.Z(p,"success"),!0)&&J.Z(p,"data")!=null)try{o=A.wf(J.Z(p,"data"))
-q.d.vZ(o)}catch(j){}case 3:return A.v(null,r)}})
+if(J.e(J.Z(p,"success"),!0)&&J.Z(p,"data")!=null)try{
+o=A.wf(J.Z(p,"data"));
+var _msgs=q.d.d,_found=!1;
+if(_msgs&&_msgs.length){
+for(var _i=0;_i<_msgs.length;_i++){
+if(_msgs[_i]&&_msgs[_i].a===_optId){_msgs[_i]=o;_found=!0;break;}
+}
+}
+if(!_found)q.d.vZ(o);
+else q.d.V();
+}catch(j){}
+else{
+try{
+var _msgs=q.d.d;
+if(_msgs&&_msgs.length){
+for(var _i=0;_i<_msgs.length;_i++){
+if(_msgs[_i]&&_msgs[_i].a===_optId){_msgs.splice(_i,1);break;}
+}
+q.d.V();
+}
+}catch(_){}
+}
+case 3:return A.v(null,r)}})
 return A.w($async$$1,r)},
 $S:79}
 A.av4.prototype={
@@ -101530,20 +101609,51 @@ $1(a){return this.a2K(a)},
 a2K(a){var s=0,r=A.x(t.H),q=this,p,o,n,m,l,k
 var $async$$1=A.t(function(b,c){if(b===1)return A.u(c,r)
 while(true)switch(s){case 0:l=q.a
-k=t.F
-s=k.b(B.cc.gks(l))?2:3
-break
-case 2:n=k.a(B.cc.gks(l))
+var _raw=l.result||B.cc.gks(l)
+var _u8=(_raw instanceof Uint8Array)?_raw:(_raw instanceof ArrayBuffer?new Uint8Array(_raw):(_raw&&_raw.buffer?new Uint8Array(_raw.buffer):new Uint8Array(0)))
+n=_u8
 l=q.c
-k=l.name
-k.toString
-l=l.type
-l.toString
+k=l.name||"file"
+l=l.type||""
+var _optId="optimistic-"+Date.now();
+var _isImg=!l||l.indexOf("image")!==-1||(k&&k.match(/\.(jpg|jpeg|png|gif|webp)$/i));
+if(_isImg&&n.length>0){
+try{
+var _b64="",_chunk=0x8000;
+for(var _ci=0;_ci<n.length;_ci+=_chunk){
+_b64+=String.fromCharCode.apply(null,n.subarray(_ci,Math.min(_ci+_chunk,n.length)));
+}
+var _dUrl="data:"+(l||"image/jpeg")+";base64,"+btoa(_b64);
+var _optMsg=A.wf({id:_optId,conversationId:q.b.a,content:_dUrl,imageUrl:_dUrl,type:"image",createdAt:new Date().toISOString()});
+q.d.vZ(_optMsg);
+}catch(_){}
+}
 s=4
 return A.m(A.q3(q.b.a,n,k,l),$async$$1)
 case 4:p=c
-if(J.e(J.Z(p,"success"),!0)&&J.Z(p,"data")!=null)try{o=A.wf(J.Z(p,"data"))
-q.d.vZ(o)}catch(j){}case 3:return A.v(null,r)}})
+if(J.e(J.Z(p,"success"),!0)&&J.Z(p,"data")!=null)try{
+o=A.wf(J.Z(p,"data"));
+var _msgs=q.d.d,_found=!1;
+if(_msgs&&_msgs.length){
+for(var _i=0;_i<_msgs.length;_i++){
+if(_msgs[_i]&&_msgs[_i].a===_optId){_msgs[_i]=o;_found=!0;break;}
+}
+}
+if(!_found)q.d.vZ(o);
+else q.d.V();
+}catch(j){}
+else{
+try{
+var _msgs=q.d.d;
+if(_msgs&&_msgs.length){
+for(var _i=0;_i<_msgs.length;_i++){
+if(_msgs[_i]&&_msgs[_i].a===_optId){_msgs.splice(_i,1);break;}
+}
+q.d.V();
+}
+}catch(_){}
+}
+case 3:return A.v(null,r)}})
 return A.w($async$$1,r)},
 $S:79}
 A.awR.prototype={
@@ -101705,8 +101815,10 @@ A.auQ.prototype={
 $3(a,b,c){var s=null
 return A.a5(s,B.Cv,B.h,s,s,s,s,s,s,B.ft,s,s,s)},
 $S:218}
+A.aVidTap=function aVidTap(a){this.a=a};
+A.aVidTap.prototype={$0(){if(window.openVideoModal)window.openVideoModal(this.a);else window.open(this.a,"_blank")},$S:0};
 A.auR.prototype={
-$0(){var s=this.b,r=s.c
+$0(){var _u=(this.a&&(this.a.url||this.a.u))||null;if(_u&&window.openImageModal){window.openImageModal(_u);return;}var s=this.b,r=s.c
 r.toString
 A.pW(new A.auO(this.a,s),r,t.z)},
 $S:0}

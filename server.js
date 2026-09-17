@@ -52,6 +52,43 @@ app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
+// Proxy đa phương tiện hỗ trợ CORS và Range Requests cho video/audio từ Cloudflare R2
+app.get("/api/chat/media-proxy", (req, res) => {
+    const targetUrl = req.query.url;
+    if (!targetUrl) return res.status(400).send("Missing url parameter");
+    try {
+        const parsed = new URL(targetUrl);
+        const https = require("https");
+        const http = require("http");
+        const client = parsed.protocol === "https:" ? https : http;
+
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+        res.setHeader("Cache-Control", "public, max-age=86400");
+
+        const headers = {};
+        if (req.headers.range) {
+            headers.range = req.headers.range;
+        }
+
+        const proxyReq = client.get(targetUrl, { headers }, (proxyRes) => {
+            res.status(proxyRes.statusCode);
+            if (proxyRes.headers["content-type"]) res.setHeader("Content-Type", proxyRes.headers["content-type"]);
+            if (proxyRes.headers["content-length"]) res.setHeader("Content-Length", proxyRes.headers["content-length"]);
+            if (proxyRes.headers["content-range"]) res.setHeader("Content-Range", proxyRes.headers["content-range"]);
+            if (proxyRes.headers["accept-ranges"]) res.setHeader("Accept-Ranges", proxyRes.headers["accept-ranges"]);
+            proxyRes.pipe(res);
+        });
+
+        proxyReq.on("error", (e) => {
+            if (!res.headersSent) res.status(500).send(e.message);
+        });
+    } catch (e) {
+        if (!res.headersSent) res.status(400).send("Invalid url");
+    }
+});
+
+
 // Bộ nhớ đệm cấu hình hệ thống thời gian thực (In-memory System Config)
 global.systemConfig = {
     maintenanceMode: false,

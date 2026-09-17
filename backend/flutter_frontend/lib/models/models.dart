@@ -1,34 +1,139 @@
+import 'dart:convert';
+import '../services/api_service.dart';
+
 class UserModel {
   final String id;
   final String username;
   final String fullName;
+  final String? nickname;
   final String? email;
   final String? phone;
   final String? avatar;
+  final String? coverImage;
+  final String? bio;
+  final String role;
+  final bool isBlocked;
   final bool isOnline;
   final DateTime? lastActive;
+
+  String get displayName => (nickname != null && nickname!.trim().isNotEmpty) ? nickname!.trim() : fullName;
+  bool get isAdmin => role.toUpperCase() == 'ADMIN';
 
   UserModel({
     required this.id,
     required this.username,
     required this.fullName,
+    this.nickname,
     this.email,
     this.phone,
     this.avatar,
+    this.coverImage,
+    this.bio,
+    this.role = 'USER',
+    this.isBlocked = false,
     this.isOnline = false,
     this.lastActive,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    final rawAvatar = json['avatar']?.toString();
+    final rawCover = json['coverImage']?.toString() ?? json['coverPhoto']?.toString() ?? json['cover_image']?.toString() ?? json['cover_photo']?.toString();
     return UserModel(
       id: json['id']?.toString() ?? '',
       username: json['username']?.toString() ?? '',
       fullName: json['fullName']?.toString() ?? json['username']?.toString() ?? 'Người dùng',
+      nickname: json['nickname']?.toString(),
       email: json['email']?.toString(),
       phone: json['phone']?.toString(),
-      avatar: json['avatar']?.toString(),
+      avatar: (rawAvatar != null && rawAvatar.isNotEmpty) ? ApiService.formatImageUrl(rawAvatar) : null,
+      coverImage: (rawCover != null && rawCover.isNotEmpty) ? ApiService.formatImageUrl(rawCover) : null,
+      bio: json['bio']?.toString(),
+      role: json['role']?.toString() ?? 'USER',
+      isBlocked: json['isBlocked'] == true,
       isOnline: json['isOnline'] == true,
       lastActive: json['lastActive'] != null ? DateTime.tryParse(json['lastActive'].toString()) : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'username': username,
+      'fullName': fullName,
+      'nickname': nickname,
+      'email': email,
+      'phone': phone,
+      'avatar': avatar,
+      'coverImage': coverImage,
+      'coverPhoto': coverImage,
+      'bio': bio,
+      'role': role,
+      'isBlocked': isBlocked,
+      'isOnline': isOnline,
+      'lastActive': lastActive?.toIso8601String(),
+    };
+  }
+}
+
+class AdminStatsModel {
+  final int totalUsers;
+  final int onlineUsers;
+  final int totalMessages;
+  final int totalGroups;
+
+  AdminStatsModel({
+    required this.totalUsers,
+    required this.onlineUsers,
+    required this.totalMessages,
+    required this.totalGroups,
+  });
+
+  factory AdminStatsModel.fromJson(Map<String, dynamic> json) {
+    return AdminStatsModel(
+      totalUsers: json['totalUsers'] is int ? json['totalUsers'] : 0,
+      onlineUsers: json['onlineUsers'] is int ? json['onlineUsers'] : 0,
+      totalMessages: json['totalMessages'] is int ? json['totalMessages'] : 0,
+      totalGroups: json['totalGroups'] is int ? json['totalGroups'] : 0,
+    );
+  }
+}
+
+class ReportModel {
+  final String id;
+  final String reporterId;
+  final String reporterName;
+  final String reportedUserId;
+  final String reportedUserName;
+  final bool reportedIsBlocked;
+  final String reason;
+  final String status;
+  final DateTime createdAt;
+
+  ReportModel({
+    required this.id,
+    required this.reporterId,
+    required this.reporterName,
+    required this.reportedUserId,
+    required this.reportedUserName,
+    required this.reportedIsBlocked,
+    required this.reason,
+    required this.status,
+    required this.createdAt,
+  });
+
+  factory ReportModel.fromJson(Map<String, dynamic> json) {
+    return ReportModel(
+      id: json['id']?.toString() ?? '',
+      reporterId: json['reporterId']?.toString() ?? '',
+      reporterName: json['reporter']?['fullName']?.toString() ?? json['reporter']?['username']?.toString() ?? 'N/A',
+      reportedUserId: json['reportedUserId']?.toString() ?? '',
+      reportedUserName: json['reportedUser']?['fullName']?.toString() ?? json['reportedUser']?['username']?.toString() ?? 'N/A',
+      reportedIsBlocked: json['reportedUser']?['isBlocked'] == true,
+      reason: json['reason']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'PENDING',
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
+          : DateTime.now(),
     );
   }
 }
@@ -40,8 +145,24 @@ class MessageModel {
   final String? type;
   final String content;
   final String? imageUrl;
+  final String? videoUrl;
+  final String? audioUrl;
   final bool isRead;
+  final bool isDelivered;
+  final bool isRecalled;
+  final String? replyMessageId;
+  final Map<String, String> reactions;
   final DateTime createdAt;
+
+  Map<String, dynamic>? get systemMetadata {
+    if (type != 'system') return null;
+    try {
+      final decoded = jsonDecode(content);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    } catch (_) {}
+    return null;
+  }
 
   MessageModel({
     required this.id,
@@ -50,22 +171,122 @@ class MessageModel {
     this.type = 'text',
     required this.content,
     this.imageUrl,
+    this.videoUrl,
+    this.audioUrl,
     this.isRead = false,
+    this.isDelivered = false,
+    this.isRecalled = false,
+    this.replyMessageId,
+    this.reactions = const {},
     required this.createdAt,
   });
 
-  factory MessageModel.fromJson(Map<String, dynamic> json) {
+  factory MessageModel.fromJson(dynamic rawJson) {
+    final Map<dynamic, dynamic> json = rawJson is Map ? rawJson : {};
+    String? img = json['imageUrl']?.toString();
+    String? vid = json['videoUrl']?.toString();
+    String? aud = json['audioUrl']?.toString();
+    String msgType = json['type']?.toString() ?? 'text';
+    String contentStr = json['content']?.toString() ?? '';
+
+    final lowerContent = contentStr.toLowerCase();
+    final hasImgExt = lowerContent.endsWith('.jpg') || lowerContent.endsWith('.jpeg') ||
+        lowerContent.endsWith('.png') || lowerContent.endsWith('.webp') ||
+        lowerContent.endsWith('.gif') || lowerContent.contains('/chat-media/') ||
+        lowerContent.contains('.jpg?') || lowerContent.contains('.png?');
+
+    if (msgType == 'image' || hasImgExt || contentStr.startsWith('data:image')) {
+      msgType = 'image';
+      if (img == null || img.isEmpty) {
+        img = contentStr;
+      }
+    }
+
+    final hasVidExt = lowerContent.endsWith('.mp4') || lowerContent.endsWith('.mov') ||
+        lowerContent.endsWith('.webm') || lowerContent.endsWith('.mkv') ||
+        lowerContent.contains('/videos/') || lowerContent.contains('.mp4?');
+
+    if (msgType == 'video' || hasVidExt || contentStr.startsWith('data:video')) {
+      msgType = 'video';
+      if (vid == null || vid.isEmpty) {
+        vid = contentStr;
+      }
+    }
+
+    if (msgType == 'audio' && (aud == null || aud.isEmpty)) {
+      aud = contentStr;
+    }
+
+    Map<String, String> parsedReactions = {};
+    final rawReactions = json['reactions'];
+    if (rawReactions is Map) {
+      rawReactions.forEach((key, value) {
+        parsedReactions[key.toString()] = value.toString();
+      });
+    } else if (rawReactions is String && rawReactions.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(rawReactions);
+        if (decoded is Map) {
+          decoded.forEach((key, value) {
+            parsedReactions[key.toString()] = value.toString();
+          });
+        }
+      } catch (_) {}
+    }
+
+    final read = json['isRead'] == true;
+    final delivered = json['isDelivered'] == true || read;
+    final recalled = json['isRecalled'] == true;
+
     return MessageModel(
       id: json['id']?.toString() ?? '',
       conversationId: json['conversationId']?.toString(),
       senderId: json['senderId']?.toString(),
-      type: json['type']?.toString() ?? 'text',
-      content: json['content']?.toString() ?? '',
-      imageUrl: json['imageUrl']?.toString(),
-      isRead: json['isRead'] == true,
+      type: msgType,
+      content: contentStr,
+      imageUrl: img,
+      videoUrl: vid,
+      audioUrl: aud,
+      isRead: read,
+      isDelivered: delivered,
+      isRecalled: recalled,
+      replyMessageId: json['replyMessageId']?.toString(),
+      reactions: parsedReactions,
       createdAt: json['createdAt'] != null
-          ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
+          ? (DateTime.tryParse(json['createdAt'].toString())?.toLocal() ?? DateTime.now())
           : DateTime.now(),
+    );
+  }
+
+  MessageModel copyWith({
+    String? id,
+    String? conversationId,
+    String? senderId,
+    String? type,
+    String? content,
+    String? imageUrl,
+    String? audioUrl,
+    bool? isRead,
+    bool? isDelivered,
+    bool? isRecalled,
+    String? replyMessageId,
+    Map<String, String>? reactions,
+    DateTime? createdAt,
+  }) {
+    return MessageModel(
+      id: id ?? this.id,
+      conversationId: conversationId ?? this.conversationId,
+      senderId: senderId ?? this.senderId,
+      type: type ?? this.type,
+      content: content ?? this.content,
+      imageUrl: imageUrl ?? this.imageUrl,
+      audioUrl: audioUrl ?? this.audioUrl,
+      isRead: isRead ?? this.isRead,
+      isDelivered: isDelivered ?? this.isDelivered,
+      isRecalled: isRecalled ?? this.isRecalled,
+      replyMessageId: replyMessageId ?? this.replyMessageId,
+      reactions: reactions ?? this.reactions,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 }
@@ -80,6 +301,39 @@ class ConversationModel {
   final DateTime? updatedAt;
   final String? targetUserId;
   final List<UserModel> members;
+  final String theme;
+  final Map<String, String>? nicknames;
+
+  bool get isGroup => type == 'group';
+  int get memberCount => members.length;
+
+  bool get isOnline {
+    if (targetUserId != null && targetUserId!.isNotEmpty && members.isNotEmpty) {
+      final partner = members.firstWhere(
+        (m) => m.id == targetUserId,
+        orElse: () => members.first,
+      );
+      return partner.isOnline;
+    }
+    return members.any((m) => m.isOnline);
+  }
+  DateTime? get lastMessageAt => updatedAt;
+
+  String getDisplayName(String? userId) {
+    if (userId == null) return name;
+    if (nicknames != null && nicknames!.containsKey(userId) && nicknames![userId] != null && nicknames![userId]!.trim().isNotEmpty) {
+      return nicknames![userId]!.trim();
+    }
+    for (final m in members) {
+      if (m.id == userId) {
+        if (m.nickname != null && m.nickname!.trim().isNotEmpty) {
+          return m.nickname!.trim();
+        }
+        return m.fullName.isNotEmpty ? m.fullName : m.username;
+      }
+    }
+    return 'Người dùng';
+  }
 
   ConversationModel({
     required this.id,
@@ -91,17 +345,34 @@ class ConversationModel {
     this.updatedAt,
     this.targetUserId,
     this.members = const [],
+    this.theme = 'classic',
+    this.nicknames,
   });
 
-  factory ConversationModel.fromJson(Map<String, dynamic> rawJson, {String? currentUserId}) {
-    final json = (rawJson['Conversations'] is Map<String, dynamic>)
-        ? rawJson['Conversations'] as Map<String, dynamic>
-        : rawJson;
+  factory ConversationModel.fromJson(dynamic rawData, {String? currentUserId}) {
+    final Map<dynamic, dynamic> rawJson = rawData is Map ? rawData : {};
+    final convObj = rawJson['Conversations'];
+    final Map<dynamic, dynamic> json = (convObj is Map) ? convObj : rawJson;
 
     String? lastMsgText;
     if (json['Messages'] is List && (json['Messages'] as List).isNotEmpty) {
       final firstMsg = (json['Messages'] as List)[0];
-      if (firstMsg is Map) lastMsgText = firstMsg['content']?.toString();
+      if (firstMsg is Map) {
+        final content = firstMsg['content']?.toString() ?? '';
+        final type = firstMsg['type']?.toString();
+        final lower = content.toLowerCase().trim();
+        if (type == 'image' || lower.startsWith('data:image') || lower.contains('/uploads/') || lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
+          lastMsgText = 'Đã gửi một hình ảnh';
+        } else if (type == 'video' || lower.startsWith('data:video') || lower.contains('.mp4') || lower.contains('.mov') || (lower.contains('.webm') && !lower.contains('voice_'))) {
+          lastMsgText = 'Đã gửi một video';
+        } else if (type == 'audio' || lower.startsWith('data:audio') || lower.contains('.webm') || lower.contains('.mp3')) {
+          lastMsgText = 'Đã gửi một tin nhắn thoại';
+        } else if (type == 'file' || lower.startsWith('{"filename"')) {
+          lastMsgText = 'Đã gửi một tệp đính kèm';
+        } else {
+          lastMsgText = content;
+        }
+      }
     }
 
     String convName = json['name']?.toString() ?? '';
@@ -109,10 +380,20 @@ class ConversationModel {
     String? partnerUserId;
     final isGroup = json['type'] == 'group';
 
+    List<UserModel> parsedMembers = [];
     final membersList = json['ConversationMembers'] ?? rawJson['ConversationMembers'];
     if (membersList is List) {
+      for (var member in membersList) {
+        if (member is Map && member['Users'] is Map) {
+          final userMap = Map<String, dynamic>.from(member['Users'] as Map);
+          if (member['nickname'] != null && member['nickname'].toString().isNotEmpty) {
+            userMap['nickname'] = member['nickname'].toString();
+          }
+          parsedMembers.add(UserModel.fromJson(userMap));
+        }
+      }
+
       if (isGroup) {
-        // For groups: use provided name, or build from member names
         if (convName.isEmpty) {
           final memberNames = membersList
               .where((m) => m is Map && m['Users'] is Map)
@@ -122,13 +403,12 @@ class ConversationModel {
           convName = memberNames.join(', ');
         }
       } else {
-        // For private: find the OTHER member (not me)
         for (var member in membersList) {
           if (member is Map) {
-            final memberUserId = member['userId']?.toString();
+            final memberUserId = member['userId']?.toString() ?? (member['Users'] is Map ? member['Users']['id']?.toString() : null);
             final userObj = member['Users'];
             
-            if (currentUserId != null && memberUserId != null && memberUserId != currentUserId) {
+            if (memberUserId != null && (currentUserId == null || memberUserId != currentUserId)) {
               partnerUserId = memberUserId;
               final nickname = member['nickname']?.toString();
               if (nickname != null && nickname.isNotEmpty) {
@@ -139,26 +419,107 @@ class ConversationModel {
               if (userObj is Map && (convAvatar == null || convAvatar.isEmpty)) {
                 convAvatar = userObj['avatar']?.toString();
               }
-              break;
-            } else if (memberUserId != null && memberUserId != currentUserId) {
-              partnerUserId = memberUserId;
+              if (currentUserId != null && memberUserId != currentUserId) {
+                break;
+              }
             }
           }
         }
       }
     }
 
+    Map<String, String> parsedNicknames = {};
+    final rawNicknames = json['nicknames'] ?? rawJson['nicknames'];
+    if (rawNicknames is Map) {
+      rawNicknames.forEach((k, v) {
+        if (v != null && v.toString().trim().isNotEmpty) {
+          parsedNicknames[k.toString()] = v.toString().trim();
+        }
+      });
+    } else if (rawNicknames is String && rawNicknames.isNotEmpty && rawNicknames != '{}') {
+      try {
+        final decoded = jsonDecode(rawNicknames);
+        if (decoded is Map) {
+          decoded.forEach((k, v) {
+            if (v != null && v.toString().trim().isNotEmpty) {
+              parsedNicknames[k.toString()] = v.toString().trim();
+            }
+          });
+        }
+      } catch (_) {}
+    }
+    for (final m in parsedMembers) {
+      if (m.nickname != null && m.nickname!.trim().isNotEmpty && !parsedNicknames.containsKey(m.id)) {
+        parsedNicknames[m.id] = m.nickname!.trim();
+      }
+    }
+
+    if (!isGroup && partnerUserId != null && parsedNicknames.containsKey(partnerUserId)) {
+      convName = parsedNicknames[partnerUserId]!;
+    }
+
     if (convName.isEmpty) convName = 'Cuộc trò chuyện';
+
+    String? rawLast = lastMsgText ?? json['lastMessage']?.toString();
+    String? finalLastMsg;
+    if (rawLast != null && rawLast.isNotEmpty) {
+      final lower = rawLast.toLowerCase().trim();
+      if (lower.startsWith('data:image') || lower.contains('/uploads/') || lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.gif') || lower.endsWith('.webp')) {
+        finalLastMsg = 'Đã gửi một hình ảnh';
+      } else if (lower.startsWith('data:video') || lower.contains('.mp4') || lower.contains('.mov') || (lower.contains('.webm') && !lower.contains('voice_')) || lower.contains('.mkv')) {
+        finalLastMsg = 'Đã gửi một video';
+      } else if (lower.startsWith('data:audio') || lower.contains('.webm') || lower.contains('.mp3') || lower.contains('.m4a') || lower.contains('.wav')) {
+        finalLastMsg = 'Đã gửi một tin nhắn thoại';
+      } else if (lower.startsWith('{"filename"')) {
+        finalLastMsg = 'Đã gửi một tệp đính kèm';
+      } else {
+        finalLastMsg = rawLast;
+      }
+    }
+
+    final rawTheme = json['theme']?.toString() ?? rawJson['theme']?.toString();
+    final parsedTheme = (rawTheme != null && rawTheme.isNotEmpty && rawTheme != 'default') ? rawTheme : 'classic';
 
     return ConversationModel(
       id: json['id']?.toString() ?? rawJson['conversationId']?.toString() ?? '',
       name: convName,
-      avatar: convAvatar,
+      avatar: (convAvatar != null && convAvatar.isNotEmpty) ? ApiService.formatImageUrl(convAvatar) : null,
       type: json['type']?.toString() ?? 'private',
-      lastMessage: lastMsgText ?? json['lastMessage']?.toString(),
+      lastMessage: finalLastMsg,
       unreadCount: json['_count']?['Messages'] is int ? json['_count']['Messages'] : 0,
       updatedAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt'].toString()) : null,
       targetUserId: partnerUserId,
+      members: parsedMembers,
+      theme: parsedTheme,
+      nicknames: parsedNicknames.isNotEmpty ? parsedNicknames : null,
+    );
+  }
+
+  ConversationModel copyWith({
+    String? id,
+    String? name,
+    String? avatar,
+    String? type,
+    String? lastMessage,
+    int? unreadCount,
+    DateTime? updatedAt,
+    String? targetUserId,
+    List<UserModel>? members,
+    String? theme,
+    Map<String, String>? nicknames,
+  }) {
+    return ConversationModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      avatar: avatar ?? this.avatar,
+      type: type ?? this.type,
+      lastMessage: lastMessage ?? this.lastMessage,
+      unreadCount: unreadCount ?? this.unreadCount,
+      updatedAt: updatedAt ?? this.updatedAt,
+      targetUserId: targetUserId ?? this.targetUserId,
+      members: members ?? this.members,
+      theme: theme ?? this.theme,
+      nicknames: nicknames ?? this.nicknames,
     );
   }
 }

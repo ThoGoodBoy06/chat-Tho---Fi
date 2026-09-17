@@ -570,13 +570,26 @@ module.exports = (io) => {
         const { conversationId, content, type, tempId, senderId, senderName, replyMessageId, receiverId, memberIds } = data;
         const uid = senderId || socket.userId;
 
+        // Tự động nhận diện nếu content là ảnh hoặc video
+        const isImg = type === "image" || (typeof content === "string" && (
+            content.startsWith("data:image") || content.includes(".jpg") || content.includes(".jpeg") ||
+            content.includes(".png") || content.includes(".webp") || content.includes(".gif") || content.includes("/chat-media/")
+        ));
+        const isVid = type === "video" || (typeof content === "string" && (
+            content.startsWith("data:video") || content.includes(".mp4") || content.includes(".mov") || content.includes(".webm")
+        ));
+        const resolvedType = isImg ? "image" : (isVid ? "video" : (type || "text"));
+
         // Tạo payload tin nhắn tạm (optimistic) để phát cho đối phương ngay lập tức
         const realtimePayload = {
           id: tempId || `rt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           conversationId,
           senderId: uid,
           content,
-          type: type || "text",
+          type: resolvedType,
+          imageUrl: isImg ? content : (data.imageUrl || null),
+          videoUrl: isVid ? content : (data.videoUrl || null),
+          audioUrl: data.audioUrl || null,
           replyMessageId: replyMessageId || null,
           isRead: false,
           isDelivered: true,

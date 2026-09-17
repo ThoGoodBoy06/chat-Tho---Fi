@@ -7,6 +7,9 @@ const authMiddleware = require("../middlewares/auth.middleware");
 const multer = require("multer");
 const upload = multer({ storage: multer.memoryStorage() });
 
+// Tải tệp tin/media trực tiếp về máy (bảo toàn định dạng, tự động tải qua browser download)
+router.get("/download-file", chatController.downloadMediaProxy);
+
 // Bật lớp bảo vệ: Chỉ user đã đăng nhập (có Token) mới được dùng các API này
 router.use(authMiddleware);
 

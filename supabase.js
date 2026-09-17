@@ -212,9 +212,83 @@ async function uploadBase64(base64Str, type = "file", originalName = "") {
   }
 }
 
+/**
+ * Tải trực tiếp Buffer lên Supabase Storage (Bucket: chat-media)
+ * @param {Buffer} buffer 
+ * @param {string} mimeType
+ * @param {string} type "image" | "audio" | "file" | "video"
+ * @param {string} originalName 
+ * @returns {Promise<string>} Public URL của file
+ */
+async function uploadBuffer(buffer, mimeType = "", type = "file", originalName = "") {
+  if (!buffer || buffer.length === 0) return "";
+
+  if (!mimeType) {
+    if (type === "image") mimeType = "image/jpeg";
+    else if (type === "audio") mimeType = "audio/webm";
+    else if (type === "video") mimeType = "video/mp4";
+    else mimeType = "application/octet-stream";
+  }
+
+  let extension = (mimeType.split("/")[1] || "").split("+")[0];
+  let cleanName = (originalName || "").replace(/[^a-zA-Z0-9.\-_]/g, "_");
+  if (!cleanName) {
+    cleanName = `${uuidv4()}.${extension || "bin"}`;
+  } else if (!cleanName.includes(".")) {
+    cleanName = `${cleanName}.${extension || "bin"}`;
+  }
+
+  const dateStr = new Date().toISOString().split("T")[0];
+  const filePath = `uploads/${dateStr}/${uuidv4()}-${cleanName}`;
+
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.storage
+        .from("chat-media")
+        .upload(filePath, buffer, {
+          contentType: mimeType,
+          upsert: true,
+        });
+
+      if (!error) {
+        const { data: publicUrlData } = supabase.storage
+          .from("chat-media")
+          .getPublicUrl(filePath);
+
+        if (publicUrlData && publicUrlData.publicUrl) {
+          console.log(`✅ [Supabase Storage] Buffer tải lên thành công: ${publicUrlData.publicUrl}`);
+          return publicUrlData.publicUrl;
+        }
+      } else {
+        console.warn("⚠️ [Supabase Storage] Lỗi tải buffer:", error.message || error);
+      }
+    } catch (e) {
+      console.warn("⚠️ [Supabase Storage] Lỗi ngoại lệ buffer:", e.message);
+    }
+  }
+
+  // Fallback cục bộ
+  try {
+    const uploadsDir = path.join(__dirname, "uploads", dateStr);
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    const fileName = `${uuidv4()}-${cleanName}`;
+    const fullPath = path.join(uploadsDir, fileName);
+    fs.writeFileSync(fullPath, buffer);
+    const localUrl = `/uploads/${dateStr}/${fileName}`;
+    console.log(`✅ [Local Fallback] Đã lưu buffer cục bộ: ${localUrl}`);
+    return localUrl;
+  } catch (fsErr) {
+    console.error("❌ Lưu buffer cục bộ thất bại:", fsErr);
+    return "";
+  }
+}
+
 module.exports = {
   supabase,
   isConfigured,
   uploadAvatar,
   uploadBase64,
+  uploadBuffer,
 };
