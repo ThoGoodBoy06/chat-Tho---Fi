@@ -253,33 +253,7 @@ module.exports = (io) => {
     // 2. Lắng nghe khi người dùng tắt app hoặc mất mạng
     socket.on("disconnect", () => {
       console.log("🔴 Một thiết bị vừa ngắt kết nối: " + socket.id);
-      if (socket.userId && activeCalls.has(socket.userId)) {
-        const activeInfo = activeCalls.get(socket.userId);
-        const partnerId = activeInfo?.partnerId;
-        const convId = activeInfo?.conversationId;
-        console.log(`🔴 [disconnect] Tự động kết thúc cuộc gọi dở dang cho partner ${partnerId}, room ${convId}`);
-        if (partnerId) {
-          io.to(partnerId).emit("call_ended", { callerId: socket.userId, targetId: partnerId, conversationId: convId });
-          activeCalls.delete(partnerId);
-          try {
-            prisma.users.findUnique({
-              where: { id: partnerId },
-              select: { fcmToken: true }
-            }).then(u => {
-              if (u && u.fcmToken) {
-                sendPushNotification(u.fcmToken, "Cuộc gọi đã kết thúc", "", {
-                  type: "call_ended",
-                  callerId: String(socket.userId || ""),
-                  t: String(Date.now())
-                }, true).catch(() => {});
-              }
-            }).catch(() => {});
-          } catch (_) {}
-        } else if (convId) {
-          socket.to(convId).emit("call_ended", { callerId: socket.userId, conversationId: convId });
-        }
-        activeCalls.delete(socket.userId);
-      }
+
       if (socket.userId) {
         // Chỉ xóa khỏi map nếu socket.id đang ngắt kết nối là socket đang lưu trữ trong map
         if (userSockets.get(socket.userId) === socket.id) {
@@ -289,6 +263,42 @@ module.exports = (io) => {
         // Kiểm tra xem người dùng này còn bất kỳ socket kết nối nào khác không (thông qua room của họ)
         const userRoom = io.sockets.adapter.rooms.get(socket.userId);
         const hasRemainingSockets = userRoom && userRoom.size > 0;
+
+        // XỬ LÝ KẾT THÚC CUỘC GỌI KHI NGẮT KẾT NỐI:
+        // Chỉ kết thúc nếu user THỰC SỰ không còn socket kết nối nào hoạt động!
+        if (activeCalls.has(socket.userId)) {
+          const activeInfo = activeCalls.get(socket.userId);
+
+          // Nếu user vẫn còn socket khác (VD: tab khác, reconnect lại), TUYỆT ĐỐI không kết thúc cuộc gọi
+          if (hasRemainingSockets) {
+            console.log(`ℹ️ [disconnect] Socket ${socket.id} của user ${socket.userId} đóng, nhưng user vẫn còn ${userRoom.size} socket khác online -> Giữ nguyên cuộc gọi!`);
+          } else if (activeInfo?.socketId && activeInfo.socketId !== socket.id) {
+            console.log(`ℹ️ [disconnect] Socket ${socket.id} không phải socket thực hiện cuộc gọi -> Bỏ qua!`);
+          } else {
+            const partnerId = activeInfo?.partnerId;
+            const convId = activeInfo?.conversationId;
+            console.log(`🔴 [disconnect] User ${socket.userId} ngắt toàn bộ kết nối -> Tự động kết thúc cuộc gọi cho partner ${partnerId}`);
+            if (partnerId) {
+              io.to(partnerId).emit("call_ended", { callerId: socket.userId, targetId: partnerId, conversationId: convId });
+              activeCalls.delete(partnerId);
+              try {
+                prisma.users.findUnique({
+                  where: { id: partnerId },
+                  select: { fcmToken: true }
+                }).then(u => {
+                  if (u && u.fcmToken) {
+                    sendPushNotification(u.fcmToken, "Cuộc gọi đã kết thúc", "", {
+                      type: "call_ended",
+                      callerId: String(socket.userId || ""),
+                      t: String(Date.now())
+                    }, true).catch(() => {});
+                  }
+                }).catch(() => {});
+              } catch (_) {}
+            }
+            activeCalls.delete(socket.userId);
+          }
+        }
 
         // Báo cho mọi người biết ngay lập tức (In-Memory, siêu tốc 0ms)
         if (!hasRemainingSockets) {
@@ -922,7 +932,7 @@ module.exports = (io) => {
 
         if (isCalleeOnline) {
           console.log(`📞 ${callerName} đang gọi cho ${calleeId} (room: ${convId || 'none'})`);
-          activeCalls.set(callerId, { partnerId: calleeId, conversationId: convId, isAccepted: false, callType });
+          activeCalls.set(callerId, { partnerId: calleeId, conversationId: convId, isAccepted: false, callType, socketId: socket.id });
           activeCalls.set(calleeId, { partnerId: callerId, conversationId: convId, isAccepted: false, callType });
           // Chuyển tiếp cuộc gọi đến (incoming_call) cho User B (qua room)
           io.to(calleeId).emit("incoming_call", {
@@ -934,7 +944,7 @@ module.exports = (io) => {
           });
         } else if (hasFcmToken) {
           console.log(`📞 ${callerName} đang gọi qua Push cho ${calleeId} (tạm thời offline socket)`);
-          activeCalls.set(callerId, { partnerId: calleeId, conversationId: convId, isAccepted: false, callType });
+          activeCalls.set(callerId, { partnerId: calleeId, conversationId: convId, isAccepted: false, callType, socketId: socket.id });
           activeCalls.set(calleeId, { partnerId: callerId, conversationId: convId, isAccepted: false, callType });
         } else {
           // Trả trực tiếp phản hồi từ chối do offline về cho caller (do không kết nối socket và không có FCM token/FCM hỏng)
@@ -964,7 +974,7 @@ module.exports = (io) => {
 
       const activeCaller = (callerId ? activeCalls.get(callerId) : null) || {};
       const activeCallee = activeCalls.get(socket.userId) || {};
-      if (socket.userId) activeCalls.set(socket.userId, { ...activeCallee, partnerId: callerId, isAccepted: true });
+      if (socket.userId) activeCalls.set(socket.userId, { ...activeCallee, partnerId: callerId, isAccepted: true, socketId: socket.id });
       if (callerId) activeCalls.set(callerId, { ...activeCaller, partnerId: socket.userId, isAccepted: true });
 
       const convId = activeCallee?.conversationId || activeCaller?.conversationId || d.conversationId;

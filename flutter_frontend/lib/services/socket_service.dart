@@ -160,9 +160,13 @@ class SocketService {
       }
     });
 
-    socket?.on('call_ended', (_) {
-      print('🔴 Socket call_ended');
-      _callEndedController.add(null);
+    socket?.on('call_ended', (data) {
+      print('🔴 Socket call_ended: $data');
+      if (data is Map) {
+        _callEndedController.add(Map<String, dynamic>.from(data));
+      } else {
+        _callEndedController.add({});
+      }
     });
 
     socket?.on('webrtc_signal', (data) {

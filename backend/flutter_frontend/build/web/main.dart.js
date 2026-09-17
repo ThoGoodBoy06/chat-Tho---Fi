@@ -104108,8 +104108,26 @@ else $.aJq().D(0,A.D(s,r))},
 $S:2}
 A.ao2.prototype={
 $1(a){
-A.bQ("🔴 Socket call_ended: Dừng chuông, dừng rung và đóng màn hình cuộc gọi!");
-$.aNP().D(0,null);
+A.bQ("🔴 Socket call_ended: "+A.f(a));
+try{
+  if(t.f.b(a))$.aNP().D(0,A.cI(a,t.N,t.z));
+  else $.aNP().D(0,a||A.D(t.N,t.z));
+}catch(_){try{$.aNP().D(0,null);}catch(__){}}
+var endedCallerId="";
+var endedTargetId="";
+try{
+  if(a){
+    endedCallerId=a.callerId||(a.get&&a.get('callerId'))||(a.d&&a.d.callerId)||"";
+    endedTargetId=a.targetId||(a.get&&a.get('targetId'))||(a.d&&a.d.targetId)||"";
+  }
+}catch(_){}
+var curPartner=window._currentCallPartnerId||"";
+if(curPartner&&endedCallerId&&endedTargetId){
+  if(endedCallerId!==curPartner&&endedTargetId!==curPartner){
+    console.log("ℹ️ [A.ao2] Bỏ qua call_ended không thuộc partner hiện tại ("+curPartner+"): caller="+endedCallerId+", target="+endedTargetId);
+    return;
+  }
+}
 if(window.dismissIncomingCallNow){
   try{window.dismissIncomingCallNow();}catch(e){console.warn("Lỗi dismissIncomingCallNow:",e);}
 }

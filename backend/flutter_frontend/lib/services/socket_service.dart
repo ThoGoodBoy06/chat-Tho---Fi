@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'api_service.dart';
-import 'dart:html' as html;
+import 'sound_service.dart';
 
 class SocketService {
   static IO.Socket? socket;
@@ -10,34 +10,83 @@ class SocketService {
   static String? _currentUserId;
   static String? _currentRoomId;
 
+  static final _incomingCallController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _callAcceptedController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _callRejectedController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _callEndedController = StreamController<void>.broadcast();
+  static final _webrtcSignalController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _typingController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _stopTypingController = StreamController<Map<String, dynamic>>.broadcast();
+
+  static final _recalledController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _reactedController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _readController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _deliveredController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _userStatusController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _nicknameController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _conversationNicknamesController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _friendRequestController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _unfriendController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _profileUpdatedController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _themeController = StreamController<Map<String, dynamic>>.broadcast();
+
   static Stream<Map<String, dynamic>> get onMessageReceived => _messageController.stream;
+  static Stream<Map<String, dynamic>> get onMessageRecalled => _recalledController.stream;
+  static Stream<Map<String, dynamic>> get onIncomingCall => _incomingCallController.stream;
+  static Stream<Map<String, dynamic>> get onCallAccepted => _callAcceptedController.stream;
+  static Stream<Map<String, dynamic>> get onCallRejected => _callRejectedController.stream;
+  static Stream<void> get onCallEnded => _callEndedController.stream;
+  static Stream<Map<String, dynamic>> get onWebrtcSignal => _webrtcSignalController.stream;
+  static Stream<Map<String, dynamic>> get onUserTyping => _typingController.stream;
+  static Stream<Map<String, dynamic>> get onUserStopTyping => _stopTypingController.stream;
+  static Stream<Map<String, dynamic>> get onMessageReacted => _reactedController.stream;
+  static Stream<Map<String, dynamic>> get onMessagesRead => _readController.stream;
+  static Stream<Map<String, dynamic>> get onMessageDelivered => _deliveredController.stream;
+  static Stream<Map<String, dynamic>> get onUserStatusChanged => _userStatusController.stream;
+  static Stream<Map<String, dynamic>> get onNicknameChanged => _nicknameController.stream;
+  static Stream<Map<String, dynamic>> get onConversationNicknamesUpdated => _conversationNicknamesController.stream;
+  static Stream<Map<String, dynamic>> get onFriendRequestReceived => _friendRequestController.stream;
+  static Stream<Map<String, dynamic>> get onUserUnfriended => _unfriendController.stream;
+  static Stream<Map<String, dynamic>> get onUserProfileUpdated => _profileUpdatedController.stream;
+  static Stream<Map<String, dynamic>> get onConversationThemeUpdated => _themeController.stream;
 
-  static Future<void> connect({String? userId}) async {
+  // --- AUDIO API SYNTHETIC SOUND GENERATOR ---
+  static void playSendSound() {
+    SoundService.playMessageSound();
+  }
+
+  static void playReceiveSound() {
+    SoundService.playMessageSound();
+  }
+
+  static void playReactSound() {
+    SoundService.playMessageSound();
+  }
+
+  static Future<void> connect({required String userId}) async {
     final token = await ApiService.getToken();
-    if (token == null) return;
-
-    if (userId != null && userId.isNotEmpty) {
-      _currentUserId = userId;
-    }
-
     if (socket != null && socket!.connected) {
-      if (_currentUserId != null && _currentUserId!.isNotEmpty) {
-        socket?.emit('user_connected', _currentUserId);
+      if (_currentUserId != userId) {
+        _currentUserId = userId;
+        socket?.emit('user_connected', userId);
       }
-      if (_currentRoomId != null && _currentRoomId!.isNotEmpty) {
+      if (_currentRoomId != null) {
         socket?.emit('join_room', _currentRoomId);
         socket?.emit('join_conversation', _currentRoomId);
       }
       return;
     }
+    _currentUserId = userId;
 
     String serverUrl;
     if (kIsWeb) {
-      final location = html.window.location;
-      final host = location.hostname;
-      if ((host == 'localhost' || host == '127.0.0.1') && location.port != '3000') {
-        final protocol = location.protocol.isEmpty ? 'http:' : location.protocol;
-        serverUrl = '$protocol//$host:3000';
+      final host = Uri.base.host;
+      final port = Uri.base.port;
+      if ((host == 'localhost' || host == '127.0.0.1') && port != 3000) {
+        final scheme = Uri.base.scheme.isEmpty ? 'http' : Uri.base.scheme;
+        serverUrl = '$scheme://$host:3000';
+      } else if (host.contains('pages.dev') || host.contains('workers.dev') || host.contains('cloudflare') || host.contains('web.app')) {
+        serverUrl = 'https://chat-tho-fi-vn-9s8u.onrender.com';
       } else {
         serverUrl = Uri.base.origin;
       }
@@ -63,7 +112,6 @@ class SocketService {
       if (_currentUserId != null && _currentUserId!.isNotEmpty) {
         socket?.emit('user_connected', _currentUserId);
       }
-      // Rejoin room nếu có (sau khi reconnect)
       if (_currentRoomId != null) {
         socket?.emit('join_room', _currentRoomId);
         socket?.emit('join_conversation', _currentRoomId);
@@ -87,10 +135,322 @@ class SocketService {
       }
     });
 
+    socket?.on('incoming_call', (data) {
+      print('📞 Socket incoming_call: $data');
+      if (data is Map) {
+        _incomingCallController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('call_accepted', (data) {
+      print('✅ Socket call_accepted: $data');
+      if (data is Map) {
+        _callAcceptedController.add(Map<String, dynamic>.from(data));
+      } else {
+        _callAcceptedController.add({});
+      }
+    });
+
+    socket?.on('call_rejected', (data) {
+      print('❌ Socket call_rejected: $data');
+      if (data is Map) {
+        _callRejectedController.add(Map<String, dynamic>.from(data));
+      } else {
+        _callRejectedController.add({});
+      }
+    });
+
+    socket?.on('call_ended', (data) {
+      print('🔴 Socket call_ended: $data');
+      if (data is Map) {
+        _callEndedController.add(Map<String, dynamic>.from(data));
+      } else {
+        _callEndedController.add({});
+      }
+    });
+
+    socket?.on('webrtc_signal', (data) {
+      if (data is Map) {
+        _webrtcSignalController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('user_typing', (data) {
+      if (data is Map) {
+        _typingController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('typing', (data) {
+      if (data is Map) {
+        _typingController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('stop_typing', (data) {
+      if (data is Map) {
+        _stopTypingController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('user_stop_typing', (data) {
+      if (data is Map) {
+        _stopTypingController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('message_reacted', (data) {
+      if (data is Map) {
+        _reactedController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('message_recalled', (data) {
+      print('🔄 Socket message_recalled received: $data');
+      if (data is Map) {
+        _recalledController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('message_delivered', (data) {
+      if (data is Map) {
+        _deliveredController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('message_read', (data) {
+      if (data is Map) {
+        _readController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('messages_read', (data) {
+      if (data is Map) {
+        _readController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('user_status_changed', (data) {
+      print('👤 Socket user_status_changed: $data');
+      if (data is Map) {
+        _userStatusController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('user_status_change', (data) {
+      print('👤 Socket user_status_change: $data');
+      if (data is Map) {
+        _userStatusController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('user_online', (data) {
+      print('👤 Socket user_online: $data');
+      if (data is Map) {
+        _userStatusController.add(Map<String, dynamic>.from(data));
+      } else if (data is String) {
+        _userStatusController.add({'userId': data, 'isOnline': true});
+      }
+    });
+
+    socket?.on('user_offline', (data) {
+      print('👤 Socket user_offline: $data');
+      if (data is Map) {
+        _userStatusController.add(Map<String, dynamic>.from(data));
+      } else if (data is String) {
+        _userStatusController.add({'userId': data, 'isOnline': false});
+      }
+    });
+
+    socket?.on('nickname_changed', (data) {
+      print('🏷️ Socket nickname_changed: $data');
+      if (data is Map) {
+        _nicknameController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('conversation_nicknames_updated', (data) {
+      print('🏷️ Socket conversation_nicknames_updated: $data');
+      if (data is Map) {
+        _conversationNicknamesController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('new_friend_request', (data) {
+      print('📩 Socket new_friend_request: $data');
+      _friendRequestController.add(data is Map ? Map<String, dynamic>.from(data) : {'data': data});
+    });
+
+    socket?.on('initial_friend_requests', (data) {
+      print('📩 Socket initial_friend_requests: $data');
+      if (data is List) {
+        _friendRequestController.add({'type': 'initial', 'count': data.length, 'data': data});
+      }
+    });
+
+    socket?.on('friend_request_updated', (data) {
+      print('📩 Socket friend_request_updated: $data');
+      _friendRequestController.add(data is Map ? Map<String, dynamic>.from(data) : {'data': data});
+    });
+
+    socket?.on('friend_request_accepted', (data) {
+      print('🤝 Socket friend_request_accepted: $data');
+      _friendRequestController.add(data is Map ? Map<String, dynamic>.from(data) : {'data': data});
+    });
+
+    socket?.on('user_unfriended', (data) {
+      print('❌ Socket user_unfriended: $data');
+      _unfriendController.add(data is Map ? Map<String, dynamic>.from(data) : {'data': data});
+    });
+
+    socket?.on('unfriended', (data) {
+      print('❌ Socket unfriended: $data');
+      _unfriendController.add(data is Map ? Map<String, dynamic>.from(data) : {'data': data});
+    });
+
+    socket?.on('user_profile_updated', (data) {
+      print('👤 Socket user_profile_updated: $data');
+      if (data is Map) {
+        _profileUpdatedController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('conversation_theme_updated', (data) {
+      print('🎨 Socket conversation_theme_updated: $data');
+      if (data is Map) {
+        _themeController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
     socket?.onDisconnect((_) => print('🔴 Socket disconnected'));
   }
 
-  /// Join vào một phòng chat cụ thể để nhận tin nhắn real-time
+  static void emitUpdateConversationTheme(String conversationId, String theme) {
+    if (socket != null && socket!.connected) {
+      socket!.emit('update_conversation_theme', {
+        'conversationId': conversationId,
+        'theme': theme,
+      });
+      print('🎨 Emitted update_conversation_theme: $theme to $conversationId');
+    }
+  }
+
+  static void emitSendFriendRequest(String receiverId) {
+    if (socket != null && socket!.connected) {
+      socket!.emit('send_friend_request', {'receiverId': receiverId});
+      print('📩 Emitted send_friend_request to: $receiverId');
+    }
+  }
+
+  static void emitUnfriendUser(String friendId) {
+    if (socket != null && socket!.connected) {
+      socket!.emit('unfriend_user', {'friendId': friendId});
+      print('❌ Emitted unfriend_user to: $friendId');
+    }
+  }
+
+  static void emitChangeNickname(String conversationId, String userId, String? nickname) {
+    emitUpdateNickname(conversationId, userId, nickname);
+  }
+
+  static void emitUpdateNickname(String conversationId, String targetUserId, String? newNickname) {
+    if (socket != null && socket!.connected) {
+      final payload = {
+        'conversationId': conversationId,
+        'targetUserId': targetUserId,
+        'userId': targetUserId,
+        'newNickname': newNickname,
+        'nickname': newNickname,
+      };
+      socket!.emit('update_nickname', payload);
+      socket!.emit('change_nickname', payload);
+      print('🏷️ Emitted update_nickname for $targetUserId in $conversationId: $newNickname');
+    }
+  }
+
+  static void emitGoOffline() {
+    if (socket != null && socket!.connected) {
+      print('👤 Emitting go_offline to socket');
+      socket!.emit('go_offline');
+    }
+  }
+
+  static void emitGoOnline() {
+    if (socket != null && socket!.connected) {
+      print('👤 Emitting go_online to socket');
+      socket!.emit('go_online');
+    }
+  }
+
+  static void emitMarkAsDelivered(String messageId, {String? conversationId}) {
+    if (socket != null && socket!.connected) {
+      socket!.emit('mark_as_delivered', {
+        'messageId': messageId,
+        'conversationId': conversationId,
+      });
+    }
+  }
+
+  static void emitMarkAsRead(String messageId, {String? conversationId}) {
+    if (socket != null && socket!.connected) {
+      socket!.emit('mark_as_read', {
+        'messageId': messageId,
+        'conversationId': conversationId,
+      });
+      if (conversationId != null) {
+        socket!.emit('mark_messages_read', {
+          'conversationId': conversationId,
+        });
+      }
+    }
+  }
+
+  static void emitReactMessage(String messageId, String conversationId, String emoji) {
+    if (socket != null && socket!.connected) {
+      socket!.emit('react_message', {
+        'messageId': messageId,
+        'conversationId': conversationId,
+        'emoji': emoji,
+      });
+      playReactSound();
+    }
+  }
+
+  static void emitRecallMessage(String messageId, String conversationId) {
+    if (socket != null && socket!.connected) {
+      socket!.emit('recall_message', {
+        'messageId': messageId,
+        'conversationId': conversationId,
+      });
+      print('🔄 Emitted recall_message for message $messageId in conversation $conversationId');
+    }
+  }
+
+  static void emitTyping(String conversationId, String userId, String nickname) {
+    if (socket != null && socket!.connected) {
+      socket!.emit('typing', {
+        'conversationId': conversationId,
+        'userId': userId,
+        'nickname': nickname,
+        'senderId': userId,
+        'senderName': nickname,
+      });
+    }
+  }
+
+  static void emitStopTyping(String conversationId, String userId) {
+    if (socket != null && socket!.connected) {
+      socket!.emit('stop_typing', {
+        'conversationId': conversationId,
+        'userId': userId,
+      });
+      socket!.emit('stop-typing', {
+        'conversationId': conversationId,
+        'userId': userId,
+      });
+    }
+  }
+
   static void joinRoom(String roomId) {
     _currentRoomId = roomId;
     if (socket != null && socket!.connected) {
@@ -100,9 +460,18 @@ class SocketService {
     }
   }
 
-  /// Rời khỏi phòng chat hiện tại
   static void leaveRoom() {
     _currentRoomId = null;
+  }
+
+  static void markMessagesRead(String conversationId, String userId) {
+    if (socket != null && socket!.connected) {
+      socket!.emit('mark_messages_read', {
+        'conversationId': conversationId,
+        'userId': userId,
+      });
+      print('👀 Emitted mark_messages_read for conv: $conversationId');
+    }
   }
 
   static void disconnect() {

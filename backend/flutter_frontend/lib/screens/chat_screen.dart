@@ -5716,7 +5716,17 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               });
             });
 
-            endSub ??= SocketService.onCallEnded.listen((_) {
+            endSub ??= SocketService.onCallEnded.listen((data) {
+              if (data is Map) {
+                final endedCallerId = data['callerId']?.toString();
+                final endedTargetId = data['targetId']?.toString();
+                if (endedCallerId != null && endedTargetId != null && endedCallerId.isNotEmpty && endedTargetId.isNotEmpty) {
+                  if (endedCallerId != targetUserId && endedTargetId != targetUserId) {
+                    print('ℹ️ Bỏ qua call_ended không thuộc về đối phương ($targetUserId): caller=$endedCallerId, target=$endedTargetId');
+                    return;
+                  }
+                }
+              }
               print('🔴 Đối phương đã tắt máy -> Tự động đóng màn hình gọi!');
               cleanupCall();
               try {
