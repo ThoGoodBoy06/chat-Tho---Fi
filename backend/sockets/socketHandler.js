@@ -980,30 +980,10 @@ module.exports = (io) => {
         conversationId: convId,
       };
 
-      // ⚡ PHÁT TÍN HIỆU NGAY TỨC THÌ (0ms) - BÊN GỌI DỪNG TÚT TÚT & NỐI THOẠI NGAY LẬP TỨC
+      // ⚡ PHÁT TÍN HIỆU NGHE MÁY DUY NHẤT 1 LẦN (tránh race condition / khởi tạo nhiều PeerConnection)
       if (callerId) {
         io.to(callerId).emit("call_accepted", acceptEventData);
-        if (callerSocketId && callerSocketId !== callerId) {
-          io.to(callerSocketId).emit("call_accepted", acceptEventData);
-        }
       }
-      if (convId) {
-        socket.to(convId).emit("call_accepted", acceptEventData);
-      }
-
-      // Lấy avatar & fullName async ở background (không block luồng nghe máy)
-      prisma.users.findUnique({
-        where: { id: socket.userId },
-        select: { id: true, fullName: true },
-      }).then((callee) => {
-        if (callee && callerId) {
-          const withInfo = {
-            ...acceptEventData,
-            calleeInfo: { ...callee, avatar: `/api/users/${callee.id}/avatar` }
-          };
-          io.to(callerId).emit("call_accepted", withInfo);
-        }
-      }).catch(() => {});
     });
 
     socket.on("webrtc_signal", (data = {}) => {
@@ -1027,17 +1007,8 @@ module.exports = (io) => {
         senderId: socket.userId,
       };
 
-      // 🌟 Gửi đến TOÀN BỘ các socket kết nối của connectedUserId (room socket.userId)
-      // Đảm bảo tab đang đàm thoại của đối phương luôn nhận được tín hiệu 100%
+      // 🌟 Gửi tín hiệu WebRTC chính xác 1 lần duy nhất tới phòng cá nhân của connectedUserId
       io.to(connectedUserId).emit("webrtc_signal", signalPayload);
-      const targetSocketId = userSockets.get(connectedUserId);
-      if (targetSocketId && targetSocketId !== connectedUserId) {
-        io.to(targetSocketId).emit("webrtc_signal", signalPayload);
-      }
-      const activeInfo = activeCalls.get(socket.userId) || (connectedUserId ? activeCalls.get(connectedUserId) : null);
-      if (activeInfo && activeInfo.conversationId) {
-        socket.to(activeInfo.conversationId).emit("webrtc_signal", signalPayload);
-      }
     });
 
     // 9. Kết thúc cuộc gọi (gửi thông báo cho cả 2 phía để tự động đóng màn hình)
