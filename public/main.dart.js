@@ -8914,22 +8914,21 @@ b42(a){
       { urls: "stun:stun.l.google.com:19302" },
       { urls: "stun:stun1.l.google.com:19302" },
       { urls: "stun:stun2.l.google.com:19302" },
-      { urls: "stun:stun.cloudflare.com:3478" },
-      {
-        urls: [
-          "turn:openrelay.metered.ca:80",
-          "turn:openrelay.metered.ca:443",
-          "turn:openrelay.metered.ca:443?transport=tcp"
-        ],
-        username: "openrelayproject",
-        credential: "openrelayproject"
-      }
+      { urls: "stun:stun.cloudflare.com:3478" }
     ];
-    rtcCfg.iceCandidatePoolSize = 10;
+    rtcCfg.iceCandidatePoolSize = 0;
   } catch(e) { rtcCfg = new A.Ko([],[]).lh(a); }
   var s = new window.RTCPeerConnection(rtcCfg);
   try {
     window._activePeerConnection = s;
+    if (window._nativeLocalStream) {
+      var aTracks = window._nativeLocalStream.getAudioTracks ? window._nativeLocalStream.getAudioTracks() : [];
+      if (aTracks.length > 0) {
+        aTracks[0].enabled = true;
+        console.log("🚀 [b42] Tự động gắn track mic vào PeerConnection mới!");
+        try { s.addTrack(aTracks[0], window._nativeLocalStream); } catch(_) {}
+      }
+    }
     s.addEventListener("iceconnectionstatechange", function() {
       console.log("⚡ [Native P2P ICE State]:", s.iceConnectionState);
       if (s.iceConnectionState === "failed" && s.restartIce) {
@@ -8940,24 +8939,14 @@ b42(a){
     s.addEventListener("track", function(e) {
       console.log("🔊 [Native P2P Track]:", e.track ? e.track.kind : "unknown", e.streams);
       var stm = (e.streams && e.streams[0]) ? e.streams[0] : (e.track ? new MediaStream([e.track]) : null);
-      if (stm) {
-        if (window.attachRemoteStream) {
-          window.attachRemoteStream(stm);
-        }
-        if (window._callAudioEngine && window._callAudioEngine.playRemoteStream) {
-          window._callAudioEngine.playRemoteStream(stm);
-        }
+      if (stm && window.attachRemoteStream) {
+        window.attachRemoteStream(stm);
       }
     });
     s.addEventListener("addstream", function(e) {
       console.log("🔊 [Native P2P AddStream]:", e.stream ? e.stream.id : "null");
-      if (e.stream) {
-        if (window.attachRemoteStream) {
-          window.attachRemoteStream(e.stream);
-        }
-        if (window._callAudioEngine && window._callAudioEngine.playRemoteStream) {
-          window._callAudioEngine.playRemoteStream(e.stream);
-        }
+      if (e.stream && window.attachRemoteStream) {
+        window.attachRemoteStream(e.stream);
       }
     });
   } catch(hkErr) { console.warn("Lỗi hook RTCPeerConnection b42:", hkErr); }
@@ -29831,7 +29820,7 @@ n=p.gje(p)
 p=A.iT()
 m=p.gmj(p)
 if((n==="localhost"||n==="127.0.0.1")&&m!==3000)p=a0.a=(A.iT().gdQ().length===0?"http":A.iT().gdQ())+"://"+n+":3000"
-else if(n.includes("pages.dev")||n.includes("workers.dev")||n.includes("workers.dev")||n.includes("workers.dev")||n.includes("workers.dev")||n.includes("workers.dev")||n.includes("workers.dev")||n.includes("cloudflare")){p=a0.a="https://chat-tho-fi-vn-9s8u.onrender.com"}
+else if(n.includes("pages.dev")||n.includes("workers.dev")||n.includes("workers.dev")||n.includes("workers.dev")||n.includes("workers.dev")||n.includes("workers.dev")||n.includes("workers.dev")||n.includes("workers.dev")||n.includes("cloudflare")){p=a0.a="https://chat-tho-fi-vn-9s8u.onrender.com"}
 else{p=A.iT()
 p=a0.a=p.gtM(p)}o=t.N
 l=t.z
@@ -31924,7 +31913,7 @@ da(){var s,r=A.iT(),q=r.gje(r)
 r=A.iT()
 s=r.gmj(r)
 if((q==="localhost"||q==="127.0.0.1")&&s!==3000)return(A.iT().gdQ().length===0?"http":A.iT().gdQ())+"://"+q+":3000/api"
-if(q.includes("pages.dev")||q.includes("workers.dev")||q.includes("workers.dev")||q.includes("workers.dev")||q.includes("workers.dev")||q.includes("workers.dev")||q.includes("workers.dev")||q.includes("cloudflare"))return"https://chat-tho-fi-vn-9s8u.onrender.com/api"
+if(q.includes("pages.dev")||q.includes("workers.dev")||q.includes("workers.dev")||q.includes("workers.dev")||q.includes("workers.dev")||q.includes("workers.dev")||q.includes("workers.dev")||q.includes("workers.dev")||q.includes("cloudflare"))return"https://chat-tho-fi-vn-9s8u.onrender.com/api"
 r=A.iT()
 return r.gtM(r)+"/api"},
 uN(){var s=0,r=A.x(t.T),q,p,o
@@ -102053,7 +102042,7 @@ if(a7!=null){s=1
 break}p=4
 a7=t.N
 c=t.K
-m=A.V(["iceServers",A.b([A.V(["urls","stun:stun.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun1.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun2.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun3.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun4.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun.cloudflare.com:3478"],a7,a7),A.V(["urls","turns:openrelay.metered.ca:443?transport=tcp","username","openrelayproject","credential","openrelayproject"],a7,a7),A.V(["urls","turn:openrelay.metered.ca:80?transport=tcp","username","openrelayproject","credential","openrelayproject"],a7,a7)],t.m0),"iceCandidatePoolSize",0],a7,c)
+m=A.V(["iceServers",A.b([A.V(["urls","stun:stun.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun1.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun2.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun3.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun4.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun.cloudflare.com:3478"],a7,a7),A.V(["urls","stun:stun1.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun2.l.google.com:19302"],a7,a7)],t.m0),"iceCandidatePoolSize",0],a7,c)
 b=A.e8(A.b42(m),t.Hl)
 b1=a6
 s=7

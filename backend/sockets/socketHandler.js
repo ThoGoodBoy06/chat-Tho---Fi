@@ -1030,6 +1030,14 @@ module.exports = (io) => {
       // 🌟 Gửi đến TOÀN BỘ các socket kết nối của connectedUserId (room socket.userId)
       // Đảm bảo tab đang đàm thoại của đối phương luôn nhận được tín hiệu 100%
       io.to(connectedUserId).emit("webrtc_signal", signalPayload);
+      const targetSocketId = userSockets.get(connectedUserId);
+      if (targetSocketId && targetSocketId !== connectedUserId) {
+        io.to(targetSocketId).emit("webrtc_signal", signalPayload);
+      }
+      const activeInfo = activeCalls.get(socket.userId) || (connectedUserId ? activeCalls.get(connectedUserId) : null);
+      if (activeInfo && activeInfo.conversationId) {
+        socket.to(activeInfo.conversationId).emit("webrtc_signal", signalPayload);
+      }
     });
 
     // 9. Kết thúc cuộc gọi (gửi thông báo cho cả 2 phía để tự động đóng màn hình)

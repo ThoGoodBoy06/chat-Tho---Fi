@@ -20,17 +20,9 @@ class WebRtcService {
       {'urls': 'stun:stun2.l.google.com:19302'},
       {'urls': 'stun:stun.cloudflare.com:3478'},
       // TURN Relay fallback cho kết nối 4G và Symmetric NAT
-      {
-        'urls': [
-          'turn:openrelay.metered.ca:80',
-          'turn:openrelay.metered.ca:443',
-          'turn:openrelay.metered.ca:443?transport=tcp',
-        ],
-        'username': 'openrelayproject',
-        'credential': 'openrelayproject',
-      },
+      
     ],
-    'iceCandidatePoolSize': 10,
+    'iceCandidatePoolSize': 0,
   };
 
   /// 1. Mở khóa Audio Pipeline ngay trong User Interaction (Bắt máy hoặc Gọi)

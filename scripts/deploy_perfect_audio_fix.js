@@ -1,4 +1,15 @@
-// webrtc_audio_helper.js - Unified Bulletproof WebRTC Audio Engine
+const fs = require('fs');
+const path = require('path');
+
+console.log('🚀 [DEPLOY FIX] Bắt đầu triển khai bản vá triệt để Voice Call 2 chiều...');
+
+const versionTag = 'voice_call_perfect_' + Date.now();
+console.log('🔑 Version Token mới (Cache-Busting):', versionTag);
+
+// ==============================================================================
+// 1. TẠO webrtc_audio_helper.js HOÀN HẢO, ĐỒNG BỘ 100%
+// ==============================================================================
+const unifiedHelperContent = `// webrtc_audio_helper.js - Unified Bulletproof WebRTC Audio Engine
 (function () {
   'use strict';
 
@@ -33,7 +44,7 @@
         console.log('✅ [Native Media] Acquired local stream. Audio tracks:', tracks.length);
         tracks.forEach(function (t) {
           t.enabled = true;
-          console.log(`🎤 Local track live: id=${t.id}, label=${t.label}, muted=${t.muted}`);
+          console.log(\`🎤 Local track live: id=\${t.id}, label=\${t.label}, muted=\${t.muted}\`);
         });
 
         // Nếu đã có PeerConnection đang hoạt động, thêm track mic vào ngay lập tức
@@ -153,7 +164,7 @@
 
     audioTracks.forEach(function (track, idx) {
       track.enabled = true;
-      console.log(`🎤 Remote track #${idx}: id=${track.id}, readyState=${track.readyState}, enabled=${track.enabled}, muted=${track.muted}`);
+      console.log(\`🎤 Remote track #\${idx}: id=\${track.id}, readyState=\${track.readyState}, enabled=\${track.enabled}, muted=\${track.muted}\`);
       track.addEventListener('unmute', function () {
         console.log('🔊 [WebRTC Audio Engine] Remote track UNMUTED (Voice packets arriving!):', track.id);
         el.muted = false;
@@ -268,3 +279,219 @@
     getOrCreateAudioElement();
   }
 })();
+`;
+
+const helperTargets = [
+  'public/webrtc_audio_helper.js',
+  'flutter_frontend/web/webrtc_audio_helper.js',
+  'flutter_frontend/build/web/webrtc_audio_helper.js',
+  'backend/flutter_frontend/web/webrtc_audio_helper.js',
+  'backend/flutter_frontend/build/web/webrtc_audio_helper.js',
+  'backend/public/webrtc_audio_helper.js'
+];
+
+for (const target of helperTargets) {
+  try {
+    fs.writeFileSync(target, unifiedHelperContent, 'utf8');
+    console.log('✅ Đã cập nhật helper hoàn hảo tại:', target);
+  } catch (err) {
+    console.warn('⚠️ Sync warning for', target, err.message);
+  }
+}
+
+// ==============================================================================
+// 2. CẬP NHẬT TẤT CẢ FILE INDEX.HTML VÀ BOOTSTRAP (BỎ PAUSE & CẬP NHẬT CACHE TOKEN)
+// ==============================================================================
+const indexFiles = [
+  'public/index.html',
+  'flutter_frontend/web/index.html',
+  'flutter_frontend/build/web/index.html',
+  'backend/flutter_frontend/build/web/index.html'
+];
+
+for (const fp of indexFiles) {
+  if (!fs.existsSync(fp)) continue;
+  let html = fs.readFileSync(fp, 'utf8');
+
+  // Xóa video id="remote-call-audio" nếu có
+  html = html.replace(/<video id="remote-call-audio"[^>]*><\/video>/gi, '');
+
+  // Đảm bảo playRemoteStream không bao giờ gọi audioEl.pause()
+  html = html.replace(/audioEl\.pause\(\);\s*audioEl\.removeAttribute\('src'\);/g, "if(audioEl.src) audioEl.removeAttribute('src');");
+
+  // Bỏ đoạn gắn src wav vào remoteAudioPlayer
+  html = html.replace(/ra\.src\s*=\s*'data:audio\/wav[^;]+;/g, "// ra.src omitted");
+
+  // Cập nhật version tags
+  html = html.replace(/main\.dart\.js\?v=[a-zA-Z0-9_.-]+/g, `main.dart.js?v=${versionTag}`);
+  html = html.replace(/flutter_bootstrap\.js\?v=[a-zA-Z0-9_.-]+/g, `flutter_bootstrap.js?v=${versionTag}`);
+  html = html.replace(/webrtc_audio_helper\.js(\?v=[a-zA-Z0-9_.-]+)?/g, `webrtc_audio_helper.js?v=${versionTag}`);
+
+  fs.writeFileSync(fp, html, 'utf8');
+  console.log('✅ Đã cập nhật index.html:', fp);
+}
+
+const bootstrapFiles = [
+  'public/flutter_bootstrap.js',
+  'flutter_frontend/build/web/flutter_bootstrap.js',
+  'backend/flutter_frontend/build/web/flutter_bootstrap.js'
+];
+
+for (const fp of bootstrapFiles) {
+  if (!fs.existsSync(fp)) continue;
+  let js = fs.readFileSync(fp, 'utf8');
+  js = js.replace(/main\.dart\.js\?v=[a-zA-Z0-9_.-]+/g, `main.dart.js?v=${versionTag}`);
+  fs.writeFileSync(fp, js, 'utf8');
+  console.log('✅ Đã cập nhật bootstrap:', fp);
+}
+
+// ==============================================================================
+// 3. CẬP NHẬT MAIN.DART.JS (LOẠI BỎ TURN CHẾT, ICE POOL = 0, AUTO-INJECT LOCAL MIC)
+// ==============================================================================
+const mainFiles = [
+  'public/main.dart.js',
+  'flutter_frontend/build/web/main.dart.js',
+  'backend/flutter_frontend/build/web/main.dart.js'
+];
+
+const newB42Code = `b42(a){
+  var rtcCfg = null;
+  try {
+    rtcCfg = new A.Ko([],[]).lh(a) || {};
+    rtcCfg.iceServers = [
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:stun1.l.google.com:19302" },
+      { urls: "stun:stun2.l.google.com:19302" },
+      { urls: "stun:stun.cloudflare.com:3478" }
+    ];
+    rtcCfg.iceCandidatePoolSize = 0;
+  } catch(e) { rtcCfg = new A.Ko([],[]).lh(a); }
+  var s = new window.RTCPeerConnection(rtcCfg);
+  try {
+    window._activePeerConnection = s;
+    if (window._nativeLocalStream) {
+      var aTracks = window._nativeLocalStream.getAudioTracks ? window._nativeLocalStream.getAudioTracks() : [];
+      if (aTracks.length > 0) {
+        aTracks[0].enabled = true;
+        console.log("🚀 [b42] Tự động gắn track mic vào PeerConnection mới!");
+        try { s.addTrack(aTracks[0], window._nativeLocalStream); } catch(_) {}
+      }
+    }
+    s.addEventListener("iceconnectionstatechange", function() {
+      console.log("⚡ [Native P2P ICE State]:", s.iceConnectionState);
+      if (s.iceConnectionState === "failed" && s.restartIce) {
+        console.log("⚠️ [Native P2P ICE] failed -> calling restartIce()...");
+        try { s.restartIce(); } catch(err) {}
+      }
+    });
+    s.addEventListener("track", function(e) {
+      console.log("🔊 [Native P2P Track]:", e.track ? e.track.kind : "unknown", e.streams);
+      var stm = (e.streams && e.streams[0]) ? e.streams[0] : (e.track ? new MediaStream([e.track]) : null);
+      if (stm && window.attachRemoteStream) {
+        window.attachRemoteStream(stm);
+      }
+    });
+    s.addEventListener("addstream", function(e) {
+      console.log("🔊 [Native P2P AddStream]:", e.stream ? e.stream.id : "null");
+      if (e.stream && window.attachRemoteStream) {
+        window.attachRemoteStream(e.stream);
+      }
+    });
+  } catch(hkErr) { console.warn("Lỗi hook RTCPeerConnection b42:", hkErr); }
+  return s},`;
+
+for (const fp of mainFiles) {
+  if (!fs.existsSync(fp)) continue;
+  let js = fs.readFileSync(fp, 'utf8');
+
+  // A. Vá b42
+  const idxB42 = js.indexOf('b42(a){');
+  if (idxB42 !== -1) {
+    const endIdxB42 = js.indexOf('return s},', idxB42);
+    if (endIdxB42 !== -1) {
+      js = js.slice(0, idxB42) + newB42Code + js.slice(endIdxB42 + 10);
+      console.log('✅ Đã cập nhật b42 sạch trong:', fp);
+    }
+  }
+
+  // B. Loại bỏ openrelay.metered.ca trong phần mã biên dịch của Dart
+  if (js.includes('turns:openrelay.metered.ca')) {
+    js = js.replace(/A\.V\(\["urls","turns:openrelay\.metered\.ca:443\?transport=tcp","username","openrelayproject","credential","openrelayproject"\],a7,a7\),A\.V\(\["urls","turn:openrelay\.metered\.ca:80\?transport=tcp","username","openrelayproject","credential","openrelayproject"\],a7,a7\)/g,
+      'A.V(["urls","stun:stun1.l.google.com:19302"],a7,a7),A.V(["urls","stun:stun2.l.google.com:19302"],a7,a7)');
+    console.log('✅ Đã thay thế STUN Dart trong:', fp);
+  }
+
+  fs.writeFileSync(fp, js, 'utf8');
+}
+
+// ==============================================================================
+// 4. CẬP NHẬT SOCKET HANDLER (ĐẢM BẢO webrtc_signal GỬI TỚI ĐÚNG ĐỐI PHƯƠNG)
+// ==============================================================================
+const socketFiles = [
+  'sockets/socketHandler.js',
+  'backend/sockets/socketHandler.js'
+];
+
+for (const fp of socketFiles) {
+  if (!fs.existsSync(fp)) continue;
+  let code = fs.readFileSync(fp, 'utf8');
+
+  // Đảm bảo webrtc_signal phát đa kênh
+  const oldEmit = 'io.to(connectedUserId).emit("webrtc_signal", signalPayload);';
+  const newMultiEmit = `io.to(connectedUserId).emit("webrtc_signal", signalPayload);
+      const targetSocketId = userSockets.get(connectedUserId);
+      if (targetSocketId && targetSocketId !== connectedUserId) {
+        io.to(targetSocketId).emit("webrtc_signal", signalPayload);
+      }
+      const activeInfo = activeCalls.get(socket.userId) || (connectedUserId ? activeCalls.get(connectedUserId) : null);
+      if (activeInfo && activeInfo.conversationId) {
+        socket.to(activeInfo.conversationId).emit("webrtc_signal", signalPayload);
+      }`;
+
+  if (code.includes(oldEmit) && !code.includes('targetSocketId && targetSocketId !== connectedUserId')) {
+    code = code.replace(oldEmit, newMultiEmit);
+    fs.writeFileSync(fp, code, 'utf8');
+    console.log('✅ Đã cập nhật webrtc_signal đa kênh trong:', fp);
+  }
+}
+
+// ==============================================================================
+// 5. CẬP NHẬT MÃ NGUỒN DART (chat_screen.dart & webrtc_service.dart)
+// ==============================================================================
+const dartFiles = [
+  'flutter_frontend/lib/screens/chat_screen.dart',
+  'backend/flutter_frontend/lib/screens/chat_screen.dart'
+];
+
+for (const fp of dartFiles) {
+  if (!fs.existsSync(fp)) continue;
+  let code = fs.readFileSync(fp, 'utf8');
+
+  // Dọn sạch TURN server chết
+  const badTurnRegex = /\{\s*'urls':\s*\[\s*'turn:openrelay\.metered\.ca:80'[\s\S]*?'credential':\s*'openrelayproject',\s*\},?/g;
+  if (badTurnRegex.test(code)) {
+    code = code.replace(badTurnRegex, '');
+    console.log('✅ Đã xóa TURN server chết trong:', fp);
+  }
+  code = code.replace(/'iceCandidatePoolSize':\s*10/g, "'iceCandidatePoolSize': 0");
+  fs.writeFileSync(fp, code, 'utf8');
+}
+
+const webrtcDartFiles = [
+  'flutter_frontend/lib/services/webrtc_service.dart',
+  'backend/flutter_frontend/lib/services/webrtc_service.dart'
+];
+
+for (const fp of webrtcDartFiles) {
+  if (!fs.existsSync(fp)) continue;
+  let code = fs.readFileSync(fp, 'utf8');
+  const badTurnRegex = /\{\s*'urls':\s*\[\s*'turn:openrelay\.metered\.ca:80'[\s\S]*?'credential':\s*'openrelayproject',\s*\},?/g;
+  if (badTurnRegex.test(code)) {
+    code = code.replace(badTurnRegex, '');
+    console.log('✅ Đã xóa TURN server chết trong:', fp);
+  }
+  code = code.replace(/'iceCandidatePoolSize':\s*10/g, "'iceCandidatePoolSize': 0");
+  fs.writeFileSync(fp, code, 'utf8');
+}
+
+console.log('🎉 [DEPLOY FIX] Hoàn thành xuất sắc 100% việc áp dụng bản vá Voice Call!');
