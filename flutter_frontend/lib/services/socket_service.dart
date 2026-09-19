@@ -405,12 +405,13 @@ class SocketService {
     }
   }
 
-  static void emitReactMessage(String messageId, String conversationId, String emoji) {
+  static void emitReactMessage(String messageId, String conversationId, String emoji, {bool isRemoved = false}) {
     if (socket != null && socket!.connected) {
       socket!.emit('react_message', {
         'messageId': messageId,
         'conversationId': conversationId,
         'emoji': emoji,
+        'isRemoved': isRemoved,
       });
       playReactSound();
     }

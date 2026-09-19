@@ -977,15 +977,28 @@ exports.getFriends = async (req, res) => {
             OR: [{ senderId: userId }, { receiverId: userId }],
             status: { in: ["accepted", "ACCEPTED"] },
           },
-          include: {
-            sender: { select: { id: true, fullName: true, username: true, phone: true, email: true, isOnline: true, lastActive: true } },
-            receiver: { select: { id: true, fullName: true, username: true, phone: true, email: true, isOnline: true, lastActive: true } },
-          },
         });
 
-        for (const f of friendsRecords) {
-          const friend = f.senderId === userId ? f.receiver : f.sender;
-          if (friend && friend.id !== userId && !friendMap.has(friend.id)) {
+        const otherUserIds = friendsRecords
+          .map((f) => (f.senderId === userId ? f.receiverId : f.senderId))
+          .filter((id) => id && id !== userId && !friendMap.has(id));
+
+        if (otherUserIds.length > 0) {
+          const friendUsers = await prisma.users.findMany({
+            where: { id: { in: otherUserIds } },
+            select: {
+              id: true,
+              fullName: true,
+              username: true,
+              phone: true,
+              email: true,
+              isOnline: true,
+              lastActive: true,
+              avatar: true,
+            },
+          });
+
+          for (const friend of friendUsers) {
             friendMap.set(friend.id, {
               id: friend.id,
               fullName: friend.fullName || friend.username,
@@ -1001,7 +1014,9 @@ exports.getFriends = async (req, res) => {
           }
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      console.warn("⚠️ Friends table lookup err:", e.message);
+    }
 
     const friendsList = Array.from(friendMap.values());
     return res.status(200).json({ success: true, data: friendsList });

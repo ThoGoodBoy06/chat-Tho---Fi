@@ -52,6 +52,11 @@ app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
+app.post("/api/client-error", (req, res) => {
+    console.error("🚨 [CLIENT ERROR TELEMETRY]:", JSON.stringify(req.body));
+    res.json({ ok: true });
+});
+
 // Proxy đa phương tiện hỗ trợ CORS và Range Requests cho video/audio từ Cloudflare R2
 app.get("/api/chat/media-proxy", (req, res) => {
     const targetUrl = req.query.url;
@@ -306,7 +311,7 @@ app.use(express.static(staticPath, {
     setHeaders: (res, filePath) => {
         const basename = path.basename(filePath);
         // HTML, version.json và Service Worker luôn revalidate để nhận diện bản build mới ngay tức thì
-        if (basename === "index.html" || basename === "version.json" || basename.includes("service_worker") || basename.includes("sw.js") || basename === "flutter.js" || basename.includes("main.dart") || basename.includes("flutter_bootstrap")) {
+        if (basename === "index.html" || basename === "version.json" || basename.includes("service_worker") || basename.includes("sw.js") || basename === "flutter.js" || basename.includes("main.dart") || basename.includes("flutter_bootstrap") || basename.includes("webrtc_audio_helper")) {
             res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
             res.setHeader("Pragma", "no-cache");
             res.setHeader("Expires", "0");
@@ -613,119 +618,12 @@ app.get("/api/gifs/search", async (req, res) => {
 app.get("/api/users/search", authMiddleware, userController.searchUsers);
 
 // API Lấy danh sách bạn bè đã kết bạn
-app.get("/api/users/friends", async(req, res) => {
-    try {
-        const authHeader = req.headers.authorization;
-        const token = authHeader ? authHeader.split(" ")[1] : null;
-        if (!token)
-            return res.status(401).json({ success: false, message: "Unauthorized" });
-
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const userId = decoded.id;
-
-        const friendships = await prisma.friendRequests.findMany({
-            where: {
-                status: "ACCEPTED",
-                OR: [{ requesterId: userId }, { receiverId: userId }],
-            },
-            include: {
-                requester: {
-                    select: { id: true, username: true, fullName: true, isOnline: true },
-                },
-                receiver: {
-                    select: { id: true, username: true, fullName: true, isOnline: true },
-                },
-            },
-        });
-
-        const friends = friendships.map((f) => {
-            const u = f.requesterId === userId ? f.receiver : f.requester;
-            return {
-                ...u,
-                avatar: `/api/users/${u.id}/avatar`,
-            };
-        });
-        res.json({ success: true, data: friends });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
+app.get("/api/users/friends", authMiddleware, userController.getFriends);
 
 // API Xóa bạn bè
-app.delete("/api/users/friends/:friendId", async(req, res) => {
-    try {
-        const authHeader = req.headers.authorization;
-        const token = authHeader ? authHeader.split(" ")[1] : null;
-        if (!token)
-            return res.status(401).json({ success: false, message: "Unauthorized" });
-
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const userId = decoded.id;
-        const friendId = req.params.friendId;
-
-        const friendship = await prisma.friendRequests.findFirst({
-            where: {
-                status: "ACCEPTED",
-                OR: [
-                    { requesterId: userId, receiverId: friendId },
-                    { requesterId: friendId, receiverId: userId },
-                ],
-            },
-        });
-
-        if (friendship) {
-            // NÂNG CẤP: Tìm và xóa luôn cuộc trò chuyện 1-1 nếu có
-            const conversations = await prisma.conversations.findMany({
-                where: {
-                    AND: [
-                        { ConversationMembers: { some: { userId: userId } } },
-                        { ConversationMembers: { some: { userId: friendId } } },
-                    ],
-                },
-                include: {
-                    _count: {
-                        select: { ConversationMembers: true },
-                    },
-                },
-            });
-
-            // Lọc ra đúng cuộc trò chuyện chỉ có 2 người
-            const privateConversation = conversations.find(
-                (c) => c._count.ConversationMembers === 2,
-            );
-
-            if (privateConversation) {
-                // Xóa các bảng liên quan trước khi xóa phòng chat
-                await prisma.messages.deleteMany({
-                    where: { conversationId: privateConversation.id },
-                });
-                await prisma.conversationMembers.deleteMany({
-                    where: { conversationId: privateConversation.id },
-                });
-                await prisma.conversations.delete({
-                    where: { id: privateConversation.id },
-                });
-            }
-
-            // Xóa bản ghi bạn bè
-            await prisma.friendRequests.delete({
-                where: { id: friendship.id },
-            });
-
-            // Báo cho người bị xóa biết để cập nhật UI real-time (qua room)
-            const io = req.app.get("io");
-            io.to(friendId).emit("unfriended", { unfriendedBy: userId });
-
-            res.json({ success: true, message: "Đã xóa bạn bè và cuộc trò chuyện." });
-        } else {
-            res
-                .status(404)
-                .json({ success: false, message: "Không tìm thấy bạn bè." });
-        }
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
+app.delete("/api/users/friends/:friendId", authMiddleware, userController.deleteFriend);
+app.post("/api/users/friends/:friendId/delete", authMiddleware, userController.deleteFriend);
+app.post("/api/users/friends/delete", authMiddleware, userController.deleteFriend);
 
 // API Lấy danh sách thông báo
 app.get("/api/users/notifications", async(req, res) => {

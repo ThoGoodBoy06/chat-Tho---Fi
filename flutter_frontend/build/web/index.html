@@ -28,8 +28,8 @@ if ('caches' in window) {
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
   <!-- High Priority Preloads for Instant Native Startup -->
-  <link rel="preload" href="flutter_bootstrap.js?v=v_media_1789655286390" as="script">
-  <link rel="preload" href="main.dart.js?v=v_media_1789655286390" as="script">
+  <link rel="preload" href="flutter_bootstrap.js?v=v_media_1789832598838" as="script">
+  <link rel="preload" href="main.dart.js?v=v_media_1789832598838" as="script">
   <link rel="preload" href="canvaskit/canvaskit.wasm" as="fetch" crossorigin="anonymous">
   <link rel="preload" href="/tho_fi_logo_transparent.png" as="image">
   <!-- Official Messenger Reaction Emoji Preloads -->
@@ -52,14 +52,14 @@ if ('caches' in window) {
 
   <!-- Icons -->
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="/icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
   <link rel="icon" type="image/png" sizes="512x512" href="/icon.png">
   <link rel="shortcut icon" href="/icon-192.png">
 
   <title>Chat Tho-Fi</title>
   <link rel="manifest" href="/manifest.json">
-  <script src="/webrtc_audio_helper.js?v=20260917_directsave_1789655278711"></script>
+  <script src="/webrtc_audio_helper.js?v=v_presshold_1789826451931"></script>
 
   <!-- Firebase Web SDK (v10 compat) -->
   <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -1897,7 +1897,7 @@ if ('caches' in window) {
   <script>
     window.flutterWebRenderer = "canvaskit";
   </script>
-  <script src="flutter_bootstrap.js?v=v_media_1789655286390" async></script>
+  <script src="flutter_bootstrap.js?v=v_media_1789832598838" async></script>
 
   <script id="messenger-theme-picker-script">
     window._openMessengerThemePicker = function (convId, convName) {
@@ -2619,41 +2619,46 @@ if ('caches' in window) {
     }
   </script>
 
-  <script>
+    <script>
     // ============================================================
     // [Call Sync V14] Standalone polling + dismiss
-    // Không phụ thuộc main.dart.js?v=v_media_1789655286390'';
+    // Không phụ thuộc main.dart.js?v=v_media_1789832598838 chạy ngay từ index.html
+    // ============================================================
+    (function() {
+      var _pollInterval = null;
+      var _pollDelay = 600; // ms
+
+      function _doCallStatusCheck() {
+        var callerId = window._currentIncomingCallerId || window._currentCallerId || '';
         var calleeId = window._currentUserId || (typeof $ !== 'undefined' && $.aLM) || '';
         if (!callerId && !calleeId) return;
-        if (window._activeCallShowing) { _stopPoll(); return; }
         var bUrl = (window.location.hostname.includes('pages.dev') || window.location.hostname.includes('workers.dev') || window.location.hostname.includes('cloudflare'))
           ? 'https://chat-tho-fi-vn-9s8u.onrender.com'
           : '';
         fetch(bUrl + '/api/call/status?callerId=' + encodeURIComponent(callerId)
-          + '&calleeId=' + encodeURIComponent(calleeId)
-          + '&t=' + Date.now(), { cache: 'no-store' })
-          .then(function (r) { return r.json(); })
-          .then(function (data) {
+            + '&calleeId=' + encodeURIComponent(calleeId)
+            + '&t=' + Date.now(), { cache: 'no-store' })
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
             if (data && data.active === false) {
               console.log('[Call-V14] Cuộc gọi đã kết thúc trên server -> Dismiss ngay!');
               _stopPoll();
               if (window.dismissIncomingCallNow) {
                 window.dismissIncomingCallNow();
               } else {
-                // Thử lại sau 200ms nếu dismissIncomingCallNow chưa sẵn sàng
-                setTimeout(function () {
+                setTimeout(function() {
                   if (window.dismissIncomingCallNow) window.dismissIncomingCallNow();
                 }, 200);
               }
             }
           })
-          .catch(function () { });
+          .catch(function() {});
       }
 
       function _startPoll() {
         _stopPoll();
         console.log('[Call-V14] Bắt đầu polling trạng thái cuộc gọi mỗi 600ms...');
-        _pollInterval = setInterval(function () {
+        _pollInterval = setInterval(function() {
           var isShowing = window._incomingCallShowing || window._incomingRejectAction || window._incomingCallContext;
           if (!isShowing) {
             _stopPoll();
@@ -2661,7 +2666,6 @@ if ('caches' in window) {
           }
           _doCallStatusCheck();
         }, _pollDelay);
-        // Check ngay lập tức lần đầu sau 300ms
         setTimeout(_doCallStatusCheck, 300);
       }
 
@@ -2673,39 +2677,27 @@ if ('caches' in window) {
         }
       }
 
-      // Expose ra global để main.dart.js?v=v_media_1789655286390'[Call-V14] App visible lại, kiểm tra trạng thái cuộc gọi...');
+      window._startCallStatusPolling = function(callerId, calleeId) {
+        window._currentCallerId = callerId;
+        _startPoll();
+      };
+      window._stopCallStatusPolling = _stopPoll;
+
+      function _onResume() {
+        var isShowing = window._incomingCallShowing || window._incomingRejectAction;
+        if (isShowing) {
+          console.log('[Call-V14] App visible lại, kiểm tra trạng thái cuộc gọi...');
           _doCallStatusCheck();
-          // Cũng restart poll nếu đã bị dừng
           if (!_pollInterval) _startPoll();
         }
       }
 
       window.addEventListener('focus', _onResume);
-      document.addEventListener('visibilitychange', function () {
+      document.addEventListener('visibilitychange', function() {
         if (document.visibilityState === 'visible') _onResume();
       });
 
-      // Lắng nghe postMessage từ Service Worker (call_ended push notification)
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.addEventListener('message', function (event) {
-          if (event.data && (event.data.type === 'call_ended' || event.data.type === 'CALL_ENDED')) {
-            console.log('[Call-V14] Service Worker báo call_ended -> Dismiss ngay!');
-            _stopPoll();
-            if (window.dismissIncomingCallNow) window.dismissIncomingCallNow();
-          }
-        });
-      }
-
-      console.log('[Call-V14] Call Sync polling engine sẵn sàng.');
-
-    window._bindCallAudioUnlockListeners = function () {
-      if (window._callAudioEngine && window._callAudioEngine.unlockCallAudio) {
-        window._callAudioEngine.unlockCallAudio();
-      }
-    };
-    window.addEventListener('click', window._bindCallAudioUnlockListeners, { passive: true });
-    window.addEventListener('touchstart', window._bindCallAudioUnlockListeners, { passive: true });
-    
+      console.log('[Call-V14] Polling module loaded successfully.');
     })();
   </script>
 
@@ -3207,3 +3199,4 @@ if ('caches' in window) {
 </body>
 
 </html>
+

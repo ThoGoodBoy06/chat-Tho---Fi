@@ -36,6 +36,7 @@ router.get("/presigned-upload-url", chatController.getPresignedUploadUrl);
 router.put("/messages/:messageId/recall", chatController.recallMessage);
 router.patch("/messages/:messageId/recall", chatController.recallMessage);
 router.post("/messages/:messageId/react", chatController.reactToMessage);
+router.get("/messages/:messageId/reactions", chatController.getMessageReactions);
 router.patch("/messages/:messageId/edit", chatController.editMessage);
 router.delete("/messages/:messageId/me", chatController.deleteMessageForMe);
 

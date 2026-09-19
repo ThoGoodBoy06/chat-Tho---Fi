@@ -140,9 +140,80 @@ async function getPresignedUploadUrl(fileName, contentType, category = "files", 
   };
 }
 
+/**
+ * Xóa một file khỏi Cloudflare R2
+ * @param {string} fileUrlOrKey - Key hoặc Public URL của file trên R2
+ * @returns {Promise<boolean>}
+ */
+async function deleteFile(fileUrlOrKey) {
+  if (!r2Client || !fileUrlOrKey) return false;
+
+  try {
+    let key = fileUrlOrKey;
+    if (fileUrlOrKey.startsWith("http://") || fileUrlOrKey.startsWith("https://")) {
+      try {
+        const urlObj = new URL(fileUrlOrKey);
+        key = urlObj.pathname.replace(/^\//, "");
+      } catch (_) {}
+    }
+
+    const command = new DeleteObjectCommand({
+      Bucket: R2_BUCKET_NAME,
+      Key: key,
+    });
+
+    await r2Client.send(command);
+    console.log(`🗑️ [Cloudflare R2] Đã xóa file: ${key}`);
+    return true;
+  } catch (err) {
+    console.warn(`⚠️ [Cloudflare R2] Lỗi khi xóa file ${fileUrlOrKey}:`, err.message);
+    return false;
+  }
+}
+
+/**
+ * Tự động xóa file media (hỗ trợ cả Cloudflare R2 và local disk)
+ * @param {string} mediaUrl
+ * @returns {Promise<boolean>}
+ */
+async function deleteMedia(mediaUrl) {
+  if (!mediaUrl || typeof mediaUrl !== "string") return false;
+  if (mediaUrl.startsWith("data:")) return true;
+
+  // 1. File trên Cloudflare R2
+  if (mediaUrl.includes("r2.cloudflarestorage.com") || (R2_PUBLIC_DOMAIN && mediaUrl.includes(R2_PUBLIC_DOMAIN))) {
+    return await deleteFile(mediaUrl);
+  }
+
+  // 2. File cục bộ trên server
+  try {
+    const fs = require("fs");
+    let relPath = mediaUrl;
+    if (relPath.startsWith("http://") || relPath.startsWith("https://")) {
+      try {
+        const urlObj = new URL(relPath);
+        relPath = urlObj.pathname;
+      } catch (_) {}
+    }
+    if (relPath.startsWith("/")) relPath = relPath.slice(1);
+    const absPath = path.join(__dirname, "..", relPath);
+    if (fs.existsSync(absPath)) {
+      fs.unlinkSync(absPath);
+      console.log(`🗑️ [Local Storage] Đã xóa file vật lý: ${absPath}`);
+      return true;
+    }
+  } catch (err) {
+    console.warn(`⚠️ [Local Storage] Không thể xóa file ${mediaUrl}:`, err.message);
+  }
+  return false;
+}
+
 module.exports = {
   isConfigured,
   uploadBuffer,
   uploadBase64,
   getPresignedUploadUrl,
+  deleteFile,
+  deleteMedia,
 };
+

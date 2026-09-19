@@ -52,6 +52,13 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 // Proxy đa phương tiện hỗ trợ CORS và Range Requests cho video/audio từ Cloudflare R2
+app.options("/api/chat/media-proxy", (req, res) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "*");
+    res.sendStatus(204);
+});
+
 app.get("/api/chat/media-proxy", (req, res) => {
     const targetUrl = req.query.url;
     if (!targetUrl) return res.status(400).send("Missing url parameter");
@@ -831,6 +838,13 @@ server.listen(PORT, () => {
         }, SELF_PING_INTERVAL);
         console.log(`🔄 Keep-alive self-ping đã bật cho: ${RENDER_URL}`);
     }
+
+    // ============================================
+    // MEDIA CLEANUP: Tự động giải phóng dung lượng ảnh/video đã thu hồi
+    // Chu kỳ: mỗi 24 giờ, thời gian giữ (retention): 7 ngày
+    // ============================================
+    const { startPeriodicCleanup } = require("./services/mediaCleanup.service");
+    startPeriodicCleanup(24, 7);
 
     // ============================================
     // REAL-TIME NEWS SCRAPER (VIETNAMESE + SPECIALIZED TECH/AI RSS FEEDS)

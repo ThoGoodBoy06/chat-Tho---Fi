@@ -1027,21 +1027,22 @@ exports.reactToMessage = async(req, res) => {
         // Phát tín hiệu socket đến tất cả thành viên trong phòng chat
 
         const io = req.app.get("io");
+        const reactPayload = {
+            messageId: messageId,
+            conversationId: message.conversationId,
+            reactions: currentReactions,
+            reaction: reaction,
+            userId: userId,
+            isRemoved: isRemoved,
+            data: updatedMessage,
+        };
 
-        members.forEach((member) => {
-            io.to(member.userId).emit("message_reacted", {
-                messageId: messageId,
-
-                conversationId: message.conversationId,
-
-                reactions: currentReactions,
-                reaction: reaction,
-                userId: userId,
-                isRemoved: isRemoved,
-
-                data: updatedMessage,
+        if (io) {
+            io.to(message.conversationId).emit("message_reacted", reactPayload);
+            members.forEach((member) => {
+                io.to(member.userId).emit("message_reacted", reactPayload);
             });
-        });
+        }
 
         res.status(200).json({
             success: true,
@@ -1052,6 +1053,109 @@ exports.reactToMessage = async(req, res) => {
         console.error("!!! LỖI THẢ CẢM XÚC:", error);
 
         res.status(500).json({ message: "Lỗi thả cảm xúc", error: error.message });
+    }
+};
+
+/**
+ * Lấy danh sách chi tiết những người đã thả cảm xúc vào tin nhắn
+ * (Bao gồm Tên, Avatar, Icon cảm xúc, và cờ isMe để hiển thị nút Gỡ)
+ */
+exports.getMessageReactions = async (req, res) => {
+    try {
+        const userId = req.user.id || req.user.userId;
+        const { messageId } = req.params;
+
+        if (!messageId) {
+            return res.status(400).json({ message: "Thiếu ID tin nhắn" });
+        }
+
+        const message = await prisma.messages.findUnique({
+            where: { id: messageId },
+            select: {
+                id: true,
+                conversationId: true,
+                reactions: true,
+            },
+        });
+
+        if (!message) {
+            return res.status(404).json({ message: "Không tìm thấy tin nhắn" });
+        }
+
+        let reactions = message.reactions;
+        if (typeof reactions === "string") {
+            try {
+                reactions = JSON.parse(reactions);
+            } catch (e) {
+                reactions = {};
+            }
+        }
+        reactions = typeof reactions === "object" && reactions !== null ? reactions : {};
+
+        const userIds = Object.keys(reactions);
+        if (userIds.length === 0) {
+            return res.status(200).json({ success: true, reactions: [], total: 0 });
+        }
+
+        const users = await prisma.users.findMany({
+            where: { id: { in: userIds } },
+            select: { id: true, fullName: true, avatar: true },
+        });
+
+        let memberNicknames = {};
+        if (message.conversationId) {
+            try {
+                const members = await prisma.conversationMembers.findMany({
+                    where: {
+                        conversationId: message.conversationId,
+                        userId: { in: userIds },
+                    },
+                    select: { userId: true, nickname: true },
+                });
+                members.forEach((m) => {
+                    if (m.nickname) memberNicknames[m.userId] = m.nickname;
+                });
+            } catch (errM) {}
+        }
+
+        const userMap = {};
+        users.forEach((u) => {
+            userMap[u.id] = u;
+        });
+
+        const list = userIds.map((uid) => {
+            const u = userMap[uid] || {};
+            const isMe = uid === userId;
+            const rawName = u.fullName || "Người dùng";
+            const nickname = memberNicknames[uid] || null;
+            const displayName = isMe ? "Bạn" : (nickname || rawName);
+
+            return {
+                userId: uid,
+                fullName: rawName,
+                displayName: displayName,
+                nickname: nickname,
+                avatar: u.avatar || null,
+                emoji: reactions[uid],
+                isMe: isMe,
+            };
+        });
+
+        // Sắp xếp: Tài khoản của chính mình (Bạn) luôn ở vị trí đầu tiên
+        list.sort((a, b) => {
+            if (a.isMe && !b.isMe) return -1;
+            if (!a.isMe && b.isMe) return 1;
+            return 0;
+        });
+
+        return res.status(200).json({
+            success: true,
+            reactions: list,
+            total: list.length,
+        });
+    } catch (error) {
+        console.error("Lỗi getMessageReactions:", error);
+        return res.status(500).json({ message: "Lỗi lấy danh sách cảm xúc", error: error.message });
     }
 };
 
@@ -1714,19 +1818,22 @@ exports.searchMessages = async (req, res) => {
 exports.forwardMessage = async (req, res) => {
     try {
         const userId = req.user ? req.user.id : req.userId;
-        const { messageId, conversationIds } = req.body;
+        const { messageId, messageIds, conversationIds } = req.body;
+        const targetIds = (Array.isArray(messageIds) && messageIds.length > 0)
+            ? messageIds
+            : (messageId ? [messageId] : []);
 
-        if (!messageId || !conversationIds || !Array.isArray(conversationIds) || conversationIds.length === 0) {
+        if (targetIds.length === 0 || !conversationIds || !Array.isArray(conversationIds) || conversationIds.length === 0) {
             return res.status(400).json({ success: false, message: "Thiếu thông tin tin nhắn hoặc danh sách hội thoại." });
         }
 
-        // Lấy tin nhắn gốc
-        const originalMessage = await prisma.messages.findUnique({ where: { id: messageId } });
-        if (!originalMessage) {
-            return res.status(404).json({ success: false, message: "Không tìm thấy tin nhắn gốc." });
-        }
-        if (originalMessage.isRecalled) {
-            return res.status(400).json({ success: false, message: "Không thể chuyển tiếp tin nhắn đã thu hồi." });
+        // Lấy danh sách tin nhắn gốc
+        const originalMessages = await prisma.messages.findMany({
+            where: { id: { in: targetIds }, isRecalled: false },
+            orderBy: { createdAt: "asc" }
+        });
+        if (!originalMessages || originalMessages.length === 0) {
+            return res.status(404).json({ success: false, message: "Không tìm thấy tin nhắn gốc hoặc đã bị thu hồi." });
         }
 
         const { v4: uuidv4 } = require("uuid");
@@ -1734,34 +1841,48 @@ exports.forwardMessage = async (req, res) => {
         const forwardedMessages = [];
 
         for (const convId of conversationIds) {
-            const newMsg = await prisma.messages.create({
-                data: {
-                    id: uuidv4(),
-                    conversationId: convId,
-                    senderId: userId,
-                    content: originalMessage.content,
-                    type: originalMessage.type,
-                    isForwarded: true, // 🌟 Đánh dấu là tin nhắn chuyển tiếp
-                },
-                include: { Users: { select: { id: true, fullName: true } } },
-            });
-
-            const mapped = {
-                ...newMsg,
-                Users: newMsg.Users ? { ...newMsg.Users, avatar: `/api/users/${newMsg.Users.id}/avatar` } : null,
-            };
-
-            forwardedMessages.push(mapped);
-
-            // Phát socket event đến tất cả thành viên trong phòng nhận
-            if (io) {
-                const members = await prisma.conversationMembers.findMany({
-                    where: { conversationId: convId },
-                    select: { userId: true },
+            for (const originalMessage of originalMessages) {
+                const isImage = originalMessage.type === "image" || (originalMessage.imageUrl && originalMessage.imageUrl.trim() !== "");
+                const isVideo = originalMessage.type === "video" || (originalMessage.videoUrl && originalMessage.videoUrl.trim() !== "");
+                const contentUrl = originalMessage.content;
+                const newMsg = await prisma.messages.create({
+                    data: {
+                        id: uuidv4(),
+                        conversationId: convId,
+                        senderId: userId,
+                        content: originalMessage.content,
+                        type: originalMessage.type,
+                        imageUrl: isImage ? (originalMessage.imageUrl || contentUrl) : null,
+                        videoUrl: isVideo ? (originalMessage.videoUrl || contentUrl) : null,
+                        audioUrl: originalMessage.audioUrl || null,
+                        fileUrl: originalMessage.fileUrl || null,
+                        isForwarded: true, // 🌟 Đánh dấu là tin nhắn chuyển tiếp
+                        isRead: false,
+                        isDelivered: true,
+                    },
+                    include: { Users: { select: { id: true, fullName: true } } },
                 });
-                members.forEach((member) => {
-                    io.to(member.userId).emit("receive_message", mapped);
-                });
+
+                const mapped = {
+                    ...newMsg,
+                    imageUrl: isImage ? (newMsg.imageUrl || newMsg.content) : null,
+                    videoUrl: isVideo ? (newMsg.videoUrl || newMsg.content) : null,
+                    Users: newMsg.Users ? { ...newMsg.Users, avatar: `/api/users/${newMsg.Users.id}/avatar` } : null,
+                };
+
+                forwardedMessages.push(mapped);
+
+                // Phát socket event đến phòng nhận và từng thành viên
+                if (io) {
+                    io.to(convId).emit("receive_message", mapped);
+                    const members = await prisma.conversationMembers.findMany({
+                        where: { conversationId: convId },
+                        select: { userId: true },
+                    });
+                    members.forEach((member) => {
+                        io.to(member.userId).emit("receive_message", mapped);
+                    });
+                }
             }
         }
 
@@ -2088,6 +2209,7 @@ exports.uploadMedia = async (req, res) => {
 
         const mappedMessage = {
             ...newMessage,
+            clientTempId: req.body.clientTempId || null,
             Users: newMessage.Users ? {
                 ...newMessage.Users,
                 avatar: `/api/users/${newMessage.Users.id}/avatar`,

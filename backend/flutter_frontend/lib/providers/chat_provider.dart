@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
 import '../services/socket_service.dart';
@@ -9,13 +11,38 @@ class ChatProvider extends ChangeNotifier {
   List<ConversationModel> conversations = [];
   ConversationModel? selectedConversation;
   List<MessageModel> messages = [];
+  final Map<String, List<MessageModel>> _messagesCache = {};
   bool isLoadingConversations = false;
   bool isLoadingMessages = false;
   bool isPartnerTyping = false;
+  Map<String, String> typingUsers = {};
+  MessageModel? replyingToMessage;
   StreamSubscription? _socketSubscription;
+  StreamSubscription? _recalledSubscription;
+  StreamSubscription? _typingSubscription;
+  StreamSubscription? _stopTypingSubscription;
+  StreamSubscription? _reactedSubscription;
+  StreamSubscription? _deliveredSubscription;
+  StreamSubscription? _readSubscription;
+  StreamSubscription? _userStatusSubscription;
+  StreamSubscription? _nicknameSubscription;
+  StreamSubscription? _profileUpdatedSubscription;
+  StreamSubscription? _themeSubscription;
 
   /// Callback để thông báo cho UI cuộn xuống khi có tin nhắn mới
   VoidCallback? onNewMessageReceived;
+
+  /// Callback khi mở cuộc trò chuyện mới để nhảy ngay xuống tin nhắn mới nhất
+  VoidCallback? onConversationSelected;
+
+  /// Tổng số tin nhắn chưa đọc từ tất cả cuộc trò chuyện
+  int get totalUnreadCount {
+    int total = 0;
+    for (final c in conversations) {
+      total += c.unreadCount;
+    }
+    return total;
+  }
 
   ChatProvider() {
     _initSocket();
@@ -27,8 +54,256 @@ class ChatProvider extends ChangeNotifier {
       final newMsg = MessageModel.fromJson(data);
       addRealtimeMessage(newMsg);
       _updateLastMessageInConversation(newMsg);
+      if (newMsg.senderId != currentUser?.id) {
+        SocketService.playReceiveSound();
+        SocketService.emitMarkAsDelivered(newMsg.id, conversationId: newMsg.conversationId);
+        if (selectedConversation != null && selectedConversation!.id == newMsg.conversationId && currentUser != null) {
+          SocketService.emitMarkAsRead(newMsg.id, conversationId: newMsg.conversationId);
+        }
+      }
+    });
+
+    _typingSubscription = SocketService.onUserTyping.listen((data) {
+      final convId = data['conversationId']?.toString();
+      final uid = data['userId']?.toString() ?? data['senderId']?.toString();
+      final nickname = data['nickname']?.toString() ?? data['senderName']?.toString() ?? 'Người dùng';
+
+      if (convId != null && uid != null && uid != currentUser?.id) {
+        typingUsers[convId] = nickname;
+        if (selectedConversation != null && selectedConversation!.id == convId) {
+          isPartnerTyping = true;
+          onNewMessageReceived?.call();
+        }
+        notifyListeners();
+      }
+    });
+
+    _stopTypingSubscription = SocketService.onUserStopTyping.listen((data) {
+      final convId = data['conversationId']?.toString();
+      if (convId != null) {
+        typingUsers.remove(convId);
+        if (selectedConversation != null && selectedConversation!.id == convId) {
+          isPartnerTyping = false;
+        }
+        notifyListeners();
+      }
+    });
+
+    _reactedSubscription = SocketService.onMessageReacted.listen((data) {
+      final msgId = data['messageId']?.toString();
+      final rawReactions = data['reactions'];
+      if (msgId != null && rawReactions != null) {
+        Map<String, String> reactions = {};
+        if (rawReactions is Map) {
+          rawReactions.forEach((key, value) {
+            reactions[key.toString()] = value.toString();
+          });
+        }
+        final idx = messages.indexWhere((m) => m.id == msgId);
+        if (idx != -1) {
+          messages[idx] = messages[idx].copyWith(reactions: reactions);
+        }
+        SocketService.playReactSound();
+        notifyListeners();
+      }
+    });
+
+    _recalledSubscription = SocketService.onMessageRecalled.listen((data) {
+      final msgId = data['messageId']?.toString();
+      if (msgId != null && msgId.isNotEmpty) {
+        final idx = messages.indexWhere((m) => m.id == msgId);
+        if (idx != -1) {
+          messages[idx] = messages[idx].copyWith(isRecalled: true);
+          notifyListeners();
+        }
+      }
+    });
+
+    _deliveredSubscription = SocketService.onMessageDelivered.listen((data) {
+      final msgId = data['messageId']?.toString();
+      if (msgId != null) {
+        final idx = messages.indexWhere((m) => m.id == msgId);
+        if (idx != -1 && !messages[idx].isDelivered) {
+          messages[idx] = messages[idx].copyWith(isDelivered: true);
+          notifyListeners();
+        }
+      }
+    });
+
+    _readSubscription = SocketService.onMessagesRead.listen((data) {
+      final convId = data['conversationId']?.toString();
+      final readBy = data['readBy']?.toString();
+      if (selectedConversation != null && (convId == null || selectedConversation!.id == convId)) {
+        bool updated = false;
+        for (int i = 0; i < messages.length; i++) {
+          if (!messages[i].isRead && (readBy == null || messages[i].senderId != readBy)) {
+            messages[i] = messages[i].copyWith(isRead: true, isDelivered: true);
+            updated = true;
+          }
+        }
+        if (updated) notifyListeners();
+      }
+    });
+
+    _userStatusSubscription = SocketService.onUserStatusChanged.listen((data) {
+      final userId = data['userId']?.toString() ?? data['id']?.toString();
+      final isOnline = data['isOnline'] == true || data['status'] == 'online';
+      DateTime? lastActive;
+      if (data['lastActive'] != null) {
+        lastActive = DateTime.tryParse(data['lastActive'].toString());
+      }
+      if (userId != null && userId.isNotEmpty) {
+        updateUserOnlineStatus(userId, isOnline, lastActive: lastActive);
+      }
+    });
+
+    final handleNicknameUpdate = (dynamic rawData) {
+      if (rawData is! Map) return;
+      final data = Map<String, dynamic>.from(rawData);
+      final convId = data['conversationId']?.toString();
+      final userId = data['targetUserId']?.toString() ?? data['userId']?.toString();
+      final nickname = data['newNickname']?.toString() ?? data['nickname']?.toString();
+      final rawNicknames = data['nicknames'];
+      Map<String, String>? nicknamesMap;
+      if (rawNicknames is Map) {
+        nicknamesMap = {};
+        rawNicknames.forEach((k, v) {
+          if (v != null && v.toString().trim().isNotEmpty) {
+            nicknamesMap![k.toString()] = v.toString().trim();
+          }
+        });
+      }
+      if (convId != null && userId != null) {
+        updateMemberNickname(convId, userId, nickname, newNicknamesMap: nicknamesMap);
+      }
+    };
+
+    _nicknameSubscription = SocketService.onNicknameChanged.listen(handleNicknameUpdate);
+    SocketService.onConversationNicknamesUpdated.listen(handleNicknameUpdate);
+
+    _profileUpdatedSubscription = SocketService.onUserProfileUpdated.listen((data) {
+      final updatedUserId = data['id']?.toString() ?? data['userId']?.toString();
+      debugPrint('👤 Real-time user profile update for ID $updatedUserId');
+      if (updatedUserId != null && currentUser != null && currentUser!.id == updatedUserId) {
+        final updatedMap = Map<String, dynamic>.from(currentUser!.toJson());
+        if (data['fullName'] != null) updatedMap['fullName'] = data['fullName'];
+        if (data['bio'] != null) updatedMap['bio'] = data['bio'];
+        if (data['avatar'] != null) updatedMap['avatar'] = data['avatar'];
+        if (data['coverPhoto'] != null || data['coverImage'] != null) {
+          updatedMap['coverImage'] = data['coverPhoto'] ?? data['coverImage'];
+        }
+        currentUser = UserModel.fromJson(updatedMap);
+      }
+      fetchConversations(showLoading: false);
+      notifyListeners();
+    });
+
+    _themeSubscription = SocketService.onConversationThemeUpdated.listen((data) {
+      final convId = data['conversationId']?.toString();
+      final theme = data['theme']?.toString();
+      if (convId != null && theme != null) {
+        _updateConversationThemeLocally(convId, theme);
+      }
     });
   }
+
+  void _updateConversationThemeLocally(String convId, String theme) {
+    final idx = conversations.indexWhere((c) => c.id == convId);
+    if (idx != -1) {
+      conversations[idx] = conversations[idx].copyWith(theme: theme);
+    }
+    if (selectedConversation != null && selectedConversation!.id == convId) {
+      selectedConversation = selectedConversation!.copyWith(theme: theme);
+    }
+    notifyListeners();
+  }
+
+  Future<void> updateConversationTheme(String conversationId, String theme) async {
+    // 1. Phản hồi tức thời trên giao diện (Optimistic UI)
+    _updateConversationThemeLocally(conversationId, theme);
+
+    // 2. Phát socket event cho đối phương
+    SocketService.emitUpdateConversationTheme(conversationId, theme);
+
+    // 3. Ghi vào database qua REST API
+    try {
+      await ApiService.updateConversationTheme(conversationId, theme);
+    } catch (e) {
+      debugPrint('⚠️ Error updating theme via API: $e');
+    }
+  }
+
+  void deleteMessage(String messageId) {
+    messages.removeWhere((m) => m.id == messageId);
+    notifyListeners();
+  }
+
+  void setReplyingToMessage(MessageModel? msg) {
+    replyingToMessage = msg;
+    notifyListeners();
+  }
+
+  void reactToMessage(String messageId, String emoji) {
+    if (selectedConversation == null) return;
+
+    // Optimistic update locally for instant feedback
+    final index = messages.indexWhere((m) => m.id == messageId);
+    bool isRemoved = false;
+    if (index != -1 && currentUser != null) {
+      final msg = messages[index];
+      final Map<String, String> updatedReactions = Map<String, String>.from(msg.reactions);
+      final userId = currentUser!.id;
+
+      // Logic toggle: nếu đã thả icon này rồi -> HỦY (xóa bỏ). Ngược lại -> thêm/đổi icon mới
+      if (updatedReactions[userId] == emoji) {
+        updatedReactions.remove(userId);
+        isRemoved = true;
+      } else {
+        updatedReactions[userId] = emoji;
+        isRemoved = false;
+      }
+
+      messages[index] = msg.copyWith(reactions: updatedReactions);
+      notifyListeners();
+    }
+
+    // Phát âm thanh phản hồi
+    SocketService.playReactSound();
+
+    // Phát tín hiệu qua Socket nếu đang kết nối. Nếu không có socket mới fallback sang REST API
+    // (Tránh gọi đồng thời cả hai gây xung đột toggle 2 lần liên tiếp)
+    if (SocketService.isConnected) {
+      SocketService.emitReactMessage(messageId, selectedConversation!.id, emoji, isRemoved: isRemoved);
+    } else {
+      ApiService.reactToMessage(messageId, emoji, isRemoved: isRemoved).catchError((e) {
+        debugPrint('⚠️ Fallback react API error: $e');
+      });
+    }
+  }
+
+  String? getTypingUserForSelectedConversation() {
+    if (selectedConversation == null) return null;
+    return typingUsers[selectedConversation!.id];
+  }
+
+  void emitTyping() {
+    if (selectedConversation == null || currentUser == null) return;
+    SocketService.emitTyping(
+      selectedConversation!.id,
+      currentUser!.id,
+      currentUser!.fullName ?? currentUser!.username,
+    );
+  }
+
+  void emitStopTyping() {
+    if (selectedConversation == null || currentUser == null) return;
+    SocketService.emitStopTyping(
+      selectedConversation!.id,
+      currentUser!.id,
+    );
+  }
+
+  final Set<String> _processedMessageIdsForUnread = {};
 
   /// Cập nhật tin nhắn mới nhất trong danh sách đoạn chat hoàn toàn ở bộ nhớ (không cần gọi API getConversations)
   void _updateLastMessageInConversation(MessageModel msg) {
@@ -36,13 +311,27 @@ class ChatProvider extends ChangeNotifier {
     final idx = conversations.indexWhere((c) => c.id == msg.conversationId);
     if (idx != -1) {
       final old = conversations[idx];
+      final isFromSelf = (currentUser != null && msg.senderId != null && msg.senderId == currentUser!.id);
+      final isCurrentlySelected = (selectedConversation != null && selectedConversation!.id == old.id);
+
+      int newUnreadCount = old.unreadCount;
+      if (isFromSelf || isCurrentlySelected) {
+        newUnreadCount = 0;
+      } else {
+        // Chỉ tăng +1 duy nhất một lần cho mỗi mã tin nhắn (tránh bị nhân bản do socket)
+        if (msg.id.isNotEmpty && !_processedMessageIdsForUnread.contains(msg.id)) {
+          _processedMessageIdsForUnread.add(msg.id);
+          newUnreadCount = old.unreadCount + 1;
+        }
+      }
+
       final updatedConv = ConversationModel(
         id: old.id,
         name: old.name,
         avatar: old.avatar,
         type: old.type,
         lastMessage: msg.content,
-        unreadCount: old.unreadCount,
+        unreadCount: newUnreadCount,
         updatedAt: msg.createdAt,
         targetUserId: old.targetUserId,
         members: old.members,
@@ -62,21 +351,53 @@ class ChatProvider extends ChangeNotifier {
       return;
     }
 
-    // Kiểm tra trùng lặp (bao gồm cả optimistic message)
-    final existingIdx = messages.indexWhere((m) => m.id == msg.id);
+    // Chống trùng lặp tin nhắn hệ thống (system message) có cùng nội dung trong vòng 5 giây
+    if (msg.type == 'system') {
+      final isDupSystem = messages.any((m) =>
+          m.type == 'system' &&
+          (m.id == msg.id || (m.content == msg.content && m.createdAt.difference(msg.createdAt).inSeconds.abs() < 5)));
+      if (isDupSystem) return;
+    }
+
+    // Chống spam / trùng lặp cuộc gọi nhỡ (trong vòng 15 giây)
+    if (msg.type == 'missed_call' || msg.type == 'call' || msg.type == 'video_call') {
+      final isDupCall = messages.any((m) =>
+          (m.type == 'missed_call' || m.type == 'call' || m.type == 'video_call') &&
+          m.conversationId == msg.conversationId &&
+          m.createdAt.difference(msg.createdAt).inSeconds.abs() < 15);
+      if (isDupCall) return;
+    }
+
+    // Kiểm tra trùng lặp (bao gồm cả optimistic message và socket relay message)
+    final existingIdx = messages.lastIndexWhere((m) => m.id == msg.id || (msg.clientTempId != null && m.clientTempId == msg.clientTempId));
     if (existingIdx != -1) {
-      // Cập nhật tin nhắn đã có (thay thế optimistic bằng real)
+      // Cập nhật tin nhắn đã có (thay thế optimistic/relay bằng real)
       messages[existingIdx] = msg;
     } else {
-      // Kiểm tra xem có phải tin nhắn do chính mình gửi và đã có optimistic chưa
-      final optimisticIdx = messages.indexWhere((m) =>
-          m.id.startsWith('optimistic-') &&
-          m.content == msg.content &&
+      // Kiểm tra xem có phải tin nhắn đã có dạng tạm (optimistic-* hoặc rt-*)
+      final tempIdx = messages.lastIndexWhere((m) =>
+          (m.id.startsWith('optimistic-') || m.id.startsWith('rt-') || m.id.startsWith('temp_')) &&
+          (m.content == msg.content || (m.type == msg.type && m.status == 'sending')) &&
           m.senderId == msg.senderId);
-      if (optimisticIdx != -1) {
-        messages[optimisticIdx] = msg;
+      if (tempIdx != -1) {
+        messages[tempIdx] = msg;
       } else {
         messages.add(msg);
+      }
+    }
+
+    // Đồng bộ cache tin nhắn
+    if (msg.conversationId != null && msg.conversationId!.isNotEmpty) {
+      final convId = msg.conversationId!;
+      if (!_messagesCache.containsKey(convId)) {
+        _messagesCache[convId] = [];
+      }
+      final cacheList = _messagesCache[convId]!;
+      final cIdx = cacheList.indexWhere((m) => m.id == msg.id);
+      if (cIdx != -1) {
+        cacheList[cIdx] = msg;
+      } else {
+        cacheList.add(msg);
       }
     }
 
@@ -94,8 +415,48 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void clearCurrentUser() {
+    currentUser = null;
+    selectedConversation = null;
+    messages = [];
+    conversations = [];
+    notifyListeners();
+  }
+
+  Future<void> _loadCachedConversations() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedStr = prefs.getString('cached_conversations');
+      if (cachedStr != null && cachedStr.isNotEmpty && conversations.isEmpty) {
+        final decoded = jsonDecode(cachedStr);
+        if (decoded is List) {
+          conversations = decoded
+              .map((c) => ConversationModel.fromJson(c, currentUserId: currentUser?.id))
+              .toList();
+          notifyListeners();
+        }
+      }
+    } catch (_) {}
+  }
+
+  bool _isFetchingConversations = false;
+  DateTime? _lastFetchTime;
+
   Future<void> fetchConversations({bool showLoading = true}) async {
-    if (showLoading) {
+    // Debounce: Nếu đang fetch hoặc vừa fetch trong vòng 2.5s thì bỏ qua
+    if (_isFetchingConversations) return;
+    if (_lastFetchTime != null && DateTime.now().difference(_lastFetchTime!).inMilliseconds < 2500) {
+      return;
+    }
+    _lastFetchTime = DateTime.now();
+    _isFetchingConversations = true;
+
+    // Tải cache cục bộ trước nếu chưa có dữ liệu để hiển thị tức thì không chờ đợi
+    if (conversations.isEmpty) {
+      await _loadCachedConversations();
+    }
+
+    if (showLoading && conversations.isEmpty) {
       isLoadingConversations = true;
       notifyListeners();
     }
@@ -108,26 +469,91 @@ class ChatProvider extends ChangeNotifier {
           currentUser = UserModel.fromJson(userObj);
         }
       }
-      if (currentUser != null && currentUser!.id.isNotEmpty) {
-        SocketService.connect(userId: currentUser!.id);
-      }
       final rawList = await ApiService.getConversations();
-      conversations = rawList
-          .map((c) => ConversationModel.fromJson(c, currentUserId: currentUser?.id))
-          .toList();
+      if (rawList != null) {
+        final parsed = rawList
+            .map((c) {
+              try {
+                return ConversationModel.fromJson(c, currentUserId: currentUser?.id);
+              } catch (err) {
+                debugPrint('Lỗi parse 1 conversation: $err');
+                return null;
+              }
+            })
+            .whereType<ConversationModel>()
+            .toList();
+
+        // 🛡️ BẢO VỆ: Nếu đã có danh sách cuộc trò chuyện mà kết quả mới rỗng, không xóa mất giao diện của người dùng!
+        if (parsed.isNotEmpty || conversations.isEmpty) {
+          conversations = parsed;
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('cached_conversations', jsonEncode(rawList));
+          } catch (_) {}
+        }
+      }
     } catch (e) {
       debugPrint('Error fetching conversations: $e');
     } finally {
+      _isFetchingConversations = false;
       isLoadingConversations = false;
       notifyListeners();
     }
   }
 
-  Future<void> selectConversation(ConversationModel conv) async {
-    selectedConversation = conv;
-    isLoadingMessages = true;
+  String? selectedConversationId;
+  bool showUnreadOnly = false;
+
+  void setShowUnreadOnly(bool val) {
+    showUnreadOnly = val;
+    notifyListeners();
+  }
+
+  void clearSelectedConversation() {
+    selectedConversation = null;
+    selectedConversationId = null;
     messages = [];
     notifyListeners();
+  }
+
+  Future<void> selectConversation(ConversationModel conv) async {
+    selectedConversation = conv;
+    selectedConversationId = conv.id;
+
+    // Đặt unreadCount của đoạn chat được chọn về 0 lập tức ở local
+    final idx = conversations.indexWhere((c) => c.id == conv.id);
+    if (idx != -1) {
+      final old = conversations[idx];
+      if (old.unreadCount > 0) {
+        conversations[idx] = ConversationModel(
+          id: old.id,
+          name: old.name,
+          avatar: old.avatar,
+          type: old.type,
+          lastMessage: old.lastMessage,
+          unreadCount: 0,
+          updatedAt: old.updatedAt,
+          targetUserId: old.targetUserId,
+          members: old.members,
+        );
+      }
+    }
+
+    // ⚡ INSTANT DISPLAY: Nếu đã có cache tin nhắn của cuộc trò chuyện này, hiển thị ngay lập tức (0ms)
+    if (_messagesCache.containsKey(conv.id) && _messagesCache[conv.id]!.isNotEmpty) {
+      messages = List.from(_messagesCache[conv.id]!);
+      isLoadingMessages = false;
+    } else {
+      isLoadingMessages = true;
+      messages = [];
+    }
+    notifyListeners();
+
+    // Báo cho server socket & REST API biết người dùng đã xem tất cả tin nhắn trong cuộc trò chuyện này
+    if (currentUser != null) {
+      SocketService.markMessagesRead(conv.id, currentUser!.id);
+    }
+    ApiService.markAsRead(conv.id).catchError((_) {});
 
     // Join vào room của conversation để nhận tin nhắn real-time
     SocketService.joinRoom(conv.id);
@@ -135,15 +561,40 @@ class ChatProvider extends ChangeNotifier {
     try {
       final res = await ApiService.getMessages(conv.id);
       final rawData = res['data'] as List? ?? [];
-      messages = rawData.map((m) => MessageModel.fromJson(m)).toList();
+      final fetched = rawData.map((m) {
+        if (m is Map<String, dynamic>) return MessageModel.fromJson(m);
+        if (m is Map) return MessageModel.fromJson(Map<String, dynamic>.from(m));
+        return null;
+      }).whereType<MessageModel>().toList();
+
+      final List<MessageModel> cleanFetched = [];
+      for (final m in fetched) {
+        if (m.type == 'system') {
+          final hasDup = cleanFetched.any((prev) =>
+              prev.type == 'system' &&
+              prev.content == m.content &&
+              prev.createdAt.difference(m.createdAt).inSeconds.abs() < 5);
+          if (hasDup) continue;
+        }
+        if (m.type == 'missed_call' || m.type == 'call' || m.type == 'video_call') {
+          final hasDupCall = cleanFetched.any((prev) =>
+              (prev.type == 'missed_call' || prev.type == 'call' || prev.type == 'video_call') &&
+              prev.createdAt.difference(m.createdAt).inSeconds.abs() < 15);
+          if (hasDupCall) continue;
+        }
+        cleanFetched.add(m);
+      }
+
+      messages = cleanFetched;
+      _messagesCache[conv.id] = cleanFetched;
     } catch (e) {
       debugPrint('Error fetching messages: $e');
     } finally {
       isLoadingMessages = false;
       notifyListeners();
 
-      // Cuộn xuống sau khi load xong
-      onNewMessageReceived?.call();
+      // Nhảy ngay xuống tin nhắn mới nhất khi chọn đoạn chat
+      onConversationSelected?.call();
     }
   }
 
@@ -177,6 +628,12 @@ class ChatProvider extends ChangeNotifier {
   Future<void> sendMessage(String text, {String type = 'text'}) async {
     if (selectedConversation == null || text.trim().isEmpty) return;
 
+    emitStopTyping();
+    SocketService.playSendSound();
+
+    final replyId = replyingToMessage?.id;
+    replyingToMessage = null;
+
     // Optimistic UI message (Hiển thị tức thì trên màn hình)
     final optId = 'optimistic-${DateTime.now().millisecondsSinceEpoch}';
     final optMsg = MessageModel(
@@ -185,6 +642,7 @@ class ChatProvider extends ChangeNotifier {
       senderId: currentUser?.id,
       content: text,
       type: type,
+      replyMessageId: replyId,
       createdAt: DateTime.now(),
     );
 
@@ -202,11 +660,19 @@ class ChatProvider extends ChangeNotifier {
         'tempId': optId,
         'senderId': currentUser?.id,
         'senderName': currentUser?.fullName,
+        'replyMessageId': replyId,
+        'receiverId': selectedConversation!.targetUserId,
+        'memberIds': selectedConversation!.members.map((m) => m.id).toList(),
       });
     }
 
     try {
-      final res = await ApiService.sendMessage(selectedConversation!.id, text, type: type);
+      final res = await ApiService.sendMessage(
+        selectedConversation!.id,
+        text,
+        type: type,
+        replyMessageId: replyId,
+      );
       final msgData = res['data'] ?? (res['success'] == true ? res : null);
       if (msgData is Map<String, dynamic>) {
         final realMsg = MessageModel.fromJson(msgData);
@@ -224,9 +690,188 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> deleteConversation(String conversationId) async {
+    try {
+      final success = await ApiService.deleteConversation(conversationId);
+      if (success) {
+        conversations.removeWhere((c) => c.id == conversationId);
+        if (selectedConversation != null && selectedConversation!.id == conversationId) {
+          clearSelectedConversation();
+        }
+        notifyListeners();
+        return true;
+      }
+    } catch (e) {
+      debugPrint('Error in deleteConversation provider: $e');
+    }
+    return false;
+  }
+
+  void updateUserOnlineStatus(String userId, bool isOnline, {DateTime? lastActive}) {
+    bool updated = false;
+    for (int i = 0; i < conversations.length; i++) {
+      final conv = conversations[i];
+      final memberIndex = conv.members.indexWhere((m) => m.id == userId);
+      if (memberIndex != -1) {
+        final updatedMembers = List<UserModel>.from(conv.members);
+        final oldMember = updatedMembers[memberIndex];
+        final newLastActive = isOnline
+            ? DateTime.now()
+            : (lastActive ?? oldMember.lastActive ?? DateTime.now());
+        updatedMembers[memberIndex] = UserModel(
+          id: oldMember.id,
+          username: oldMember.username,
+          fullName: oldMember.fullName,
+          email: oldMember.email,
+          phone: oldMember.phone,
+          avatar: oldMember.avatar,
+          isOnline: isOnline,
+          lastActive: newLastActive,
+        );
+        conversations[i] = ConversationModel(
+          id: conv.id,
+          name: conv.name,
+          avatar: conv.avatar,
+          type: conv.type,
+          lastMessage: conv.lastMessage,
+          unreadCount: conv.unreadCount,
+          updatedAt: conv.updatedAt,
+          targetUserId: conv.targetUserId,
+          members: updatedMembers,
+        );
+        if (selectedConversation?.id == conv.id) {
+          selectedConversation = conversations[i];
+        }
+        updated = true;
+      }
+    }
+    if (updated) {
+      notifyListeners();
+    }
+  }
+
+  Future<bool> updateNickname(String conversationId, String userId, String? nickname) async {
+    final cleanNick = (nickname != null && nickname.trim().isNotEmpty) ? nickname.trim() : null;
+
+    // 1. Phản hồi tức thì trên UI (Optimistic UI)
+    updateMemberNickname(conversationId, userId, cleanNick);
+
+    // 2. Phát socket event cho đối phương
+    SocketService.emitUpdateNickname(conversationId, userId, cleanNick);
+
+    // 3. Gọi REST API song song để lưu DB
+    final success = await ApiService.updateNickname(conversationId, userId, cleanNick);
+    return success;
+  }
+
+  void updateMemberNickname(String conversationId, String userId, String? nickname, {Map<String, String>? newNicknamesMap}) {
+    bool updated = false;
+    for (int i = 0; i < conversations.length; i++) {
+      if (conversations[i].id == conversationId) {
+        final conv = conversations[i];
+        final cleanNickname = (nickname != null && nickname.trim().isNotEmpty) ? nickname.trim() : null;
+
+        Map<String, String> updatedNicknames = Map<String, String>.from(conv.nicknames ?? {});
+        if (newNicknamesMap != null) {
+          updatedNicknames = Map<String, String>.from(newNicknamesMap);
+        } else {
+          if (cleanNickname != null) {
+            updatedNicknames[userId] = cleanNickname;
+          } else {
+            updatedNicknames.remove(userId);
+          }
+        }
+
+        final memberIndex = conv.members.indexWhere((m) => m.id == userId);
+        List<UserModel> updatedMembers = List<UserModel>.from(conv.members);
+        if (memberIndex != -1) {
+          final oldMember = updatedMembers[memberIndex];
+          updatedMembers[memberIndex] = UserModel(
+            id: oldMember.id,
+            username: oldMember.username,
+            fullName: oldMember.fullName,
+            nickname: cleanNickname,
+            email: oldMember.email,
+            phone: oldMember.phone,
+            avatar: oldMember.avatar,
+            isOnline: oldMember.isOnline,
+            lastActive: oldMember.lastActive,
+          );
+        }
+
+        String newConvName = conv.name;
+        if (conv.type == 'private') {
+          final partnerId = conv.targetUserId ?? (memberIndex != -1 ? updatedMembers[memberIndex].id : null);
+          if (partnerId != null) {
+            if (updatedNicknames.containsKey(partnerId) && updatedNicknames[partnerId]!.isNotEmpty) {
+              newConvName = updatedNicknames[partnerId]!;
+            } else {
+              final partner = updatedMembers.firstWhere(
+                (m) => m.id == partnerId,
+                orElse: () => UserModel(id: partnerId, username: '', fullName: ''),
+              );
+              if (partner.fullName.isNotEmpty) {
+                newConvName = partner.fullName;
+              }
+            }
+          }
+        }
+
+        conversations[i] = ConversationModel(
+          id: conv.id,
+          name: newConvName,
+          avatar: conv.avatar,
+          type: conv.type,
+          lastMessage: conv.lastMessage,
+          unreadCount: conv.unreadCount,
+          updatedAt: conv.updatedAt,
+          targetUserId: conv.targetUserId,
+          members: updatedMembers,
+          theme: conv.theme,
+          nicknames: updatedNicknames.isNotEmpty ? updatedNicknames : null,
+        );
+
+        if (selectedConversation?.id == conversationId) {
+          selectedConversation = conversations[i];
+        }
+        updated = true;
+      }
+    }
+    if (updated) {
+      notifyListeners();
+    }
+  }
+
+  /// Thu hồi tin nhắn
+  Future<bool> recallMessage(String messageId) async {
+    final success = await ApiService.recallMessage(messageId);
+    if (success) {
+      final idx = messages.indexWhere((m) => m.id == messageId);
+      if (idx != -1) {
+        messages[idx] = messages[idx].copyWith(isRecalled: true);
+        notifyListeners();
+      }
+      if (selectedConversation != null) {
+        SocketService.emitRecallMessage(messageId, selectedConversation!.id);
+      }
+      return true;
+    }
+    return false;
+  }
+
   @override
   void dispose() {
     _socketSubscription?.cancel();
+    _recalledSubscription?.cancel();
+    _typingSubscription?.cancel();
+    _stopTypingSubscription?.cancel();
+    _reactedSubscription?.cancel();
+    _deliveredSubscription?.cancel();
+    _readSubscription?.cancel();
+    _userStatusSubscription?.cancel();
+    _nicknameSubscription?.cancel();
+    _profileUpdatedSubscription?.cancel();
+    _themeSubscription?.cancel();
     super.dispose();
   }
 }

@@ -153,6 +153,9 @@ class MessageModel {
   final String? replyMessageId;
   final Map<String, String> reactions;
   final DateTime createdAt;
+  final String status; // 'sending', 'sent', 'error'
+  final bool isForwarded;
+  final String? clientTempId;
 
   Map<String, dynamic>? get systemMetadata {
     if (type != 'system') return null;
@@ -176,9 +179,12 @@ class MessageModel {
     this.isRead = false,
     this.isDelivered = false,
     this.isRecalled = false,
+    this.isForwarded = false,
     this.replyMessageId,
     this.reactions = const {},
     required this.createdAt,
+    this.status = 'sent',
+    this.clientTempId,
   });
 
   factory MessageModel.fromJson(dynamic rawJson) {
@@ -237,6 +243,9 @@ class MessageModel {
     final read = json['isRead'] == true;
     final delivered = json['isDelivered'] == true || read;
     final recalled = json['isRecalled'] == true;
+    final forwarded = json['isForwarded'] == true || json['is_forwarded'] == true;
+    final statusStr = json['status']?.toString() ?? 'sent';
+    final tempId = json['clientTempId']?.toString() ?? json['tempId']?.toString();
 
     return MessageModel(
       id: json['id']?.toString() ?? '',
@@ -250,12 +259,37 @@ class MessageModel {
       isRead: read,
       isDelivered: delivered,
       isRecalled: recalled,
+      isForwarded: forwarded,
       replyMessageId: json['replyMessageId']?.toString(),
       reactions: parsedReactions,
       createdAt: json['createdAt'] != null
           ? (DateTime.tryParse(json['createdAt'].toString())?.toLocal() ?? DateTime.now())
           : DateTime.now(),
+      status: statusStr,
+      clientTempId: tempId,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'conversationId': conversationId,
+      'senderId': senderId,
+      'type': type,
+      'content': content,
+      'imageUrl': imageUrl,
+      'videoUrl': videoUrl,
+      'audioUrl': audioUrl,
+      'isRead': isRead,
+      'isDelivered': isDelivered,
+      'isRecalled': isRecalled,
+      'isForwarded': isForwarded,
+      'replyMessageId': replyMessageId,
+      'reactions': reactions,
+      'createdAt': createdAt.toIso8601String(),
+      'status': status,
+      'clientTempId': clientTempId,
+    };
   }
 
   MessageModel copyWith({
@@ -265,6 +299,7 @@ class MessageModel {
     String? type,
     String? content,
     String? imageUrl,
+    String? videoUrl,
     String? audioUrl,
     bool? isRead,
     bool? isDelivered,
@@ -272,6 +307,8 @@ class MessageModel {
     String? replyMessageId,
     Map<String, String>? reactions,
     DateTime? createdAt,
+    String? status,
+    String? clientTempId,
   }) {
     return MessageModel(
       id: id ?? this.id,
@@ -280,6 +317,7 @@ class MessageModel {
       type: type ?? this.type,
       content: content ?? this.content,
       imageUrl: imageUrl ?? this.imageUrl,
+      videoUrl: videoUrl ?? this.videoUrl,
       audioUrl: audioUrl ?? this.audioUrl,
       isRead: isRead ?? this.isRead,
       isDelivered: isDelivered ?? this.isDelivered,
@@ -287,6 +325,8 @@ class MessageModel {
       replyMessageId: replyMessageId ?? this.replyMessageId,
       reactions: reactions ?? this.reactions,
       createdAt: createdAt ?? this.createdAt,
+      status: status ?? this.status,
+      clientTempId: clientTempId ?? this.clientTempId,
     );
   }
 }

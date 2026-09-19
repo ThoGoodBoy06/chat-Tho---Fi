@@ -208,7 +208,7 @@ class ApiService {
 
   // Upload Media (Image, Video, Audio, File)
   static Future<Map<String, dynamic>> uploadMedia(
-      String conversationId, Uint8List fileBytes, String fileName, String mimeType) async {
+      String conversationId, Uint8List fileBytes, String fileName, String mimeType, {String? clientTempId}) async {
     final token = await getToken();
     final request = http.MultipartRequest(
       'POST',
@@ -233,6 +233,9 @@ class ApiService {
       ),
     );
     request.fields['mimeType'] = mimeType;
+    if (clientTempId != null && clientTempId.isNotEmpty) {
+      request.fields['clientTempId'] = clientTempId;
+    }
     final streamedResponse = await request.send().timeout(const Duration(seconds: 180));
     final response = await http.Response.fromStream(streamedResponse);
     return jsonDecode(response.body);
@@ -390,13 +393,13 @@ class ApiService {
   }
 
   // React to Message API Fallback
-  static Future<Map<String, dynamic>> reactToMessage(String messageId, String emoji) async {
+  static Future<Map<String, dynamic>> reactToMessage(String messageId, String emoji, {bool isRemoved = false}) async {
     try {
       final headers = await _getHeaders();
       final response = await http.post(
         Uri.parse('$baseUrl/chat/messages/$messageId/react'),
         headers: headers,
-        body: jsonEncode({'reaction': emoji}),
+        body: jsonEncode({'reaction': emoji, 'isRemoved': isRemoved}),
       ).timeout(const Duration(seconds: 15));
       return jsonDecode(response.body);
     } catch (e) {

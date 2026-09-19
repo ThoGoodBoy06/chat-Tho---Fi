@@ -1,3 +1,352 @@
+
+  // ══════════════════════════════════════════════════════════════════════════════
+  // HỆ THỐNG THẢ CẢM XÚC (REACTION SYSTEM)
+  // ══════════════════════════════════════════════════════════════════════════════
+  
+  // ══════════════════════════════════════════════════════════════════════════════
+  // MODAL CHI TIẾT NGƯỜI THẢ CẢM XÚC & NÚT GỠ CẢM XÚC (MESSENGER/ZALO STYLE)
+  // ══════════════════════════════════════════════════════════════════════════════
+  window.showReactionDetailsModal = function (reactionsObj, messageId) {
+    if (!messageId) return;
+
+    // Đóng modal cũ nếu đang mở
+    var existing = document.getElementById('reactionDetailsOverlay');
+    if (existing) existing.remove();
+
+    var token = localStorage.getItem('authToken') || (localStorage.getItem('flutter.authToken') ? JSON.parse(localStorage.getItem('flutter.authToken')) : null);
+    var currentUserId = localStorage.getItem('userId') || (localStorage.getItem('flutter.userId') ? JSON.parse(localStorage.getItem('flutter.userId')) : null);
+
+    // Overlay nền mờ sang trọng
+    var overlay = document.createElement('div');
+    overlay.id = 'reactionDetailsOverlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.45);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:99999999;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.22s ease-out;user-select:none;';
+
+    var isMobile = window.innerWidth <= 600;
+    var modal = document.createElement('div');
+    modal.id = 'reactionDetailsModal';
+    modal.style.cssText = isMobile
+      ? 'width:100%;max-width:100%;background:#FFFFFF;border-radius:24px 24px 0 0;box-shadow:0 -10px 30px rgba(0,0,0,0.18);display:flex;flex-direction:column;max-height:80vh;overflow:hidden;transform:translateY(100%);transition:transform 0.28s cubic-bezier(0.18, 0.89, 0.32, 1.28);'
+      : 'width:92%;max-width:440px;background:#FFFFFF;border-radius:24px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.06);display:flex;flex-direction:column;max-height:80vh;overflow:hidden;transform:scale(0.92) translateY(15px);transition:all 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28);';
+
+    if (isMobile) {
+      overlay.style.alignItems = 'flex-end';
+    }
+
+    // Drag bar (mobile)
+    if (isMobile) {
+      var dragHandle = document.createElement('div');
+      dragHandle.style.cssText = 'width:36px;height:4px;border-radius:2px;background:#CBD5E1;margin:10px auto 4px auto;';
+      modal.appendChild(dragHandle);
+    }
+
+    // Header: Tiêu đề + Nút đóng (X)
+    var header = document.createElement('div');
+    header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:14px 20px 10px 20px;border-bottom:1px solid #F1F5F9;';
+
+    var title = document.createElement('div');
+    title.textContent = 'Cảm xúc';
+    title.style.cssText = 'font-size:18px;font-weight:700;color:#0F172A;letter-spacing:-0.2px;';
+
+    var closeBtn = document.createElement('button');
+    closeBtn.innerHTML = '&times;';
+    closeBtn.style.cssText = 'border:none;background:#F1F5F9;width:32px;height:32px;border-radius:50%;font-size:20px;font-weight:500;color:#64748B;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;line-height:1;';
+    closeBtn.onmouseenter = function() { closeBtn.style.background = '#E2E8F0'; closeBtn.style.color = '#0F172A'; };
+    closeBtn.onmouseleave = function() { closeBtn.style.background = '#F1F5F9'; closeBtn.style.color = '#64748B'; };
+    closeBtn.onclick = closeModal;
+
+    header.appendChild(title);
+    header.appendChild(closeBtn);
+    modal.appendChild(header);
+
+    // Filter Tabs Bar
+    var tabsBar = document.createElement('div');
+    tabsBar.id = 'reactionFilterTabs';
+    tabsBar.style.cssText = 'display:flex;gap:8px;padding:10px 20px;border-bottom:1px solid #F1F5F9;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;';
+
+    // List container
+    var listContainer = document.createElement('div');
+    listContainer.id = 'reactionUsersList';
+    listContainer.style.cssText = 'flex:1;overflow-y:auto;padding:8px 20px 20px 20px;min-height:140px;';
+
+    // Loading indicator
+    var loadingDiv = document.createElement('div');
+    loadingDiv.style.cssText = 'display:flex;align-items:center;justify-content:center;height:120px;color:#94A3B8;font-size:14px;gap:8px;';
+    loadingDiv.innerHTML = '<div style="width:18px;height:18px;border:2px solid #CBD5E1;border-top-color:#0084FF;border-radius:50%;animation:spin 0.8s linear infinite;"></div> Đang tải cảm xúc...';
+    listContainer.appendChild(loadingDiv);
+
+    modal.appendChild(tabsBar);
+    modal.appendChild(listContainer);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    // Hiệu ứng mở mượt
+    requestAnimationFrame(function () {
+      overlay.style.opacity = '1';
+      if (isMobile) {
+        modal.style.transform = 'translateY(0)';
+      } else {
+        modal.style.transform = 'scale(1) translateY(0)';
+      }
+    });
+
+    overlay.onclick = function (e) {
+      if (e.target === overlay) closeModal();
+    };
+
+    function closeModal() {
+      overlay.style.opacity = '0';
+      if (isMobile) {
+        modal.style.transform = 'translateY(100%)';
+      } else {
+        modal.style.transform = 'scale(0.92) translateY(15px)';
+      }
+      setTimeout(function () {
+        if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      }, 240);
+    }
+
+    // Nạp dữ liệu từ Backend API
+    var activeTab = 'ALL';
+    var reactionDataList = [];
+
+    function renderList() {
+      tabsBar.innerHTML = '';
+      listContainer.innerHTML = '';
+
+      if (reactionDataList.length === 0) {
+        var emptyDiv = document.createElement('div');
+        emptyDiv.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;height:140px;color:#94A3B8;font-size:14px;';
+        emptyDiv.innerHTML = '<div style="font-size:32px;margin-bottom:6px;">💭</div>Không còn cảm xúc nào';
+        listContainer.appendChild(emptyDiv);
+        setTimeout(closeModal, 800);
+        return;
+      }
+
+      // Nhóm icon để vẽ tabs
+      var emojiCounts = {};
+      reactionDataList.forEach(function (item) {
+        emojiCounts[item.emoji] = (emojiCounts[item.emoji] || 0) + 1;
+      });
+
+      // Tab 'Tất cả'
+      var allTabBtn = document.createElement('button');
+      allTabBtn.style.cssText = 'border:none;border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;transition:all 0.15s;white-space:nowrap;';
+      if (activeTab === 'ALL') {
+        allTabBtn.style.background = '#0084FF';
+        allTabBtn.style.color = '#FFFFFF';
+      } else {
+        allTabBtn.style.background = '#F1F5F9';
+        allTabBtn.style.color = '#475569';
+      }
+      allTabBtn.innerHTML = 'Tất cả <span>' + reactionDataList.length + '</span>';
+      allTabBtn.onclick = function () {
+        activeTab = 'ALL';
+        renderList();
+      };
+      tabsBar.appendChild(allTabBtn);
+
+      // Các tab riêng cho từng Emoji
+      Object.keys(emojiCounts).forEach(function (em) {
+        var emBtn = document.createElement('button');
+        emBtn.style.cssText = 'border:none;border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;transition:all 0.15s;white-space:nowrap;';
+        if (activeTab === em) {
+          emBtn.style.background = '#0084FF';
+          emBtn.style.color = '#FFFFFF';
+        } else {
+          emBtn.style.background = '#F1F5F9';
+          emBtn.style.color = '#475569';
+        }
+        emBtn.innerHTML = '<span>' + em + '</span> <span>' + emojiCounts[em] + '</span>';
+        emBtn.onclick = function () {
+          activeTab = em;
+          renderList();
+        };
+        tabsBar.appendChild(emBtn);
+      });
+
+      // Lọc danh sách theo Tab
+      var filtered = activeTab === 'ALL'
+        ? reactionDataList
+        : reactionDataList.filter(function (it) { return it.emoji === activeTab; });
+
+      filtered.forEach(function (item) {
+        var row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #F8FAFC;';
+
+        // Cụm bên trái: Avatar + Tên
+        var leftCol = document.createElement('div');
+        leftCol.style.cssText = 'display:flex;align-items:center;gap:12px;';
+
+        var avatarWrapper = document.createElement('div');
+        avatarWrapper.style.cssText = 'position:relative;width:44px;height:44px;flex-shrink:0;';
+
+        var avatarImg = document.createElement('div');
+        if (item.avatar) {
+          avatarImg.style.cssText = 'width:44px;height:44px;border-radius:50%;background-image:url("' + item.avatar + '");background-size:cover;background-position:center;border:1px solid #E2E8F0;';
+        } else {
+          var initial = (item.displayName || 'U').substring(0, 1).toUpperCase();
+          avatarImg.style.cssText = 'width:44px;height:44px;border-radius:50%;background:#E2E8F0;color:#334155;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;';
+          avatarImg.textContent = initial;
+        }
+
+        var emojiBadge = document.createElement('div');
+        emojiBadge.textContent = item.emoji;
+        emojiBadge.style.cssText = 'position:absolute;right:-2px;bottom:-2px;font-size:16px;background:#FFFFFF;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,0.15);';
+
+        avatarWrapper.appendChild(avatarImg);
+        avatarWrapper.appendChild(emojiBadge);
+        leftCol.appendChild(avatarWrapper);
+
+        var nameCol = document.createElement('div');
+        nameCol.style.cssText = 'display:flex;flex-direction:column;';
+
+        var nameSpan = document.createElement('div');
+        nameSpan.textContent = item.displayName;
+        nameSpan.style.cssText = 'font-size:15px;font-weight:600;color:#0F172A;';
+
+        nameCol.appendChild(nameSpan);
+
+        if (item.isMe) {
+          var subSpan = document.createElement('div');
+          subSpan.textContent = 'Nhấn để gỡ cảm xúc';
+          subSpan.style.cssText = 'font-size:12px;color:#94A3B8;';
+          nameCol.appendChild(subSpan);
+        }
+
+        leftCol.appendChild(nameCol);
+        row.appendChild(leftCol);
+
+        // Cụm bên phải: Nút Gỡ (Chỉ hiện cho chính mình)
+        if (item.isMe) {
+          var removeBtn = document.createElement('button');
+          removeBtn.innerHTML = 'Gỡ';
+          removeBtn.style.cssText = 'border:none;border-radius:18px;padding:6px 14px;background:#FEE2E2;color:#DC2626;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;gap:4px;';
+          removeBtn.onmouseenter = function () {
+            removeBtn.style.background = '#FCA5A5';
+            removeBtn.style.color = '#B91C1C';
+          };
+          removeBtn.onmouseleave = function () {
+            removeBtn.style.background = '#FEE2E2';
+            removeBtn.style.color = '#DC2626';
+          };
+
+          removeBtn.onclick = function (e) {
+            e.stopPropagation();
+            removeBtn.disabled = true;
+            removeBtn.style.opacity = '0.5';
+
+            // Kích hoạt logic hủy cảm xúc
+            if (window.reactToMessage) {
+              window.reactToMessage(messageId, item.emoji);
+            }
+
+            // Cập nhật UI ngay lập tức
+            reactionDataList = reactionDataList.filter(function (it) { return it.userId !== item.userId; });
+            renderList();
+          };
+
+          row.appendChild(removeBtn);
+        }
+
+        listContainer.appendChild(row);
+      });
+    }
+
+    // Gọi API lấy dữ liệu chi tiết
+    if (token) {
+      fetch('/api/chat/messages/' + encodeURIComponent(messageId) + '/reactions', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data && data.success && Array.isArray(data.reactions)) {
+          reactionDataList = data.reactions;
+        } else {
+          // Fallback từ reactionsObj nếu API trống
+          reactionDataList = buildFallbackList(reactionsObj, currentUserId);
+        }
+        renderList();
+      })
+      .catch(function (err) {
+        console.warn('Lỗi gọi API reactions, dùng fallback:', err);
+        reactionDataList = buildFallbackList(reactionsObj, currentUserId);
+        renderList();
+      });
+    } else {
+      reactionDataList = buildFallbackList(reactionsObj, currentUserId);
+      renderList();
+    }
+
+    function buildFallbackList(rObj, myId) {
+      var arr = [];
+      if (!rObj) return arr;
+      var obj = rObj;
+      if (typeof obj.entries === 'function') {
+        obj = Object.fromEntries(obj.entries());
+      }
+      Object.keys(obj).forEach(function (uid) {
+        var isMe = uid === myId;
+        arr.push({
+          userId: uid,
+          displayName: isMe ? 'Bạn' : 'Người dùng',
+          fullName: isMe ? 'Bạn' : 'Người dùng',
+          avatar: null,
+          emoji: obj[uid],
+          isMe: isMe
+        });
+      });
+      arr.sort(function (a, b) { return a.isMe ? -1 : 1; });
+      return arr;
+    }
+  };
+
+  window.reactToMessage = function (messageId, emoji) {
+    if (!messageId || !emoji) return;
+    try {
+      var prov = window._activeChatProvider || (window.$ && window.$._activeChatProvider);
+      if (prov && typeof prov.a1l === 'function') {
+        prov.a1l(messageId, emoji);
+        console.log('✅ Reacted via prov.a1l:', messageId, emoji);
+        return;
+      }
+    } catch (e) {
+      console.warn('prov react error:', e);
+    }
+
+    // Fallback qua API trực tiếp
+    try {
+      var token = localStorage.getItem('authToken') || (localStorage.getItem('flutter.authToken') ? JSON.parse(localStorage.getItem('flutter.authToken')) : null);
+      if (token) {
+        fetch('/api/chat/messages/' + encodeURIComponent(messageId) + '/react', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({ reaction: emoji })
+        }).then(function (res) { return res.json(); }).then(function (data) {
+          console.log('✅ Reacted via API:', data);
+        }).catch(function (err) {
+          console.error('Lỗi gọi API react:', err);
+        });
+      }
+    } catch (err2) {
+      console.error('Fallback react error:', err2);
+    }
+  };
+
+  // Ngăn chặn menu chuột phải mặc định của trình duyệt để nhường cho menu cảm xúc của app
+  if (!window._contextMenuGuarded) {
+    window._contextMenuGuarded = true;
+    window.addEventListener('contextmenu', function (e) {
+      var t = e.target;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
+        return;
+      }
+      e.preventDefault();
+    }, { passive: false });
+  }
+
 // webrtc_audio_helper.js - Unified Bulletproof WebRTC Audio Engine & Guard
 (function () {
   'use strict';
@@ -331,9 +680,9 @@
     if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://') && !fullUrl.startsWith('blob:') && !fullUrl.startsWith('data:')) {
       var origin = window.location.origin;
       if (origin.indexOf('localhost') !== -1 || origin.indexOf('127.0.0.1') !== -1) {
-        fullUrl = 'http://localhost:5000' + (fullUrl.startsWith('/') ? '' : '/') + fullUrl;
+        fullUrl = window.location.origin + (fullUrl.startsWith('/') ? '' : '/') + fullUrl;
       } else {
-        fullUrl = 'https://tho-goodboy-chat-app.onrender.com' + (fullUrl.startsWith('/') ? '' : '/') + fullUrl;
+        fullUrl = 'https://chat-tho-fi-vn-9s8u.onrender.com' + (fullUrl.startsWith('/') ? '' : '/') + fullUrl;
       }
     }
 
@@ -414,9 +763,9 @@
       if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://') && !fullUrl.startsWith('blob:') && !fullUrl.startsWith('data:')) {
         var origin = window.location.origin;
         if (origin.indexOf('localhost') !== -1 || origin.indexOf('127.0.0.1') !== -1) {
-          fullUrl = 'http://localhost:5000' + (fullUrl.startsWith('/') ? '' : '/') + fullUrl;
+          fullUrl = window.location.origin + (fullUrl.startsWith('/') ? '' : '/') + fullUrl;
         } else {
-          fullUrl = 'https://tho-goodboy-chat-app.onrender.com' + (fullUrl.startsWith('/') ? '' : '/') + fullUrl;
+          fullUrl = 'https://chat-tho-fi-vn-9s8u.onrender.com' + (fullUrl.startsWith('/') ? '' : '/') + fullUrl;
         }
       }
 
@@ -497,90 +846,479 @@
   };
 
   // 10. Hardware-Accelerated High-Definition Image Viewer Modal với nút "Lưu ảnh vào máy"
-  window.openImageModal = function (imageUrl) {
-    if (!imageUrl) return;
+})();
+
+// =========================================================================
+// BỘ TRÌNH CHIẾU GALLERY CHUẨN XÁC:
+// - Album: Chỉ hiển thị các ảnh của đúng Album đó, hỗ trợ vuốt/kéo mượt mà
+// - Ảnh riêng: Chỉ hiển thị 1 ảnh (1/1), không gộp ảnh linh tinh vào
+// =========================================================================
+(function () {
+  window.openAlbumGalleryModal = function (photoList, initialIndex) {
+    if (!photoList) photoList = [];
     try {
-      var existingModal = document.getElementById('globalImagePlayerModal');
+      var existingModal = document.getElementById('globalAlbumGalleryModal');
       if (existingModal) existingModal.remove();
 
-      var fullUrl = imageUrl;
-      if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://') && !fullUrl.startsWith('blob:') && !fullUrl.startsWith('data:')) {
-        var origin = window.location.origin;
-        if (origin.indexOf('localhost') !== -1 || origin.indexOf('127.0.0.1') !== -1) {
-          fullUrl = 'http://localhost:5000' + (fullUrl.startsWith('/') ? '' : '/') + fullUrl;
-        } else {
-          fullUrl = 'https://tho-goodboy-chat-app.onrender.com' + (fullUrl.startsWith('/') ? '' : '/') + fullUrl;
+      var list = [];
+      var seen = {};
+
+      function addUrl(u) {
+        if (!u || typeof u !== 'string' || (u.startsWith('data:') && u.length > 500000)) return;
+        var full = u;
+        if (!full.startsWith('http://') && !full.startsWith('https://') && !full.startsWith('blob:') && !full.startsWith('data:')) {
+          var origin = window.location.origin;
+          var be = (origin.indexOf('localhost') !== -1 || origin.indexOf('127.0.0.1') !== -1) ? origin : 'https://chat-tho-fi-vn-9s8u.onrender.com';
+          full = be + (full.startsWith('/') ? '' : '/') + full;
+        }
+        if (!seen[full]) {
+          seen[full] = true;
+          list.push(full);
         }
       }
 
-      var modal = document.createElement('div');
-      modal.id = 'globalImagePlayerModal';
-      modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);z-index:99999999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;animation:fadeInModal 0.2s ease-out;';
-
-      var style = document.getElementById('imageModalStyle');
-      if (!style) {
-        style = document.createElement('style');
-        style.id = 'imageModalStyle';
-        style.textContent = '@keyframes fadeInModal{from{opacity:0;transform:scale(0.96)}to{opacity:1;transform:scale(1)}}';
-        document.head.appendChild(style);
+      // CHỈ hiển thị đúng danh sách ảnh thuộc Album hoặc ảnh đơn lẻ được truyền vào
+      for (var i = 0; i < photoList.length; i++) {
+        var item = photoList[i];
+        var raw = typeof item === 'string' ? item : (item && (item.url || item.imageUrl || item.f || item.content || item.e) ? (item.url || item.imageUrl || item.f || item.content || item.e) : '');
+        addUrl(raw);
       }
 
-      var closeHandler = function () {
-        modal.remove();
-        document.removeEventListener('keydown', escListener);
-      };
+      if (!list.length) return;
 
-      var escListener = function (e) {
-        if (e.key === 'Escape') closeHandler();
-      };
-      document.addEventListener('keydown', escListener);
+      var currentIndex = typeof initialIndex === 'number' ? Math.max(0, Math.min(initialIndex, list.length - 1)) : 0;
+      var isAlbum = list.length > 1;
 
+      var snapStyle = document.getElementById('gallerySnapStyle');
+      if (!snapStyle) {
+        snapStyle = document.createElement('style');
+        snapStyle.id = 'gallerySnapStyle';
+        snapStyle.textContent = 
+          '#galleryTrack::-webkit-scrollbar{display:none;}' +
+          '#galleryTrack{-ms-overflow-style:none;scrollbar-width:none;}' +
+          '.gallery-slide{flex:0 0 100vw;width:100vw;height:100%;display:flex;align-items:center;justify-content:center;scroll-snap-align:center;scroll-snap-stop:always;box-sizing:border-box;padding:8px 12px;user-select:none;-webkit-user-select:none;cursor:grab;touch-action:pan-y;}' +
+          '.gallery-slide img{max-width:96vw;max-height:75vh;object-fit:contain;border-radius:14px;box-shadow:0 18px 45px rgba(0,0,0,0.85);user-select:none;-webkit-user-select:none;pointer-events:none;-webkit-user-drag:none;display:block;}' +
+          '@media (min-width: 768px) {.gallery-slide img{max-width:88vw;max-height:78vh;}}' +
+          '#galleryThumbs::-webkit-scrollbar{display:none;}';
+        document.head.appendChild(snapStyle);
+      }
+
+      var modal = document.createElement('div');
+      modal.id = 'globalAlbumGalleryModal';
+      modal.style.cssText = 'position:fixed;inset:0;background:rgba(4,6,9,0.97);backdrop-filter:blur(25px);-webkit-backdrop-filter:blur(25px);z-index:99999999;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:10px 0 14px 0;box-sizing:border-box;user-select:none;-webkit-user-select:none;overflow:hidden;';
+
+      // Header: Counter + Nút Lưu + Nút Đóng
       var header = document.createElement('div');
-      header.style.cssText = 'position:absolute;top:20px;right:24px;display:flex;align-items:center;gap:12px;z-index:100;';
+      header.id = 'galleryHeader';
+      header.style.cssText = 'width:100%;max-width:1200px;display:flex;align-items:center;justify-content:space-between;z-index:100;padding:4px 16px;box-sizing:border-box;';
+
+      var counterPill = document.createElement('div');
+      counterPill.style.cssText = 'background:rgba(255,255,255,0.18);color:#fff;font-family:sans-serif;font-size:14px;font-weight:700;padding:6px 15px;border-radius:20px;display:inline-flex;align-items:center;gap:7px;letter-spacing:0.5px;box-shadow:0 2px 8px rgba(0,0,0,0.3);';
+      counterPill.innerHTML = (isAlbum ? '<span>⊞</span> ' : '<span>🖼</span> ') + '<span id="galleryCounterText">' + (currentIndex + 1) + ' / ' + list.length + '</span>';
+
+      var actionsDiv = document.createElement('div');
+      actionsDiv.id = 'galleryActions';
+      actionsDiv.style.cssText = 'display:flex;align-items:center;gap:10px;';
 
       var dlBtn = document.createElement('button');
-      dlBtn.innerHTML = '⬇ Lưu ảnh vào máy';
-      dlBtn.style.cssText = 'background:rgba(0,104,255,0.85);color:#fff;border:none;border-radius:24px;padding:9px 20px;font-size:14px;font-family:sans-serif;font-weight:600;cursor:pointer;backdrop-filter:blur(6px);display:inline-flex;align-items:center;transition:all 0.2s;box-shadow:0 4px 14px rgba(0,104,255,0.4);';
-      dlBtn.onmouseover = function () { dlBtn.style.background = '#0052cc'; dlBtn.style.transform = 'scale(1.03)'; };
-      dlBtn.onmouseout = function () { dlBtn.style.background = 'rgba(0,104,255,0.85)'; dlBtn.style.transform = 'scale(1)'; };
+      dlBtn.innerHTML = '⬇ Lưu ảnh';
+      dlBtn.style.cssText = 'background:rgba(0,104,255,0.92);color:#fff;border:none;border-radius:22px;padding:8px 16px;font-size:13.5px;font-family:sans-serif;font-weight:600;cursor:pointer;backdrop-filter:blur(6px);display:inline-flex;align-items:center;gap:6px;transition:all 0.2s;box-shadow:0 4px 14px rgba(0,104,255,0.4);';
       dlBtn.onclick = function (e) {
         e.stopPropagation();
-        window.downloadMediaDirectly(fullUrl, 'anh_' + Date.now() + '.jpg', 'image');
+        var curUrl = list[currentIndex];
+        if (!curUrl) return;
+        try {
+          var a = document.createElement('a');
+          a.href = curUrl;
+          a.download = 'image_' + Date.now() + '.jpg';
+          a.target = '_blank';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        } catch (err) {
+          window.open(curUrl, '_blank');
+        }
       };
 
       var closeBtn = document.createElement('button');
       closeBtn.innerHTML = '✕';
-      closeBtn.style.cssText = 'background:rgba(255,255,255,0.18);color:#fff;border:none;border-radius:50%;width:40px;height:40px;font-size:20px;font-family:sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;';
-      closeBtn.onmouseover = function () { closeBtn.style.background = '#EF4444'; closeBtn.style.transform = 'scale(1.08)'; };
-      closeBtn.onmouseout = function () { closeBtn.style.background = 'rgba(255,255,255,0.18)'; closeBtn.style.transform = 'scale(1)'; };
-      closeBtn.onclick = closeHandler;
+      closeBtn.style.cssText = 'width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.22);color:#fff;border:none;font-size:16px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s;';
+      
+      var cleanupAndClose = function () {
+        window.removeEventListener('keydown', keyListener);
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('mouseup', onMouseUp);
+        modal.style.transition = 'opacity 0.2s ease';
+        modal.style.opacity = '0';
+        setTimeout(function () { modal.remove(); }, 200);
+      };
+      closeBtn.onclick = function (e) {
+        e.stopPropagation();
+        cleanupAndClose();
+      };
 
-      header.appendChild(dlBtn);
-      header.appendChild(closeBtn);
+      actionsDiv.appendChild(dlBtn);
+      actionsDiv.appendChild(closeBtn);
+
+      
+      // ── Bảng cảm xúc nổi xuất hiện khi NHẤN GIỮ vào ảnh (chuẩn Messenger & Zalo) ──
+      var emojiBar = document.createElement('div');
+      emojiBar.id = 'galleryReactionRow';
+      emojiBar.style.cssText = 'display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(0.85);background:rgba(255,255,255,0.98);padding:8px 14px;border-radius:36px;box-shadow:0 14px 40px rgba(0,0,0,0.45),0 2px 8px rgba(0,0,0,0.15);z-index:100000000;align-items:center;gap:12px;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);transition:all 0.22s cubic-bezier(0.175,0.885,0.32,1.275);opacity:0;pointer-events:auto;user-select:none;';
+
+      var emojiList = ['❤️', '😆', '😮', '😢', '😡', '👍'];
+      emojiList.forEach(function(em) {
+        var emBtn = document.createElement('span');
+        emBtn.textContent = em;
+        emBtn.style.cssText = 'font-size:30px;cursor:pointer;transition:transform 0.18s cubic-bezier(0.175,0.885,0.32,1.275);user-select:none;padding:2px 4px;display:inline-block;';
+        emBtn.onmouseenter = function() { emBtn.style.transform = 'scale(1.4) translateY(-4px)'; };
+        emBtn.onmouseleave = function() { emBtn.style.transform = 'scale(1) translateY(0)'; };
+        emBtn.onclick = function(e) {
+          e.stopPropagation();
+          var curUrl = list[currentIndex];
+          var prov = window._activeChatProvider || (window.$ && window.$._activeChatProvider);
+          var targetMsgId = null;
+          if (prov && prov.d) {
+            for (var mIdx = prov.d.length - 1; mIdx >= 0; mIdx--) {
+              var m = prov.d[mIdx];
+              var u = m.imageUrl || m.f || m.content || m.e;
+              if (u && (u === curUrl || (typeof u === 'string' && u.includes(curUrl)) || (typeof curUrl === 'string' && curUrl.includes(u)))) {
+                targetMsgId = m.id || m.a;
+                break;
+              }
+            }
+          }
+          if (!targetMsgId && prov && prov.d && prov.d.length > 0) {
+            targetMsgId = prov.d[prov.d.length - 1].id || prov.d[prov.d.length - 1].a;
+          }
+          if (targetMsgId) {
+            window.reactToMessage(targetMsgId, em);
+            // Hiệu ứng bay cảm xúc siêu mượt
+            var flying = document.createElement('div');
+            flying.textContent = em;
+            flying.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(0.5);font-size:80px;z-index:999999999;pointer-events:none;transition:all 0.6s cubic-bezier(0.18, 0.89, 0.32, 1.28);opacity:1;';
+            document.body.appendChild(flying);
+            setTimeout(function() {
+              flying.style.transform = 'translate(-50%,-130%) scale(1.5)';
+              flying.style.opacity = '0';
+            }, 30);
+            setTimeout(function() { flying.remove(); }, 650);
+          }
+          hideGalleryEmojiBar();
+        };
+        emojiBar.appendChild(emBtn);
+      });
+
+      function showGalleryEmojiBar(x, y) {
+        emojiBar.style.display = 'flex';
+        if (typeof x === 'number' && typeof y === 'number' && x > 0 && y > 0) {
+          var targetY = Math.max(80, Math.min(y - 70, window.innerHeight - 100));
+          var targetX = Math.max(160, Math.min(x, window.innerWidth - 160));
+          emojiBar.style.left = targetX + 'px';
+          emojiBar.style.top = targetY + 'px';
+        } else {
+          emojiBar.style.left = '50%';
+          emojiBar.style.top = '50%';
+        }
+        setTimeout(function() {
+          emojiBar.style.transform = 'translate(-50%,-50%) scale(1)';
+          emojiBar.style.opacity = '1';
+        }, 10);
+      }
+
+      function hideGalleryEmojiBar() {
+        emojiBar.style.transform = 'translate(-50%,-50%) scale(0.85)';
+        emojiBar.style.opacity = '0';
+        setTimeout(function() {
+          emojiBar.style.display = 'none';
+        }, 200);
+      }
+
+      modal.appendChild(emojiBar);
+      modal.addEventListener('click', function(e) {
+        if (!e.target.closest('#galleryReactionRow')) {
+          hideGalleryEmojiBar();
+        }
+      });
+      header.appendChild(counterPill);
+      header.appendChild(actionsDiv);
       modal.appendChild(header);
 
-      var imgWrapper = document.createElement('div');
-      imgWrapper.style.cssText = 'position:relative;max-width:94vw;max-height:88vh;display:flex;justify-content:center;align-items:center;box-shadow:0 25px 60px rgba(0,0,0,0.85);border-radius:12px;overflow:hidden;';
+      // Body: Container cuộn Track CSS Scroll Snap
+      var track = document.createElement('div');
+      track.id = 'galleryTrack';
+      track.style.cssText = 'flex:1;width:100vw;display:flex;flex-direction:row;overflow-x:' + (isAlbum ? 'auto' : 'hidden') + ';overflow-y:hidden;scroll-snap-type:' + (isAlbum ? 'x mandatory' : 'none') + ';-webkit-overflow-scrolling:touch;scroll-behavior:smooth;align-items:center;cursor:' + (isAlbum ? 'grab' : 'default') + ';';
 
-      var img = document.createElement('img');
-      img.src = fullUrl;
-      img.style.cssText = 'max-width:100%;max-height:88vh;object-fit:contain;display:block;border-radius:12px;user-select:none;-webkit-user-select:none;';
+      for (var j = 0; j < list.length; j++) {
+        var slide = document.createElement('div');
+        slide.className = 'gallery-slide';
+        var img = document.createElement('img');
+        img.src = list[j];
+        img.loading = 'eager';
+        img.draggable = false;
+        slide.appendChild(img);
+        track.appendChild(slide);
+      }
+      modal.appendChild(track);
 
-      imgWrapper.appendChild(img);
-      modal.appendChild(imgWrapper);
+      // Bắt cử chỉ NHẤN GIỮ (Press and Hold >= 350ms) trên ảnh Gallery để bật menu cảm xúc
+      (function() {
+        var pressTimer = null;
+        var startX = 0, startY = 0;
+        var isHolding = false;
+
+        function startPress(e) {
+          if (e.target.closest && e.target.closest('#galleryReactionRow')) return;
+          var pt = e.touches ? e.touches[0] : e;
+          startX = pt.clientX;
+          startY = pt.clientY;
+          isHolding = false;
+          clearTimeout(pressTimer);
+          pressTimer = setTimeout(function() {
+            isHolding = true;
+            showGalleryEmojiBar(startX, startY);
+          }, 350);
+        }
+
+        function movePress(e) {
+          if (!pressTimer) return;
+          var pt = e.touches ? e.touches[0] : e;
+          if (Math.abs(pt.clientX - startX) > 12 || Math.abs(pt.clientY - startY) > 12) {
+            clearTimeout(pressTimer);
+            pressTimer = null;
+          }
+        }
+
+        function endPress(e) {
+          clearTimeout(pressTimer);
+          pressTimer = null;
+        }
+
+        track.addEventListener('touchstart', startPress, { passive: true });
+        track.addEventListener('touchmove', movePress, { passive: true });
+        track.addEventListener('touchend', endPress, { passive: true });
+        track.addEventListener('touchcancel', endPress, { passive: true });
+
+        track.addEventListener('mousedown', startPress);
+        track.addEventListener('mousemove', movePress);
+        track.addEventListener('mouseup', endPress);
+
+        track.addEventListener('contextmenu', function(e) {
+          e.preventDefault();
+          showGalleryEmojiBar(e.clientX, e.clientY);
+        });
+      })();
+
+      // Nút điều hướng (Trái / Phải) - CHỈ hiển thị khi là Album (có > 1 ảnh)
+      var prevBtn = document.createElement('button');
+      prevBtn.innerHTML = '‹';
+      prevBtn.style.cssText = 'position:absolute;left:18px;top:48%;transform:translateY(-50%);width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,0.2);color:#fff;border:none;font-size:32px;cursor:pointer;display:' + (isAlbum ? 'flex' : 'none') + ';align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(6px);box-shadow:0 4px 12px rgba(0,0,0,0.3);';
+      prevBtn.onclick = function (e) {
+        e.stopPropagation();
+        if (currentIndex > 0) {
+          currentIndex--;
+          updateScrollPos(true);
+        }
+      };
+
+      var nextBtn = document.createElement('button');
+      nextBtn.innerHTML = '›';
+      nextBtn.style.cssText = 'position:absolute;right:18px;top:48%;transform:translateY(-50%);width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,0.2);color:#fff;border:none;font-size:32px;cursor:pointer;display:' + (isAlbum ? 'flex' : 'none') + ';align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(6px);box-shadow:0 4px 12px rgba(0,0,0,0.3);';
+      nextBtn.onclick = function (e) {
+        e.stopPropagation();
+        if (currentIndex < list.length - 1) {
+          currentIndex++;
+          updateScrollPos(true);
+        }
+      };
+
+      modal.appendChild(prevBtn);
+      modal.appendChild(nextBtn);
+
+      // Thumbnail Strip (Thanh ảnh xem trước ở đáy) - CHỈ hiển thị khi là Album
+      var thumbStrip = document.createElement('div');
+      thumbStrip.id = 'galleryThumbs';
+      thumbStrip.style.cssText = 'display:' + (isAlbum ? 'flex' : 'none') + ';align-items:center;gap:8px;max-width:94vw;overflow-x:auto;padding:8px 12px;z-index:100;scrollbar-width:none;-ms-overflow-style:none;box-sizing:border-box;';
+      var thumbEls = [];
+
+      if (isAlbum) {
+        list.forEach(function (url, idx) {
+          var t = document.createElement('div');
+          t.style.cssText = 'width:42px;height:42px;border-radius:8px;overflow:hidden;cursor:pointer;transition:all 0.2s;border:2px solid ' + (idx === currentIndex ? '#0068FF' : 'transparent') + ';opacity:' + (idx === currentIndex ? '1' : '0.45') + ';flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,0.4);';
+          var tImg = document.createElement('img');
+          tImg.src = url;
+          tImg.draggable = false;
+          tImg.style.cssText = 'width:100%;height:100%;object-fit:cover;pointer-events:none;';
+          t.appendChild(tImg);
+          t.onclick = function (e) {
+            e.stopPropagation();
+            currentIndex = idx;
+            updateScrollPos(true);
+          };
+          thumbEls.push(t);
+          thumbStrip.appendChild(t);
+        });
+      }
+      modal.appendChild(thumbStrip);
+
+      function updateCounter() {
+        var txt = document.getElementById('galleryCounterText');
+        if (txt) txt.textContent = (currentIndex + 1) + ' / ' + list.length;
+        if (prevBtn) prevBtn.style.opacity = currentIndex > 0 ? '1' : '0.25';
+        if (nextBtn) nextBtn.style.opacity = currentIndex < list.length - 1 ? '1' : '0.25';
+        thumbEls.forEach(function (t, idx) {
+          t.style.borderColor = (idx === currentIndex ? '#0068FF' : 'transparent');
+          t.style.opacity = (idx === currentIndex ? '1' : '0.45');
+          t.style.transform = (idx === currentIndex ? 'scale(1.1)' : 'scale(1)');
+        });
+        if (thumbEls[currentIndex]) {
+          thumbEls[currentIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+      }
+
+      function updateScrollPos(smooth) {
+        var w = window.innerWidth;
+        if (track && isAlbum) {
+          track.scrollTo({ left: currentIndex * w, behavior: smooth ? 'smooth' : 'instant' });
+        }
+        updateCounter();
+      }
+
+      var scrollTimer = null;
+      if (isAlbum) {
+        track.addEventListener('scroll', function () {
+          if (scrollTimer) clearTimeout(scrollTimer);
+          scrollTimer = setTimeout(function () {
+            var w = window.innerWidth;
+            var newIdx = Math.round(track.scrollLeft / w);
+            if (newIdx !== currentIndex && newIdx >= 0 && newIdx < list.length) {
+              currentIndex = newIdx;
+              updateCounter();
+            }
+          }, 40);
+        }, { passive: true });
+      }
+
+      // Kéo chuột trên máy tính (chỉ khi là Album)
+      var isMouseDown = false, startMouseX = 0, scrollStart = 0, hasDragged = false;
+      if (isAlbum) {
+        track.addEventListener('mousedown', function (e) {
+          if (e.button !== 0) return;
+          isMouseDown = true;
+          hasDragged = false;
+          startMouseX = e.clientX;
+          scrollStart = track.scrollLeft;
+          track.style.scrollSnapType = 'none';
+          track.style.scrollBehavior = 'auto';
+          track.style.cursor = 'grabbing';
+        });
+
+        var onMouseMove = function (e) {
+          if (!isMouseDown) return;
+          var dx = e.clientX - startMouseX;
+          if (Math.abs(dx) > 4) hasDragged = true;
+          track.scrollLeft = scrollStart - dx;
+        };
+
+        var onMouseUp = function (e) {
+          if (!isMouseDown) return;
+          isMouseDown = false;
+          track.style.cursor = 'grab';
+          track.style.scrollSnapType = 'x mandatory';
+          track.style.scrollBehavior = 'smooth';
+          if (hasDragged) {
+            var dx = e.clientX - startMouseX;
+            var w = window.innerWidth;
+            if (dx < -50 && currentIndex < list.length - 1) {
+              currentIndex++;
+            } else if (dx > 50 && currentIndex > 0) {
+              currentIndex--;
+            } else {
+              currentIndex = Math.max(0, Math.min(Math.round(track.scrollLeft / w), list.length - 1));
+            }
+            updateScrollPos(true);
+          }
+        };
+
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+
+        // Vuốt cảm ứng mobile
+        var touchStartX = 0, touchDeltaX = 0, hasTouchSwiped = false;
+        track.addEventListener('touchstart', function (e) {
+          if (e.touches && e.touches.length === 1) {
+            touchStartX = e.touches[0].clientX;
+            touchDeltaX = 0;
+            hasTouchSwiped = false;
+          }
+        }, { passive: true });
+
+        track.addEventListener('touchmove', function (e) {
+          if (e.touches && e.touches.length === 1) {
+            touchDeltaX = e.touches[0].clientX - touchStartX;
+            if (Math.abs(touchDeltaX) > 10) hasTouchSwiped = true;
+          }
+        }, { passive: true });
+
+        track.addEventListener('touchend', function () {
+          if (hasTouchSwiped && Math.abs(touchDeltaX) > 40) {
+            if (touchDeltaX < -40 && currentIndex < list.length - 1) {
+              currentIndex++;
+              updateScrollPos(true);
+            } else if (touchDeltaX > 40 && currentIndex > 0) {
+              currentIndex--;
+              updateScrollPos(true);
+            }
+          }
+        }, { passive: true });
+
+        // Cuộn chuột ngang
+        track.addEventListener('wheel', function (e) {
+          var delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+          if (Math.abs(delta) > 20) {
+            e.preventDefault();
+            if (delta > 0 && currentIndex < list.length - 1) {
+              currentIndex++;
+              updateScrollPos(true);
+            } else if (delta < 0 && currentIndex > 0) {
+              currentIndex--;
+              updateScrollPos(true);
+            }
+          }
+        }, { passive: false });
+      }
+
+      // Phím điều hướng
+      var keyListener = function (e) {
+        if (e.key === 'Escape') cleanupAndClose();
+        else if (isAlbum && e.key === 'ArrowLeft' && currentIndex > 0) {
+          currentIndex--;
+          updateScrollPos(true);
+        } else if (isAlbum && e.key === 'ArrowRight' && currentIndex < list.length - 1) {
+          currentIndex++;
+          updateScrollPos(true);
+        }
+      };
+      window.addEventListener('keydown', keyListener);
 
       modal.addEventListener('click', function (e) {
-        if (e.target === modal) closeHandler();
+        if (e.target === modal || e.target === track) {
+          cleanupAndClose();
+        }
       });
 
       document.body.appendChild(modal);
+      requestAnimationFrame(function () {
+        updateScrollPos(false);
+      });
     } catch (err) {
-      console.error('Lỗi khi mở image modal:', err);
+      console.error('Lỗi mở Album Gallery:', err);
     }
   };
 
+  window.openImageModal = function (imageUrl) {
+    if (!imageUrl) return;
+    // Mở ảnh riêng lẻ: chỉ hiển thị đúng duy nhất 1 ảnh đó!
+    window.openAlbumGalleryModal([imageUrl], 0);
+  };
 })();
-
-// 11. Hệ thống trích xuất và lưu bộ nhớ đệm Video Thumbnail tự động
-window._videoThumbCache = window._videoThumbCache || {};
-window.extractVideoThumbnail = function (videoUrl, onDone) { if (onDone) onDone(null); };
