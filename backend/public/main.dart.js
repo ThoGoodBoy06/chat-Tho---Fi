@@ -100054,7 +100054,7 @@ b=a.fr
 i=b?B.bb:n
 h=A.ag(16)
 f.push(A.a5(c,A.b9(A.b([l,B.aT,A.dr(c,A.a5(c,A.a2("Ch\u01b0a \u0111\u1ecdc",c,c,c,c,c,A.ay(c,c,b?B.f:o,c,c,c,c,c,c,c,c,12,c,c,B.am,c,c,!0,c,c,c,c,c,c,c,c),c,c,c),B.h,c,c,new A.ak(i,c,c,h,c,c,B.t),c,c,c,B.qz,c,c,c),B.M,!1,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,new A.atM(a),c,c,c,c,c,c,!1,B.ao)],e),B.l,B.m,B.p),B.h,c,c,c,c,c,B.KE,B.qC,c,c,c))
-if(a.e)b=B.pn
+if(a.e)b=A.aSkList("chats")
 else{b=k.length
 b=b===0?A.cn(A.a2("Kh\xf4ng c\xf3 cu\u1ed9c tr\xf2 chuy\u1ec7n n\xe0o",c,c,c,c,c,A.ay(c,c,o,c,c,c,c,c,c,c,c,14,c,c,c,c,c,!0,c,c,c,c,c,c,c,c),c,c,c),c,c):A.rh(c,new A.atN(d,k,a,s,r,m,p,o),b,c,B.a0,!1)}f.push(A.dn(b,1))
 return A.a5(c,A.bm(f,B.l,B.m,B.p),B.h,r,c,c,c,c,c,c,c,c,c)},
@@ -100168,7 +100168,7 @@ l.push(A.c2(b,b,b,new A.aJ(B.iD,24,$.getThemeColor(),null,null),b,new A.aug(c,a0
 l.push(A.c2(b,b,b,new A.aJ(B.dH,26,$.getThemeColor(),null,null),b,new A.auh(c,a0),b,b,b,"G\u1ecdi Video"))
 l.push(A.c2(b,b,b,new A.aJ(B.aai,24,$.getThemeColor(),null,null),b,new A.aui(c,a0),b,b,b,"Th\xf4ng tin cu\u1ed9c tr\xf2 chuy\u1ec7n"))
 s=A.a5(b,A.b9(l,B.l,B.m,B.p),B.h,b,b,new A.ak(($.getThemeHeaderColor?$.getThemeHeaderColor(r,p):p),b,b,b,s,b,B.t),b,56,b,B.qH,b,b,b)
-l=A.dn(a0.f?B.eb:new A.dL(new A.auj(c,a0,a,r),b),1)
+l=A.dn(a0.f?A.aSkList("messages",r):new A.dL(new A.auj(c,a0,a,r),b),1)
 k=t.c
 j=A.aP8(new A.auk(),k)
 k=A.aP8(new A.aul(p,r,n),k)
@@ -101301,7 +101301,7 @@ return null},
 $S:0}
 A.awD.prototype={
 $2(a,b){var s,r,q,p
-if(b.a===B.ld)return B.pn
+if(b.a===B.ld)return A.aSkList("contacts")
 s=b.b
 if(s==null)s=[]
 r=this.b
@@ -101378,7 +101378,7 @@ n.toString
 p=A.hn(new A.auB(),null,t.z)
 s=2
 return A.m(A.b1(n,!1).em(0,p),$async$$0)
-case 2:o.kE()
+case 2:o.kE();o.k2=A.nX();
 return A.v(null,r)}})
 return A.w($async$$0,r)},
 $S:6}
@@ -101396,7 +101396,7 @@ $1(a){return B.alb},
 $S:594}
 A.auI.prototype={
 $2(a,b){var s,r,q,p,o,n=this,m=null
-if(b.a===B.ld)return B.eb
+if(b.a===B.ld)return A.aSkList("contacts")
 s=b.b
 if(s==null)s=[]
 r=n.a
@@ -101441,10 +101441,22 @@ e=f.h(g,"id")
 q=e==null?i:J.ai(e)
 if(q==null)q=""
 p=J.e(f.h(g,"isOnline"),!0)||J.e(f.h(g,"status"),"online")
+var _av=null;
+try{_av=f.h(g,"avatar");if(!_av)_av=f.h(g,"avatarUrl");}catch(_e){}
+var _hasAv=_av!=null&&_av!=="null"&&_av.length>0;
 f=j.a
 e=f.Hy(s)
 o=t.p
-e=A.b([A.a5(i,A.cn(A.a2(f.HC(s),i,i,i,i,i,B.avy,i,i,i),i,i),B.h,i,i,new A.ak(i,i,i,i,i,e,B.a8),i,48,i,i,i,i,48)],o)
+var _fallbackWidget=A.a5(i,A.cn(A.a2(f.HC(s),i,i,i,i,i,B.avy,i,i,i),i,i),B.h,i,i,new A.ak(i,i,i,i,i,e,B.a8),i,48,i,i,i,i,48);
+var _avW=_fallbackWidget;
+if(_hasAv&&_av){
+  try{
+    _avW=A.a5(i,i,B.h,i,i,new A.ak(B.o,A.a9i(B.e8,new A.eY(_av,1,i),i),i,i,i,i,B.a8),i,48,i,i,i,i,48);
+  }catch(_err){
+    _avW=_fallbackWidget;
+  }
+}
+e=A.b([_avW],o)
 if(p)e.push(A.eG(0,A.a5(i,i,B.h,i,i,new A.ak(B.mL,i,A.dx(j.c,2),i,i,i,B.a8),i,14,i,i,i,i,14),i,i,i,0,i,i))
 e=A.dt(B.aF,e,B.r,B.ap)
 n=A.a2(s,i,1,B.a9,i,i,A.ay(i,i,j.d,i,i,i,i,i,i,i,i,15,i,i,B.u,i,i,!0,i,i,i,i,i,i,i,i),i,i,i)
@@ -102514,7 +102526,7 @@ $S:612}
 A.auX.prototype={
 $0(){var s=this.a,r=this.b
 s.K(new A.auW(s,r))
-if(r===1)s.kE()},
+if(r===1){s.kE();s.k2=A.nX();}},
 $S:0}
 A.auW.prototype={
 $0(){return this.a.d=this.b},
@@ -102966,7 +102978,7 @@ if(s.length>=2)return(J.Z(s[0],0)+J.Z(s[s.length-1],0)).toUpperCase()
 if(q>=2)return B.c.S(r,0,2).toUpperCase()
 return r[0].toUpperCase()},
 H(a){var s,r=this,q=null,p=A.c3(a,!0,t.B).a,o=p?B.I:B.f,n=p?B.f:B.I,m=A.m4(q,o,q,0.5,new A.d1(q,q,q,q,q,n,q,q,q),q,A.a2("L\u1eddi m\u1eddi k\u1ebft b\u1ea1n",q,q,q,q,q,A.ay(q,q,n,q,q,q,q,q,q,q,q,18,q,q,B.u,q,q,!0,q,q,q,q,q,q,q,q),q,q,q))
-if(r.e)s=B.eb
+if(r.e)s=A.aSkList("requests")
 else s=J.fH(r.d)?A.cn(A.bm(A.b([A.bV(B.aaT,B.fj,q,64),B.bM,B.axy],t.p),B.l,B.bw,B.p),q,q):A.age(new A.ayY(r),J.bM(r.d),B.fs,new A.ayZ())
 return A.hq(m,o,s,q,!1)}}
 A.ayS.prototype={
@@ -103362,7 +103374,7 @@ return A.m(p.o7(q.a.c),$async$Aa)
 case 2:return A.v(null,r)}})
 return A.w($async$Aa,r)},
 H(b0){var s,r,q,p,o,n,m,l,k,j,i,h,g,f,e,d,c,b,a,a0,a1=this,a2=null,a3="Trang c\xe1 nh\xe2n",a4="username",a5=A.c3(b0,!0,t.B).a,a6=a5?B.I:B.bE,a7=a5?B.aJ:B.f,a8=a5?B.f:B.I,a9=a5?B.aC:B.af
-if(a1.e)return A.hq(A.m4(a2,a7,!0,0.5,a2,A.c2(a2,a2,a2,A.bV(B.dG,a8,a2,20),a2,new A.aBx(b0),a2,a2,a2,a2),A.a2(a3,a2,a2,a2,a2,a2,A.ay(a2,a2,a8,a2,a2,a2,a2,a2,a2,a2,a2,18,a2,a2,B.u,a2,a2,!0,a2,a2,a2,a2,a2,a2,a2,a2),a2,a2,a2)),a6,B.eb,a2,!1)
+if(a1.e)return A.hq(A.m4(a2,a7,!0,0.5,a2,A.c2(a2,a2,a2,A.bV(B.dG,a8,a2,20),a2,new A.aBx(b0),a2,a2,a2,a2),A.a2(a3,a2,a2,a2,a2,a2,A.ay(a2,a2,a8,a2,a2,a2,a2,a2,a2,a2,a2,18,a2,a2,B.u,a2,a2,!0,a2,a2,a2,a2,a2,a2,a2,a2),a2,a2,a2)),a6,A.aSkList("profile"),a2,!1)
 s=a1.d
 if(s==null)return A.hq(A.m4(a2,a7,!0,0.5,a2,A.c2(a2,a2,a2,A.bV(B.dG,a8,a2,20),a2,new A.aBy(b0),a2,a2,a2,a2),A.a2(a3,a2,a2,a2,a2,a2,A.ay(a2,a2,a8,a2,a2,a2,a2,a2,a2,a2,a2,18,a2,a2,B.u,a2,a2,!0,a2,a2,a2,a2,a2,a2,a2,a2),a2,a2,a2)),a6,A.cn(A.bm(A.b([B.abp,B.bM,A.a2("Kh\xf4ng th\u1ec3 t\u1ea3i th\xf4ng tin h\u1ed3 s\u01a1.",a2,a2,a2,a2,a2,A.ay(a2,a2,a8,a2,a2,a2,a2,a2,a2,a2,a2,16,a2,a2,B.u,a2,a2,!0,a2,a2,a2,a2,a2,a2,a2,a2),a2,a2,a2),B.cY,A.OX(B.abV,B.axJ,a1.gajj(),A.hV(a2,a2,B.o,a2,a2,a2,a2,a2,a2,B.f,a2,a2,a2,a2,new A.bg(A.ag(12),B.k),a2,a2,a2,a2))],t.p),B.l,B.bw,B.p),a2,a2),a2,!1)
 s=J.Z(s,"fullName")
@@ -113866,6 +113878,140 @@ $.getThemeBgDecoration=function(isDark){
     }
   }
   return $._themeBgDecorations[th] || null;
+};
+
+
+
+
+A.aSkList = function(type, isDark) {
+  try {
+    var d = isDark != null ? isDark : (typeof window !== 'undefined' && window.localStorage && window.localStorage.getItem('flutter.is_dark_mode') === 'true');
+    var cBase = d ? new A.q(4280166715) : new A.q(4294047225);
+    var cShimmer = d ? new A.q(4281549141) : new A.q(4293059824);
+    var cAccent = d ? new A.q(4282865001) : new A.q(4291548641);
+
+    function sBox(w, h, r, col, isCircle) {
+      var shape = isCircle ? B.a8 : B.t;
+      var radius = isCircle ? null : A.ag(r || 6);
+      var deco = new A.ak(col || cShimmer, null, null, radius, null, null, shape);
+      var inner = A.a5(null, null, null, null, null, deco, null, w, null, null, null, null, h);
+      return new A.cv(w, h, inner, null);
+    }
+    function spaceW(w) { return new A.cv(w, null, null, null); }
+    function spaceH(h) { return new A.cv(null, h, null, null); }
+
+    var rows = [];
+
+    // Message bubbles skeleton for chat room!
+    if (type === "messages") {
+      var myCol = d ? new A.q(4280436853) : new A.q(4292274175); // Soft blue bubble
+      var avCol = d ? new A.q(4281549141) : new A.q(4291548641);
+
+      function leftRow(w, h, hasAv) {
+        var items = [];
+        if (hasAv) {
+          items.push(sBox(32, 32, 16, avCol, true));
+          items.push(spaceW(8));
+        } else {
+          items.push(spaceW(40));
+        }
+        items.push(sBox(w, h, 18, cShimmer, false));
+        var row = A.b9(A.b(items, t.p), B.dw, B.m, B.p);
+        return new A.bc(new A.a7(16, 5, 16, 5), new A.cv(null, h + 10, row, null), null);
+      }
+
+      function rightRow(w, h) {
+        var bubble = sBox(w, h, 18, myCol, false);
+        var row = A.b9(A.b([bubble], t.p), B.dw, B.ev, B.p);
+        return new A.bc(new A.a7(16, 5, 16, 5), new A.cv(null, h + 10, row, null), null);
+      }
+
+      rows.push(leftRow(180, 38, true));
+      rows.push(leftRow(240, 52, false));
+      rows.push(rightRow(160, 38));
+      rows.push(rightRow(210, 44));
+      rows.push(leftRow(150, 38, true));
+      rows.push(rightRow(190, 38));
+      rows.push(leftRow(220, 42, true));
+
+      return A.bm(A.b(rows, t.p), B.m, B.l, B.G);
+    } else if (type === "contacts") {
+      for (var i = 0; i < 7; i++) {
+        var av = sBox(48, 48, 24, cShimmer, true);
+        var nameW = 110 + ((i * 23) % 60);
+        var userW = 70 + ((i * 17) % 40);
+        var colInfo = A.bm(A.b([
+          sBox(nameW, 14, 4, cShimmer, false),
+          spaceH(8),
+          sBox(userW, 11, 4, cBase, false)
+        ], t.p), B.m, B.l, B.G);
+        var btn = sBox(72, 30, 15, cShimmer, false);
+        var rChildren = [av, spaceW(12), A.dn(colInfo, 1), spaceW(10), btn];
+        var row = A.b9(A.b(rChildren, t.p), B.l, B.l, B.p);
+        var rowContainer = new A.cv(null, 68, row, null);
+        rows.push(new A.bc(new A.a7(16, 6, 16, 6), rowContainer, null));
+      }
+    } else if (type === "chats") {
+      for (var i = 0; i < 7; i++) {
+        var av = sBox(52, 52, 26, cShimmer, true);
+        var nameW = 120 + ((i * 29) % 70);
+        var msgW = 180 + ((i * 37) % 90);
+        var colInfo = A.bm(A.b([
+          sBox(nameW, 15, 4, cShimmer, false),
+          spaceH(8),
+          sBox(msgW, 12, 4, cBase, false)
+        ], t.p), B.m, B.l, B.G);
+        var timeBox = sBox(36, 10, 4, cBase, false);
+        var rChildren = [av, spaceW(12), A.dn(colInfo, 1), spaceW(10), timeBox];
+        var row = A.b9(A.b(rChildren, t.p), B.l, B.l, B.p);
+        var rowContainer = new A.cv(null, 72, row, null);
+        rows.push(new A.bc(new A.a7(16, 6, 16, 6), rowContainer, null));
+      }
+    } else if (type === "requests") {
+      for (var i = 0; i < 4; i++) {
+        var av = sBox(48, 48, 24, cShimmer, true);
+        var nameW = 110 + ((i * 20) % 50);
+        var colInfo = A.bm(A.b([
+          sBox(nameW, 14, 4, cShimmer, false),
+          spaceH(8),
+          sBox(75, 11, 4, cBase, false)
+        ], t.p), B.m, B.l, B.G);
+        var btn1 = sBox(54, 28, 14, cAccent, false);
+        var btn2 = sBox(54, 28, 14, cBase, false);
+        var rChildren = [av, spaceW(12), A.dn(colInfo, 1), spaceW(8), btn1, spaceW(6), btn2];
+        var row = A.b9(A.b(rChildren, t.p), B.l, B.l, B.p);
+        var rowContainer = new A.cv(null, 68, row, null);
+        rows.push(new A.bc(new A.a7(16, 6, 16, 6), rowContainer, null));
+      }
+    } else if (type === "profile") {
+      var cover = sBox(450, 180, 0, cBase, false);
+      var av = sBox(88, 88, 44, cShimmer, true);
+      var nameBar = sBox(160, 20, 6, cShimmer, false);
+      var bioBar = sBox(220, 14, 4, cBase, false);
+      var actionBtns = A.b9(A.b([
+        sBox(90, 36, 18, cShimmer, false),
+        spaceW(12),
+        sBox(90, 36, 18, cShimmer, false),
+        spaceW(12),
+        sBox(90, 36, 18, cBase, false)
+      ], t.p), B.l, B.l, B.p);
+      rows.push(cover);
+      rows.push(spaceH(16));
+      rows.push(new A.bc(new A.a7(16, 0, 16, 0), A.bm(A.b([av, spaceH(14), nameBar, spaceH(8), bioBar, spaceH(18), actionBtns], t.p), B.m, B.l, B.G), null));
+    } else {
+      for (var i = 0; i < 5; i++) {
+        var av = sBox(48, 48, 24, cShimmer, true);
+        var colInfo = A.bm(A.b([sBox(140, 14, 4, cShimmer, false), spaceH(8), sBox(200, 12, 4, cBase, false)], t.p), B.m, B.l, B.G);
+        var row = A.b9(A.b([av, spaceW(12), A.dn(colInfo, 1)], t.p), B.l, B.l, B.p);
+        rows.push(new A.bc(new A.a7(16, 6, 16, 6), new A.cv(null, 68, row, null), null));
+      }
+    }
+
+    return A.bm(A.b(rows, t.p), B.m, B.l, B.G);
+  } catch (err) {
+    console.error("Error in A.aSkList:", err);
+    return B.eb;
+  }
 };
 
 $.getThemeHeaderColor=function(isDark, defaultCol){

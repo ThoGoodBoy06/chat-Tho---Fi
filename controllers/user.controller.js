@@ -954,6 +954,7 @@ exports.getFriends = async (req, res) => {
     acceptedRequests.forEach((r) => {
       const friend = r.requesterId === userId ? r.receiver : r.requester;
       if (friend && friend.id !== userId) {
+        const hasCustomAvatar = Boolean(friend.avatar && friend.avatar.trim());
         friendMap.set(friend.id, {
           id: friend.id,
           fullName: friend.fullName || friend.username,
@@ -962,7 +963,10 @@ exports.getFriends = async (req, res) => {
           email: friend.email,
           isOnline: friend.isOnline,
           lastActive: friend.lastActive,
-          avatar: `/api/users/${friend.id}/avatar`,
+          avatar: hasCustomAvatar ? `/api/users/${friend.id}/avatar` : null,
+          avatarUrl: hasCustomAvatar ? `/api/users/${friend.id}/avatar` : null,
+          avatar_url: hasCustomAvatar ? `/api/users/${friend.id}/avatar` : null,
+          hasAvatar: hasCustomAvatar,
           status: "FRIEND",
           relationship: "friends",
         });
@@ -999,6 +1003,7 @@ exports.getFriends = async (req, res) => {
           });
 
           for (const friend of friendUsers) {
+            const hasCustomAvatar = Boolean(friend.avatar && friend.avatar.trim());
             friendMap.set(friend.id, {
               id: friend.id,
               fullName: friend.fullName || friend.username,
@@ -1007,7 +1012,10 @@ exports.getFriends = async (req, res) => {
               email: friend.email,
               isOnline: friend.isOnline,
               lastActive: friend.lastActive,
-              avatar: `/api/users/${friend.id}/avatar`,
+              avatar: hasCustomAvatar ? `/api/users/${friend.id}/avatar` : null,
+              avatarUrl: hasCustomAvatar ? `/api/users/${friend.id}/avatar` : null,
+              avatar_url: hasCustomAvatar ? `/api/users/${friend.id}/avatar` : null,
+              hasAvatar: hasCustomAvatar,
               status: "FRIEND",
               relationship: "friends",
             });

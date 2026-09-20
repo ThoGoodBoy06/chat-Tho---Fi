@@ -422,19 +422,23 @@ app.get("/api/users/friends", async(req, res) => {
             },
             include: {
                 requester: {
-                    select: { id: true, fullName: true, isOnline: true },
+                    select: { id: true, fullName: true, username: true, isOnline: true, avatar: true },
                 },
                 receiver: {
-                    select: { id: true, fullName: true, isOnline: true },
+                    select: { id: true, fullName: true, username: true, isOnline: true, avatar: true },
                 },
             },
         });
 
         const friends = friendships.map((f) => {
             const u = f.requesterId === userId ? f.receiver : f.requester;
+            const hasCustomAvatar = Boolean(u.avatar && u.avatar.trim());
             return {
                 ...u,
-                avatar: `/api/users/${u.id}/avatar`,
+                avatar: hasCustomAvatar ? `/api/users/${u.id}/avatar` : null,
+                avatarUrl: hasCustomAvatar ? `/api/users/${u.id}/avatar` : null,
+                avatar_url: hasCustomAvatar ? `/api/users/${u.id}/avatar` : null,
+                hasAvatar: hasCustomAvatar,
             };
         });
         res.json({ success: true, data: friends });

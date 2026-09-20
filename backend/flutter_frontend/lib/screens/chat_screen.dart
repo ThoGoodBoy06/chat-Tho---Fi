@@ -1543,7 +1543,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           // 3. Item Danh sách Chat (ListView.builder with RefreshIndicator)
           Expanded(
             child: provider.isLoadingConversations && provider.conversations.isEmpty
-                ? const Center(child: CircularProgressIndicator(color: Color(0xFF007AFF)))
+                ? _buildConversationSkeletonList(isDark)
                 : RefreshIndicator(
                     color: const Color(0xFF007AFF),
                     onRefresh: () => provider.fetchConversations(),
@@ -2401,26 +2401,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           // C. Messages List #messages
           Expanded(
             child: (provider.isLoadingMessages && provider.messages.isEmpty)
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const SizedBox(
-                          width: 28,
-                          height: 28,
-                          child: CircularProgressIndicator(color: primaryColor, strokeWidth: 2.5),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Đang tải tin nhắn...',
-                          style: TextStyle(
-                            color: isDark ? Colors.white60 : Colors.black45,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
+                ? _buildMessageSkeletonList(isDark)
                 : Builder(
                     builder: (context) {
                       final messageCount = provider.messages.length;
@@ -3109,6 +3090,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     showDialog(
       context: context,
       builder: (context) {
+        final isDark = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
         return AlertDialog(
           backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -3132,7 +3114,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               future: ApiService.getUsers(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(color: Color(0xFF007AFF)));
+                  return _buildContactSkeletonList(isDark);
                 }
                 final users = snapshot.data ?? [];
                 final filteredUsers = users.where((u) => u['id']?.toString() != provider.currentUser?.id).toList();
@@ -3380,6 +3362,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 MaterialPageRoute(builder: (_) => const FriendRequestsScreen()),
               );
               _fetchPendingRequestsCount();
+              if (mounted) {
+                setState(() {
+                  _contactsFuture = ApiService.getFriends();
+                });
+              }
             },
           ),
           ListTile(
@@ -3421,7 +3408,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               future: _contactsFuture ??= ApiService.getFriends(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(color: Color(0xFF0068FF)));
+                  return _buildContactSkeletonList(isDark);
                 }
                 final users = snapshot.data ?? [];
                 final filteredUsers = users.where((u) {
@@ -3497,13 +3484,36 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                             height: 48,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              gradient: _getAvatarGradient(name),
+                              gradient: (u['avatar'] == null || u['avatar'].toString().trim().isEmpty) ? _getAvatarGradient(name) : null,
                             ),
-                            child: Center(
-                              child: Text(
-                                _getInitials(name),
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white, height: 1.0),
-                              ),
+                            child: ClipOval(
+                              child: (u['avatar'] != null && u['avatar'].toString().trim().isNotEmpty)
+                                  ? Image.network(
+                                      ApiService.formatImageUrl(u['avatar'].toString()),
+                                      width: 48,
+                                      height: 48,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Container(
+                                        width: 48,
+                                        height: 48,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          gradient: _getAvatarGradient(name),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            _getInitials(name),
+                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white, height: 1.0),
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                  : Center(
+                                      child: Text(
+                                        _getInitials(name),
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white, height: 1.0),
+                                      ),
+                                    ),
                             ),
                           ),
                           if (isOnline)
@@ -7877,6 +7887,195 @@ class _ReactionDetailSheetState extends State<_ReactionDetailSheet> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  // --- Skeleton Loading Helpers ---
+  Widget _buildSkeletonBox({
+    required double width,
+    required double height,
+    double borderRadius = 4,
+    bool isCircle = false,
+    Color? color,
+    required bool isDark,
+  }) {
+    final defaultColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: color ?? defaultColor,
+        shape: isCircle ? BoxShape.circle : BoxShape.rectangle,
+        borderRadius: isCircle ? null : BorderRadius.circular(borderRadius),
+      ),
+    );
+  }
+
+  Widget _buildConversationSkeletonList(bool isDark) {
+    final baseColor = isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9);
+    final shimmerColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+
+    return ListView.builder(
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: 7,
+      itemBuilder: (context, index) {
+        final nameWidth = 110.0 + ((index * 29) % 70);
+        final msgWidth = 180.0 + ((index * 37) % 90);
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              _buildSkeletonBox(width: 52, height: 52, isCircle: true, color: shimmerColor, isDark: isDark),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSkeletonBox(width: nameWidth, height: 15, borderRadius: 4, color: shimmerColor, isDark: isDark),
+                    const SizedBox(height: 8),
+                    _buildSkeletonBox(width: msgWidth, height: 12, borderRadius: 4, color: baseColor, isDark: isDark),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              _buildSkeletonBox(width: 36, height: 10, borderRadius: 4, color: baseColor, isDark: isDark),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildContactSkeletonList(bool isDark) {
+    final baseColor = isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9);
+    final shimmerColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+
+    return ListView.builder(
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: 7,
+      itemBuilder: (context, index) {
+        final nameWidth = 110.0 + ((index * 23) % 60);
+        final userWidth = 70.0 + ((index * 17) % 40);
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            children: [
+              _buildSkeletonBox(width: 48, height: 48, isCircle: true, color: shimmerColor, isDark: isDark),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSkeletonBox(width: nameWidth, height: 14, borderRadius: 4, color: shimmerColor, isDark: isDark),
+                    const SizedBox(height: 8),
+                    _buildSkeletonBox(width: userWidth, height: 11, borderRadius: 4, color: baseColor, isDark: isDark),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              _buildSkeletonBox(width: 72, height: 30, borderRadius: 15, color: shimmerColor, isDark: isDark),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildNewsSkeletonList(bool isDark) {
+    final baseColor = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final barColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+
+    return ListView.builder(
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: 3,
+      itemBuilder: (context, index) {
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: baseColor,
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  _buildSkeletonBox(width: 70, height: 20, borderRadius: 8, color: barColor, isDark: isDark),
+                  const Spacer(),
+                  _buildSkeletonBox(width: 60, height: 12, borderRadius: 4, color: barColor, isDark: isDark),
+                ],
+              ),
+              const SizedBox(height: 14),
+              _buildSkeletonBox(width: double.infinity, height: 16, borderRadius: 4, color: barColor, isDark: isDark),
+              const SizedBox(height: 8),
+              _buildSkeletonBox(width: 200, height: 16, borderRadius: 4, color: barColor, isDark: isDark),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMessageSkeletonList(bool isDark) {
+    final baseColor = isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0);
+    final myBubbleColor = isDark ? const Color(0xFF0050C8).withOpacity(0.35) : const Color(0xFFD6E7FF);
+    final avatarColor = isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: ListView(
+        physics: const NeverScrollableScrollPhysics(),
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _buildSkeletonBox(width: 32, height: 32, isCircle: true, color: avatarColor, isDark: isDark),
+              const SizedBox(width: 8),
+              _buildSkeletonBox(width: 180, height: 38, borderRadius: 18, color: baseColor, isDark: isDark),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.only(left: 40),
+            child: Row(
+              children: [
+                _buildSkeletonBox(width: 240, height: 50, borderRadius: 18, color: baseColor, isDark: isDark),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              _buildSkeletonBox(width: 160, height: 38, borderRadius: 18, color: myBubbleColor, isDark: isDark),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              _buildSkeletonBox(width: 210, height: 44, borderRadius: 18, color: myBubbleColor, isDark: isDark),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _buildSkeletonBox(width: 32, height: 32, isCircle: true, color: avatarColor, isDark: isDark),
+              const SizedBox(width: 8),
+              _buildSkeletonBox(width: 150, height: 38, borderRadius: 18, color: baseColor, isDark: isDark),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              _buildSkeletonBox(width: 190, height: 38, borderRadius: 18, color: myBubbleColor, isDark: isDark),
+            ],
+          ),
+        ],
       ),
     );
   }

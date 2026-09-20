@@ -119,7 +119,7 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
         iconTheme: IconThemeData(color: textColor),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF0068FF)))
+          ? _buildRequestsSkeleton(isDark)
           : _requests.isEmpty
               ? Center(
                   child: Column(
@@ -258,6 +258,63 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
                     );
                   },
                 ),
+    );
+  }
+
+  Widget _buildRequestsSkeleton(bool isDark) {
+    final baseColor = isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9);
+    final shimmerColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+    final accentColor = isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1);
+
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      itemCount: 4,
+      separatorBuilder: (context, index) => const Divider(height: 1, indent: 76, endIndent: 16),
+      itemBuilder: (context, index) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(color: shimmerColor, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 120 + ((index * 20) % 50),
+                      height: 14,
+                      decoration: BoxDecoration(color: shimmerColor, borderRadius: BorderRadius.circular(4)),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: 75,
+                      height: 11,
+                      decoration: BoxDecoration(color: baseColor, borderRadius: BorderRadius.circular(4)),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                width: 54,
+                height: 28,
+                decoration: BoxDecoration(color: accentColor, borderRadius: BorderRadius.circular(14)),
+              ),
+              const SizedBox(width: 6),
+              Container(
+                width: 54,
+                height: 28,
+                decoration: BoxDecoration(color: baseColor, borderRadius: BorderRadius.circular(14)),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

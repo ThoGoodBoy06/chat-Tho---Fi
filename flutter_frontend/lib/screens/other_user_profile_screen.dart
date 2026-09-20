@@ -264,9 +264,7 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen> {
           title: Text('Trang cá nhân', style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 18)),
           centerTitle: true,
         ),
-        body: const Center(
-          child: CircularProgressIndicator(color: Color(0xFF0068FF)),
-        ),
+        body: _buildProfileSkeleton(isDark),
       );
     }
 
@@ -747,5 +745,89 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen> {
         ),
       );
     }
+  }
+
+  Widget _buildProfileSkeleton(bool isDark) {
+    final baseColor = isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9);
+    final shimmerColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+
+    return SingleChildScrollView(
+      physics: const NeverScrollableScrollPhysics(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            height: 200,
+            color: baseColor,
+          ),
+          Transform.translate(
+            offset: const Offset(0, -45),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 90,
+                    height: 90,
+                    decoration: BoxDecoration(
+                      color: shimmerColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                        width: 4,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 170,
+                    height: 22,
+                    decoration: BoxDecoration(color: shimmerColor, borderRadius: BorderRadius.circular(6)),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: 110,
+                    height: 14,
+                    decoration: BoxDecoration(color: baseColor, borderRadius: BorderRadius.circular(4)),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    height: 14,
+                    decoration: BoxDecoration(color: baseColor, borderRadius: BorderRadius.circular(4)),
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    width: 240,
+                    height: 14,
+                    decoration: BoxDecoration(color: baseColor, borderRadius: BorderRadius.circular(4)),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          height: 42,
+                          decoration: BoxDecoration(color: shimmerColor, borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Container(
+                          height: 42,
+                          decoration: BoxDecoration(color: baseColor, borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
