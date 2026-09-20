@@ -28,8 +28,8 @@ if ('caches' in window) {
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
   <!-- High Priority Preloads for Instant Native Startup -->
-  <link rel="preload" href="flutter_bootstrap.js?v=v_media_1789892863292" as="script">
-  <link rel="preload" href="main.dart.js?v=v_media_1789892863292" as="script">
+  <link rel="preload" href="flutter_bootstrap.js?v=v_sk_1789907200000" as="script">
+  <link rel="preload" href="main.dart.js?v=v_sk_1789907200000" as="script">
   <link rel="preload" href="canvaskit/canvaskit.wasm" as="fetch" crossorigin="anonymous">
   <link rel="preload" href="/tho_fi_logo_transparent.png" as="image">
   <!-- Official Messenger Reaction Emoji Preloads -->
@@ -1897,7 +1897,7 @@ if ('caches' in window) {
   <script>
     window.flutterWebRenderer = "canvaskit";
   </script>
-  <script src="flutter_bootstrap.js?v=v_media_1789892863292" async></script>
+  <script src="flutter_bootstrap.js?v=v_sk_1789907200000" async></script>
 
   <script id="messenger-theme-picker-script">
     window._openMessengerThemePicker = function (convId, convName) {
@@ -2622,7 +2622,7 @@ if ('caches' in window) {
   <script>
     // ============================================================
     // [Call Sync V14] Standalone polling + dismiss
-    // Không phụ thuộc main.dart.js?v=v_media_1789892863292'';
+    // Không phụ thuộc main.dart.js?v=v_sk_1789907200000'';
         var calleeId = window._currentUserId || (typeof $ !== 'undefined' && $.aLM) || '';
         if (!callerId && !calleeId) return;
         if (window._activeCallShowing) { _stopPoll(); return; }
@@ -2673,7 +2673,7 @@ if ('caches' in window) {
         }
       }
 
-      // Expose ra global để main.dart.js?v=v_media_1789892863292'[Call-V14] App visible lại, kiểm tra trạng thái cuộc gọi...');
+      // Expose ra global để main.dart.js?v=v_sk_1789907200000'[Call-V14] App visible lại, kiểm tra trạng thái cuộc gọi...');
           _doCallStatusCheck();
           // Cũng restart poll nếu đã bị dừng
           if (!_pollInterval) _startPoll();
