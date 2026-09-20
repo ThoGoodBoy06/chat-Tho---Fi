@@ -25,14 +25,6 @@ import 'other_user_profile_screen.dart';
 import 'profile_tab.dart';
 import '../utils/web_helpers.dart';
 
-
-/// Decode avatar at max 100x100 to prevent WebGL GPU memory overflow and frame drops
-ImageProvider? getSafeAvatarProvider(String? url) {
-  if (url == null || url.trim().isEmpty) return null;
-  final formatted = ApiService.formatImageUrl(url.trim());
-  return ResizeImage(NetworkImage(formatted), width: 100, height: 100);
-}
-
 class ChatScreen extends StatefulWidget {
   final VoidCallback onLogout;
   const ChatScreen({Key? key, required this.onLogout}) : super(key: key);
@@ -44,10 +36,8 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   int _currentTabIndex = 0; // 0: Tin nhắn, 1: Danh bạ, 2: Tin tức, 3: Trợ lý AI, 4: Cá nhân
   final _textController = TextEditingController();
-  final _scrollController = ScrollController();
+  final _scrollController = ScrollController(initialScrollOffset: 999999.0);
   final _inputFocusNode = FocusNode();
-  final ValueNotifier<bool> _isTypingNotifier = ValueNotifier<bool>(false);
-  final ValueNotifier<bool> _isAttachmentMenuOpenNotifier = ValueNotifier<bool>(false);
   bool _isAttachmentMenuOpen = false;
   bool _isTyping = false;
   String _searchQuery = '';
@@ -63,7 +53,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   bool _isDialogClosed = false;
   StreamSubscription? _incomingEndSub;
   bool _isStartingCall = false;
-  static final Map<String, Uint8List> _recentSentImageBytes = {};
 
   // AI Assistant Chat state
   final List<Map<String, String>> _aiMessages = [
@@ -120,6 +109,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final chatProv = Provider.of<ChatProvider>(context, listen: false);
+        chatProv.onConversationSelected = () {
+          _jumpToBottom();
+        };
+      }
+    });
     _contactsFuture = ApiService.getFriends();
     WidgetsBinding.instance.addObserver(this);
     if (kIsWeb) {
@@ -223,10 +220,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   void _onTextChanged() {
     final text = _textController.text;
     final typing = text.trim().isNotEmpty;
-    if (typing != _isTypingNotifier.value) {
-      _isTypingNotifier.value = typing;
+    if (typing != _isTyping) {
+      setState(() => _isTyping = typing);
     }
-    _isTyping = typing;
 
     final provider = Provider.of<ChatProvider>(context, listen: false);
 
@@ -258,8 +254,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     } catch (_) {}
     _textController.removeListener(_onTextChanged);
     _scrollController.removeListener(_onScroll);
-    _isTypingNotifier.dispose();
-    _isAttachmentMenuOpenNotifier.dispose();
     _textController.dispose();
     _aiTextController.dispose();
     _searchController.dispose();
@@ -306,357 +300,81 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   Widget _buildReactionBadges(
     Map<String, String> reactions, {
-    MessageModel? message,
-    VoidCallback? onTap,
     double fontSize = 11,
     bool isOwnMessage = false,
     EdgeInsetsGeometry? margin,
+    VoidCallback? onTap,
   }) {
     if (reactions.isEmpty) return const SizedBox.shrink();
     final aggregated = _aggregateReactions(reactions);
     final entries = aggregated.entries.toList();
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap ?? (message != null ? () => _showReactionDetailsModal(context, message) : null),
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: Container(
-          margin: margin ?? EdgeInsets.zero,
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.12),
-                blurRadius: 4,
-                offset: const Offset(0, 1),
-              ),
-            ],
+    final badge = Container(
+      margin: margin ?? EdgeInsets.zero,
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: entries.map((e) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 1),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    buildEmojiImage(e.key, size: fontSize + 5),
-                    if (e.value > 1)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 1),
-                        child: Text(
-                          '${e.value}',
-                          style: TextStyle(
-                            fontSize: fontSize - 2,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF65676B),
-                          ),
-                        ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: entries.map((e) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 1),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                buildEmojiImage(e.key, size: fontSize + 5),
+                if (e.value > 1)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 2),
+                    child: Text(
+                      '${e.value}',
+                      style: TextStyle(
+                        fontSize: fontSize - 2,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF65676B),
                       ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
-        ),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        }).toList(),
       ),
     );
+
+    if (onTap != null) {
+      return MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: badge,
+          ),
+        ),
+      );
+    }
+    return badge;
   }
 
-  void _showReactionDetailsModal(BuildContext context, MessageModel message) {
+  void _showReactionDetailDialog(BuildContext context, MessageModel msg, ChatProvider provider) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (modalCtx) {
-        final chatProv = Provider.of<ChatProvider>(context, listen: false);
-        final currentUserId = chatProv.currentUserId;
-        final conv = chatProv.selectedConversation;
-        String activeTab = 'ALL';
-
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            // Lấy dữ liệu cảm xúc cập nhật nhất của tin nhắn
-            final currentMsg = chatProv.messages.firstWhere(
-              (m) => m.id == message.id,
-              orElse: () => message,
-            );
-            final reactions = currentMsg.reactions;
-
-            if (reactions.isEmpty) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (Navigator.of(modalCtx).canPop()) {
-                  Navigator.of(modalCtx).pop();
-                }
-              });
-              return const SizedBox.shrink();
-            }
-
-            final aggregated = _aggregateReactions(reactions);
-
-            // Xây dựng danh sách người thả cảm xúc
-            final membersList = conv?.members ?? [];
-            final List<Map<String, dynamic>> reactorItems = [];
-
-            reactions.forEach((uid, emoji) {
-              final isMe = uid == currentUserId;
-              UserModel? member;
-              try {
-                member = membersList.firstWhere((m) => m.id == uid);
-              } catch (_) {}
-
-              final rawName = member?.fullName ?? 'Người dùng';
-              final displayName = isMe ? 'Bạn' : (member?.nickname ?? rawName);
-
-              reactorItems.add({
-                'userId': uid,
-                'displayName': displayName,
-                'avatar': member?.avatar,
-                'emoji': emoji,
-                'isMe': isMe,
-              });
-            });
-
-            // Sắp xếp 'Bạn' lên đầu
-            reactorItems.sort((a, b) {
-              if (a['isMe'] == true && b['isMe'] != true) return -1;
-              if (a['isMe'] != true && b['isMe'] == true) return 1;
-              return 0;
-            });
-
-            final filteredItems = activeTab == 'ALL'
-                ? reactorItems
-                : reactorItems.where((it) => it['emoji'] == activeTab).toList();
-
-            return Container(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.75,
-              ),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 20,
-                    offset: Offset(0, -4),
-                  ),
-                ],
-              ),
-              child: SafeArea(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Thanh kéo tay cầm
-                    Container(
-                      width: 36,
-                      height: 4,
-                      margin: const EdgeInsets.only(top: 10, bottom: 6),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFCBD5E1),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-
-                    // Tiêu đề & Nút đóng
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Cảm xúc',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF0F172A),
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: () => Navigator.of(modalCtx).pop(),
-                            child: Container(
-                              width: 32,
-                              height: 32,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFF1F5F9),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.close, size: 18, color: Color(0xFF64748B)),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Thanh Tabs phân loại Emoji
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                      child: Row(
-                        children: [
-                          ChoiceChip(
-                            label: Text('Tất cả ${reactions.length}'),
-                            selected: activeTab == 'ALL',
-                            selectedColor: const Color(0xFF0084FF),
-                            labelStyle: TextStyle(
-                              color: activeTab == 'ALL' ? Colors.white : const Color(0xFF475569),
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                            ),
-                            backgroundColor: const Color(0xFFF1F5F9),
-                            onSelected: (_) => setModalState(() => activeTab = 'ALL'),
-                          ),
-                          const SizedBox(width: 8),
-                          ...aggregated.entries.map((entry) {
-                            final isSel = activeTab == entry.key;
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: ChoiceChip(
-                                label: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    buildEmojiImage(entry.key, size: 16),
-                                    const SizedBox(width: 4),
-                                    Text('${entry.value}'),
-                                  ],
-                                ),
-                                selected: isSel,
-                                selectedColor: const Color(0xFF0084FF),
-                                labelStyle: TextStyle(
-                                  color: isSel ? Colors.white : const Color(0xFF475569),
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                ),
-                                backgroundColor: const Color(0xFFF1F5F9),
-                                onSelected: (_) => setModalState(() => activeTab = entry.key),
-                              ),
-                            );
-                          }),
-                        ],
-                      ),
-                    ),
-
-                    const Divider(height: 1, color: Color(0xFFF1F5F9)),
-
-                    // Danh sách người thả cảm xúc
-                    Flexible(
-                      child: ListView.separated(
-                        shrinkWrap: true,
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        itemCount: filteredItems.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF8FAFC)),
-                        itemBuilder: (context, index) {
-                          final item = filteredItems[index];
-                          final isMe = item['isMe'] == true;
-                          final emoji = item['emoji'] as String;
-
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: Row(
-                              children: [
-                                // Avatar với badge emoji góc phải
-                                Stack(
-                                  clipBehavior: Clip.none,
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 22,
-                                      backgroundColor: const Color(0xFFE2E8F0),
-                                      backgroundImage: (item['avatar'] != null && (item['avatar'] as String).isNotEmpty)
-                                          ? NetworkImage(item['avatar'] as String)
-                                          : null,
-                                      child: (item['avatar'] == null || (item['avatar'] as String).isEmpty)
-                                          ? Text(
-                                              (item['displayName'] as String).isNotEmpty
-                                                  ? (item['displayName'] as String)[0].toUpperCase()
-                                                  : 'U',
-                                              style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF334155)),
-                                            )
-                                          : null,
-                                    ),
-                                    Positioned(
-                                      right: -2,
-                                      bottom: -2,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(2),
-                                        decoration: const BoxDecoration(
-                                          color: Colors.white,
-                                          shape: BoxShape.circle,
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black12,
-                                              blurRadius: 3,
-                                            ),
-                                          ],
-                                        ),
-                                        child: buildEmojiImage(emoji, size: 14),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(width: 14),
-
-                                // Tên hiển thị
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        item['displayName'] as String,
-                                        style: const TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w600,
-                                          color: Color(0xFF0F172A),
-                                        ),
-                                      ),
-                                      if (isMe)
-                                        const Text(
-                                          'Nhấn để gỡ cảm xúc',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Color(0xFF94A3B8),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-
-                                // Nút Gỡ (Chỉ hiện cho chính mình)
-                                if (isMe)
-                                  InkWell(
-                                    onTap: () {
-                                      chatProv.reactToMessage(message.id, emoji);
-                                      setModalState(() {});
-                                    },
-                                    borderRadius: BorderRadius.circular(16),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFFEE2E2),
-                                        borderRadius: BorderRadius.circular(16),
-                                      ),
-                                      child: const Text(
-                                        'Gỡ',
-                                        style: TextStyle(
-                                          color: Color(0xFFDC2626),
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 13,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
+      barrierColor: Colors.black.withOpacity(0.35),
+      builder: (sheetCtx) {
+        return _ReactionDetailSheet(
+          initialMsg: msg,
         );
       },
     );
@@ -686,16 +404,19 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   int _lastMessageCount = 0;
 
   void _jumpToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    int frameCount = 0;
+    void doJump() {
       if (_scrollController.hasClients) {
-        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_scrollController.hasClients) {
-            _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-          }
-        });
+        final maxScroll = _scrollController.position.maxScrollExtent;
+        if (maxScroll > 0) {
+          _scrollController.jumpTo(maxScroll);
+        }
       }
-    });
+      if (frameCount++ < 12) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => doJump());
+      }
+    }
+    doJump();
   }
 
   void _scrollToBottom() {
@@ -724,40 +445,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     final text = _textController.text.trim();
     final sendText = text.isEmpty ? '👍' : text;
     _textController.clear();
-    _isTypingNotifier.value = false;
-    _isTyping = false;
     _debounceTimer?.cancel();
     provider.emitStopTyping();
     provider.sendMessage(sendText);
     _scrollToBottom();
-  }
-
-    Widget _buildQuickReactionButton(BuildContext context, MessageModel msg, ChatProvider provider, bool isMe) {
-    if (msg.isRecalled) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      child: Tooltip(
-        message: 'Bày tỏ cảm xúc',
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () => _showMessengerStyleContextMenu(context, msg, provider, isMe),
-          child: Container(
-            width: 28,
-            height: 28,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.05),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.sentiment_satisfied_alt_outlined,
-              size: 17,
-              color: Color(0xFF65676B),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 
   void _showMessengerStyleContextMenu(BuildContext context, MessageModel msg, ChatProvider provider, bool isMe) {
@@ -768,11 +459,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       barrierDismissible: true,
       barrierLabel: 'Dismiss',
       barrierColor: Colors.transparent,
-      transitionDuration: const Duration(milliseconds: 250),
+      transitionDuration: const Duration(milliseconds: 200),
       transitionBuilder: (dialogCtx, anim1, anim2, child) {
         final curvedScale = CurvedAnimation(
           parent: anim1,
-          curve: const Cubic(0.18, 1.0, 0.04, 1.0),
+          curve: const Cubic(0.18, 1.0, 0.25, 1.0),
           reverseCurve: Curves.easeInCubic,
         );
         final curvedFade = CurvedAnimation(
@@ -781,7 +472,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           reverseCurve: Curves.easeInCubic,
         );
         return ScaleTransition(
-          scale: Tween<double>(begin: 0.88, end: 1.0).animate(curvedScale),
+          scale: Tween<double>(begin: 0.91, end: 1.0).animate(curvedScale),
           child: FadeTransition(
             opacity: curvedFade,
             child: child,
@@ -789,40 +480,41 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         );
       },
       pageBuilder: (dialogContext, anim1, anim2) {
-        return Scaffold(
-          backgroundColor: Colors.transparent,
-          body: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => Navigator.pop(dialogContext),
-            child: Stack(
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            if (Navigator.of(dialogContext).canPop()) {
+              Navigator.of(dialogContext).pop();
+            }
+          },
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            body: Stack(
               children: [
-                // Nền làm mờ toàn màn hình & Chạm để đóng
+                // Nền làm mờ thủy tinh (Frosted Glass) mượt mà & Chạm để đóng
                 Positioned.fill(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => Navigator.pop(dialogContext),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                      child: Container(
-                        color: Colors.black.withOpacity(0.22),
-                      ),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                    child: Container(
+                      color: Colors.black.withOpacity(0.24),
                     ),
                   ),
                 ),
                 // Căn lề sát mép màn hình (Bên trái cho đối phương, Bên phải cho tin nhắn của mình)
-                GestureDetector(
-                  behavior: HitTestBehavior.translucent,
-                  onTap: () => Navigator.pop(dialogContext),
-                  child: Align(
-                alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 30),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                      children: [
-                        // 1. Thanh thả cảm xúc phía trên (Y chang hình: Emojis + Camera xanh + Nút cộng)
+                Align(
+                  alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 30),
+                    child: GestureDetector(
+                      // Chặn sự kiện click trên menu để không bị đóng nhầm
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {},
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                          children: [
+                            // 1. Thanh thả cảm xúc phía trên (Y chang hình: Emojis + Camera xanh + Nút cộng)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
@@ -953,9 +645,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                     key: ValueKey('ctx_reactions_${msg.reactions.hashCode}'),
                                     child: _buildReactionBadges(
                                       msg.reactions,
-                                      message: msg,
                                       fontSize: 12,
                                       isOwnMessage: isMe,
+                                      onTap: () {
+                                        Navigator.pop(dialogContext);
+                                        _showReactionDetailDialog(context, msg, provider);
+                                      },
                                     ),
                                   ),
                                 ),
@@ -1005,29 +700,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                   );
                                 },
                               ),
-                              ListTile(
-                                dense: true,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-                                title: const Text('Chuyển tiếp', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Color(0xFF0F172A))),
-                                trailing: const Icon(Icons.shortcut_rounded, color: Color(0xFF0F172A), size: 20),
-                                onTap: () {
-                                  Navigator.pop(dialogContext);
-                                  final mediaUrl = isVideo
-                                      ? (msg.videoUrl != null && msg.videoUrl!.isNotEmpty ? msg.videoUrl! : msg.content)
-                                      : (msg.imageUrl != null && msg.imageUrl!.isNotEmpty ? msg.imageUrl! : msg.content);
-                                  final formatted = (isImg || isVideo) ? ApiService.formatImageUrl(mediaUrl) : '';
-                                  if (kIsWeb) {
-                                    html.window.callMethod('openForwardModal', [
-                                      {
-                                        'messageIds': [msg.id],
-                                        'urls': formatted.isNotEmpty ? [formatted] : [],
-                                        'content': msg.content,
-                                      }
-                                    ]);
-                                  }
-                                },
-                              ),
-                              const Divider(height: 1, color: Color(0xFFE2E8F0)),
                               if (isImg || isVideo) ...[
                                 const Divider(height: 1, color: Color(0xFFE2E8F0)),
                                 ListTile(
@@ -1081,17 +753,17 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                             ],
                           ),
                         ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-              ),
             ],
           ),
-          ),
-        );
-      },
+        ),
+      );
+    },
     );
   }
 
@@ -1488,10 +1160,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                   child: InkWell(
                     onTap: () {
                       setState(() => _currentTabIndex = index);
-                      if (index == 1) {
-                        _fetchPendingRequestsCount();
-                        _contactsFuture = ApiService.getFriends();
-                      } else if (index == 3) {
+                      if (index == 3) {
                         _loadAiHistory(forceReload: true);
                       }
                     },
@@ -1954,7 +1623,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                               : null,
                                           image: (conv.avatar != null && conv.avatar!.isNotEmpty)
                                               ? DecorationImage(
-                                                  image: getSafeAvatarProvider(conv.avatar)!,
+                                                  image: NetworkImage(ApiService.formatImageUrl(conv.avatar!)),
                                                   fit: BoxFit.cover,
                                                 )
                                               : null,
@@ -2372,46 +2041,20 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildMessageStatusIndicator(MessageModel msg, ConversationModel? conv, bool isLastSentMessage) {
-    // 0. Nếu tin nhắn gặp lỗi gửi, hiển thị chấm than đỏ cho phép bấm để gửi lại (áp dụng mọi vị trí)
-    if (msg.status == 'error') {
-      return GestureDetector(
-        onTap: () {
-          final provider = Provider.of<ChatProvider>(context, listen: false);
-          provider.retrySendMessage(msg);
-        },
-        child: Container(
-          margin: const EdgeInsets.only(top: 3, right: 2),
-          padding: const EdgeInsets.all(2),
-          decoration: const BoxDecoration(
-            color: Color(0xFFE53935),
-            shape: BoxShape.circle,
-          ),
-          child: const Tooltip(
-            message: 'Không thể gửi. Bấm để gửi lại',
-            child: Icon(Icons.priority_high_rounded, size: 10, color: Colors.white),
-          ),
-        ),
-      );
-    }
-
     if (!isLastSentMessage) return const SizedBox.shrink();
 
-    // 1. Trạng thái Đang gửi (Optimistic UI - Messenger style vòng tròn mỏng xoay nhẹ)
-    if (msg.status == 'sending' || msg.id.startsWith('temp_') || msg.id.startsWith('optimistic-') || msg.id.startsWith('uploading-')) {
+    // 0. Trạng thái Đang gửi (Optimistic UI)
+    if (msg.id.startsWith('optimistic-') || msg.id.startsWith('uploading-')) {
       return Container(
         margin: const EdgeInsets.only(top: 3, right: 2),
         width: 14,
         height: 14,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(color: const Color(0xFF94A3B8).withOpacity(0.5), width: 1.2),
-        ),
         child: const Center(
           child: SizedBox(
-            width: 8,
-            height: 8,
+            width: 10,
+            height: 10,
             child: CircularProgressIndicator(
-              strokeWidth: 1.2,
+              strokeWidth: 1.5,
               valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF94A3B8)),
             ),
           ),
@@ -2490,7 +2133,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         ),
         child: CircleAvatar(
           radius: 8,
-          backgroundImage: getSafeAvatarProvider(fullUrl),
+          backgroundImage: NetworkImage(fullUrl),
           backgroundColor: const Color(0xFFE4E6EB),
         ),
       );
@@ -2568,6 +2211,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       _lastOpenedConversationId = conv.id;
       _expandedTimestampMessageIds.clear();
       _showEmojiPicker = false;
+      _jumpToBottom();
     }
 
     final isDark = Provider.of<ThemeProvider>(context).isDarkMode;
@@ -2656,7 +2300,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                             CircleAvatar(
                               radius: 20,
                               backgroundColor: primaryColor,
-                              backgroundImage: getSafeAvatarProvider(conv.avatar),
+                              backgroundImage: (conv.avatar != null && conv.avatar!.isNotEmpty)
+                                  ? NetworkImage(conv.avatar!)
+                                  : null,
                               child: (conv.avatar == null || conv.avatar!.isEmpty)
                                   ? Text(
                                       conv.name.isNotEmpty ? conv.name[0].toUpperCase() : 'U',
@@ -2777,6 +2423,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                   )
                 : Builder(
                     builder: (context) {
+                      final messageCount = provider.messages.length;
+                      if (_lastMessageCount != messageCount && messageCount > 0) {
+                        _lastMessageCount = messageCount;
+                        _jumpToBottom();
+                      }
                       final lastSentMessageIndex = provider.messages.lastIndexWhere((m) => m.senderId == provider.currentUser?.id);
                       final typingUser = provider.getTypingUserForSelectedConversation();
                       final hasTyping = typingUser != null && typingUser.isNotEmpty;
@@ -2803,9 +2454,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                         itemCount: provider.messages.length + (hasTyping ? 1 : 0),
                         itemBuilder: (context, index) {
                           if (index == provider.messages.length) {
-                            return RepaintBoundary(
-                              key: const ValueKey('typing_indicator_active'),
-                              child: Padding(
+                            return Padding(
                               padding: const EdgeInsets.only(bottom: 8, top: 4),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -2813,7 +2462,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                   CircleAvatar(
                                     radius: 14,
                                     backgroundColor: primaryColor,
-                                    backgroundImage: getSafeAvatarProvider(conv.avatar),
+                                    backgroundImage: (conv.avatar != null && conv.avatar!.isNotEmpty)
+                                        ? NetworkImage(conv.avatar!)
+                                        : null,
                                     child: (conv.avatar == null || conv.avatar!.isEmpty)
                                         ? Text(
                                             conv.name.isNotEmpty ? conv.name[0].toUpperCase() : 'U',
@@ -2847,48 +2498,15 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                   ),
                                 ],
                               ),
-                            ),
                             );
                           }
                           final msg = provider.messages[index];
-
-                          // --- Photo Grid Album Clustering (Messenger & Zalo style) ---
-                          if (_isImageMessage(msg)) {
-                            if (index > 0) {
-                              final prev = provider.messages[index - 1];
-                              if (_isImageMessage(prev) && prev.senderId == msg.senderId && msg.createdAt.difference(prev.createdAt).inMilliseconds.abs() <= 2500) {
-                                return const SizedBox.shrink();
-                              }
-                            }
-                            final cluster = <MessageModel>[msg];
-                            for (int j = index + 1; j < provider.messages.length; j++) {
-                              final next = provider.messages[j];
-                              if (_isImageMessage(next) && next.senderId == msg.senderId && next.createdAt.difference(cluster.last.createdAt).inMilliseconds.abs() <= 2500) {
-                                cluster.add(next);
-                              } else {
-                                break;
-                              }
-                            }
-                            if (cluster.length >= 2) {
-                              final isMe = msg.senderId == provider.currentUser?.id;
-                              final isLastSent = (index + cluster.length - 1 == lastSentMessageIndex);
-                              final showTime = index == 0 || (index > 0 && msg.createdAt.difference(provider.messages[index - 1].createdAt).inMinutes > 30);
-                              return RepaintBoundary(
-                                key: ValueKey('album_${msg.id}_${cluster.length}'),
-                                child: _buildAlbumMessageItem(cluster, isMe, conv, provider, showTime, isLastSent),
-                              );
-                            }
-                          }
-
                           final isMe = msg.senderId == provider.currentUser?.id;
                           final isLastSentMessage = (index == lastSentMessageIndex);
                           final showTime = index == 0 || (index > 0 && msg.createdAt.difference(provider.messages[index - 1].createdAt).inMinutes > 30);
 
                       if (msg.type == 'system') {
-                        return RepaintBoundary(
-                          key: ValueKey('system_${msg.id}'),
-                          child: _buildSystemMessage(msg, conv, provider.currentUser),
-                        );
+                        return _buildSystemMessage(msg, conv, provider.currentUser);
                       }
 
                       final lowerContent = msg.content.toLowerCase();
@@ -2898,9 +2516,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                       );
 
                       if (isCallMsg) {
-                        return RepaintBoundary(
-                          key: ValueKey('call_${msg.id}'),
-                          child: Column(
+                        return Column(
                           children: [
                             if (showTime)
                               Padding(
@@ -2922,7 +2538,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                     CircleAvatar(
                                       radius: 14,
                                       backgroundColor: primaryColor,
-                                      backgroundImage: getSafeAvatarProvider(conv.avatar),
+                                      backgroundImage: (conv.avatar != null && conv.avatar!.isNotEmpty)
+                                          ? NetworkImage(conv.avatar!)
+                                          : null,
                                       child: (conv.avatar == null || conv.avatar!.isEmpty)
                                           ? Text(conv.name.isNotEmpty ? conv.name[0].toUpperCase() : 'U', style: const TextStyle(fontSize: 10, color: Colors.white))
                                           : null,
@@ -2936,12 +2554,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                               ),
                             ),
                           ],
-                        ));
+                        );
                       }
 
-                      return RepaintBoundary(
-                        key: ValueKey('msg_${msg.id}'),
-                        child: Column(
+                      return Column(
                         children: [
                           if (showTime)
                             Padding(
@@ -2975,16 +2591,15 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                       child: CircleAvatar(
                                         radius: 14,
                                         backgroundColor: primaryColor,
-                                        backgroundImage: getSafeAvatarProvider(conv.avatar),
+                                        backgroundImage: (conv.avatar != null && conv.avatar!.isNotEmpty)
+                                            ? NetworkImage(conv.avatar!)
+                                            : null,
                                         child: (conv.avatar == null || conv.avatar!.isEmpty)
                                             ? Text(conv.name.isNotEmpty ? conv.name[0].toUpperCase() : 'U', style: const TextStyle(fontSize: 10, color: Colors.white))
                                             : null,
                                       ),
                                     ),
                                     const SizedBox(width: 8),
-                                  ],
-                                  if (isMe) ...[
-                                    _buildQuickReactionButton(context, msg, provider, isMe),
                                   ],
                                   Flexible(
                                     child: GestureDetector(
@@ -3000,9 +2615,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                       onLongPress: () => _showMessengerStyleContextMenu(context, msg, provider, isMe),
                                       onSecondaryTapDown: (details) => _showMessengerStyleContextMenu(context, msg, provider, isMe),
                                       onDoubleTapDown: (details) {
-                                        _showFlyingEmoji(context, details.globalPosition, '❤️');
+                                        _showFlyingEmoji(context, details.globalPosition, '👍');
                                       },
-                                      onDoubleTap: () => provider.reactToMessage(msg.id, '❤️'),
+                                      onDoubleTap: () => provider.reactToMessage(msg.id, '👍'),
                                       child: Column(
                                         crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                                         children: [
@@ -3056,8 +2671,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                                       borderRadius: BorderRadius.circular(18),
                                                     ),
                                                     child: msg.isRecalled
-                                                        ? Text(
-                                                            _isImageMessage(msg) ? 'Ảnh đã thu hồi' : 'Tin nhắn đã bị thu hồi',
+                                                        ? const Text(
+                                                            'Tin nhắn đã bị thu hồi',
                                                             style: TextStyle(
                                                               color: Color(0xFF8A8D91),
                                                               fontSize: 14,
@@ -3123,31 +2738,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                                                   },
                                                                 ),
                                                               ],
-                                                              if (msg.isForwarded) ...[
-                                                                Padding(
-                                                                  padding: const EdgeInsets.only(bottom: 4),
-                                                                  child: Row(
-                                                                    mainAxisSize: MainAxisSize.min,
-                                                                    children: [
-                                                                      Icon(
-                                                                        Icons.shortcut_rounded,
-                                                                        size: 13,
-                                                                        color: isMe ? Colors.white.withOpacity(0.85) : const Color(0xFF65676B),
-                                                                      ),
-                                                                      const SizedBox(width: 4),
-                                                                      Text(
-                                                                        'Đã chuyển tiếp',
-                                                                        style: TextStyle(
-                                                                          fontSize: 11.5,
-                                                                          fontStyle: FontStyle.italic,
-                                                                          fontWeight: FontWeight.w500,
-                                                                          color: isMe ? Colors.white.withOpacity(0.85) : const Color(0xFF65676B),
-                                                                        ),
-                                                                      ),
-                                                                    ],
-                                                                  ),
-                                                                ),
-                                                              ],
                                                               _buildMessageBubbleContent(msg, isMe),
                                                             ],
                                                           ),
@@ -3167,6 +2757,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                                         msg.reactions,
                                                         fontSize: 10,
                                                         isOwnMessage: isMe,
+                                                        onTap: () => _showReactionDetailDialog(context, msg, provider),
                                                       ),
                                                     ),
                                                   ),
@@ -3194,9 +2785,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                       ),
                                     ),
                                   ),
-                                  if (!isMe) ...[
-                                    _buildQuickReactionButton(context, msg, provider, isMe),
-                                  ],
                                 ],
                               ),
                             ),
@@ -3319,68 +2907,60 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                ValueListenableBuilder<bool>(
-                                  valueListenable: _isAttachmentMenuOpenNotifier,
-                                  builder: (context, isAttachmentOpen, _) {
-                                    return Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        IconButton(
-                                          icon: AnimatedRotation(
-                                            turns: isAttachmentOpen ? 0.125 : 0.0,
-                                            duration: const Duration(milliseconds: 300),
-                                            curve: Curves.easeOutBack,
-                                            child: const Icon(Icons.add_circle_rounded, color: primaryColor, size: 28),
-                                          ),
-                                          onPressed: () {
-                                            _isAttachmentMenuOpenNotifier.value = !_isAttachmentMenuOpenNotifier.value;
-                                          },
-                                          padding: EdgeInsets.zero,
-                                          constraints: const BoxConstraints(minWidth: 36),
-                                          tooltip: isAttachmentOpen ? 'Đóng menu' : 'Mở menu tiện ích',
-                                        ),
-                                        AnimatedSize(
-                                          duration: const Duration(milliseconds: 300),
-                                          curve: Curves.easeOutBack,
-                                          child: isAttachmentOpen
-                                              ? Row(
-                                                  mainAxisSize: MainAxisSize.min,
-                                                  children: [
-                                                    IconButton(
-                                                      icon: const Icon(Icons.camera_alt_rounded, color: primaryColor, size: 24),
-                                                      onPressed: () => _captureCameraImage(provider),
-                                                      padding: EdgeInsets.zero,
-                                                      constraints: const BoxConstraints(minWidth: 36),
-                                                      tooltip: 'Chụp ảnh',
-                                                    ),
-                                                    IconButton(
-                                                      icon: const Icon(Icons.image_rounded, color: primaryColor, size: 24),
-                                                      onPressed: () => _pickAndUploadImage(provider),
-                                                      padding: EdgeInsets.zero,
-                                                      constraints: const BoxConstraints(minWidth: 36),
-                                                      tooltip: 'Gửi ảnh',
-                                                    ),
-                                                    IconButton(
-                                                      icon: const Icon(Icons.videocam_rounded, color: primaryColor, size: 24),
-                                                      onPressed: () => _pickAndUploadVideo(provider),
-                                                      padding: EdgeInsets.zero,
-                                                      constraints: const BoxConstraints(minWidth: 36),
-                                                      tooltip: 'Gửi video',
-                                                    ),
-                                                    IconButton(
-                                                      icon: const Icon(Icons.mic_rounded, color: primaryColor, size: 24),
-                                                      onPressed: () => _handleVoiceRecording(provider),
-                                                      padding: EdgeInsets.zero,
-                                                      constraints: const BoxConstraints(minWidth: 36),
-                                                      tooltip: 'Ghi âm',
-                                                    ),
-                                                  ],
-                                                )
-                                              : const SizedBox(width: 0, height: 0),
-                                        ),
-                                      ],
-                                    );
+                                IconButton(
+                                  icon: AnimatedRotation(
+                                    turns: _isAttachmentMenuOpen ? 0.125 : 0.0,
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeOutBack,
+                                    child: const Icon(Icons.add_circle_rounded, color: primaryColor, size: 28),
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _isAttachmentMenuOpen = !_isAttachmentMenuOpen;
+                                    });
                                   },
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(minWidth: 36),
+                                  tooltip: _isAttachmentMenuOpen ? 'Đóng menu' : 'Mở menu tiện ích',
+                                ),
+                                AnimatedSize(
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeOutBack,
+                                  child: _isAttachmentMenuOpen
+                                      ? Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            IconButton(
+                                              icon: const Icon(Icons.camera_alt_rounded, color: primaryColor, size: 24),
+                                              onPressed: () => _captureCameraImage(provider),
+                                              padding: EdgeInsets.zero,
+                                              constraints: const BoxConstraints(minWidth: 36),
+                                              tooltip: 'Chụp ảnh',
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(Icons.image_rounded, color: primaryColor, size: 24),
+                                              onPressed: () => _pickAndUploadImage(provider),
+                                              padding: EdgeInsets.zero,
+                                              constraints: const BoxConstraints(minWidth: 36),
+                                              tooltip: 'Gửi ảnh',
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(Icons.videocam_rounded, color: primaryColor, size: 24),
+                                              onPressed: () => _pickAndUploadVideo(provider),
+                                              padding: EdgeInsets.zero,
+                                              constraints: const BoxConstraints(minWidth: 36),
+                                              tooltip: 'Gửi video',
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(Icons.mic_rounded, color: primaryColor, size: 24),
+                                              onPressed: () => _handleVoiceRecording(provider),
+                                              padding: EdgeInsets.zero,
+                                              constraints: const BoxConstraints(minWidth: 36),
+                                              tooltip: 'Ghi âm',
+                                            ),
+                                          ],
+                                        )
+                                      : const SizedBox(width: 0, height: 0),
                                 ),
                               ],
                             ),
@@ -3425,20 +3005,15 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                           ),
                         ),
                         const SizedBox(width: 4),
-                        ValueListenableBuilder<bool>(
-                          valueListenable: _isTypingNotifier,
-                          builder: (context, isTyping, _) {
-                            return IconButton(
-                              icon: Icon(
-                                isTyping ? Icons.send_rounded : Icons.thumb_up_rounded,
-                                color: primaryColor,
-                                size: 26,
-                              ),
-                              onPressed: () => _handleSend(provider),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(minWidth: 36),
-                            );
-                          },
+                        IconButton(
+                          icon: Icon(
+                            _isTyping ? Icons.send_rounded : Icons.thumb_up_rounded,
+                            color: primaryColor,
+                            size: 26,
+                          ),
+                          onPressed: () => _handleSend(provider),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 36),
                         ),
                       ],
                     ),
@@ -3705,43 +3280,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         children: [
           // Header
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 12, 8),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.people_alt_rounded, color: Color(0xFF0068FF), size: 26),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Danh Bạ',
-                      style: TextStyle(color: textColor, fontSize: 20, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-                IconButton(
-                  tooltip: 'Thêm bạn bè',
-                  icon: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0068FF).withOpacity(0.12),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.person_add_alt_1_rounded, color: Color(0xFF0068FF), size: 20),
-                  ),
-                  onPressed: () async {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const AddFriendScreen()),
-                    );
-                    if (mounted) {
-                      setState(() {
-                        _contactsFuture = ApiService.getFriends();
-                      });
-                      _fetchPendingRequestsCount();
-                    }
-                  },
+                const Icon(Icons.people_alt_rounded, color: Color(0xFF0068FF), size: 26),
+                const SizedBox(width: 8),
+                Text(
+                  'Danh Bạ',
+                  style: TextStyle(color: textColor, fontSize: 20, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -3908,32 +3454,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                             style: TextStyle(color: subTextColor, fontSize: 14, height: 1.4),
                             textAlign: TextAlign.center,
                           ),
-                          if (_contactSearchQuery.isEmpty) ...[
-                            const SizedBox(height: 16),
-                            ElevatedButton.icon(
-                              onPressed: () async {
-                                await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (_) => const AddFriendScreen()),
-                                );
-                                if (mounted) {
-                                  setState(() {
-                                    _contactsFuture = ApiService.getFriends();
-                                  });
-                                  _fetchPendingRequestsCount();
-                                }
-                              },
-                              icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
-                              label: const Text('Thêm bạn bè ngay'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF0068FF),
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                elevation: 0,
-                              ),
-                            ),
-                          ],
                         ],
                       ),
                     ),
@@ -3977,36 +3497,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                             height: 48,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              gradient: (u['avatar'] == null || u['avatar'].toString().trim().isEmpty) ? _getAvatarGradient(name) : null,
+                              gradient: _getAvatarGradient(name),
                             ),
-                            child: ClipOval(
-                              child: (u['avatar'] != null && u['avatar'].toString().trim().isNotEmpty)
-                                  ? Image(
-                                      image: getSafeAvatarProvider(u['avatar'].toString())!,
-                                      width: 48,
-                                      height: 48,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => Container(
-                                        width: 48,
-                                        height: 48,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          gradient: _getAvatarGradient(name),
-                                        ),
-                                        child: Center(
-                                          child: Text(
-                                            _getInitials(name),
-                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white, height: 1.0),
-                                          ),
-                                        ),
-                                      ),
-                                    )
-                                  : Center(
-                                      child: Text(
-                                        _getInitials(name),
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white, height: 1.0),
-                                      ),
-                                    ),
+                            child: Center(
+                              child: Text(
+                                _getInitials(name),
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white, height: 1.0),
+                              ),
                             ),
                           ),
                           if (isOnline)
@@ -4738,98 +4235,90 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   void _pickAndUploadImage(ChatProvider provider) {
     final conv = provider.selectedConversation;
     if (conv == null) return;
-    final uploadInput = html.FileUploadInputElement()
-      ..accept = 'image/*,.jpg,.jpeg,.png,.gif,.webp,.jfif,.heic,.heif,.avif,.bmp,.svg,.ico,.tiff,.tif,image/heic,image/heif,image/webp,image/avif'
-      ..multiple = true;
+    final uploadInput = html.FileUploadInputElement()..accept = 'image/*';
     uploadInput.click();
     uploadInput.onChange.listen((e) {
       final files = uploadInput.files;
       if (files != null && files.isNotEmpty) {
+        final file = files[0];
         final scaffold = ScaffoldMessenger.of(context);
         scaffold.hideCurrentSnackBar();
         scaffold.showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Row(
               children: [
-                const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
-                const SizedBox(width: 12),
-                Text(files.length > 1 ? 'Đang gửi ${files.length} hình ảnh...' : 'Đang gửi hình ảnh...'),
+                SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
+                SizedBox(width: 12),
+                Text('Đang gửi hình ảnh...'),
               ],
             ),
-            duration: const Duration(minutes: 1),
+            duration: Duration(minutes: 1),
           ),
         );
-
-        for (int i = 0; i < files.length; i++) {
-          final file = files[i];
-          final fileIndex = i;
-          final reader = html.FileReader();
-          reader.readAsArrayBuffer(file);
-          reader.onLoadEnd.listen((e) async {
-            final bytes = _extractUint8ListFromReader(reader.result);
-            if (bytes != null && bytes.isNotEmpty) {
-              String mimeType = file.type;
-              if (mimeType.isEmpty) {
-                final ext = (file.name.split('.').pop() ?? '').toLowerCase();
-                if (ext == 'png') mimeType = 'image/png';
-                else if (ext == 'webp') mimeType = 'image/webp';
-                else if (ext == 'gif') mimeType = 'image/gif';
-                else mimeType = 'image/jpeg';
-              }
-
-              // Tạo ngay tin nhắn ảnh tạm thời với hiệu ứng đang gửi (Optimistic UI)
-              final optId = 'optimistic-${DateTime.now().millisecondsSinceEpoch}-$fileIndex';
-              _recentSentImageBytes[optId] = bytes;
-              final base64Url = 'data:$mimeType;base64,${base64Encode(bytes)}';
-              final tempMsg = MessageModel(
-                id: optId,
-                clientTempId: optId,
-                conversationId: conv.id,
-                senderId: provider.currentUser?.id,
-                type: 'image',
-                content: base64Url,
-                imageUrl: base64Url,
-                createdAt: DateTime.now(),
-                status: 'sending',
-              );
-              provider.addRealtimeMessage(tempMsg);
-              _scrollToBottom();
-
-              try {
-                final res = await ApiService.uploadMedia(conv.id, bytes, file.name, mimeType, clientTempId: optId);
-                scaffold.hideCurrentSnackBar();
-                if (res['success'] == true && res['data'] != null) {
-                  try {
-                    final realMsg = MessageModel.fromJson(res['data']).copyWith(status: 'sent', clientTempId: optId);
-                    if (realMsg.imageUrl != null && realMsg.imageUrl!.isNotEmpty) {
-                      _recentSentImageBytes[realMsg.imageUrl!] = bytes;
-                    }
-                    _recentSentImageBytes[realMsg.id] = bytes;
-                    if (_recentSentImageBytes.length > 50) {
-                      _recentSentImageBytes.remove(_recentSentImageBytes.keys.first);
-                    }
-                    final idx = provider.messages.lastIndexWhere((m) => m.id == optId || (m.clientTempId != null && m.clientTempId == optId));
-                    if (idx != -1) {
-                      provider.messages[idx] = realMsg;
-                    } else if (!provider.messages.any((m) => m.id == realMsg.id)) {
-                      provider.messages.add(realMsg);
-                    }
-                    provider.notifyListeners();
-                  } catch (_) {}
-                } else {
-                  provider.messages.removeWhere((m) => m.id == optId);
-                  provider.notifyListeners();
-                }
-              } catch (err) {
-                final idx = provider.messages.indexWhere((m) => m.id == optId);
-                if (idx != -1) {
-                  provider.messages[idx] = provider.messages[idx].copyWith(status: 'error');
-                  provider.notifyListeners();
-                }
-              }
+        final reader = html.FileReader();
+        reader.readAsArrayBuffer(file);
+        reader.onLoadEnd.listen((e) async {
+          final bytes = _extractUint8ListFromReader(reader.result);
+          if (bytes != null && bytes.isNotEmpty) {
+            String mimeType = file.type;
+            if (mimeType.isEmpty) {
+              final ext = (file.name.split('.').pop() ?? '').toLowerCase();
+              if (ext == 'png') mimeType = 'image/png';
+              else if (ext == 'webp') mimeType = 'image/webp';
+              else if (ext == 'gif') mimeType = 'image/gif';
+              else mimeType = 'image/jpeg';
             }
-          });
-        }
+
+            // Tạo ngay tin nhắn ảnh tạm thời với hiệu ứng đang gửi (Optimistic UI)
+            final optId = 'optimistic-${DateTime.now().millisecondsSinceEpoch}';
+            final base64Url = 'data:$mimeType;base64,${base64Encode(bytes)}';
+            final tempMsg = MessageModel(
+              id: optId,
+              conversationId: conv.id,
+              senderId: provider.currentUser?.id,
+              type: 'image',
+              content: base64Url,
+              imageUrl: base64Url,
+              createdAt: DateTime.now(),
+            );
+            provider.addRealtimeMessage(tempMsg);
+            _scrollToBottom();
+
+            try {
+              final res = await ApiService.uploadMedia(conv.id, bytes, file.name, mimeType);
+              scaffold.hideCurrentSnackBar();
+              if (res['success'] == true && res['data'] != null) {
+                try {
+                  final realMsg = MessageModel.fromJson(res['data']);
+                  // Thay thế tin nhắn tạm bằng tin nhắn chính thức từ server
+                  final idx = provider.messages.indexWhere((m) => m.id == optId);
+                  if (idx != -1) {
+                    provider.messages[idx] = realMsg;
+                  } else if (!provider.messages.any((m) => m.id == realMsg.id)) {
+                    provider.messages.add(realMsg);
+                  }
+                  provider.notifyListeners();
+                } catch (_) {}
+              } else {
+                provider.messages.removeWhere((m) => m.id == optId);
+                provider.notifyListeners();
+                scaffold.showSnackBar(
+                  SnackBar(
+                    content: Text('Gửi ảnh thất bại: ${res['message'] ?? 'Lỗi không xác định'}'),
+                    backgroundColor: const Color(0xFFEF4444),
+                  ),
+                );
+              }
+            } catch (err) {
+              provider.messages.removeWhere((m) => m.id == optId);
+              provider.notifyListeners();
+              scaffold.hideCurrentSnackBar();
+              scaffold.showSnackBar(
+                SnackBar(content: Text('Lỗi kết nối khi gửi ảnh: $err'), backgroundColor: const Color(0xFFEF4444)),
+              );
+            }
+          }
+        });
       }
     });
   }
@@ -4868,7 +4357,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
             // Tạo ngay tin nhắn ảnh chụp tạm thời với hiệu ứng đang gửi
             final optId = 'optimistic-${DateTime.now().millisecondsSinceEpoch}';
-            _recentSentImageBytes[optId] = bytes;
             final base64Url = 'data:$mimeType;base64,${base64Encode(bytes)}';
             final tempMsg = MessageModel(
               id: optId,
@@ -4883,19 +4371,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             _scrollToBottom();
 
             try {
-              final res = await ApiService.uploadMedia(conv.id, bytes, file.name, mimeType, clientTempId: optId);
+              final res = await ApiService.uploadMedia(conv.id, bytes, file.name, mimeType);
               scaffold.hideCurrentSnackBar();
               if (res['success'] == true && res['data'] != null) {
                 try {
-                  final realMsg = MessageModel.fromJson(res['data']).copyWith(status: 'sent', clientTempId: optId);
-                  if (realMsg.imageUrl != null && realMsg.imageUrl!.isNotEmpty) {
-                    _recentSentImageBytes[realMsg.imageUrl!] = bytes;
-                  }
-                  _recentSentImageBytes[realMsg.id] = bytes;
-                  if (_recentSentImageBytes.length > 50) {
-                    _recentSentImageBytes.remove(_recentSentImageBytes.keys.first);
-                  }
-                  final idx = provider.messages.lastIndexWhere((m) => m.id == optId || (m.clientTempId != null && m.clientTempId == optId));
+                  final realMsg = MessageModel.fromJson(res['data']);
+                  final idx = provider.messages.indexWhere((m) => m.id == optId);
                   if (idx != -1) {
                     provider.messages[idx] = realMsg;
                   } else if (!provider.messages.any((m) => m.id == realMsg.id)) {
@@ -5214,7 +4695,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                     CircleAvatar(
                       radius: 46,
                       backgroundColor: const Color(0xFF0068FF),
-                      backgroundImage: getSafeAvatarProvider(fullAvatarUrl),
+                      backgroundImage: fullAvatarUrl != null ? NetworkImage(fullAvatarUrl) : null,
                       child: fullAvatarUrl == null
                           ? Text(
                               conv.name.isNotEmpty ? conv.name[0].toUpperCase() : 'U',
@@ -5682,7 +5163,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                       leading: CircleAvatar(
                         backgroundColor: const Color(0xFF0068FF),
                         backgroundImage: (member.avatar != null && member.avatar!.isNotEmpty)
-                            ? getSafeAvatarProvider(member.avatar)
+                            ? NetworkImage(member.avatar!)
                             : null,
                         child: (member.avatar == null || member.avatar!.isEmpty)
                             ? Text(displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U', style: const TextStyle(color: Colors.white))
@@ -5733,778 +5214,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     _showNicknameSelectionSheet(provider, conv);
   }
 
-  bool _isImageMessage(MessageModel msg) {
-    if (msg.isRecalled) return false;
-    final content = msg.content.toLowerCase();
-    final hasImgUrl = content.endsWith('.jpg') || content.endsWith('.jpeg') ||
-        content.endsWith('.png') || content.endsWith('.webp') ||
-        content.endsWith('.gif') || content.endsWith('.jfif') ||
-        content.endsWith('.heic') || content.endsWith('.heif') ||
-        content.endsWith('.avif') || content.endsWith('.bmp') ||
-        content.endsWith('.svg') || content.endsWith('.ico') ||
-        content.contains('/chat-media/') || content.contains('/images/') ||
-        content.contains('.jpg?') || content.contains('.png?') || content.contains('.jfif?');
-    return msg.type == 'image' || msg.content.startsWith('data:image') || (msg.imageUrl != null && msg.imageUrl!.isNotEmpty) || hasImgUrl;
-  }
-
-  void _showImagePreviewDialog(String targetMediaUrl, Widget imgWidget) {
-    showDialog(
-      context: context,
-      builder: (_) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(12),
-        child: Stack(
-          alignment: Alignment.topRight,
-          children: [
-            InteractiveViewer(child: Center(child: imgWidget)),
-            Positioned(
-              top: 10,
-              right: 10,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (targetMediaUrl.isNotEmpty)
-                    Container(
-                      decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
-                      child: IconButton(
-                        icon: const Icon(Icons.download_rounded, color: Colors.white, size: 24),
-                        tooltip: 'Lưu ảnh về máy',
-                        onPressed: () {
-                          try {
-                            html.window.callMethod('downloadMediaDirectly', [
-                              targetMediaUrl,
-                              'image_${DateTime.now().millisecondsSinceEpoch}.jpg'
-                            ]);
-                          } catch (_) {}
-                        },
-                      ),
-                    ),
-                  const SizedBox(width: 8),
-                  Container(
-                    decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
-                    child: IconButton(
-                      icon: const Icon(Icons.close_rounded, color: Colors.white, size: 24),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCollagePhotoCell(
-    BuildContext context,
-    MessageModel imgMsg,
-    BorderRadius borderRadius, {
-    int extraCount = 0,
-  }) {
-    final content = imgMsg.content;
-    String? imageUrl = imgMsg.imageUrl;
-    Uint8List? imageBytes;
-
-    if (content.startsWith('data:image')) {
-      try {
-        final base64Str = content.split(',').last;
-        imageBytes = base64Decode(base64Str);
-      } catch (_) {}
-    } else if (content.startsWith('http') || content.startsWith('/')) {
-      imageUrl = content;
-    }
-    if (imageUrl != null && imageUrl.isNotEmpty) {
-      imageUrl = ApiService.formatImageUrl(imageUrl);
-    }
-
-    Widget img;
-    if (imageBytes != null) {
-      img = Image.memory(imageBytes, fit: BoxFit.cover, width: double.infinity, height: double.infinity);
-    } else if (imageUrl != null && imageUrl.isNotEmpty) {
-      img = Image.network(imageUrl, fit: BoxFit.cover, width: double.infinity, height: double.infinity);
-    } else {
-      img = Container(color: Colors.grey.shade300, child: const Icon(Icons.image, color: Colors.grey));
-    }
-
-    final isSending = imgMsg.id.startsWith('optimistic-') || imgMsg.id.startsWith('uploading-') || imgMsg.status == 'sending';
-    final targetUrl = imageUrl ?? (content.startsWith('data:image') ? content : '');
-
-    return ClipRRect(
-      borderRadius: borderRadius,
-      child: GestureDetector(
-        onTap: () {
-          if (isSending) return;
-          if (kIsWeb && targetUrl.isNotEmpty) {
-            try {
-              html.window.callMethod('openImageModal', [targetUrl]);
-              return;
-            } catch (_) {}
-          }
-          _showImagePreviewDialog(targetUrl, img);
-        },
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            img,
-            if (isSending)
-              Container(
-                color: Colors.black.withOpacity(0.4),
-                child: const Center(
-                  child: SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2.2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)),
-                  ),
-                ),
-              ),
-            if (extraCount > 0)
-              Container(
-                color: Colors.black.withOpacity(0.58),
-                child: Center(
-                  child: Text(
-                    '+$extraCount',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      shadows: [Shadow(color: Colors.black54, blurRadius: 4, offset: Offset(0, 1))],
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-    Widget _buildPhotoDeckCardImage(MessageModel msg) {
-    if (msg.isRecalled) {
-      return Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFFF1F5F9).withOpacity(0.6),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: const Color(0xFFCBD5E1), width: 1),
-        ),
-        child: const Center(
-          child: Text(
-            'Ảnh đã thu hồi',
-            style: TextStyle(
-              color: Color(0xFF8A8D91),
-              fontSize: 14,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-        ),
-      );
-    }
-    final content = msg.content;
-    String? imageUrl = msg.imageUrl;
-    Uint8List? imageBytes;
-
-    if (content.startsWith('data:image')) {
-      try {
-        final base64Str = content.split(',').last;
-        imageBytes = base64Decode(base64Str);
-      } catch (_) {}
-    } else if (content.startsWith('http') || content.startsWith('/')) {
-      imageUrl = content;
-    }
-    if (imageUrl != null && imageUrl.isNotEmpty) {
-      imageUrl = ApiService.formatImageUrl(imageUrl);
-    }
-
-    if (imageBytes != null) {
-      return Image.memory(imageBytes, fit: BoxFit.cover, width: double.infinity, height: double.infinity);
-    } else if (imageUrl != null && imageUrl.isNotEmpty) {
-      return Image.network(imageUrl, fit: BoxFit.cover, width: double.infinity, height: double.infinity);
-    } else {
-      return Container(color: const Color(0xFF334155), child: const Icon(Icons.image, color: Colors.white54, size: 36));
-    }
-  }
-
-  Widget _buildCollageShareButton(BuildContext context, List<MessageModel> cluster) {
-    return GestureDetector(
-      onTap: () {
-        if (kIsWeb) {
-          final msgIds = cluster.map((m) => m.id).toList();
-          final urls = cluster.map((m) => ApiService.formatImageUrl(m.imageUrl ?? m.content)).where((u) => u.isNotEmpty).toList();
-          html.window.callMethod('openForwardModal', [
-            {
-              'messageIds': msgIds,
-              'urls': urls,
-            }
-          ]);
-        }
-      },
-      child: Container(
-        width: 34,
-        height: 34,
-        decoration: BoxDecoration(
-          color: const Color(0xFFE4E6EB).withOpacity(0.85),
-          shape: BoxShape.circle,
-        ),
-        child: const Icon(
-          Icons.shortcut_rounded,
-          size: 18,
-          color: Color(0xFF0F172A),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTwoPhotoCollage(BuildContext context, List<MessageModel> cluster, bool isMe, List<String> photoUrls) {
-    final cardW = 180.0;
-    final cardH = 180.0;
-    final totalW = 245.0;
-    final totalH = 275.0;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isFwd = cluster.any((m) => m.isForwarded);
-
-    final content = SizedBox(
-      width: totalW,
-      height: totalH,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          // Ảnh 1: Góc trên-trái (x: 0, y: 0)
-          Positioned(
-            left: 0,
-            top: 0,
-            child: GestureDetector(
-              onTap: () {
-                if (kIsWeb) html.window.callMethod('openAlbumGalleryModal', [photoUrls, 0]);
-              },
-              child: Container(
-                width: cardW,
-                height: cardH,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.18), blurRadius: 10, offset: const Offset(0, 3)),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      _buildPhotoDeckCardImage(cluster[0]),
-                      Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.white.withOpacity(0.25), width: 1.2),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          // Ảnh 2: Góc dưới-phải (x: 65, y: 85) - đè lên 1 phần ảnh 1
-          Positioned(
-            left: 65,
-            top: 85,
-            child: GestureDetector(
-              onTap: () {
-                if (kIsWeb) html.window.callMethod('openAlbumGalleryModal', [photoUrls, 1]);
-              },
-              child: Container(
-                width: cardW,
-                height: cardH,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.25), blurRadius: 14, offset: const Offset(0, 5)),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      _buildPhotoDeckCardImage(cluster[1]),
-                      Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.white.withOpacity(0.25), width: 1.2),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    return Column(
-      crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 6, left: 4, right: 4),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.grid_view_rounded,
-                size: 18,
-                color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF334155),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                isFwd ? '↪ Đã chuyển tiếp • 2 ảnh' : '2 ảnh',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: isDark ? const Color(0xFFF1F5F9) : const Color(0xFF1E293B),
-                ),
-              ),
-            ],
-          ),
-        ),
-        content,
-      ],
-    );
-  }
-
-  Widget _buildThreePhotoCollage(BuildContext context, List<MessageModel> cluster, bool isMe, List<String> photoUrls) {
-    final cardW = 170.0;
-    final cardH = 170.0;
-    final totalW = 230.0;
-    final totalH = 350.0;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isFwd = cluster.any((m) => m.isForwarded);
-
-    final content = SizedBox(
-      width: totalW,
-      height: totalH,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          // Ảnh 1: Góc trên-phải (x: 60, y: 0)
-          Positioned(
-            left: 60,
-            top: 0,
-            child: GestureDetector(
-              onTap: () {
-                if (kIsWeb) html.window.callMethod('openAlbumGalleryModal', [photoUrls, 0]);
-              },
-              child: Container(
-                width: cardW,
-                height: cardH,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.18), blurRadius: 10, offset: const Offset(0, 3)),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      _buildPhotoDeckCardImage(cluster[0]),
-                      Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.white.withOpacity(0.25), width: 1.2),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          // Ảnh 2: Ở giữa-trái (x: 0, y: 85)
-          Positioned(
-            left: 0,
-            top: 85,
-            child: GestureDetector(
-              onTap: () {
-                if (kIsWeb) html.window.callMethod('openAlbumGalleryModal', [photoUrls, 1]);
-              },
-              child: Container(
-                width: cardW,
-                height: cardH,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.20), blurRadius: 12, offset: const Offset(0, 4)),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      _buildPhotoDeckCardImage(cluster[1]),
-                      Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.white.withOpacity(0.25), width: 1.2),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          // Ảnh 3: Góc dưới-phải (x: 60, y: 170)
-          Positioned(
-            left: 60,
-            top: 170,
-            child: GestureDetector(
-              onTap: () {
-                if (kIsWeb) html.window.callMethod('openAlbumGalleryModal', [photoUrls, 2]);
-              },
-              child: Container(
-                width: cardW,
-                height: cardH,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.25), blurRadius: 14, offset: const Offset(0, 5)),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      _buildPhotoDeckCardImage(cluster[2]),
-                      Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.white.withOpacity(0.25), width: 1.2),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    return Column(
-      crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 6, left: 4, right: 4),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.grid_view_rounded,
-                size: 18,
-                color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF334155),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                isFwd ? '↪ Đã chuyển tiếp • 3 ảnh' : '3 ảnh',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: isDark ? const Color(0xFFF1F5F9) : const Color(0xFF1E293B),
-                ),
-              ),
-            ],
-          ),
-        ),
-        content,
-      ],
-    );
-  }
-
-  Widget _buildFourPlusPhotoDeck(BuildContext context, List<MessageModel> cluster, bool isMe, List<String> photoUrls) {
-    final count = cluster.length;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isFwd = cluster.any((m) => m.isForwarded);
-    const cardW = 200.0;
-    const cardH = 260.0;
-
-    final activeFirst = cluster.firstWhere((m) => !m.isRecalled, orElse: () => cluster.first);
-
-    return Column(
-      crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 6, left: 4, right: 4),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.grid_view_rounded,
-                size: 18,
-                color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF334155),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                isFwd ? '↪ Đã chuyển tiếp • $count ảnh' : '$count ảnh',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: isDark ? const Color(0xFFF1F5F9) : const Color(0xFF1E293B),
-                ),
-              ),
-            ],
-          ),
-        ),
-        GestureDetector(
-          onTap: () {
-            if (kIsWeb) html.window.callMethod('openAlbumGalleryModal', [photoUrls, 0]);
-          },
-          child: SizedBox(
-            width: cardW + 16,
-            height: cardH + 12,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                // Thẻ bóng thứ 3 phía sau (nếu count >= 3)
-                if (count >= 3)
-                  Positioned(
-                    top: 0,
-                    left: 4,
-                    child: Container(
-                      width: cardW - 8,
-                      height: cardH - 8,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2D3748),
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                    ),
-                  ),
-                // Thẻ bóng thứ 2 ở giữa (nếu count >= 2)
-                if (count >= 2)
-                  Positioned(
-                    top: 4,
-                    left: 12,
-                    child: Container(
-                      width: cardW - 4,
-                      height: cardH - 4,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF4A5568),
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                    ),
-                  ),
-                // Thẻ ảnh chính phía trước
-                Positioned(
-                  top: 8,
-                  left: 0,
-                  child: Container(
-                    width: cardW,
-                    height: cardH,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.25),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(24),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          _buildPhotoDeckCardImage(activeFirst),
-                          Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(color: Colors.white.withOpacity(0.25), width: 1.2),
-                            ),
-                          ),
-                          if (activeFirst.id.startsWith('optimistic-') || activeFirst.status == 'sending')
-                            Container(
-                              color: Colors.black.withOpacity(0.4),
-                              child: const Center(
-                                child: SizedBox(
-                                  width: 28,
-                                  height: 28,
-                                  child: CircularProgressIndicator(strokeWidth: 2.5, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAlbumMessageItem(
-    List<MessageModel> cluster,
-    bool isMe,
-    ConversationModel? conv,
-    ChatProvider provider,
-    bool showTime,
-    bool isLastSent,
-  ) {
-    final headMsg = cluster.first;
-    final lastMsg = cluster.last;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Column(
-      children: [
-        if (showTime)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Center(
-              child: Text(
-                _formatTime(headMsg.createdAt),
-                style: const TextStyle(color: Color(0xFF8A8D91), fontSize: 12, fontWeight: FontWeight.w500),
-              ),
-            ),
-          ),
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: _SwipeToReplyWrapper(
-            onReply: () => provider.setReplyingToMessage(headMsg),
-            child: Row(
-              mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                if (!isMe) ...[
-                  GestureDetector(
-                    onTap: () {
-                      final senderId = headMsg.senderId;
-                      if (senderId != null && senderId.isNotEmpty) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => OtherUserProfileScreen(userId: senderId)),
-                        );
-                      }
-                    },
-                    child: CircleAvatar(
-                      radius: 14,
-                      backgroundColor: Theme.of(context).primaryColor,
-                      backgroundImage: getSafeAvatarProvider(conv?.avatar),
-                      child: (conv?.avatar == null || conv!.avatar!.isEmpty)
-                          ? Text(
-                              conv != null && conv.name.isNotEmpty ? conv.name[0].toUpperCase() : 'U',
-                              style: const TextStyle(fontSize: 10, color: Colors.white),
-                            )
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                if (isMe) ...[
-                  _buildQuickReactionButton(context, headMsg, provider, isMe),
-                ],
-                Flexible(
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        if (_expandedTimestampMessageIds.contains(headMsg.id)) {
-                          _expandedTimestampMessageIds.remove(headMsg.id);
-                        } else {
-                          _expandedTimestampMessageIds.add(headMsg.id);
-                        }
-                      });
-                    },
-                    onLongPress: () => _showMessengerStyleContextMenu(context, headMsg, provider, isMe),
-                    onSecondaryTapDown: (details) => _showMessengerStyleContextMenu(context, headMsg, provider, isMe),
-                    onDoubleTapDown: (details) {
-                      _showFlyingEmoji(context, details.globalPosition, '❤️');
-                    },
-                    onDoubleTap: () => provider.reactToMessage(headMsg.id, '❤️'),
-                    child: Column(
-                      crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                      children: [
-                        Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            _buildPhotoDeckAlbum(context, cluster, isMe),
-                            if (headMsg.reactions.isNotEmpty && !headMsg.isRecalled)
-                              Positioned(
-                                right: -4,
-                                bottom: -8,
-                                child: AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 200),
-                                  transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
-                                  child: KeyedSubtree(
-                                    key: ValueKey('album_reactions_${headMsg.reactions.hashCode}'),
-                                    child: _buildReactionBadges(
-                                      headMsg.reactions,
-                                      fontSize: 10,
-                                      isOwnMessage: isMe,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        if (_expandedTimestampMessageIds.contains(headMsg.id)) ...[
-                          Padding(
-                            padding: const EdgeInsets.only(top: 3, bottom: 2, left: 4, right: 4),
-                            child: Text(
-                              _formatMessageTimestamp(headMsg.createdAt),
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w400,
-                                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF65676B),
-                              ),
-                            ),
-                          ),
-                        ],
-                        if (isMe) ...[
-                          const SizedBox(height: 4),
-                          _buildMessageStatusIndicator(lastMsg, conv, isLastSent),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-                if (!isMe) ...[
-                  _buildQuickReactionButton(context, headMsg, provider, isMe),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPhotoDeckAlbum(BuildContext context, List<MessageModel> cluster, bool isMe) {
-    final count = cluster.length;
-    final photoUrls = cluster.map((m) {
-      if (m.content.startsWith('data:image')) return m.content;
-      return m.imageUrl != null && m.imageUrl!.isNotEmpty ? ApiService.formatImageUrl(m.imageUrl!) : ApiService.formatImageUrl(m.content);
-    }).toList();
-
-    if (count == 2) {
-      return _buildTwoPhotoCollage(context, cluster, isMe, photoUrls);
-    } else if (count == 3) {
-      return _buildThreePhotoCollage(context, cluster, isMe, photoUrls);
-    } else {
-      return _buildFourPlusPhotoDeck(context, cluster, isMe, photoUrls);
-    }
-  }
-
   Widget _buildMessageBubbleContent(MessageModel msg, bool isMe) {
     if (msg.isRecalled) {
-      return Text(
-        _isImageMessage(msg) ? 'Ảnh đã thu hồi' : 'Tin nhắn đã được thu hồi',
+      return const Text(
+        'Tin nhắn đã được thu hồi',
         style: TextStyle(
           color: Color(0xFF8A8D91),
           fontSize: 14,
@@ -6516,12 +5229,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     final lowerContent = content.toLowerCase();
     final hasImgUrl = lowerContent.endsWith('.jpg') || lowerContent.endsWith('.jpeg') ||
         lowerContent.endsWith('.png') || lowerContent.endsWith('.webp') ||
-        lowerContent.endsWith('.gif') || lowerContent.endsWith('.jfif') ||
-        lowerContent.endsWith('.heic') || lowerContent.endsWith('.heif') ||
-        lowerContent.endsWith('.avif') || lowerContent.endsWith('.bmp') ||
-        lowerContent.endsWith('.svg') || lowerContent.endsWith('.ico') ||
-        lowerContent.contains('/chat-media/') || lowerContent.contains('/images/') ||
-        lowerContent.contains('.jpg?') || lowerContent.contains('.png?') || lowerContent.contains('.jfif?');
+        lowerContent.endsWith('.gif') || lowerContent.contains('/chat-media/') ||
+        lowerContent.contains('.jpg?') || lowerContent.contains('.png?');
     final isImage = msg.type == 'image' || content.startsWith('data:image') || (msg.imageUrl != null && msg.imageUrl!.isNotEmpty) || hasImgUrl;
     final isVideo = msg.type == 'video' || content.startsWith('data:video') || (msg.videoUrl != null && msg.videoUrl!.isNotEmpty) || (content.contains('.mp4') || content.contains('.mov') || (content.contains('.webm') && !content.contains('voice_')) || content.contains('.mkv'));
     final isAudio = msg.type == 'audio' || content.startsWith('data:audio');
@@ -6541,12 +5250,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         }
       } else if (content.startsWith('http') || content.startsWith('/')) {
         imageUrl = content;
-      }
-
-      if (imageBytes == null) {
-        imageBytes = _recentSentImageBytes[msg.id] ??
-            (msg.clientTempId != null ? _recentSentImageBytes[msg.clientTempId!] : null) ??
-            (msg.imageUrl != null ? _recentSentImageBytes[msg.imageUrl!] : null);
       }
 
       if (imageUrl != null && imageUrl.isNotEmpty) {
@@ -6602,32 +5305,43 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             imgWidget,
             Positioned.fill(
               child: Container(
-                color: Colors.black.withOpacity(0.18),
+                color: Colors.black.withOpacity(0.42),
               ),
             ),
             Container(
-              width: 40,
-              height: 40,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.47),
-                shape: BoxShape.circle,
+                color: Colors.black.withOpacity(0.68),
+                borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.35),
+                    color: Colors.black.withOpacity(0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
                 ],
               ),
-              child: const Center(
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.0,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 15,
+                    height: 15,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.0,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
                   ),
-                ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Đang gửi...',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -6640,7 +5354,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           final targetMediaUrl = imageUrl ?? (content.startsWith('data:image') ? content : '');
           if (kIsWeb && targetMediaUrl.isNotEmpty) {
             try {
-              html.window.callMethod('openImageModal', [targetMediaUrl, msg.id]);
+              html.window.callMethod('openImageModal', [targetMediaUrl]);
               return;
             } catch (_) {}
           }
@@ -6685,12 +5399,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             ),
           );
         },
-        onDoubleTapDown: (details) {
-          _showFlyingEmoji(context, details.globalPosition, '❤️');
-        },
-        onDoubleTap: () => provider.reactToMessage(msg.id, '❤️'),
-        onLongPress: () => _showMessengerStyleContextMenu(context, msg, provider, isMe),
-        onSecondaryTapDown: (details) => _showMessengerStyleContextMenu(context, msg, provider, isMe),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: Container(
@@ -8083,7 +6791,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 setState(() => _currentTabIndex = index);
                 if (index == 1) {
                   _fetchPendingRequestsCount();
-                  _contactsFuture = ApiService.getFriends();
                 } else if (index == 3) {
                   _loadAiHistory(forceReload: true);
                 }
@@ -8787,3 +7494,391 @@ class _AiBouncingDotsBubbleState extends State<_AiBouncingDotsBubble> with Singl
     );
   }
 }
+
+class _ReactionDetailSheet extends StatefulWidget {
+  final MessageModel initialMsg;
+
+  const _ReactionDetailSheet({
+    Key? key,
+    required this.initialMsg,
+  }) : super(key: key);
+
+  @override
+  State<_ReactionDetailSheet> createState() => _ReactionDetailSheetState();
+}
+
+class _ReactionDetailSheetState extends State<_ReactionDetailSheet> {
+  String? _selectedFilterEmoji; // null nghĩa là 'Tất cả'
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final secondaryTextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    return Consumer<ChatProvider>(
+      builder: (context, chatProv, _) {
+        final currentMsg = chatProv.messages.firstWhere(
+          (m) => m.id == widget.initialMsg.id,
+          orElse: () => widget.initialMsg,
+        );
+
+        final reactions = currentMsg.reactions;
+        if (reactions.isEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && Navigator.canPop(context)) {
+              Navigator.pop(context);
+            }
+          });
+          return const SizedBox.shrink();
+        }
+
+        final currentUserId = chatProv.currentUser?.id;
+        final conv = chatProv.selectedConversation;
+
+        // Thống kê số lượng theo từng emoji
+        final Map<String, int> emojiCounts = {};
+        for (final emoji in reactions.values) {
+          emojiCounts[emoji] = (emojiCounts[emoji] ?? 0) + 1;
+        }
+
+        // Nếu icon đang lọc bị gỡ hết thì đưa về 'Tất cả'
+        if (_selectedFilterEmoji != null && !emojiCounts.containsKey(_selectedFilterEmoji)) {
+          _selectedFilterEmoji = null;
+        }
+
+        // Lọc danh sách theo icon được chọn
+        final filteredEntries = reactions.entries.where((entry) {
+          if (_selectedFilterEmoji == null) return true;
+          return entry.value == _selectedFilterEmoji;
+        }).toList();
+
+        // Ưu tiên "Bạn" lên đầu danh sách
+        filteredEntries.sort((a, b) {
+          if (a.key == currentUserId) return -1;
+          if (b.key == currentUserId) return 1;
+          return 0;
+        });
+
+        final screenWidth = MediaQuery.of(context).size.width;
+        final isDesktop = screenWidth > 600;
+
+        return SafeArea(
+          child: Center(
+            child: Container(
+              margin: isDesktop ? const EdgeInsets.symmetric(horizontal: 20, vertical: 30) : EdgeInsets.zero,
+              constraints: BoxConstraints(
+                maxWidth: isDesktop ? 460 : double.infinity,
+                maxHeight: MediaQuery.of(context).size.height * 0.65,
+              ),
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: isDesktop
+                    ? BorderRadius.circular(24)
+                    : const BorderRadius.vertical(top: Radius.circular(22)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 20,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 10),
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 10, 10, 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Cảm xúc về tin nhắn',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: textColor,
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.close_rounded, size: 20, color: secondaryTextColor),
+                          onPressed: () => Navigator.pop(context),
+                          splashRadius: 20,
+                          padding: const EdgeInsets.all(6),
+                          constraints: const BoxConstraints(),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                    child: Row(
+                      children: [
+                        _buildFilterTab(
+                          title: 'Tất cả ${reactions.length}',
+                          isSelected: _selectedFilterEmoji == null,
+                          onTap: () => setState(() => _selectedFilterEmoji = null),
+                          isDark: isDark,
+                        ),
+                        ...emojiCounts.entries.map((e) {
+                          return _buildFilterTab(
+                            emoji: e.key,
+                            count: e.value,
+                            isSelected: _selectedFilterEmoji == e.key,
+                            onTap: () => setState(() => _selectedFilterEmoji = e.key),
+                            isDark: isDark,
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Divider(
+                    height: 1,
+                    thickness: 1,
+                    color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
+                  ),
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      itemCount: filteredEntries.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final entry = filteredEntries[index];
+                        final userId = entry.key;
+                        final emoji = entry.value;
+                        final isMe = (currentUserId != null && userId == currentUserId);
+
+                        UserModel? member;
+                        if (isMe) {
+                          member = chatProv.currentUser;
+                        } else if (conv != null) {
+                          for (final m in conv.members) {
+                            if (m.id == userId) {
+                              member = m;
+                              break;
+                            }
+                          }
+                        }
+
+                        String displayName;
+                        if (isMe) {
+                          displayName = 'Bạn';
+                        } else {
+                          displayName = conv?.getDisplayName(userId) ?? '';
+                          if (displayName.isEmpty || displayName == 'Người dùng') {
+                            if (member != null) {
+                              displayName = member.fullName.isNotEmpty ? member.fullName : member.username;
+                            } else if (conv != null && !conv.isGroup && conv.name.isNotEmpty) {
+                              displayName = conv.name;
+                            } else {
+                              displayName = 'Người dùng';
+                            }
+                          }
+                        }
+
+                        String? avatarUrl = member?.avatar;
+                        if ((avatarUrl == null || avatarUrl.isEmpty) && !isMe && conv != null && !conv.isGroup) {
+                          avatarUrl = conv.avatar;
+                        }
+
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: isMe
+                                ? (isDark ? const Color(0xFF334155).withOpacity(0.4) : const Color(0xFFF8FAFC))
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: InkWell(
+                            onTap: isMe
+                                ? () {
+                                    chatProv.reactToMessage(currentMsg.id, emoji);
+                                  }
+                                : null,
+                            borderRadius: BorderRadius.circular(12),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                              child: Row(
+                                children: [
+                                  Stack(
+                                    clipBehavior: Clip.none,
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 20,
+                                        backgroundColor: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                                        backgroundImage: (avatarUrl != null && avatarUrl.isNotEmpty)
+                                            ? NetworkImage(ApiService.formatImageUrl(avatarUrl))
+                                            : null,
+                                        child: (avatarUrl == null || avatarUrl.isEmpty)
+                                            ? Text(
+                                                displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U',
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: isDark ? Colors.white70 : const Color(0xFF64748B),
+                                                ),
+                                              )
+                                            : null,
+                                      ),
+                                      Positioned(
+                                        right: -2,
+                                        bottom: -2,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(2),
+                                          decoration: BoxDecoration(
+                                            color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                            shape: BoxShape.circle,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withOpacity(0.12),
+                                                blurRadius: 2,
+                                              ),
+                                            ],
+                                          ),
+                                          child: _ChatScreenState.buildEmojiImage(emoji, size: 14),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          displayName,
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: isMe ? FontWeight.w700 : FontWeight.w600,
+                                            color: textColor,
+                                          ),
+                                        ),
+                                        if (isMe)
+                                          const Padding(
+                                            padding: EdgeInsets.only(top: 2),
+                                            child: Text(
+                                              'Nhấp để gỡ cảm xúc',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Color(0xFF64748B),
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (isMe)
+                                    TextButton.icon(
+                                      onPressed: () {
+                                        chatProv.reactToMessage(currentMsg.id, emoji);
+                                      },
+                                      icon: const Icon(Icons.close_rounded, size: 15, color: Colors.redAccent),
+                                      label: const Text(
+                                        'Gỡ',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.redAccent,
+                                        ),
+                                      ),
+                                      style: TextButton.styleFrom(
+                                        backgroundColor: Colors.red.withOpacity(0.08),
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        minimumSize: Size.zero,
+                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(16),
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    _ChatScreenState.buildEmojiImage(emoji, size: 24),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildFilterTab({
+    String? title,
+    String? emoji,
+    int? count,
+    required bool isSelected,
+    required VoidCallback onTap,
+    required bool isDark,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? (isDark ? const Color(0xFF3B82F6).withOpacity(0.25) : const Color(0xFFEBF5FF))
+                  : (isDark ? const Color(0xFF334155).withOpacity(0.5) : const Color(0xFFF1F5F9)),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isSelected
+                    ? const Color(0xFF0068FF)
+                    : Colors.transparent,
+                width: 1.5,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (emoji != null) ...[
+                  _ChatScreenState.buildEmojiImage(emoji, size: 16),
+                  const SizedBox(width: 4),
+                ],
+                Text(
+                  title ?? '${count ?? 0}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                    color: isSelected
+                        ? const Color(0xFF0068FF)
+                        : (isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+

@@ -39,6 +39,7 @@ class SocketService {
   static Stream<Map<String, dynamic>> get onWebrtcSignal => _webrtcSignalController.stream;
   static Stream<Map<String, dynamic>> get onUserTyping => _typingController.stream;
   static Stream<Map<String, dynamic>> get onUserStopTyping => _stopTypingController.stream;
+  static bool get isConnected => socket != null && socket!.connected;
   static Stream<Map<String, dynamic>> get onMessageReacted => _reactedController.stream;
   static Stream<Map<String, dynamic>> get onMessagesRead => _readController.stream;
   static Stream<Map<String, dynamic>> get onMessageDelivered => _deliveredController.stream;

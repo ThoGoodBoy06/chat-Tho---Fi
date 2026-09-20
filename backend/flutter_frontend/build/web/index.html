@@ -28,8 +28,8 @@ if ('caches' in window) {
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
   <!-- High Priority Preloads for Instant Native Startup -->
-  <link rel="preload" href="flutter_bootstrap.js?v=v_media_1789832598838" as="script">
-  <link rel="preload" href="main.dart.js?v=v_media_1789832598838" as="script">
+  <link rel="preload" href="flutter_bootstrap.js?v=v_media_1789892863292" as="script">
+  <link rel="preload" href="main.dart.js?v=v_media_1789892863292" as="script">
   <link rel="preload" href="canvaskit/canvaskit.wasm" as="fetch" crossorigin="anonymous">
   <link rel="preload" href="/tho_fi_logo_transparent.png" as="image">
   <!-- Official Messenger Reaction Emoji Preloads -->
@@ -52,14 +52,14 @@ if ('caches' in window) {
 
   <!-- Icons -->
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icon-192.png">
   <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
   <link rel="icon" type="image/png" sizes="512x512" href="/icon.png">
   <link rel="shortcut icon" href="/icon-192.png">
 
   <title>Chat Tho-Fi</title>
-  <script src="/webrtc_audio_helper.js?v=v_presshold_1789826451931"></script>
   <link rel="manifest" href="/manifest.json">
+  <script src="/webrtc_audio_helper.js?v=20260917_directsave_1789655278711"></script>
 
   <!-- Firebase Web SDK (v10 compat) -->
   <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -1897,7 +1897,7 @@ if ('caches' in window) {
   <script>
     window.flutterWebRenderer = "canvaskit";
   </script>
-  <script src="flutter_bootstrap.js?v=v_media_1789832598838" async></script>
+  <script src="flutter_bootstrap.js?v=v_media_1789892863292" async></script>
 
   <script id="messenger-theme-picker-script">
     window._openMessengerThemePicker = function (convId, convName) {
@@ -2619,46 +2619,41 @@ if ('caches' in window) {
     }
   </script>
 
-    <script>
+  <script>
     // ============================================================
     // [Call Sync V14] Standalone polling + dismiss
-    // Không phụ thuộc main.dart.js?v=v_media_1789832598838 chạy ngay từ index.html
-    // ============================================================
-    (function() {
-      var _pollInterval = null;
-      var _pollDelay = 600; // ms
-
-      function _doCallStatusCheck() {
-        var callerId = window._currentIncomingCallerId || window._currentCallerId || '';
+    // Không phụ thuộc main.dart.js?v=v_media_1789892863292'';
         var calleeId = window._currentUserId || (typeof $ !== 'undefined' && $.aLM) || '';
         if (!callerId && !calleeId) return;
+        if (window._activeCallShowing) { _stopPoll(); return; }
         var bUrl = (window.location.hostname.includes('pages.dev') || window.location.hostname.includes('workers.dev') || window.location.hostname.includes('cloudflare'))
           ? 'https://chat-tho-fi-vn-9s8u.onrender.com'
           : '';
         fetch(bUrl + '/api/call/status?callerId=' + encodeURIComponent(callerId)
-            + '&calleeId=' + encodeURIComponent(calleeId)
-            + '&t=' + Date.now(), { cache: 'no-store' })
-          .then(function(r) { return r.json(); })
-          .then(function(data) {
+          + '&calleeId=' + encodeURIComponent(calleeId)
+          + '&t=' + Date.now(), { cache: 'no-store' })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
             if (data && data.active === false) {
               console.log('[Call-V14] Cuộc gọi đã kết thúc trên server -> Dismiss ngay!');
               _stopPoll();
               if (window.dismissIncomingCallNow) {
                 window.dismissIncomingCallNow();
               } else {
-                setTimeout(function() {
+                // Thử lại sau 200ms nếu dismissIncomingCallNow chưa sẵn sàng
+                setTimeout(function () {
                   if (window.dismissIncomingCallNow) window.dismissIncomingCallNow();
                 }, 200);
               }
             }
           })
-          .catch(function() {});
+          .catch(function () { });
       }
 
       function _startPoll() {
         _stopPoll();
         console.log('[Call-V14] Bắt đầu polling trạng thái cuộc gọi mỗi 600ms...');
-        _pollInterval = setInterval(function() {
+        _pollInterval = setInterval(function () {
           var isShowing = window._incomingCallShowing || window._incomingRejectAction || window._incomingCallContext;
           if (!isShowing) {
             _stopPoll();
@@ -2666,6 +2661,7 @@ if ('caches' in window) {
           }
           _doCallStatusCheck();
         }, _pollDelay);
+        // Check ngay lập tức lần đầu sau 300ms
         setTimeout(_doCallStatusCheck, 300);
       }
 
@@ -2677,27 +2673,39 @@ if ('caches' in window) {
         }
       }
 
-      window._startCallStatusPolling = function(callerId, calleeId) {
-        window._currentCallerId = callerId;
-        _startPoll();
-      };
-      window._stopCallStatusPolling = _stopPoll;
-
-      function _onResume() {
-        var isShowing = window._incomingCallShowing || window._incomingRejectAction;
-        if (isShowing) {
-          console.log('[Call-V14] App visible lại, kiểm tra trạng thái cuộc gọi...');
+      // Expose ra global để main.dart.js?v=v_media_1789892863292'[Call-V14] App visible lại, kiểm tra trạng thái cuộc gọi...');
           _doCallStatusCheck();
+          // Cũng restart poll nếu đã bị dừng
           if (!_pollInterval) _startPoll();
         }
       }
 
       window.addEventListener('focus', _onResume);
-      document.addEventListener('visibilitychange', function() {
+      document.addEventListener('visibilitychange', function () {
         if (document.visibilityState === 'visible') _onResume();
       });
 
-      console.log('[Call-V14] Polling module loaded successfully.');
+      // Lắng nghe postMessage từ Service Worker (call_ended push notification)
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', function (event) {
+          if (event.data && (event.data.type === 'call_ended' || event.data.type === 'CALL_ENDED')) {
+            console.log('[Call-V14] Service Worker báo call_ended -> Dismiss ngay!');
+            _stopPoll();
+            if (window.dismissIncomingCallNow) window.dismissIncomingCallNow();
+          }
+        });
+      }
+
+      console.log('[Call-V14] Call Sync polling engine sẵn sàng.');
+
+    window._bindCallAudioUnlockListeners = function () {
+      if (window._callAudioEngine && window._callAudioEngine.unlockCallAudio) {
+        window._callAudioEngine.unlockCallAudio();
+      }
+    };
+    window.addEventListener('click', window._bindCallAudioUnlockListeners, { passive: true });
+    window.addEventListener('touchstart', window._bindCallAudioUnlockListeners, { passive: true });
+    
     })();
   </script>
 
@@ -3196,7 +3204,368 @@ if ('caches' in window) {
       <span style="font-size: 14px;">➔</span>
     </div>
   </div>
+<script>
+/**
+ * Chat Tho-Fi - Reaction Detail Modal & Bottom Sheet
+ * Supports viewing reaction details & removing own reaction ("Bạn" + "Gỡ" button)
+ * Compatible with http://localhost:3000 & production
+ */
+(function() {
+  var emojiAssets = {
+    '❤️': '/assets/emojis/2764-fe0f.png',
+    '😆': '/assets/emojis/1f606.png',
+    '😮': '/assets/emojis/1f62e.png',
+    '😢': '/assets/emojis/1f622.png',
+    '😡': '/assets/emojis/1f621.png',
+    '👍': '/assets/emojis/1f44d.png'
+  };
+
+  function normalizeEmoji(em) {
+    if (!em) return '';
+    em = String(em).trim();
+    if (em.indexOf('❤️') !== -1 || em.indexOf('\u2764') !== -1) return '❤️';
+    if (em.indexOf('😆') !== -1 || em.indexOf('\ud83d\ude06') !== -1) return '😆';
+    if (em.indexOf('😮') !== -1 || em.indexOf('\ud83d\ude2e') !== -1) return '😮';
+    if (em.indexOf('😢') !== -1 || em.indexOf('\ud83d\ude22') !== -1) return '😢';
+    if (em.indexOf('😡') !== -1 || em.indexOf('\ud83d\ude21') !== -1) return '😡';
+    if (em.indexOf('👍') !== -1 || em.indexOf('\ud83d\udc4d') !== -1) return '👍';
+    if (em.indexOf('😂') !== -1 || em.indexOf('\ud83d\ude02') !== -1) return '😂';
+    return em;
+  }
+
+  function renderEmoji(emoji, size) {
+    size = size || 24;
+    var norm = normalizeEmoji(emoji);
+    var asset = emojiAssets[norm];
+    if (asset) {
+      return '<img src="' + asset + '" width="' + size + '" height="' + size + '" style="vertical-align:middle;object-fit:contain;display:inline-block;" alt="' + norm + '" onerror="this.outerHTML=\'' + norm + '\'"/>';
+    }
+    return '<span style="font-size:' + size + 'px;line-height:1;display:inline-block;vertical-align:middle;">' + (norm || '') + '</span>';
+  }
+
+  function formatAvatarUrl(url) {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('blob:')) return url;
+    var base = window.location.origin || 'http://localhost:3000';
+    return base + (url.startsWith('/') ? url : '/' + url);
+  }
+
+  window._openReactionDetailModal = function(msg, scope) {
+    var old = document.getElementById('reaction-detail-modal-overlay');
+    if (old) old.remove();
+
+    if (!msg) return;
+    var msgId = msg.a;
+
+    var rawReactions = {};
+    try {
+      if (msg && msg.Q) {
+        if (typeof msg.Q.geK === 'function') {
+          var entries = msg.Q.geK(msg.Q).fa(0);
+          for (var i = 0; i < entries.length; i++) {
+            var ent = entries[i];
+            if (ent) {
+              var u = (ent.a !== undefined) ? ent.a : ent.key;
+              var em = (ent.b !== undefined) ? ent.b : ent.value;
+              if (u && em) rawReactions[u] = em;
+            }
+          }
+        }
+        if (Object.keys(rawReactions).length === 0 && msg.Q.e) {
+          var curr = msg.Q.e;
+          while (curr) {
+            if (curr.a && curr.b) rawReactions[curr.a] = curr.b;
+            curr = curr.c;
+          }
+        }
+        if (Object.keys(rawReactions).length === 0 && msg.Q.b) {
+          for (var k in msg.Q.b) {
+            var node = msg.Q.b[k];
+            if (node && node.a && node.b) rawReactions[node.a] = node.b;
+          }
+        }
+        if (Object.keys(rawReactions).length === 0 && typeof msg.Q === 'object') {
+          for (var k in msg.Q) {
+            if (typeof msg.Q[k] === 'string') rawReactions[k] = msg.Q[k];
+          }
+        }
+      }
+    } catch(e) {
+      console.error('Error reading msg reactions:', e);
+    }
+
+    var userIds = Object.keys(rawReactions);
+    if (userIds.length === 0) return;
+
+    var chatState = (scope && scope.a && typeof scope.a.K === 'function') ? scope.a : scope;
+    var provider = (scope && scope.b) ? scope.b : (chatState && chatState.d);
+    var conv = (scope && scope.d) ? scope.d : (provider && provider.c ? provider.c : null);
+    var currentUser = (provider && provider.a) ? provider.a : null;
+
+    var currentUserId = (currentUser && currentUser.a) || (window.$ && window.$.aLM) || '';
+    var currentUserAvatar = (currentUser && (currentUser.r || currentUser.e || currentUser.avatar)) || '';
+
+    if (!currentUserId) {
+      try {
+        var userStr = localStorage.getItem('flutter.userData') || localStorage.getItem('user');
+        if (userStr) {
+          var u = JSON.parse(userStr);
+          currentUserId = u.id || u.userId || '';
+          currentUserAvatar = currentUserAvatar || u.avatar || '';
+        }
+      } catch(e) {}
+    }
+
+    var membersMap = {};
+    var convName = (conv && conv.b) || 'Người dùng';
+    var convAvatar = (conv && conv.c) || '';
+    var convId = (conv && conv.a) || msg.b || '';
+
+    if (conv && conv.x && conv.x.length) {
+      for (var mi = 0; mi < conv.x.length; mi++) {
+        var m = conv.x[mi];
+        if (m) {
+          var uid = m.a;
+          var displayName = (typeof m.gCo === 'function' ? m.gCo() : (m.d || m.c || m.b || ''));
+          var avatar = m.r || m.e || m.avatar || '';
+          if (uid) membersMap[uid] = { name: displayName, avatar: avatar };
+        }
+      }
+    }
+
+    userIds.forEach(function(uid) {
+      if (uid !== currentUserId && !membersMap[uid]) {
+        membersMap[uid] = { name: convName, avatar: convAvatar };
+      }
+    });
+
+    var selectedEmojiFilter = null;
+
+    var overlay = document.createElement('div');
+    overlay.id = 'reaction-detail-modal-overlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.48);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:99999999;display:flex;align-items:flex-end;justify-content:center;opacity:0;transition:opacity 0.22s ease;';
+
+    var sheet = document.createElement('div');
+    sheet.id = 'reaction-detail-sheet';
+    sheet.style.cssText = 'background:#ffffff;width:100%;max-width:440px;max-height:78vh;border-top-left-radius:24px;border-top-right-radius:24px;padding:12px 0 24px;box-shadow:0 -12px 40px rgba(0,0,0,0.22);transform:translateY(100%);transition:transform 0.25s cubic-bezier(0.16,1,0.3,1);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;user-select:none;display:flex;flex-direction:column;box-sizing:border-box;';
+
+    if (window.innerWidth > 600) {
+      overlay.style.alignItems = 'center';
+      sheet.style.borderRadius = '24px';
+      sheet.style.maxHeight = '520px';
+      sheet.style.transform = 'scale(0.92)';
+      sheet.style.transition = 'transform 0.22s cubic-bezier(0.16,1,0.3,1), opacity 0.22s ease';
+    }
+
+    function closeModal() {
+      overlay.style.opacity = '0';
+      if (window.innerWidth > 600) {
+        sheet.style.transform = 'scale(0.92)';
+      } else {
+        sheet.style.transform = 'translateY(100%)';
+      }
+      setTimeout(function() {
+        if (overlay && overlay.parentNode) {
+          overlay.parentNode.removeChild(overlay);
+        }
+      }, 220);
+    }
+
+    overlay.onclick = function(e) {
+      if (e.target === overlay) closeModal();
+    };
+
+    function renderContent() {
+      var allUserIds = Object.keys(rawReactions);
+      if (allUserIds.length === 0) {
+        closeModal();
+        return;
+      }
+
+      var emojiCounts = {};
+      for (var uid in rawReactions) {
+        var em = normalizeEmoji(rawReactions[uid]);
+        if (em) emojiCounts[em] = (emojiCounts[em] || 0) + 1;
+      }
+
+      if (selectedEmojiFilter && !emojiCounts[selectedEmojiFilter]) {
+        selectedEmojiFilter = null;
+      }
+
+      var filteredUserIds = allUserIds.filter(function(uid) {
+        if (!selectedEmojiFilter) return true;
+        return normalizeEmoji(rawReactions[uid]) === selectedEmojiFilter;
+      });
+
+      filteredUserIds.sort(function(a, b) {
+        if (a === currentUserId) return -1;
+        if (b === currentUserId) return 1;
+        return 0;
+      });
+
+      var html = '';
+      html += '<div style="display:flex;justify-content:center;margin-bottom:10px;"><div style="width:40px;height:4px;background:#CBD5E1;border-radius:2px;"></div></div>';
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:2px 20px 10px;">';
+      html += '<div style="font-size:18px;font-weight:700;color:#0F172A;letter-spacing:-0.2px;">Cảm xúc về tin nhắn</div>';
+      html += '<button id="reaction-modal-close-btn" style="border:none;background:#F1F5F9;width:32px;height:32px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#64748B;font-size:16px;font-weight:bold;transition:background 0.15s, transform 0.1s;">✕</button>';
+      html += '</div>';
+
+      html += '<div style="display:gap:8px;padding:4px 20px 12px;overflow-x:auto;-webkit-overflow-scrolling:touch;display:flex;">';
+      var allSel = (selectedEmojiFilter === null);
+      html += '<div class="rx-tab-btn" data-emoji="" style="padding:6px 14px;border-radius:20px;cursor:pointer;white-space:nowrap;font-size:13px;font-weight:' + (allSel ? '700' : '600') + ';background:' + (allSel ? '#EBF5FF' : '#F1F5F9') + ';color:' + (allSel ? '#0068FF' : '#475569') + ';border:' + (allSel ? '1.5px solid #0068FF' : '1.5px solid transparent') + ';box-shadow:' + (allSel ? '0 1px 4px rgba(0,104,255,0.18)' : 'none') + ';transition:all 0.15s;">Tất cả ' + allUserIds.length + '</div>';
+
+      for (var em in emojiCounts) {
+        var isSel = (selectedEmojiFilter === em);
+        html += '<div class="rx-tab-btn" data-emoji="' + em + '" style="display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:20px;cursor:pointer;white-space:nowrap;font-size:13px;font-weight:' + (isSel ? '700' : '600') + ';background:' + (isSel ? '#EBF5FF' : '#F1F5F9') + ';color:' + (isSel ? '#0068FF' : '#475569') + ';border:' + (isSel ? '1.5px solid #0068FF' : '1.5px solid transparent') + ';box-shadow:' + (isSel ? '0 1px 4px rgba(0,104,255,0.18)' : 'none') + ';transition:all 0.15s;">' + renderEmoji(em, 16) + ' ' + emojiCounts[em] + '</div>';
+      }
+      html += '</div>';
+
+      html += '<div style="height:1px;background:#F1F5F9;margin-bottom:8px;"></div>';
+      html += '<div style="flex:1;overflow-y:auto;padding:0 16px;max-height:50vh;display:flex;flex-direction:column;gap:6px;">';
+
+      filteredUserIds.forEach(function(uid) {
+        var isMe = (currentUserId && uid === currentUserId);
+        var rawEm = rawReactions[uid];
+        var emoji = normalizeEmoji(rawEm);
+        var member = membersMap[uid];
+
+        var displayName = isMe ? 'Bạn' : ((member && member.name) || convName || 'Người dùng');
+        var avatarUrl = isMe ? currentUserAvatar : ((member && member.avatar) || convAvatar || '');
+        var firstLetter = (displayName && displayName[0] ? displayName[0].toUpperCase() : 'U');
+
+        html += '<div class="rx-user-row" data-uid="' + uid + '" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:14px;background:' + (isMe ? '#F8FAFC' : '#FFFFFF') + ';border:' + (isMe ? '1px solid #E2E8F0' : '1px solid transparent') + ';transition:background 0.15s;' + (isMe ? 'cursor:pointer;' : '') + '">';
+        html += '<div style="display:flex;align-items:center;gap:12px;min-width:0;flex:1;">';
+        html += '<div style="position:relative;width:44px;height:44px;flex-shrink:0;">';
+        if (avatarUrl) {
+          html += '<img src="' + formatAvatarUrl(avatarUrl) + '" style="width:44px;height:44px;border-radius:50%;object-fit:cover;background:#E2E8F0;display:block;" alt="' + displayName + '" onerror="this.style.display=\'none\';if(this.nextSibling)this.nextSibling.style.display=\'flex\';"/>';
+          html += '<div style="display:none;width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#0068FF,#00A3FF);align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:17px;">' + firstLetter + '</div>';
+        } else {
+          html += '<div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#0068FF,#00A3FF);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:17px;">' + firstLetter + '</div>';
+        }
+        html += '<div style="position:absolute;right:-4px;bottom:-3px;background:#ffffff;border-radius:50%;padding:2px;box-shadow:0 1px 4px rgba(0,0,0,0.18);line-height:0;display:flex;align-items:center;justify-content:center;">' + renderEmoji(emoji, 15) + '</div>';
+        html += '</div>';
+
+        html += '<div style="display:flex;flex-direction:column;min-width:0;flex:1;">';
+        html += '<span style="font-size:15px;font-weight:' + (isMe ? '700' : '600') + ';color:#0F172A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + displayName + '</span>';
+        if (isMe) {
+          html += '<span style="font-size:12px;color:#64748B;margin-top:1px;">Nhấp để gỡ cảm xúc</span>';
+        }
+        html += '</div>';
+        html += '</div>';
+
+        if (isMe) {
+          html += '<button class="rx-remove-btn" data-emoji="' + emoji + '" style="border:none;background:#FEE2E2;color:#EF4444;font-size:13px;font-weight:700;padding:7px 15px;border-radius:20px;cursor:pointer;display:flex;align-items:center;gap:5px;flex-shrink:0;box-shadow:0 1px 3px rgba(239,68,68,0.15);transition:all 0.15s;">';
+          html += '<span style="font-size:13px;line-height:1;">✕</span> <span>Gỡ</span>';
+          html += '</button>';
+        } else {
+          html += '<div style="flex-shrink:0;padding-left:8px;">' + renderEmoji(emoji, 26) + '</div>';
+        }
+
+        html += '</div>';
+      });
+
+      html += '</div>';
+      sheet.innerHTML = html;
+
+      var tabBtns = sheet.querySelectorAll('.rx-tab-btn');
+      tabBtns.forEach(function(btn) {
+        btn.onclick = function() {
+          selectedEmojiFilter = this.getAttribute('data-emoji') || null;
+          renderContent();
+        };
+      });
+
+      var closeBtn = sheet.querySelector('#reaction-modal-close-btn');
+      if (closeBtn) closeBtn.onclick = closeModal;
+
+      var removeBtns = sheet.querySelectorAll('.rx-remove-btn');
+      removeBtns.forEach(function(btn) {
+        btn.onclick = function(e) {
+          e.stopPropagation();
+          var emojiToRemove = this.getAttribute('data-emoji') || rawReactions[currentUserId];
+          handleRemoveOwnReaction(emojiToRemove);
+        };
+      });
+
+      var userRows = sheet.querySelectorAll('.rx-user-row');
+      userRows.forEach(function(row) {
+        var uid = row.getAttribute('data-uid');
+        if (uid === currentUserId) {
+          row.onclick = function() {
+            var emojiToRemove = rawReactions[currentUserId];
+            handleRemoveOwnReaction(emojiToRemove);
+          };
+        }
+      });
+    }
+
+    function handleRemoveOwnReaction(emoji) {
+      if (!currentUserId || !rawReactions[currentUserId]) {
+        closeModal();
+        return;
+      }
+
+      emoji = normalizeEmoji(emoji) || normalizeEmoji(rawReactions[currentUserId]) || '👍';
+      delete rawReactions[currentUserId];
+
+      if (msg && msg.Q && typeof msg.Q.E === 'function') {
+        try { msg.Q.E(0, currentUserId); } catch(e) {}
+      }
+
+      if (chatState && typeof chatState.K === 'function') {
+        try { chatState.K(new window.A.ax1()); } catch(e) {}
+      }
+
+      var socketSent = false;
+      if (window.$ && window.$.bj && typeof window.$.bj.cn === 'function' && window.$.bj.y) {
+        try {
+          var t = window.t;
+          window.$.bj.cn("react_message", window.A.V(["messageId", msgId, "conversationId", convId, "emoji", emoji], t.N, t.N));
+          socketSent = true;
+        } catch(e) {}
+      }
+
+      if (!socketSent) {
+        try {
+          var token = '';
+          var tStr = localStorage.getItem('flutter.authToken') || localStorage.getItem('authToken');
+          if (tStr) {
+            try { token = JSON.parse(tStr); } catch(e) { token = tStr; }
+          }
+          var base = (window.location.origin || 'http://localhost:3000') + '/api';
+          fetch(base + '/chat/messages/' + msgId + '/react', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': token ? ('Bearer ' + token) : ''
+            },
+            body: JSON.stringify({ reaction: emoji })
+          }).catch(function(err){ console.error('Lỗi gọi API react:', err); });
+        } catch(e) {}
+      }
+
+      if (Object.keys(rawReactions).length === 0) {
+        closeModal();
+      } else {
+        renderContent();
+      }
+    }
+
+    renderContent();
+    overlay.appendChild(sheet);
+    document.body.appendChild(overlay);
+
+    requestAnimationFrame(function() {
+      overlay.style.opacity = '1';
+      if (window.innerWidth > 600) {
+        sheet.style.transform = 'scale(1)';
+      } else {
+        sheet.style.transform = 'translateY(0)';
+      }
+    });
+  };
+})();
+</script>
 </body>
 
 </html>
-

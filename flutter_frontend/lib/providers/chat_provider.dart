@@ -248,34 +248,36 @@ class ChatProvider extends ChangeNotifier {
 
     // Optimistic update locally for instant feedback
     final index = messages.indexWhere((m) => m.id == messageId);
-    bool isRemoved = false;
     if (index != -1 && currentUser != null) {
       final msg = messages[index];
       final Map<String, String> updatedReactions = Map<String, String>.from(msg.reactions);
       final userId = currentUser!.id;
 
-      // Logic toggle: nếu đã thả icon này rồi -> HỦY (xóa bỏ). Ngược lại -> thêm/đổi icon mới
-      if (updatedReactions[userId] == emoji) {
+      bool isSame(String? a, String? b) {
+        if (a == null || b == null) return false;
+        if (a == b) return true;
+        return a.replaceAll('\uFE0F', '').trim() == b.replaceAll('\uFE0F', '').trim();
+      }
+
+      if (isSame(updatedReactions[userId], emoji)) {
         updatedReactions.remove(userId);
-        isRemoved = true;
       } else {
         updatedReactions[userId] = emoji;
-        isRemoved = false;
       }
 
       messages[index] = msg.copyWith(reactions: updatedReactions);
       notifyListeners();
     }
 
-    // Phát âm thanh phản hồi
+    // Play local reaction sound immediately
     SocketService.playReactSound();
 
-    // Phát tín hiệu qua Socket nếu đang kết nối. Nếu không có socket mới fallback sang REST API
-    // (Tránh gọi đồng thời cả hai gây xung đột toggle 2 lần liên tiếp)
+    // Emit socket event for real-time broadcast and DB persistence
     if (SocketService.isConnected) {
-      SocketService.emitReactMessage(messageId, selectedConversation!.id, emoji, isRemoved: isRemoved);
+      SocketService.emitReactMessage(messageId, selectedConversation!.id, emoji);
     } else {
-      ApiService.reactToMessage(messageId, emoji, isRemoved: isRemoved).catchError((e) {
+      // Call REST API fallback only when socket is disconnected
+      ApiService.reactToMessage(messageId, emoji).catchError((e) {
         debugPrint('⚠️ Fallback react API error: $e');
       });
     }
@@ -369,15 +371,15 @@ class ChatProvider extends ChangeNotifier {
     }
 
     // Kiểm tra trùng lặp (bao gồm cả optimistic message và socket relay message)
-    final existingIdx = messages.lastIndexWhere((m) => m.id == msg.id || (msg.clientTempId != null && m.clientTempId == msg.clientTempId));
+    final existingIdx = messages.indexWhere((m) => m.id == msg.id);
     if (existingIdx != -1) {
       // Cập nhật tin nhắn đã có (thay thế optimistic/relay bằng real)
       messages[existingIdx] = msg;
     } else {
       // Kiểm tra xem có phải tin nhắn đã có dạng tạm (optimistic-* hoặc rt-*)
-      final tempIdx = messages.lastIndexWhere((m) =>
-          (m.id.startsWith('optimistic-') || m.id.startsWith('rt-') || m.id.startsWith('temp_')) &&
-          (m.content == msg.content || (m.type == msg.type && m.status == 'sending')) &&
+      final tempIdx = messages.indexWhere((m) =>
+          (m.id.startsWith('optimistic-') || m.id.startsWith('rt-')) &&
+          m.content == msg.content &&
           m.senderId == msg.senderId);
       if (tempIdx != -1) {
         messages[tempIdx] = msg;
@@ -390,7 +392,7 @@ class ChatProvider extends ChangeNotifier {
     if (msg.conversationId != null && msg.conversationId!.isNotEmpty) {
       final convId = msg.conversationId!;
       if (!_messagesCache.containsKey(convId)) {
-        _messagesCache[convId] = List.from(messages);
+        _messagesCache[convId] = [];
       }
       final cacheList = _messagesCache[convId]!;
       final cIdx = cacheList.indexWhere((m) => m.id == msg.id);

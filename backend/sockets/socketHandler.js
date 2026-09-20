@@ -567,9 +567,8 @@ module.exports = (io) => {
     socket.on("send_message", (data) => {
       try {
         if (!data || !data.conversationId) return;
-        const { conversationId, content, type, tempId, clientTempId, senderId, senderName, replyMessageId, receiverId, memberIds } = data;
+        const { conversationId, content, type, tempId, senderId, senderName, replyMessageId, receiverId, memberIds } = data;
         const uid = senderId || socket.userId;
-        const actualTempId = clientTempId || tempId || `rt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
         // Tự động nhận diện nếu content là ảnh hoặc video
         const isImg = type === "image" || (typeof content === "string" && (
@@ -583,8 +582,7 @@ module.exports = (io) => {
 
         // Tạo payload tin nhắn tạm (optimistic) để phát cho đối phương ngay lập tức
         const realtimePayload = {
-          id: actualTempId,
-          clientTempId: clientTempId || tempId || null,
+          id: tempId || `rt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           conversationId,
           senderId: uid,
           content,
@@ -597,7 +595,6 @@ module.exports = (io) => {
           isDelivered: true,
           isRecalled: false,
           createdAt: new Date().toISOString(),
-          status: 'sent',
           _isSocketRelay: true, // Đánh dấu đây là tin nhắn relay qua socket (chưa lưu DB)
         };
 
@@ -1321,7 +1318,7 @@ module.exports = (io) => {
     socket.on("react_message", async (data) => {
       try {
         const userId = socket.userId;
-        const { messageId, conversationId, emoji, action, isRemoved: explicitRemoved } = data || {};
+        const { messageId, conversationId, emoji } = data || {};
         if (!messageId || !emoji || !userId) return;
 
         const message = await prisma.messages.findUnique({
@@ -1340,21 +1337,31 @@ module.exports = (io) => {
             ? currentReactions
             : {};
 
-        const isAlreadySameEmoji = currentReactions[userId] === emoji;
-        let shouldRemove = isAlreadySameEmoji;
-        if (explicitRemoved === true || action === "remove") {
-          shouldRemove = true;
-        } else if (action === "add") {
-          shouldRemove = false;
+        function normalizeEmoji(em) {
+          if (!em) return '';
+          const s = String(em).replace(/\uFE0F/g, '').trim();
+          if (s.includes('❤️') || s.includes('\u2764')) return '❤️';
+          if (s.includes('😆') || s.includes('\ud83d\ude06')) return '😆';
+          if (s.includes('😮') || s.includes('\ud83d\ude2e')) return '😮';
+          if (s.includes('😢') || s.includes('\ud83d\ude22')) return '😢';
+          if (s.includes('😡') || s.includes('\ud83d\ude21')) return '😡';
+          if (s.includes('👍') || s.includes('\ud83d\udc4d')) return '👍';
+          if (s.includes('😂') || s.includes('\ud83d\ude02')) return '😂';
+          return s;
         }
 
-        if (shouldRemove) {
+        const normIncoming = normalizeEmoji(emoji);
+        const currentEmoji = currentReactions[userId];
+        const normCurrent = currentEmoji ? normalizeEmoji(currentEmoji) : '';
+
+        // Nếu user đã thả cùng cảm xúc này -> bấm lại sẽ HỦY (xóa reaction)
+        const isRemoved = Boolean(normCurrent && normIncoming && normCurrent === normIncoming);
+
+        if (isRemoved) {
           delete currentReactions[userId];
         } else {
-          currentReactions[userId] = emoji;
+          currentReactions[userId] = normIncoming || emoji;
         }
-
-        const isRemoved = currentReactions[userId] === undefined;
 
         const updatedMessage = await prisma.messages.update({
           where: { id: messageId },
@@ -1363,30 +1370,16 @@ module.exports = (io) => {
 
         const targetConvId = conversationId || message.conversationId;
 
-        const payload = {
+        // Phát tín hiệu tới tất cả client trong phòng chat
+        io.to(targetConvId).emit("message_reacted", {
           messageId: messageId,
           conversationId: targetConvId,
           reactions: currentReactions,
-          reaction: emoji,
+          reaction: isRemoved ? null : (normIncoming || emoji),
           userId: userId,
           isRemoved: isRemoved,
           data: updatedMessage,
-        };
-
-        // Phát tín hiệu tới tất cả client trong phòng chat và từng thành viên
-        io.to(targetConvId).emit("message_reacted", payload);
-
-        try {
-          const members = await prisma.conversationMembers.findMany({
-            where: { conversationId: targetConvId },
-            select: { userId: true },
-          });
-          members.forEach((member) => {
-            io.to(member.userId).emit("message_reacted", payload);
-          });
-        } catch (mErr) {
-          console.error("Lỗi gửi message_reacted tới thành viên:", mErr);
-        }
+        });
 
         console.log(`❤️ User ${userId} đã thả cảm xúc '${emoji}' vào tin nhắn: ${messageId}`);
       } catch (error) {

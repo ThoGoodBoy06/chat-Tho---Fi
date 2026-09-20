@@ -1001,10 +1001,30 @@ exports.reactToMessage = async(req, res) => {
 
         // Nếu user đã react icon này rồi -> bỏ react. Ngược lại -> thêm/cập nhật react
 
-        if (currentReactions[userId] === reaction) {
+        function normalizeEmoji(em) {
+            if (!em) return '';
+            const s = String(em).replace(/\uFE0F/g, '').trim();
+            if (s.includes('❤️') || s.includes('\u2764')) return '❤️';
+            if (s.includes('😆') || s.includes('\ud83d\ude06')) return '😆';
+            if (s.includes('😮') || s.includes('\ud83d\ude2e')) return '😮';
+            if (s.includes('😢') || s.includes('\ud83d\ude22')) return '😢';
+            if (s.includes('😡') || s.includes('\ud83d\ude21')) return '😡';
+            if (s.includes('👍') || s.includes('\ud83d\udc4d')) return '👍';
+            if (s.includes('😂') || s.includes('\ud83d\ude02')) return '😂';
+            return s;
+        }
+
+        const normIncoming = normalizeEmoji(reaction);
+        const currentEmoji = currentReactions[userId];
+        const normCurrent = currentEmoji ? normalizeEmoji(currentEmoji) : '';
+
+        // Nếu user đã react icon này rồi -> bỏ react. Ngược lại -> thêm/cập nhật react
+        const willRemove = Boolean(normCurrent && normIncoming && normCurrent === normIncoming);
+
+        if (willRemove) {
             delete currentReactions[userId];
         } else {
-            currentReactions[userId] = reaction;
+            currentReactions[userId] = normIncoming || reaction;
         }
 
         // Cập nhật lại DB
