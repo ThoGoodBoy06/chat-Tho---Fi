@@ -2435,49 +2435,52 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                         itemCount: provider.messages.length + (hasTyping ? 1 : 0),
                         itemBuilder: (context, index) {
                           if (index == provider.messages.length) {
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 8, top: 4),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  CircleAvatar(
-                                    radius: 14,
-                                    backgroundColor: primaryColor,
-                                    backgroundImage: (conv.avatar != null && conv.avatar!.isNotEmpty)
-                                        ? NetworkImage(conv.avatar!)
-                                        : null,
-                                    child: (conv.avatar == null || conv.avatar!.isEmpty)
-                                        ? Text(
-                                            conv.name.isNotEmpty ? conv.name[0].toUpperCase() : 'U',
-                                            style: const TextStyle(fontSize: 10, color: Colors.white),
-                                          )
-                                        : null,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                    decoration: BoxDecoration(
-                                      color: isDark ? const Color(0xFF334155) : const Color(0xFFE4E6EB),
-                                      borderRadius: BorderRadius.circular(18),
+                            return RepaintBoundary(
+                              key: const ValueKey('chat_typing_indicator'),
+                              child: Padding(
+                                padding: const EdgeInsets.only(bottom: 8, top: 4),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 14,
+                                      backgroundColor: primaryColor,
+                                      backgroundImage: (conv.avatar != null && conv.avatar!.isNotEmpty)
+                                          ? ResizeImage(NetworkImage(conv.avatar!), width: 56, height: 56)
+                                          : null,
+                                      child: (conv.avatar == null || conv.avatar!.isEmpty)
+                                          ? Text(
+                                              conv.name.isNotEmpty ? conv.name[0].toUpperCase() : 'U',
+                                              style: const TextStyle(fontSize: 10, color: Colors.white),
+                                            )
+                                          : null,
                                     ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          '$typingUser đang gõ ',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF65676B),
-                                            fontWeight: FontWeight.w500,
-                                            fontStyle: FontStyle.italic,
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: isDark ? const Color(0xFF334155) : const Color(0xFFE4E6EB),
+                                        borderRadius: BorderRadius.circular(18),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            '$typingUser đang gõ ',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF65676B),
+                                              fontWeight: FontWeight.w500,
+                                              fontStyle: FontStyle.italic,
+                                            ),
                                           ),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        const BouncingDotsIndicator(),
-                                      ],
+                                          const SizedBox(width: 4),
+                                          const BouncingDotsIndicator(),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             );
                           }
@@ -2487,7 +2490,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                           final showTime = index == 0 || (index > 0 && msg.createdAt.difference(provider.messages[index - 1].createdAt).inMinutes > 30);
 
                       if (msg.type == 'system') {
-                        return _buildSystemMessage(msg, conv, provider.currentUser);
+                        return RepaintBoundary(
+                          key: ValueKey('system_${msg.id}'),
+                          child: _buildSystemMessage(msg, conv, provider.currentUser),
+                        );
                       }
 
                       final lowerContent = msg.content.toLowerCase();
@@ -2497,7 +2503,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                       );
 
                       if (isCallMsg) {
-                        return Column(
+                        return RepaintBoundary(
+                          key: ValueKey('call_${msg.id}'),
+                          child: Column(
                           children: [
                             if (showTime)
                               Padding(
@@ -2520,7 +2528,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                       radius: 14,
                                       backgroundColor: primaryColor,
                                       backgroundImage: (conv.avatar != null && conv.avatar!.isNotEmpty)
-                                          ? NetworkImage(conv.avatar!)
+                                          ? ResizeImage(NetworkImage(conv.avatar!), width: 56, height: 56)
                                           : null,
                                       child: (conv.avatar == null || conv.avatar!.isEmpty)
                                           ? Text(conv.name.isNotEmpty ? conv.name[0].toUpperCase() : 'U', style: const TextStyle(fontSize: 10, color: Colors.white))
@@ -2535,10 +2543,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                               ),
                             ),
                           ],
+                        ),
                         );
                       }
 
-                      return Column(
+                      return RepaintBoundary(
+                        key: ValueKey('msg_${msg.id}'),
+                        child: Column(
                         children: [
                           if (showTime)
                             Padding(
@@ -2573,7 +2584,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                         radius: 14,
                                         backgroundColor: primaryColor,
                                         backgroundImage: (conv.avatar != null && conv.avatar!.isNotEmpty)
-                                            ? NetworkImage(conv.avatar!)
+                                            ? ResizeImage(NetworkImage(conv.avatar!), width: 56, height: 56)
                                             : null,
                                         child: (conv.avatar == null || conv.avatar!.isEmpty)
                                             ? Text(conv.name.isNotEmpty ? conv.name[0].toUpperCase() : 'U', style: const TextStyle(fontSize: 10, color: Colors.white))
@@ -2771,6 +2782,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                             ),
                           ),
                         ],
+                      ),
                       );
                     },
                       );
@@ -3492,6 +3504,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                       ApiService.formatImageUrl(u['avatar'].toString()),
                                       width: 48,
                                       height: 48,
+                                      cacheWidth: 150,
+                                      cacheHeight: 150,
                                       fit: BoxFit.cover,
                                       errorBuilder: (_, __, ___) => Container(
                                         width: 48,
@@ -5270,6 +5284,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       if (imageBytes != null) {
         imgWidget = Image.memory(
           imageBytes,
+          cacheWidth: 800,
           fit: BoxFit.cover,
           errorBuilder: (_, __, ___) => Container(
             padding: const EdgeInsets.all(12),
@@ -5286,6 +5301,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       } else if (imageUrl != null && imageUrl.isNotEmpty) {
         imgWidget = Image.network(
           imageUrl,
+          cacheWidth: 800,
           fit: BoxFit.cover,
           errorBuilder: (_, __, ___) => Container(
             padding: const EdgeInsets.all(12),
@@ -7891,7 +7907,7 @@ class _ReactionDetailSheetState extends State<_ReactionDetailSheet> {
     );
   }
 
-  // --- Skeleton Loading Helpers ---
+  // --- Skeleton Loading Helpers (Animated Shimmer) ---
   Widget _buildSkeletonBox({
     required double width,
     required double height,
@@ -7900,15 +7916,13 @@ class _ReactionDetailSheetState extends State<_ReactionDetailSheet> {
     Color? color,
     required bool isDark,
   }) {
-    final defaultColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
-    return Container(
+    return _AnimatedShimmerBox(
       width: width,
       height: height,
-      decoration: BoxDecoration(
-        color: color ?? defaultColor,
-        shape: isCircle ? BoxShape.circle : BoxShape.rectangle,
-        borderRadius: isCircle ? null : BorderRadius.circular(borderRadius),
-      ),
+      borderRadius: borderRadius,
+      isCircle: isCircle,
+      color: color,
+      isDark: isDark,
     );
   }
 
@@ -8081,3 +8095,67 @@ class _ReactionDetailSheetState extends State<_ReactionDetailSheet> {
   }
 }
 
+class _AnimatedShimmerBox extends StatefulWidget {
+  final double width;
+  final double height;
+  final double borderRadius;
+  final bool isCircle;
+  final Color? color;
+  final bool isDark;
+
+  const _AnimatedShimmerBox({
+    Key? key,
+    required this.width,
+    required this.height,
+    this.borderRadius = 4,
+    this.isCircle = false,
+    this.color,
+    required this.isDark,
+  }) : super(key: key);
+
+  @override
+  State<_AnimatedShimmerBox> createState() => _AnimatedShimmerBoxState();
+}
+
+class _AnimatedShimmerBoxState extends State<_AnimatedShimmerBox> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2600),
+    )..repeat(reverse: true);
+    _animation = Tween<double>(begin: 0.65, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void disposeProfile() {}
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final defaultColor = widget.isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+    return FadeTransition(
+      opacity: _animation,
+      child: Container(
+        width: widget.width,
+        height: widget.height,
+        decoration: BoxDecoration(
+          color: widget.color ?? defaultColor,
+          shape: widget.isCircle ? BoxShape.circle : BoxShape.rectangle,
+          borderRadius: widget.isCircle ? null : BorderRadius.circular(widget.borderRadius),
+        ),
+      ),
+    );
+  }
+}

@@ -28,8 +28,8 @@ if ('caches' in window) {
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
   <!-- High Priority Preloads for Instant Native Startup -->
-  <link rel="preload" href="flutter_bootstrap.js?v=v_sk_1789907200000" as="script">
-  <link rel="preload" href="main.dart.js?v=v_sk_1789907200000" as="script">
+  <link rel="preload" href="flutter_bootstrap.js?v=v_sk_precise_1789920000000" as="script">
+  <link rel="preload" href="main.dart.js?v=v_sk_precise_1789920000000" as="script">
   <link rel="preload" href="canvaskit/canvaskit.wasm" as="fetch" crossorigin="anonymous">
   <link rel="preload" href="/tho_fi_logo_transparent.png" as="image">
   <!-- Official Messenger Reaction Emoji Preloads -->
@@ -58,6 +58,311 @@ if ('caches' in window) {
   <link rel="shortcut icon" href="/icon-192.png">
 
   <title>Chat Tho-Fi</title>
+
+  <!-- Skeleton Shimmer Animation System -->
+    <!-- Skeleton Shimmer Animation System -->
+  <style id="sk-shimmer-styles">
+    @keyframes skPulse {
+      0%, 100% { opacity: 0.65; }
+      50% { opacity: 1; }
+    }
+    @keyframes skSweep {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(200%); }
+    }
+    #sk-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 9998; pointer-events: none;
+      display: none; flex-direction: column;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      overflow: hidden;
+    }
+    #sk-overlay.active { display: flex; pointer-events: auto; }
+    #sk-overlay .sk-bar {
+      position: relative; overflow: hidden;
+      animation: skPulse 3.8s ease-in-out infinite;
+    }
+    #sk-overlay .sk-bar::after {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.30) 50%, transparent 100%);
+      animation: skSweep 4.0s ease-in-out infinite;
+    }
+    .sk-dark .sk-bar::after {
+      background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.09) 50%, transparent 100%);
+    }
+    #sk-overlay .sk-circle { border-radius: 50% !important; flex-shrink: 0; }
+    #sk-overlay .sk-rect { border-radius: 4px; }
+    #sk-overlay .sk-pill { border-radius: 18px; }
+    #sk-overlay .sk-bubble-in { border-radius: 18px 18px 18px 4px !important; }
+    #sk-overlay .sk-bubble-out { border-radius: 18px 18px 4px 18px !important; }
+    #sk-overlay .sk-gap { flex-shrink: 0; }
+    #sk-overlay .sk-col { display: flex; flex-direction: column; }
+    #sk-overlay .sk-content { flex: 1; overflow: hidden; }
+  </style>
+  <script id="sk-overlay-script">
+    (function() {
+      var _skTimer = null;
+      var _skLastType = null;
+
+      window._showSkOverlay = function(type, isDark) {
+        _skLastType = type;
+        clearTimeout(_skTimer);
+        var el = document.getElementById('sk-overlay');
+        if (!el) {
+          el = document.createElement('div');
+          el.id = 'sk-overlay';
+          document.body.appendChild(el);
+        }
+        if (el.dataset.type === type && el.classList.contains('active')) return;
+        el.dataset.type = type;
+
+        var bg = isDark ? '#0F172A' : '#F8FAFC';
+        var cardBg = isDark ? '#1E293B' : '#FFFFFF';
+        var base = isDark ? '#1E293B' : '#F1F5F9';
+        var shim = isDark ? '#334155' : '#E2E8F0';
+        var accent = isDark ? '#475569' : '#CBD5E1';
+        var blueTint = isDark ? '#1E3A5F' : '#DBEAFE';
+        var blueBtn = isDark ? '#0D47A1' : '#0068FF';
+
+        el.style.background = bg;
+        if (isDark) el.classList.add('sk-dark'); else el.classList.remove('sk-dark');
+
+        var html = '';
+
+        if (type === 'messages') {
+          // === MÀN HÌNH ĐOẠN CHAT (CHAT DETAIL) ===
+          // 1. Header chuẩn: Nút back + Avatar tròn + Tên & Trạng thái + 3 icon gọi/info
+          html += '<div class="sk-header" style="background:'+cardBg+';border-bottom:1px solid '+(isDark?'#334155':'#F1F5F9')+';height:56px;padding:0 12px;display:flex;align-items:center;gap:10px">';
+          html += '<div class="sk-bar sk-rect" style="width:12px;height:18px;border-radius:2px;background:'+shim+'"></div>';
+          html += '<div class="sk-bar sk-circle" style="width:38px;height:38px;background:'+shim+'"></div>';
+          html += '<div class="sk-col" style="gap:5px;flex:1">';
+          html += '<div class="sk-bar sk-rect" style="width:130px;height:15px;background:'+shim+'"></div>';
+          html += '<div class="sk-bar sk-rect" style="width:85px;height:11px;background:'+base+'"></div>';
+          html += '</div>';
+          html += '<div class="sk-bar sk-circle" style="width:28px;height:28px;background:'+base+'"></div>';
+          html += '<div class="sk-bar sk-circle" style="width:28px;height:28px;background:'+base+'"></div>';
+          html += '<div class="sk-bar sk-circle" style="width:28px;height:28px;background:'+base+'"></div>';
+          html += '</div>';
+
+          // 2. Nội dung tin nhắn: Bong bóng trái / phải xen kẽ + avatar tròn bên trái
+          html += '<div class="sk-content" style="padding:14px 14px;display:flex;flex-direction:column;gap:14px">';
+          
+          // Tin nhắn đến 1 (có avatar tròn bên trái)
+          html += '<div style="display:flex;align-items:flex-end;gap:8px">';
+          html += '<div class="sk-bar sk-circle" style="width:30px;height:30px;background:'+accent+'"></div>';
+          html += '<div class="sk-bar sk-bubble-in" style="width:190px;height:42px;background:'+shim+'"></div>';
+          html += '</div>';
+
+          // Tin nhắn đến 2 (liên tiếp không avatar, thụt lề 38px)
+          html += '<div style="display:flex;align-items:flex-end;padding-left:38px">';
+          html += '<div class="sk-bar sk-bubble-in" style="width:240px;height:52px;background:'+shim+'"></div>';
+          html += '</div>';
+
+          // Tin nhắn đi 1 (bên phải, màu xanh nhẹ)
+          html += '<div style="display:flex;justify-content:flex-end">';
+          html += '<div class="sk-bar sk-bubble-out" style="width:165px;height:40px;background:'+blueTint+'"></div>';
+          html += '</div>';
+
+          // Tin nhắn đi 2 (bên phải)
+          html += '<div style="display:flex;justify-content:flex-end">';
+          html += '<div class="sk-bar sk-bubble-out" style="width:215px;height:44px;background:'+blueTint+'"></div>';
+          html += '</div>';
+
+          // Tin nhắn đến 3 (có avatar tròn)
+          html += '<div style="display:flex;align-items:flex-end;gap:8px">';
+          html += '<div class="sk-bar sk-circle" style="width:30px;height:30px;background:'+accent+'"></div>';
+          html += '<div class="sk-bar sk-bubble-in" style="width:160px;height:40px;background:'+shim+'"></div>';
+          html += '</div>';
+
+          // Tin nhắn đi 3 (bên phải)
+          html += '<div style="display:flex;justify-content:flex-end">';
+          html += '<div class="sk-bar sk-bubble-out" style="width:185px;height:40px;background:'+blueTint+'"></div>';
+          html += '</div>';
+
+          html += '</div>';
+
+          // 3. Thanh gõ tin nhắn dưới đáy (Bottom bar): Nút + tròn + ô nhập chữ hình viên thuốc + emoji + like
+          html += '<div style="background:'+cardBg+';border-top:1px solid '+(isDark?'#334155':'#F1F5F9')+';height:58px;padding:8px 12px;display:flex;align-items:center;gap:10px">';
+          html += '<div class="sk-bar sk-circle" style="width:34px;height:34px;background:'+blueBtn+'"></div>';
+          html += '<div class="sk-bar sk-pill" style="flex:1;height:38px;background:'+base+'"></div>';
+          html += '<div class="sk-bar sk-circle" style="width:28px;height:28px;background:'+base+'"></div>';
+          html += '<div class="sk-bar sk-circle" style="width:28px;height:28px;background:'+blueBtn+'"></div>';
+          html += '</div>';
+
+        } else if (type === 'chats') {
+          // === MÀN HÌNH DANH SÁCH TIN NHẮN (CHATS TAB) ===
+          // 1. Top App Bar: Chuông + Chat Tho-Fi + QR + Thêm bạn bè
+          html += '<div class="sk-header" style="background:'+cardBg+';height:52px;padding:0 16px;display:flex;align-items:center;gap:12px">';
+          html += '<div class="sk-bar sk-circle" style="width:22px;height:22px;background:'+shim+'"></div>';
+          html += '<div class="sk-bar sk-rect" style="width:105px;height:18px;background:'+blueBtn+'"></div>';
+          html += '<div style="flex:1"></div>';
+          html += '<div class="sk-bar sk-rect" style="width:22px;height:22px;border-radius:5px;background:'+base+'"></div>';
+          html += '<div class="sk-bar sk-pill" style="width:110px;height:32px;background:'+blueBtn+'"></div>';
+          html += '</div>';
+
+          // 2. Tiêu đề "Tin nhắn" + Switch
+          html += '<div style="padding:10px 16px 6px;display:flex;align-items:center;justify-content:space-between">';
+          html += '<div class="sk-bar sk-rect" style="width:85px;height:22px;background:'+shim+'"></div>';
+          html += '<div class="sk-bar sk-pill" style="width:38px;height:20px;background:'+base+'"></div>';
+          html += '</div>';
+
+          // 3. Filter tabs: "Tất cả" & "Chưa đọc"
+          html += '<div style="padding:4px 16px 10px;display:flex;gap:8px">';
+          html += '<div class="sk-bar sk-pill" style="width:64px;height:28px;background:'+blueBtn+'"></div>';
+          html += '<div class="sk-bar sk-pill" style="width:74px;height:28px;background:'+base+'"></div>';
+          html += '</div>';
+
+          // 4. Danh sách hội thoại (Avatar tròn 52px + Tên + Tin nhắn + Giờ)
+          html += '<div class="sk-content" style="padding:0">';
+          for (var i = 0; i < 7; i++) {
+            var nw = 110 + ((i * 29) % 70);
+            var mw = 160 + ((i * 37) % 90);
+            html += '<div class="sk-row" style="padding:10px 16px;display:flex;align-items:center">';
+            html += '<div class="sk-bar sk-circle" style="width:52px;height:52px;background:'+shim+'"></div>';
+            html += '<div class="sk-gap" style="width:12px"></div>';
+            html += '<div class="sk-col" style="flex:1;gap:7px">';
+            html += '<div class="sk-bar sk-rect" style="width:'+nw+'px;height:15px;background:'+shim+'"></div>';
+            html += '<div class="sk-bar sk-rect" style="width:'+mw+'px;height:12px;background:'+base+'"></div>';
+            html += '</div>';
+            html += '<div class="sk-col" style="align-items:flex-end;gap:6px">';
+            html += '<div class="sk-bar sk-rect" style="width:36px;height:11px;background:'+base+'"></div>';
+            html += '<div class="sk-bar sk-circle" style="width:12px;height:12px;background:'+base+'"></div>';
+            html += '</div>';
+            html += '</div>';
+          }
+          html += '</div>';
+
+          // 5. Floating Bottom Navigation Bar (5 tabs)
+          html += '<div style="padding:8px 16px 14px">';
+          html += '<div class="sk-bar sk-pill" style="height:54px;background:'+cardBg+';border:1px solid '+(isDark?'#334155':'#E2E8F0')+';display:flex;align-items:center;justify-content:space-around;padding:0 10px">';
+          html += '<div class="sk-bar sk-pill" style="width:84px;height:36px;background:'+blueTint+'"></div>';
+          html += '<div class="sk-bar sk-circle" style="width:26px;height:26px;background:'+base+'"></div>';
+          html += '<div class="sk-bar sk-circle" style="width:26px;height:26px;background:'+base+'"></div>';
+          html += '<div class="sk-bar sk-circle" style="width:26px;height:26px;background:'+base+'"></div>';
+          html += '<div class="sk-bar sk-circle" style="width:26px;height:26px;background:'+base+'"></div>';
+          html += '</div></div>';
+
+        } else if (type === 'contacts') {
+          // === MÀN HÌNH DANH BẠ (CONTACTS TAB) ===
+          html += '<div class="sk-header" style="background:'+cardBg+';height:52px;padding:0 16px;display:flex;align-items:center;gap:12px">';
+          html += '<div class="sk-bar sk-circle" style="width:22px;height:22px;background:'+shim+'"></div>';
+          html += '<div class="sk-bar sk-rect" style="width:105px;height:18px;background:'+blueBtn+'"></div>';
+          html += '<div style="flex:1"></div>';
+          html += '<div class="sk-bar sk-pill" style="width:110px;height:32px;background:'+blueBtn+'"></div>';
+          html += '</div>';
+
+          html += '<div style="padding:10px 16px 6px">';
+          html += '<div class="sk-bar sk-rect" style="width:85px;height:22px;background:'+shim+'"></div>';
+          html += '</div>';
+
+          html += '<div class="sk-content" style="padding:0">';
+          for (var i = 0; i < 8; i++) {
+            var nw = 100 + ((i * 23) % 60);
+            html += '<div class="sk-row" style="padding:10px 16px;display:flex;align-items:center">';
+            html += '<div class="sk-bar sk-circle" style="width:48px;height:48px;background:'+shim+'"></div>';
+            html += '<div class="sk-gap" style="width:12px"></div>';
+            html += '<div class="sk-col" style="flex:1;gap:6px">';
+            html += '<div class="sk-bar sk-rect" style="width:'+nw+'px;height:14px;background:'+shim+'"></div>';
+            html += '<div class="sk-bar sk-rect" style="width:'+(nw-25)+'px;height:11px;background:'+base+'"></div>';
+            html += '</div>';
+            html += '<div class="sk-bar sk-pill" style="width:68px;height:30px;background:'+shim+'"></div>';
+            html += '</div>';
+          }
+          html += '</div>';
+
+          html += '<div style="padding:8px 16px 14px">';
+          html += '<div class="sk-bar sk-pill" style="height:54px;background:'+cardBg+';border:1px solid '+(isDark?'#334155':'#E2E8F0')+';display:flex;align-items:center;justify-content:space-around;padding:0 10px">';
+          html += '<div class="sk-bar sk-circle" style="width:26px;height:26px;background:'+base+'"></div>';
+          html += '<div class="sk-bar sk-pill" style="width:84px;height:36px;background:'+blueTint+'"></div>';
+          html += '<div class="sk-bar sk-circle" style="width:26px;height:26px;background:'+base+'"></div>';
+          html += '<div class="sk-bar sk-circle" style="width:26px;height:26px;background:'+base+'"></div>';
+          html += '<div class="sk-bar sk-circle" style="width:26px;height:26px;background:'+base+'"></div>';
+          html += '</div></div>';
+
+        } else if (type === 'requests') {
+          // === MÀN HÌNH LỜI MỜI KẾT BẠN ===
+          html += '<div class="sk-header" style="background:'+cardBg+';height:52px;padding:0 16px;display:flex;align-items:center;gap:12px">';
+          html += '<div class="sk-bar sk-rect" style="width:12px;height:18px;border-radius:2px;background:'+shim+'"></div>';
+          html += '<div class="sk-bar sk-rect" style="width:140px;height:18px;background:'+shim+'"></div>';
+          html += '</div>';
+
+          html += '<div class="sk-content" style="padding:8px 0">';
+          for (var i = 0; i < 6; i++) {
+            var nw = 100 + ((i * 20) % 50);
+            html += '<div class="sk-row" style="padding:10px 16px;display:flex;align-items:center">';
+            html += '<div class="sk-bar sk-circle" style="width:48px;height:48px;background:'+shim+'"></div>';
+            html += '<div class="sk-gap" style="width:12px"></div>';
+            html += '<div class="sk-col" style="flex:1;gap:6px">';
+            html += '<div class="sk-bar sk-rect" style="width:'+nw+'px;height:14px;background:'+shim+'"></div>';
+            html += '<div class="sk-bar sk-rect" style="width:75px;height:11px;background:'+base+'"></div>';
+            html += '</div>';
+            html += '<div class="sk-bar sk-pill" style="width:54px;height:28px;background:'+blueBtn+'"></div>';
+            html += '<div class="sk-gap" style="width:6px"></div>';
+            html += '<div class="sk-bar sk-pill" style="width:54px;height:28px;background:'+base+'"></div>';
+            html += '</div>';
+          }
+          html += '</div>';
+
+        } else if (type === 'profile') {
+          // === MÀN HÌNH TRANG CÁ NHÂN (PROFILE) ===
+          html += '<div class="sk-header" style="background:'+cardBg+';height:52px;padding:0 16px;display:flex;align-items:center;gap:12px">';
+          html += '<div class="sk-bar sk-rect" style="width:12px;height:18px;border-radius:2px;background:'+shim+'"></div>';
+          html += '<div class="sk-bar sk-rect" style="width:120px;height:18px;background:'+shim+'"></div>';
+          html += '</div>';
+
+          // Cover Photo chữ nhật 190px
+          html += '<div class="sk-bar sk-rect" style="width:100%;height:190px;background:'+base+';border-radius:0"></div>';
+
+          // Avatar tròn 90px đè lên ảnh bìa
+          html += '<div style="display:flex;flex-direction:column;align-items:flex-start;padding:0 20px;margin-top:-45px">';
+          html += '<div class="sk-bar sk-circle" style="width:90px;height:90px;background:'+shim+';border:4px solid '+(isDark?'#0F172A':'#FFFFFF')+'"></div>';
+          html += '<div style="height:12px"></div>';
+          html += '<div class="sk-bar sk-rect" style="width:170px;height:22px;background:'+shim+'"></div>';
+          html += '<div style="height:8px"></div>';
+          html += '<div class="sk-bar sk-rect" style="width:230px;height:13px;background:'+base+'"></div>';
+          html += '<div style="height:20px"></div>';
+          html += '<div style="display:flex;gap:10px;width:100%">';
+          html += '<div class="sk-bar sk-pill" style="flex:1;height:42px;background:'+blueBtn+'"></div>';
+          html += '<div class="sk-bar sk-pill" style="width:48px;height:42px;background:'+base+'"></div>';
+          html += '<div class="sk-bar sk-pill" style="width:48px;height:42px;background:'+base+'"></div>';
+          html += '</div></div>';
+
+        } else {
+          for (var i = 0; i < 6; i++) {
+            html += '<div class="sk-row" style="padding:10px 16px;display:flex;align-items:center">';
+            html += '<div class="sk-bar sk-circle" style="width:48px;height:48px;background:'+shim+'"></div>';
+            html += '<div class="sk-gap" style="width:12px"></div>';
+            html += '<div class="sk-col" style="flex:1;gap:6px">';
+            html += '<div class="sk-bar sk-rect" style="width:140px;height:14px;background:'+shim+'"></div>';
+            html += '<div class="sk-bar sk-rect" style="width:200px;height:11px;background:'+base+'"></div>';
+            html += '</div></div>';
+          }
+        }
+
+        el.innerHTML = html;
+        el.classList.add('active');
+      };
+
+      window._hideSkOverlay = function() {
+        var el = document.getElementById('sk-overlay');
+        if (el) {
+          el.classList.remove('active');
+          el.innerHTML = '';
+        }
+        _skLastType = null;
+      };
+
+      // Auto-hide: nếu không còn gọi aSkList sau 500ms thì ẩn overlay
+      window._skTick = function() {
+        clearTimeout(_skTimer);
+        _skTimer = setTimeout(function() {
+          window._hideSkOverlay();
+        }, 500);
+      };
+    })();
+  </script>
+
   <link rel="manifest" href="/manifest.json">
   <script src="/webrtc_audio_helper.js?v=20260917_directsave_1789655278711"></script>
 
@@ -1897,7 +2202,7 @@ if ('caches' in window) {
   <script>
     window.flutterWebRenderer = "canvaskit";
   </script>
-  <script src="flutter_bootstrap.js?v=v_sk_1789907200000" async></script>
+  <script src="flutter_bootstrap.js?v=v_sk_precise_1789920000000" async></script>
 
   <script id="messenger-theme-picker-script">
     window._openMessengerThemePicker = function (convId, convName) {
@@ -2622,7 +2927,7 @@ if ('caches' in window) {
   <script>
     // ============================================================
     // [Call Sync V14] Standalone polling + dismiss
-    // Không phụ thuộc main.dart.js?v=v_sk_1789907200000'';
+    // Không phụ thuộc main.dart.js?v=v_sk_precise_1789920000000'';
         var calleeId = window._currentUserId || (typeof $ !== 'undefined' && $.aLM) || '';
         if (!callerId && !calleeId) return;
         if (window._activeCallShowing) { _stopPoll(); return; }
@@ -2673,7 +2978,7 @@ if ('caches' in window) {
         }
       }
 
-      // Expose ra global để main.dart.js?v=v_sk_1789907200000'[Call-V14] App visible lại, kiểm tra trạng thái cuộc gọi...');
+      // Expose ra global để main.dart.js?v=v_sk_precise_1789920000000'[Call-V14] App visible lại, kiểm tra trạng thái cuộc gọi...');
           _doCallStatusCheck();
           // Cũng restart poll nếu đã bị dừng
           if (!_pollInterval) _startPoll();

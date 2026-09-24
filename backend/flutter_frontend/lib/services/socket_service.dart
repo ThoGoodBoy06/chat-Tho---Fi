@@ -17,6 +17,9 @@ class SocketService {
   static final _webrtcSignalController = StreamController<Map<String, dynamic>>.broadcast();
   static final _typingController = StreamController<Map<String, dynamic>>.broadcast();
   static final _stopTypingController = StreamController<Map<String, dynamic>>.broadcast();
+  static DateTime? _lastTypingEmitTime;
+  static Timer? _incomingTypingDebounceTimer;
+  static Map<String, dynamic>? _lastIncomingTypingData;
 
   static final _recalledController = StreamController<Map<String, dynamic>>.broadcast();
   static final _reactedController = StreamController<Map<String, dynamic>>.broadcast();
@@ -176,29 +179,31 @@ class SocketService {
       }
     });
 
-    socket?.on('user_typing', (data) {
+    final onTypingHandler = (data) {
       if (data is Map) {
-        _typingController.add(Map<String, dynamic>.from(data));
+        _lastIncomingTypingData = Map<String, dynamic>.from(data);
+        _incomingTypingDebounceTimer?.cancel();
+        _incomingTypingDebounceTimer = Timer(const Duration(milliseconds: 120), () {
+          if (_lastIncomingTypingData != null) {
+            _typingController.add(_lastIncomingTypingData!);
+          }
+        });
       }
-    });
+    };
 
-    socket?.on('typing', (data) {
-      if (data is Map) {
-        _typingController.add(Map<String, dynamic>.from(data));
-      }
-    });
+    socket?.on('user_typing', onTypingHandler);
+    socket?.on('typing', onTypingHandler);
 
-    socket?.on('stop_typing', (data) {
+    final onStopTypingHandler = (data) {
+      _incomingTypingDebounceTimer?.cancel();
+      _lastIncomingTypingData = null;
       if (data is Map) {
         _stopTypingController.add(Map<String, dynamic>.from(data));
       }
-    });
+    };
 
-    socket?.on('user_stop_typing', (data) {
-      if (data is Map) {
-        _stopTypingController.add(Map<String, dynamic>.from(data));
-      }
-    });
+    socket?.on('stop_typing', onStopTypingHandler);
+    socket?.on('user_stop_typing', onStopTypingHandler);
 
     socket?.on('message_reacted', (data) {
       if (data is Map) {
@@ -430,6 +435,11 @@ class SocketService {
 
   static void emitTyping(String conversationId, String userId, String nickname) {
     if (socket != null && socket!.connected) {
+      final now = DateTime.now();
+      if (_lastTypingEmitTime != null && now.difference(_lastTypingEmitTime!).inMilliseconds < 500) {
+        return; // Throttled: tránh spam socket trên mỗi phím bấm
+      }
+      _lastTypingEmitTime = now;
       socket!.emit('typing', {
         'conversationId': conversationId,
         'userId': userId,
@@ -441,6 +451,7 @@ class SocketService {
   }
 
   static void emitStopTyping(String conversationId, String userId) {
+    _lastTypingEmitTime = null;
     if (socket != null && socket!.connected) {
       socket!.emit('stop_typing', {
         'conversationId': conversationId,

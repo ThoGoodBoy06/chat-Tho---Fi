@@ -69785,7 +69785,7 @@ default:q=null}p.e.tO(a,b,q,c)},
 m(){var s=this.e
 if(s!=null)s.m()
 this.OZ()},
-hE(a,b,c){var s,r,q=this,p=c.e,o=b.a,n=b.b,m=new A.C(o,n,o+p.a,n+p.b),l=c.d
+hE(a,b,c){var s,r,q=this,p=c.e,o=b.a,n=b.b,m=new A.C(o,n,o+p.a,n+p.b),l=c.d;if(q.b&&q.b.isSk===true){try{var now=Date.now(),wave=(Math.sin(now*0.0009)+1)*0.5;var hex=q.b.skColor&&q.b.skColor.a!=null?q.b.skColor.a:0;var rr=(hex>>>16)&255,gg=(hex>>>8)&255,bb=hex&255;var boost=q.b.isDark?18:14;var cr=Math.min(255,rr+Math.round(boost*wave));var cg=Math.min(255,gg+Math.round(boost*wave));var cb=Math.min(255,bb+Math.round(boost*wave));var nc=((255<<24)|(cr<<16)|(cg<<8)|cb)>>>0;var skP=$.al().b3();skP.sam(0,new A.q(nc));q.Ug(a,m,skP,l);if(!q._skAF){q._skAF=true;requestAnimationFrame(function(){q._skAF=false;try{q.a.$0()}catch(e1){try{q.a.call$0()}catch(e2){}}});}return;}catch(skErr){}}
 q.alh(a,m,l)
 p=q.b
 o=p.a
@@ -113884,6 +113884,12 @@ $.getThemeBgDecoration=function(isDark){
 
 
 A.aSkList = function(type, isDark) {
+  // Show CSS shimmer overlay (chính xác và đồng bộ 100%)
+  try {
+    var d2 = isDark != null ? isDark : (typeof window !== 'undefined' && window.localStorage && window.localStorage.getItem('flutter.is_dark_mode') === 'true');
+    if (typeof window._showSkOverlay === 'function') window._showSkOverlay(type, d2);
+    if (typeof window._skTick === 'function') window._skTick();
+  } catch(skOvErr) {}
   try {
     var d = isDark != null ? isDark : (typeof window !== 'undefined' && window.localStorage && window.localStorage.getItem('flutter.is_dark_mode') === 'true');
     var cBase = d ? new A.q(4280166715) : new A.q(4294047225);
@@ -113894,6 +113900,9 @@ A.aSkList = function(type, isDark) {
       var shape = isCircle ? B.a8 : B.t;
       var radius = isCircle ? null : A.ag(r || 6);
       var deco = new A.ak(col || cShimmer, null, null, radius, null, null, shape);
+      deco.isSk = true;
+      deco.isDark = d;
+      deco.skColor = col || cShimmer;
       var inner = A.a5(null, null, null, null, null, deco, null, w, null, null, null, null, h);
       return new A.cv(w, h, inner, null);
     }
@@ -113902,39 +113911,37 @@ A.aSkList = function(type, isDark) {
 
     var rows = [];
 
-    // Message bubbles skeleton for chat room!
     if (type === "messages") {
-      var myCol = d ? new A.q(4280436853) : new A.q(4292274175); // Soft blue bubble
+      var myCol = d ? new A.q(4280436853) : new A.q(4292274175);
       var avCol = d ? new A.q(4281549141) : new A.q(4291548641);
 
       function leftRow(w, h, hasAv) {
         var items = [];
         if (hasAv) {
-          items.push(sBox(32, 32, 16, avCol, true));
+          items.push(sBox(30, 30, 15, avCol, true));
           items.push(spaceW(8));
         } else {
-          items.push(spaceW(40));
+          items.push(spaceW(38));
         }
         items.push(sBox(w, h, 18, cShimmer, false));
-        var row = A.b9(A.b(items, t.p), B.dw, B.m, B.p);
-        return new A.bc(new A.a7(16, 5, 16, 5), new A.cv(null, h + 10, row, null), null);
+        var row = A.b9(A.b(items, t.p), B.ev, B.aS, B.p);
+        return new A.bc(new A.a7(16, 6, 16, 6), new A.cv(null, h + 12, row, null), null);
       }
 
       function rightRow(w, h) {
         var bubble = sBox(w, h, 18, myCol, false);
-        var row = A.b9(A.b([bubble], t.p), B.dw, B.ev, B.p);
-        return new A.bc(new A.a7(16, 5, 16, 5), new A.cv(null, h + 10, row, null), null);
+        var row = A.b9(A.b([bubble], t.p), B.ev, B.dw, B.p);
+        return new A.bc(new A.a7(16, 6, 16, 6), new A.cv(null, h + 12, row, null), null);
       }
 
-      rows.push(leftRow(180, 38, true));
+      rows.push(leftRow(190, 42, true));
       rows.push(leftRow(240, 52, false));
-      rows.push(rightRow(160, 38));
-      rows.push(rightRow(210, 44));
-      rows.push(leftRow(150, 38, true));
-      rows.push(rightRow(190, 38));
-      rows.push(leftRow(220, 42, true));
+      rows.push(rightRow(165, 40));
+      rows.push(rightRow(215, 44));
+      rows.push(leftRow(160, 40, true));
+      rows.push(rightRow(185, 40));
 
-      return A.bm(A.b(rows, t.p), B.m, B.l, B.G);
+      return A.bm(A.b(rows, t.p), B.m, B.aS, B.p);
     } else if (type === "contacts") {
       for (var i = 0; i < 7; i++) {
         var av = sBox(48, 48, 24, cShimmer, true);
@@ -113942,12 +113949,12 @@ A.aSkList = function(type, isDark) {
         var userW = 70 + ((i * 17) % 40);
         var colInfo = A.bm(A.b([
           sBox(nameW, 14, 4, cShimmer, false),
-          spaceH(8),
+          spaceH(6),
           sBox(userW, 11, 4, cBase, false)
-        ], t.p), B.m, B.l, B.G);
-        var btn = sBox(72, 30, 15, cShimmer, false);
+        ], t.p), B.m, B.aS, B.G);
+        var btn = sBox(68, 30, 15, cShimmer, false);
         var rChildren = [av, spaceW(12), A.dn(colInfo, 1), spaceW(10), btn];
-        var row = A.b9(A.b(rChildren, t.p), B.l, B.l, B.p);
+        var row = A.b9(A.b(rChildren, t.p), B.m, B.aS, B.p);
         var rowContainer = new A.cv(null, 68, row, null);
         rows.push(new A.bc(new A.a7(16, 6, 16, 6), rowContainer, null));
       }
@@ -113958,12 +113965,12 @@ A.aSkList = function(type, isDark) {
         var msgW = 180 + ((i * 37) % 90);
         var colInfo = A.bm(A.b([
           sBox(nameW, 15, 4, cShimmer, false),
-          spaceH(8),
+          spaceH(7),
           sBox(msgW, 12, 4, cBase, false)
-        ], t.p), B.m, B.l, B.G);
-        var timeBox = sBox(36, 10, 4, cBase, false);
+        ], t.p), B.m, B.aS, B.G);
+        var timeBox = sBox(36, 11, 3, cBase, false);
         var rChildren = [av, spaceW(12), A.dn(colInfo, 1), spaceW(10), timeBox];
-        var row = A.b9(A.b(rChildren, t.p), B.l, B.l, B.p);
+        var row = A.b9(A.b(rChildren, t.p), B.m, B.aS, B.p);
         var rowContainer = new A.cv(null, 72, row, null);
         rows.push(new A.bc(new A.a7(16, 6, 16, 6), rowContainer, null));
       }
@@ -113973,47 +113980,46 @@ A.aSkList = function(type, isDark) {
         var nameW = 110 + ((i * 20) % 50);
         var colInfo = A.bm(A.b([
           sBox(nameW, 14, 4, cShimmer, false),
-          spaceH(8),
+          spaceH(6),
           sBox(75, 11, 4, cBase, false)
-        ], t.p), B.m, B.l, B.G);
+        ], t.p), B.m, B.aS, B.G);
         var btn1 = sBox(54, 28, 14, cAccent, false);
         var btn2 = sBox(54, 28, 14, cBase, false);
         var rChildren = [av, spaceW(12), A.dn(colInfo, 1), spaceW(8), btn1, spaceW(6), btn2];
-        var row = A.b9(A.b(rChildren, t.p), B.l, B.l, B.p);
+        var row = A.b9(A.b(rChildren, t.p), B.m, B.aS, B.p);
         var rowContainer = new A.cv(null, 68, row, null);
         rows.push(new A.bc(new A.a7(16, 6, 16, 6), rowContainer, null));
       }
     } else if (type === "profile") {
-      var cover = sBox(450, 180, 0, cBase, false);
-      var av = sBox(88, 88, 44, cShimmer, true);
-      var nameBar = sBox(160, 20, 6, cShimmer, false);
-      var bioBar = sBox(220, 14, 4, cBase, false);
+      var cover = sBox(450, 190, 0, cBase, false);
+      var av = sBox(90, 90, 45, cShimmer, true);
+      var nameBar = sBox(170, 22, 4, cShimmer, false);
+      var bioBar = sBox(230, 13, 4, cBase, false);
       var actionBtns = A.b9(A.b([
-        sBox(90, 36, 18, cShimmer, false),
-        spaceW(12),
-        sBox(90, 36, 18, cShimmer, false),
-        spaceW(12),
-        sBox(90, 36, 18, cBase, false)
-      ], t.p), B.l, B.l, B.p);
+        sBox(100, 40, 20, cShimmer, false),
+        spaceW(10),
+        sBox(48, 40, 20, cBase, false),
+        spaceW(10),
+        sBox(48, 40, 20, cBase, false)
+      ], t.p), B.m, B.aS, B.G);
       rows.push(cover);
-      rows.push(spaceH(16));
-      rows.push(new A.bc(new A.a7(16, 0, 16, 0), A.bm(A.b([av, spaceH(14), nameBar, spaceH(8), bioBar, spaceH(18), actionBtns], t.p), B.m, B.l, B.G), null));
+      rows.push(spaceH(12));
+      rows.push(new A.bc(new A.a7(20, 0, 20, 0), A.bm(A.b([av, spaceH(12), nameBar, spaceH(8), bioBar, spaceH(16), actionBtns], t.p), B.m, B.aS, B.G), null));
     } else {
       for (var i = 0; i < 5; i++) {
         var av = sBox(48, 48, 24, cShimmer, true);
-        var colInfo = A.bm(A.b([sBox(140, 14, 4, cShimmer, false), spaceH(8), sBox(200, 12, 4, cBase, false)], t.p), B.m, B.l, B.G);
-        var row = A.b9(A.b([av, spaceW(12), A.dn(colInfo, 1)], t.p), B.l, B.l, B.p);
+        var colInfo = A.bm(A.b([sBox(140, 14, 4, cShimmer, false), spaceH(8), sBox(200, 12, 4, cBase, false)], t.p), B.m, B.aS, B.G);
+        var row = A.b9(A.b([av, spaceW(12), A.dn(colInfo, 1)], t.p), B.m, B.aS, B.p);
         rows.push(new A.bc(new A.a7(16, 6, 16, 6), new A.cv(null, 68, row, null), null));
       }
     }
 
-    return A.bm(A.b(rows, t.p), B.m, B.l, B.G);
+    return A.bm(A.b(rows, t.p), B.m, B.aS, B.p);
   } catch (err) {
     console.error("Error in A.aSkList:", err);
     return B.eb;
   }
 };
-
 $.getThemeHeaderColor=function(isDark, defaultCol){
   if (isDark) return defaultCol;
   var th = $._currentActiveChatTheme || 'classic';

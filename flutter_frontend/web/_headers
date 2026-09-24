@@ -4,6 +4,8 @@
 /*
   X-Content-Type-Options: nosniff
   X-Frame-Options: SAMEORIGIN
+  Cross-Origin-Embedder-Policy: credentialless
+  Cross-Origin-Opener-Policy: same-origin
 
 /*.html
   Cache-Control: public, max-age=0, must-revalidate

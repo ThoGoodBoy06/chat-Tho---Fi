@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -11,6 +12,24 @@ import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/chat_screen.dart';
 import 'utils/web_utils.dart' as web_utils;
+
+/// Custom ScrollBehavior tối ưu cho Flutter Web:
+/// Kích hoạt cuộn mượt cho chuột, cảm ứng, trackpad với BouncingScrollPhysics.
+class SmoothWebScrollBehavior extends MaterialScrollBehavior {
+  const SmoothWebScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+    PointerDeviceKind.trackpad,
+    PointerDeviceKind.stylus,
+  };
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) =>
+      const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -114,6 +133,7 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
     return MaterialApp(
       title: 'Chat Tho-Fi',
       debugShowCheckedModeBanner: false,
+      scrollBehavior: const SmoothWebScrollBehavior(),
       themeMode: themeProvider.themeMode,
       theme: ThemeData(
         brightness: Brightness.light,
