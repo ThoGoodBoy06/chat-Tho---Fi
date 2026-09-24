@@ -126,9 +126,7 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
 
   @override
   Widget build(BuildContext context) {
-    final chatProvider = Provider.of<ChatProvider>(context);
     final themeProvider = Provider.of<ThemeProvider>(context);
-    final currentUser = chatProvider.currentUser;
 
     return MaterialApp(
       title: 'Chat Tho-Fi',
@@ -201,9 +199,14 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
                     child: CircularProgressIndicator(color: Color(0xFF0068FF)),
                   ),
                 )
-              : (currentUser == null
-                  ? LoginScreen(onLoginSuccess: _onLoginSuccess)
-                  : ChatScreen(onLogout: _onLogout))),
+              : Selector<ChatProvider, bool>(
+                  selector: (_, provider) => provider.currentUser != null,
+                  builder: (context, isLoggedIn, _) {
+                    return isLoggedIn
+                        ? ChatScreen(onLogout: _onLogout)
+                        : LoginScreen(onLoginSuccess: _onLoginSuccess);
+                  },
+                )),
     );
   }
 }

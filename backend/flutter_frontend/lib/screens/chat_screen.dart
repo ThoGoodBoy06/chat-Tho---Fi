@@ -406,13 +406,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   void _jumpToBottom() {
     int frameCount = 0;
     void doJump() {
+      if (!mounted) return;
       if (_scrollController.hasClients) {
         final maxScroll = _scrollController.position.maxScrollExtent;
-        if (maxScroll > 0) {
+        if (maxScroll > 0 && (_scrollController.offset < maxScroll)) {
           _scrollController.jumpTo(maxScroll);
         }
       }
-      if (frameCount++ < 12) {
+      if (frameCount++ < 2) {
         WidgetsBinding.instance.addPostFrameCallback((_) => doJump());
       }
     }
@@ -2407,7 +2408,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                       final messageCount = provider.messages.length;
                       if (_lastMessageCount != messageCount && messageCount > 0) {
                         _lastMessageCount = messageCount;
-                        _jumpToBottom();
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted) _jumpToBottom();
+                        });
                       }
                       final lastSentMessageIndex = provider.messages.lastIndexWhere((m) => m.senderId == provider.currentUser?.id);
                       final typingUser = provider.getTypingUserForSelectedConversation();

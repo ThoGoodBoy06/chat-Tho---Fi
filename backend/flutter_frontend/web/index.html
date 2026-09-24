@@ -1,20 +1,41 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <base href="/">
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="Chat Tho-Fi Application">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
-  <!-- Anti-Cache Meta Tags (Cache Busting for iOS Safari & PWA) -->
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+
+  <!-- Fast CDN Preconnects -->
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+
+  <!-- High Priority Preloads for Instant Native Startup -->
+  <link rel="preload" href="flutter_bootstrap.js?v=v_sk_precise_1789920000000" as="script">
+  <link rel="preload" href="main.dart.js?v=v_sk_precise_1789920000000" as="script">
+  <link rel="preload" href="canvaskit/canvaskit.wasm" as="fetch" crossorigin="anonymous">
+  <link rel="preload" href="/tho_fi_logo_transparent.png" as="image">
+  <!-- Official Messenger Reaction Emoji Preloads -->
+  <link rel="preload" href="/assets/emojis/2764-fe0f.png" as="image">
+  <link rel="preload" href="/assets/emojis/1f606.png" as="image">
+  <link rel="preload" href="/assets/emojis/1f62e.png" as="image">
+  <link rel="preload" href="/assets/emojis/1f622.png" as="image">
+  <link rel="preload" href="/assets/emojis/1f621.png" as="image">
+  <link rel="preload" href="/assets/emojis/1f44d.png" as="image">
+  <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" as="style">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap">
+
 
   <!-- PWA Standalone Meta Tags (iOS & Android) -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Chat Tho-Fi">
   <meta name="theme-color" content="#007AFF">
   <meta name="application-name" content="Chat Tho-Fi">
@@ -27,61 +48,634 @@
   <link rel="shortcut icon" href="/icon-192.png">
 
   <title>Chat Tho-Fi</title>
+
+  <!-- Skeleton Shimmer Animation System -->
+    <!-- Skeleton Shimmer Animation System -->
+  <style id="sk-shimmer-styles">
+    @keyframes skPulse {
+      0%, 100% { opacity: 0.65; }
+      50% { opacity: 1; }
+    }
+    @keyframes skSweep {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(200%); }
+    }
+    #sk-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 9998; pointer-events: none;
+      display: none; flex-direction: column;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      overflow: hidden;
+    }
+    #sk-overlay.active { display: flex; pointer-events: auto; }
+    #sk-overlay .sk-bar {
+      position: relative; overflow: hidden;
+      animation: skPulse 3.8s ease-in-out infinite;
+    }
+    #sk-overlay .sk-bar::after {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.30) 50%, transparent 100%);
+      animation: skSweep 4.0s ease-in-out infinite;
+    }
+    .sk-dark .sk-bar::after {
+      background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.09) 50%, transparent 100%);
+    }
+    #sk-overlay .sk-circle { border-radius: 50% !important; flex-shrink: 0; }
+    #sk-overlay .sk-rect { border-radius: 4px; }
+    #sk-overlay .sk-pill { border-radius: 18px; }
+    #sk-overlay .sk-bubble-in { border-radius: 18px 18px 18px 4px !important; }
+    #sk-overlay .sk-bubble-out { border-radius: 18px 18px 4px 18px !important; }
+    #sk-overlay .sk-gap { flex-shrink: 0; }
+    #sk-overlay .sk-col { display: flex; flex-direction: column; }
+    #sk-overlay .sk-content { flex: 1; overflow: hidden; }
+  </style>
+  <script id="sk-overlay-script">
+    (function() {
+      var _skTimer = null;
+      var _skLastType = null;
+
+      window._showSkOverlay = function(type, isDark) {
+        _skLastType = type;
+        clearTimeout(_skTimer);
+        var el = document.getElementById('sk-overlay');
+        if (!el) {
+          el = document.createElement('div');
+          el.id = 'sk-overlay';
+          document.body.appendChild(el);
+        }
+        if (el.dataset.type === type && el.classList.contains('active')) return;
+        el.dataset.type = type;
+
+        var bg = isDark ? '#0F172A' : '#F8FAFC';
+        var cardBg = isDark ? '#1E293B' : '#FFFFFF';
+        var base = isDark ? '#1E293B' : '#F1F5F9';
+        var shim = isDark ? '#334155' : '#E2E8F0';
+        var accent = isDark ? '#475569' : '#CBD5E1';
+        var blueTint = isDark ? '#1E3A5F' : '#DBEAFE';
+        var blueBtn = isDark ? '#0D47A1' : '#0068FF';
+
+        el.style.background = bg;
+        if (isDark) el.classList.add('sk-dark'); else el.classList.remove('sk-dark');
+
+        var html = '';
+
+        if (type === 'messages') {
+          // === MÀN HÌNH ĐOẠN CHAT (CHAT DETAIL) ===
+          // 1. Header chuẩn: Nút back + Avatar tròn + Tên & Trạng thái + 3 icon gọi/info
+          html += '<div class="sk-header" style="background:'+cardBg+';border-bottom:1px solid '+(isDark?'#334155':'#F1F5F9')+';height:56px;padding:0 12px;display:flex;align-items:center;gap:10px">';
+          html += '<div class="sk-bar sk-rect" style="width:12px;height:18px;border-radius:2px;background:'+shim+'"></div>';
+          html += '<div class="sk-bar sk-circle" style="width:38px;height:38px;background:'+shim+'"></div>';
+          html += '<div class="sk-col" style="gap:5px;flex:1">';
+          html += '<div class="sk-bar sk-rect" style="width:130px;height:15px;background:'+shim+'"></div>';
+          html += '<div class="sk-bar sk-rect" style="width:85px;height:11px;background:'+base+'"></div>';
+          html += '</div>';
+          html += '<div class="sk-bar sk-circle" style="width:28px;height:28px;background:'+base+'"></div>';
+          html += '<div class="sk-bar sk-circle" style="width:28px;height:28px;background:'+base+'"></div>';
+          html += '<div class="sk-bar sk-circle" style="width:28px;height:28px;background:'+base+'"></div>';
+          html += '</div>';
+
+          // 2. Nội dung tin nhắn: Bong bóng trái / phải xen kẽ + avatar tròn bên trái
+          html += '<div class="sk-content" style="padding:14px 14px;display:flex;flex-direction:column;gap:14px">';
+          
+          // Tin nhắn đến 1 (có avatar tròn bên trái)
+          html += '<div style="display:flex;align-items:flex-end;gap:8px">';
+          html += '<div class="sk-bar sk-circle" style="width:30px;height:30px;background:'+accent+'"></div>';
+          html += '<div class="sk-bar sk-bubble-in" style="width:190px;height:42px;background:'+shim+'"></div>';
+          html += '</div>';
+
+          // Tin nhắn đến 2 (liên tiếp không avatar, thụt lề 38px)
+          html += '<div style="display:flex;align-items:flex-end;padding-left:38px">';
+          html += '<div class="sk-bar sk-bubble-in" style="width:240px;height:52px;background:'+shim+'"></div>';
+          html += '</div>';
+
+          // Tin nhắn đi 1 (bên phải, màu xanh nhẹ)
+          html += '<div style="display:flex;justify-content:flex-end">';
+          html += '<div class="sk-bar sk-bubble-out" style="width:165px;height:40px;background:'+blueTint+'"></div>';
+          html += '</div>';
+
+          // Tin nhắn đi 2 (bên phải)
+          html += '<div style="display:flex;justify-content:flex-end">';
+          html += '<div class="sk-bar sk-bubble-out" style="width:215px;height:44px;background:'+blueTint+'"></div>';
+          html += '</div>';
+
+          // Tin nhắn đến 3 (có avatar tròn)
+          html += '<div style="display:flex;align-items:flex-end;gap:8px">';
+          html += '<div class="sk-bar sk-circle" style="width:30px;height:30px;background:'+accent+'"></div>';
+          html += '<div class="sk-bar sk-bubble-in" style="width:160px;height:40px;background:'+shim+'"></div>';
+          html += '</div>';
+
+          // Tin nhắn đi 3 (bên phải)
+          html += '<div style="display:flex;justify-content:flex-end">';
+          html += '<div class="sk-bar sk-bubble-out" style="width:185px;height:40px;background:'+blueTint+'"></div>';
+          html += '</div>';
+
+          html += '</div>';
+
+          // 3. Thanh gõ tin nhắn dưới đáy (Bottom bar): Nút + tròn + ô nhập chữ hình viên thuốc + emoji + like
+          html += '<div style="background:'+cardBg+';border-top:1px solid '+(isDark?'#334155':'#F1F5F9')+';height:58px;padding:8px 12px;display:flex;align-items:center;gap:10px">';
+          html += '<div class="sk-bar sk-circle" style="width:34px;height:34px;background:'+blueBtn+'"></div>';
+          html += '<div class="sk-bar sk-pill" style="flex:1;height:38px;background:'+base+'"></div>';
+          html += '<div class="sk-bar sk-circle" style="width:28px;height:28px;background:'+base+'"></div>';
+          html += '<div class="sk-bar sk-circle" style="width:28px;height:28px;background:'+blueBtn+'"></div>';
+          html += '</div>';
+
+        } else if (type === 'chats') {
+          // === MÀN HÌNH DANH SÁCH TIN NHẮN (CHATS TAB) ===
+          // 1. Top App Bar: Chuông + Chat Tho-Fi + QR + Thêm bạn bè
+          html += '<div class="sk-header" style="background:'+cardBg+';height:52px;padding:0 16px;display:flex;align-items:center;gap:12px">';
+          html += '<div class="sk-bar sk-circle" style="width:22px;height:22px;background:'+shim+'"></div>';
+          html += '<div class="sk-bar sk-rect" style="width:105px;height:18px;background:'+blueBtn+'"></div>';
+          html += '<div style="flex:1"></div>';
+          html += '<div class="sk-bar sk-rect" style="width:22px;height:22px;border-radius:5px;background:'+base+'"></div>';
+          html += '<div class="sk-bar sk-pill" style="width:110px;height:32px;background:'+blueBtn+'"></div>';
+          html += '</div>';
+
+          // 2. Tiêu đề "Tin nhắn" + Switch
+          html += '<div style="padding:10px 16px 6px;display:flex;align-items:center;justify-content:space-between">';
+          html += '<div class="sk-bar sk-rect" style="width:85px;height:22px;background:'+shim+'"></div>';
+          html += '<div class="sk-bar sk-pill" style="width:38px;height:20px;background:'+base+'"></div>';
+          html += '</div>';
+
+          // 3. Filter tabs: "Tất cả" & "Chưa đọc"
+          html += '<div style="padding:4px 16px 10px;display:flex;gap:8px">';
+          html += '<div class="sk-bar sk-pill" style="width:64px;height:28px;background:'+blueBtn+'"></div>';
+          html += '<div class="sk-bar sk-pill" style="width:74px;height:28px;background:'+base+'"></div>';
+          html += '</div>';
+
+          // 4. Danh sách hội thoại (Avatar tròn 52px + Tên + Tin nhắn + Giờ)
+          html += '<div class="sk-content" style="padding:0">';
+          for (var i = 0; i < 7; i++) {
+            var nw = 110 + ((i * 29) % 70);
+            var mw = 160 + ((i * 37) % 90);
+            html += '<div class="sk-row" style="padding:10px 16px;display:flex;align-items:center">';
+            html += '<div class="sk-bar sk-circle" style="width:52px;height:52px;background:'+shim+'"></div>';
+            html += '<div class="sk-gap" style="width:12px"></div>';
+            html += '<div class="sk-col" style="flex:1;gap:7px">';
+            html += '<div class="sk-bar sk-rect" style="width:'+nw+'px;height:15px;background:'+shim+'"></div>';
+            html += '<div class="sk-bar sk-rect" style="width:'+mw+'px;height:12px;background:'+base+'"></div>';
+            html += '</div>';
+            html += '<div class="sk-col" style="align-items:flex-end;gap:6px">';
+            html += '<div class="sk-bar sk-rect" style="width:36px;height:11px;background:'+base+'"></div>';
+            html += '<div class="sk-bar sk-circle" style="width:12px;height:12px;background:'+base+'"></div>';
+            html += '</div>';
+            html += '</div>';
+          }
+          html += '</div>';
+
+          // 5. Floating Bottom Navigation Bar (5 tabs)
+          html += '<div style="padding:8px 16px 14px">';
+          html += '<div class="sk-bar sk-pill" style="height:54px;background:'+cardBg+';border:1px solid '+(isDark?'#334155':'#E2E8F0')+';display:flex;align-items:center;justify-content:space-around;padding:0 10px">';
+          html += '<div class="sk-bar sk-pill" style="width:84px;height:36px;background:'+blueTint+'"></div>';
+          html += '<div class="sk-bar sk-circle" style="width:26px;height:26px;background:'+base+'"></div>';
+          html += '<div class="sk-bar sk-circle" style="width:26px;height:26px;background:'+base+'"></div>';
+          html += '<div class="sk-bar sk-circle" style="width:26px;height:26px;background:'+base+'"></div>';
+          html += '<div class="sk-bar sk-circle" style="width:26px;height:26px;background:'+base+'"></div>';
+          html += '</div></div>';
+
+        } else if (type === 'contacts') {
+          // === MÀN HÌNH DANH BẠ (CONTACTS TAB) ===
+          html += '<div class="sk-header" style="background:'+cardBg+';height:52px;padding:0 16px;display:flex;align-items:center;gap:12px">';
+          html += '<div class="sk-bar sk-circle" style="width:22px;height:22px;background:'+shim+'"></div>';
+          html += '<div class="sk-bar sk-rect" style="width:105px;height:18px;background:'+blueBtn+'"></div>';
+          html += '<div style="flex:1"></div>';
+          html += '<div class="sk-bar sk-pill" style="width:110px;height:32px;background:'+blueBtn+'"></div>';
+          html += '</div>';
+
+          html += '<div style="padding:10px 16px 6px">';
+          html += '<div class="sk-bar sk-rect" style="width:85px;height:22px;background:'+shim+'"></div>';
+          html += '</div>';
+
+          html += '<div class="sk-content" style="padding:0">';
+          for (var i = 0; i < 8; i++) {
+            var nw = 100 + ((i * 23) % 60);
+            html += '<div class="sk-row" style="padding:10px 16px;display:flex;align-items:center">';
+            html += '<div class="sk-bar sk-circle" style="width:48px;height:48px;background:'+shim+'"></div>';
+            html += '<div class="sk-gap" style="width:12px"></div>';
+            html += '<div class="sk-col" style="flex:1;gap:6px">';
+            html += '<div class="sk-bar sk-rect" style="width:'+nw+'px;height:14px;background:'+shim+'"></div>';
+            html += '<div class="sk-bar sk-rect" style="width:'+(nw-25)+'px;height:11px;background:'+base+'"></div>';
+            html += '</div>';
+            html += '<div class="sk-bar sk-pill" style="width:68px;height:30px;background:'+shim+'"></div>';
+            html += '</div>';
+          }
+          html += '</div>';
+
+          html += '<div style="padding:8px 16px 14px">';
+          html += '<div class="sk-bar sk-pill" style="height:54px;background:'+cardBg+';border:1px solid '+(isDark?'#334155':'#E2E8F0')+';display:flex;align-items:center;justify-content:space-around;padding:0 10px">';
+          html += '<div class="sk-bar sk-circle" style="width:26px;height:26px;background:'+base+'"></div>';
+          html += '<div class="sk-bar sk-pill" style="width:84px;height:36px;background:'+blueTint+'"></div>';
+          html += '<div class="sk-bar sk-circle" style="width:26px;height:26px;background:'+base+'"></div>';
+          html += '<div class="sk-bar sk-circle" style="width:26px;height:26px;background:'+base+'"></div>';
+          html += '<div class="sk-bar sk-circle" style="width:26px;height:26px;background:'+base+'"></div>';
+          html += '</div></div>';
+
+        } else if (type === 'requests') {
+          // === MÀN HÌNH LỜI MỜI KẾT BẠN ===
+          html += '<div class="sk-header" style="background:'+cardBg+';height:52px;padding:0 16px;display:flex;align-items:center;gap:12px">';
+          html += '<div class="sk-bar sk-rect" style="width:12px;height:18px;border-radius:2px;background:'+shim+'"></div>';
+          html += '<div class="sk-bar sk-rect" style="width:140px;height:18px;background:'+shim+'"></div>';
+          html += '</div>';
+
+          html += '<div class="sk-content" style="padding:8px 0">';
+          for (var i = 0; i < 6; i++) {
+            var nw = 100 + ((i * 20) % 50);
+            html += '<div class="sk-row" style="padding:10px 16px;display:flex;align-items:center">';
+            html += '<div class="sk-bar sk-circle" style="width:48px;height:48px;background:'+shim+'"></div>';
+            html += '<div class="sk-gap" style="width:12px"></div>';
+            html += '<div class="sk-col" style="flex:1;gap:6px">';
+            html += '<div class="sk-bar sk-rect" style="width:'+nw+'px;height:14px;background:'+shim+'"></div>';
+            html += '<div class="sk-bar sk-rect" style="width:75px;height:11px;background:'+base+'"></div>';
+            html += '</div>';
+            html += '<div class="sk-bar sk-pill" style="width:54px;height:28px;background:'+blueBtn+'"></div>';
+            html += '<div class="sk-gap" style="width:6px"></div>';
+            html += '<div class="sk-bar sk-pill" style="width:54px;height:28px;background:'+base+'"></div>';
+            html += '</div>';
+          }
+          html += '</div>';
+
+        } else if (type === 'profile') {
+          // === MÀN HÌNH TRANG CÁ NHÂN (PROFILE) ===
+          html += '<div class="sk-header" style="background:'+cardBg+';height:52px;padding:0 16px;display:flex;align-items:center;gap:12px">';
+          html += '<div class="sk-bar sk-rect" style="width:12px;height:18px;border-radius:2px;background:'+shim+'"></div>';
+          html += '<div class="sk-bar sk-rect" style="width:120px;height:18px;background:'+shim+'"></div>';
+          html += '</div>';
+
+          // Cover Photo chữ nhật 190px
+          html += '<div class="sk-bar sk-rect" style="width:100%;height:190px;background:'+base+';border-radius:0"></div>';
+
+          // Avatar tròn 90px đè lên ảnh bìa
+          html += '<div style="display:flex;flex-direction:column;align-items:flex-start;padding:0 20px;margin-top:-45px">';
+          html += '<div class="sk-bar sk-circle" style="width:90px;height:90px;background:'+shim+';border:4px solid '+(isDark?'#0F172A':'#FFFFFF')+'"></div>';
+          html += '<div style="height:12px"></div>';
+          html += '<div class="sk-bar sk-rect" style="width:170px;height:22px;background:'+shim+'"></div>';
+          html += '<div style="height:8px"></div>';
+          html += '<div class="sk-bar sk-rect" style="width:230px;height:13px;background:'+base+'"></div>';
+          html += '<div style="height:20px"></div>';
+          html += '<div style="display:flex;gap:10px;width:100%">';
+          html += '<div class="sk-bar sk-pill" style="flex:1;height:42px;background:'+blueBtn+'"></div>';
+          html += '<div class="sk-bar sk-pill" style="width:48px;height:42px;background:'+base+'"></div>';
+          html += '<div class="sk-bar sk-pill" style="width:48px;height:42px;background:'+base+'"></div>';
+          html += '</div></div>';
+
+        } else {
+          for (var i = 0; i < 6; i++) {
+            html += '<div class="sk-row" style="padding:10px 16px;display:flex;align-items:center">';
+            html += '<div class="sk-bar sk-circle" style="width:48px;height:48px;background:'+shim+'"></div>';
+            html += '<div class="sk-gap" style="width:12px"></div>';
+            html += '<div class="sk-col" style="flex:1;gap:6px">';
+            html += '<div class="sk-bar sk-rect" style="width:140px;height:14px;background:'+shim+'"></div>';
+            html += '<div class="sk-bar sk-rect" style="width:200px;height:11px;background:'+base+'"></div>';
+            html += '</div></div>';
+          }
+        }
+
+        el.innerHTML = html;
+        el.classList.add('active');
+      };
+
+      window._hideSkOverlay = function() {
+        var el = document.getElementById('sk-overlay');
+        if (el) {
+          el.classList.remove('active');
+          el.innerHTML = '';
+        }
+        _skLastType = null;
+      };
+
+      // Auto-hide: nếu không còn gọi aSkList sau 500ms thì ẩn overlay
+      window._skTick = function() {
+        clearTimeout(_skTimer);
+        _skTimer = setTimeout(function() {
+          window._hideSkOverlay();
+        }, 500);
+      };
+    })();
+  </script>
+
   <link rel="manifest" href="/manifest.json">
+  <script src="/webrtc_audio_helper.js?v=1789906672768_directsave_1789655278711"></script>
 
   <!-- Firebase Web SDK (v10 compat) -->
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+
+  <!-- jsQR Library for Real-time Web QR Code Scanning -->
+  <script defer src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
   <script>
-    window.registerFCMAndGetToken = async function() {
-      if (!('serviceWorker' in navigator) || !('Notification' in window)) {
-        console.log('[FCM] Service Worker hoặc Notification không được hỗ trợ');
+    window.webQrScanner = {
+      stream: null,
+      video: null,
+      animationFrameId: null,
+      isScanning: false,
+      start: async function (containerId) {
+        this.pause();
+        this.isScanning = true;
+        console.log('[WebQrScanner] Initializing camera for container:', containerId);
+
+        try {
+          let stream = this.stream;
+
+          // Reuse existing active stream if available to prevent browser permission prompt
+          if (!stream || !stream.active || !stream.getVideoTracks().some(t => t.readyState === 'live')) {
+            console.log('[WebQrScanner] Requesting new camera stream via getUserMedia...');
+            try {
+              stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: "environment" }
+              });
+            } catch (err1) {
+              console.warn('[WebQrScanner] FacingMode environment failed, trying simple video constraint:', err1);
+              stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            }
+            this.stream = stream;
+          } else {
+            console.log('[WebQrScanner] Reusing active camera stream (no permission dialog required)');
+          }
+
+          const container = document.getElementById(containerId);
+          if (!container) {
+            console.error('[WebQrScanner] Target container element not found in DOM:', containerId);
+            return false;
+          }
+
+          const video = document.createElement('video');
+          video.setAttribute("playsinline", "true");
+          video.autoplay = true;
+          video.muted = true;
+          video.style.width = '100%';
+          video.style.height = '100%';
+          video.style.objectFit = 'cover';
+          video.srcObject = stream;
+
+          container.innerHTML = '';
+          container.appendChild(video);
+          this.video = video;
+
+          await video.play().catch(e => console.error('[WebQrScanner] video.play() error:', e));
+
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+
+          const tick = () => {
+            if (!this.isScanning) return;
+
+            if (video && video.readyState === video.HAVE_ENOUGH_DATA) {
+              canvas.width = video.videoWidth;
+              canvas.height = video.videoHeight;
+              ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+              const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+              if (window.jsQR) {
+                const code = window.jsQR(imageData.data, imageData.width, imageData.height, {
+                  inversionAttempts: "dontInvert"
+                });
+
+                if (code && code.data && this.isScanning) {
+                  console.log('[WebQrScanner] QR Code detected:', code.data);
+                  const qrData = code.data;
+                  this.isScanning = false;
+
+                  // Pause video scanning loop but keep stream active for fast re-use
+                  this.pause();
+
+                  // Dispatch custom DOM event to Flutter
+                  window.dispatchEvent(new CustomEvent('qr-scanned', { detail: qrData }));
+                  return;
+                }
+              }
+            }
+
+            if (this.isScanning) {
+              this.animationFrameId = requestAnimationFrame(tick);
+            }
+          };
+
+          this.animationFrameId = requestAnimationFrame(tick);
+          return true;
+        } catch (err) {
+          console.error('[WebQrScanner] Error accessing camera (NotAllowedError/NotFoundError):', err);
+          return false;
+        }
+      },
+      scanImage: function (dataUrl) {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          if (window.jsQR) {
+            const code = window.jsQR(imageData.data, imageData.width, imageData.height, {
+              inversionAttempts: "dontInvert"
+            });
+            if (code && code.data) {
+              console.log('[WebQrScanner] Image QR Code detected:', code.data);
+              this.pause();
+              window.dispatchEvent(new CustomEvent('qr-scanned', { detail: code.data }));
+            } else {
+              window.dispatchEvent(new CustomEvent('qr-scan-failed', { detail: 'No QR code found in image' }));
+            }
+          }
+        };
+        img.src = dataUrl;
+      },
+      pause: function () {
+        this.isScanning = false;
+        if (this.animationFrameId) {
+          cancelAnimationFrame(this.animationFrameId);
+          this.animationFrameId = null;
+        }
+        if (this.video) {
+          try {
+            this.video.pause();
+            this.video.srcObject = null;
+            this.video.remove();
+          } catch (e) { }
+          this.video = null;
+        }
+      },
+      stop: function () {
+        this.pause();
+        if (this.stream) {
+          try {
+            this.stream.getTracks().forEach(track => {
+              track.stop();
+              console.log('[WebQrScanner] Camera track stopped:', track.label);
+            });
+          } catch (e) {
+            console.error('[WebQrScanner] Error stopping tracks:', e);
+          }
+          this.stream = null;
+        }
+      }
+    };
+  </script>
+  <script>
+    window.isNotificationSupported = function () {
+      return ('Notification' in window) && ('serviceWorker' in navigator);
+    };
+
+    window.registerFCMAndGetToken = async function (vapidKey) {
+      if (!('Notification' in window)) {
+        console.warn('[FCM Web] Notification API không được hỗ trợ trên trình duyệt này.');
         return null;
       }
       try {
-        const permission = await Notification.requestPermission();
+        // 🌟 BƯỚC QUAN TRỌNG NHẤT TRÊN iOS SAFARI & PWA:
+        // Phải kích hoạt Notification.requestPermission() ngay khi người dùng nhấn nút (User Gesture)
+        let permission = Notification.permission;
         if (permission !== 'granted') {
-          console.log('[FCM] Quyền thông báo bị từ chối:', permission);
+          permission = await Notification.requestPermission();
+        }
+        if (permission !== 'granted') {
+          console.warn('[FCM Web] ⚠️ Quyền thông báo không được cấp (Status: ' + permission + ').');
           return null;
         }
-        const reg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-        console.log('[FCM] ServiceWorker registered thành công:', reg);
+
+        if (!('serviceWorker' in navigator)) {
+          console.warn('[FCM Web] ServiceWorker không khả dụng.');
+          return null;
+        }
 
         if (!firebase.apps.length) {
-          firebase.initializeApp({
+          const firebaseConfig = {
             apiKey: "AIzaSyDk6fayVDs0YbbhwldYxgHcN4nnjnPwmRc",
             authDomain: "chat-tho-fi.firebaseapp.com",
             projectId: "chat-tho-fi",
             storageBucket: "chat-tho-fi.firebasestorage.app",
             messagingSenderId: "513501588929",
             appId: "1:513501588929:web:54fd6c5fab227868bfd340",
-          });
+          };
+          firebase.initializeApp(firebaseConfig);
         }
+
+        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js?v=1789906672768.2.1789540000000', { scope: '/' });
+        await registration.update();
+        await navigator.serviceWorker.ready;
+
+        const effectiveVapidKey = vapidKey || 'BBtraQSvar7RExe_T8aVhoA3TebgLw0S-ucoMcuV-Oef-H7ULkJGWyBctnxfY5tLnawpWQ9Wn8Aihi-wJaLiGu0';
+
         const messaging = firebase.messaging();
-        const token = await messaging.getToken({ serviceWorkerRegistration: reg });
+        const token = await messaging.getToken({
+          vapidKey: effectiveVapidKey,
+          serviceWorkerRegistration: registration
+        });
         if (token) {
-          console.log('[FCM] Đã lấy FCM Device Token thành công:', token);
+          console.log('[FCM Web] ✅ Lấy FCM Token thành công:', token.substring(0, 15) + '...');
           return token;
         }
       } catch (err) {
-        console.error('[FCM] Lỗi đăng ký / lấy FCM Token:', err);
+        console.error('[FCM Web] ❌ Lỗi đăng ký / lấy FCM Token:', err);
       }
       return null;
     };
+
+    window.getWebDeviceId = function () {
+      let deviceId = localStorage.getItem('tho_fi_web_device_id');
+      if (!deviceId) {
+        deviceId = 'web_' + Math.random().toString(36).substring(2, 15) + '_' + Date.now();
+        localStorage.setItem('tho_fi_web_device_id', deviceId);
+      }
+      return deviceId;
+    };
+  </script>
+
+  <!-- 🚀 GPU Hardware Acceleration & FPS Booster -->
+  <script>
+    (function () {
+      // 1. Tối ưu hóa WebGL Context cho CanvasKit (GPU rời, độ trễ thấp, tối đa FPS)
+      try {
+        const origGetContext = HTMLCanvasElement.prototype.getContext;
+        HTMLCanvasElement.prototype.getContext = function (type, attributes) {
+          if (type === 'webgl2' || type === 'webgl') {
+            attributes = Object.assign({
+              powerPreference: 'high-performance',
+              desynchronized: true,
+              antialias: true,
+              alpha: false,
+              preserveDrawingBuffer: false,
+              failIfMajorPerformanceCaveat: false
+            }, attributes || {});
+          }
+          return origGetContext.call(this, type, attributes);
+        };
+      } catch (e) {
+        console.warn('[FPS Booster] WebGL Context hook warning:', e);
+      }
+
+      // 2. Tối ưu Touch & Scroll Events (Passive Listeners loại bỏ jank)
+      try {
+        const passiveOpt = { passive: true, capture: false };
+        ['touchstart', 'touchmove', 'wheel'].forEach(function (evt) {
+          window.addEventListener(evt, function () {}, passiveOpt);
+        });
+      } catch (e) { }
+    })();
   </script>
 
   <style>
+    /* Universal Frosted Glass & Backdrop Blur for iOS Safari & All Browsers */
+    flt-backdrop,
+    flt-backdrop-interior,
+    flt-backdrop-filter,
+    [style*="backdrop-filter"],
+    [style*="-webkit-backdrop-filter"] {
+      -webkit-backdrop-filter: blur(14px) !important;
+      backdrop-filter: blur(14px) !important;
+      background-color: rgba(0, 0, 0, 0.22) !important;
+      -webkit-transform: translateZ(0);
+      transform: translateZ(0);
+    }
+
     * {
       box-sizing: border-box;
     }
+
+    html,
     body {
-      background-color: #FFFFFF;
+      width: 100%;
+      height: 100%;
       margin: 0;
       padding: 0;
       overflow: hidden;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
       touch-action: manipulation;
+      -webkit-text-size-adjust: 100%;
+      overscroll-behavior: none;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
+
+    /* Ép tăng tốc phần cứng GPU và tối ưu 60FPS - 120FPS cho CanvasKit */
+    flutter-view,
+    flt-glass-pane,
+    flt-scene-host,
+    canvas {
+      width: 100% !important;
+      height: 100% !important;
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      outline: none !important;
+      transform: translate3d(0, 0, 0);
+      -webkit-transform: translate3d(0, 0, 0);
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      perspective: 1000px;
+      -webkit-perspective: 1000px;
+      will-change: transform;
+      contain: strict;
+      image-rendering: -webkit-optimize-contrast;
+    }
+
     #loading-screen {
       display: flex;
       flex-direction: column;
@@ -89,56 +683,248 @@
       justify-content: center;
       height: 100vh;
       width: 100vw;
-      background-color: #FFFFFF;
+      background: radial-gradient(circle at 50% 35%, #ffffff 0%, #f0f4f9 100%);
       position: fixed;
       top: 0;
       left: 0;
       z-index: 9999;
+      transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      user-select: none;
+      -webkit-user-select: none;
     }
-    .spinner {
-      width: 40px;
-      height: 40px;
-      border: 3px solid rgba(0, 122, 255, 0.15);
+
+    .splash-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      animation: splashFadeIn 0.4s ease-out;
+    }
+
+    .splash-logo-box {
+      width: 92px;
+      height: 92px;
+      border-radius: 22px;
+      background: #ffffff;
+      box-shadow: 0 10px 28px rgba(0, 122, 255, 0.16), 0 2px 8px rgba(0, 0, 0, 0.04);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 18px;
+      animation: logoPulse 2.2s infinite ease-in-out;
+    }
+
+    .splash-logo {
+      width: 72px;
+      height: 72px;
+      object-fit: contain;
+    }
+
+    .splash-title {
+      font-size: 21px;
+      font-weight: 700;
+      color: #1a1f36;
+      letter-spacing: -0.3px;
+      margin-bottom: 4px;
+    }
+
+    .splash-subtitle {
+      font-size: 13px;
+      font-weight: 500;
+      color: #8792a2;
+      margin-bottom: 24px;
+      letter-spacing: -0.1px;
+    }
+
+    .splash-bar-wrap {
+      width: 110px;
+      height: 4px;
+      background: rgba(0, 122, 255, 0.12);
+      border-radius: 99px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .splash-bar-inner {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 40%;
+      background: linear-gradient(90deg, #007AFF, #00C6FF);
+      border-radius: 99px;
+      animation: splashSlide 1.2s infinite ease-in-out;
+    }
+
+    @keyframes splashSlide {
+      0% {
+        left: -40%;
+        width: 30%;
+      }
+
+      50% {
+        width: 50%;
+      }
+
+      100% {
+        left: 110%;
+        width: 30%;
+      }
+    }
+
+    @keyframes logoPulse {
+
+      0%,
+      100% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.03);
+      }
+    }
+
+    @keyframes splashFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Màn Chào Mừng Phong Cách Google Gemini */
+    .ai-welcome-container {
+      position: fixed;
+      top: 60px;
+      bottom: 80px;
+      left: 0;
+      right: 0;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 10;
+      padding: 0 24px;
+      text-align: center;
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1), transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      background: transparent;
+    }
+
+    .ai-welcome-container.active {
+      display: flex;
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .ai-welcome-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 22px;
+      max-width: 440px;
+      margin: 0 auto;
+      transform: translateY(-24px);
+    }
+
+    .ai-welcome-logo-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ai-welcome-logo-wrapper::after {
+      content: '';
+      position: absolute;
+      width: 115px;
+      height: 115px;
       border-radius: 50%;
-      border-top-color: #007AFF;
-      animation: spin 0.8s ease-in-out infinite;
+      background: radial-gradient(circle, rgba(0, 104, 255, 0.25) 0%, rgba(147, 51, 234, 0.16) 55%, transparent 75%);
+      filter: blur(16px);
+      z-index: -1;
+      animation: aiGlowPulse 3.5s ease-in-out infinite alternate;
     }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
+
+    @keyframes aiGlowPulse {
+      0% {
+        transform: scale(0.9);
+        opacity: 0.5;
+      }
+
+      100% {
+        transform: scale(1.3);
+        opacity: 1;
+      }
     }
-    .loading-text {
-      margin-top: 16px;
-      color: #007AFF;
-      font-size: 15px;
+
+    .ai-welcome-logo {
+      width: 96px;
+      height: 96px;
+      object-fit: contain;
+      filter: drop-shadow(0 10px 22px rgba(0, 104, 255, 0.32));
+      animation: aiLogoFloat 3s ease-in-out infinite alternate;
+    }
+
+    @keyframes aiLogoFloat {
+      0% {
+        transform: translateY(0px);
+      }
+
+      100% {
+        transform: translateY(-7px);
+      }
+    }
+
+    .ai-welcome-title {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 26px;
       font-weight: 600;
-      letter-spacing: -0.2px;
+      color: #0f172a;
+      letter-spacing: -0.4px;
+      line-height: 1.35;
+      text-align: center;
+      transition: color 0.2s;
+    }
+
+    body.dark .ai-welcome-title,
+    .dark .ai-welcome-title {
+      color: #f8fafc;
     }
   </style>
 
   <script>
-    // Force HTML renderer for Flutter Web to prevent CanvasKit/WebGL distortion on iOS Safari
-    window._flutter = window._flutter || {};
-    window._flutter.buildConfig = window._flutter.buildConfig || {};
-    window._flutter.buildConfig.renderer = "html";
+    // Dismiss splash screen smoothly when Flutter first frame is rendered
+    window.dismissSplashScreen = function () {
+      var el = document.getElementById('loading-screen');
+      if (el && !el.dataset.dismissed) {
+        el.dataset.dismissed = 'true';
+        el.style.opacity = '0';
+        el.style.pointerEvents = 'none';
+        setTimeout(function () {
+          if (el && el.parentNode) el.parentNode.removeChild(el);
+        }, 360);
+      }
+    };
 
-    // Unregister stale Service Workers to compel browser to reload fresh assets (Cache Busting)
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(registrations) {
-        for (var registration of registrations) {
-          registration.unregister();
-        }
-      });
-    }
+    window.addEventListener('flutter-first-frame', function () {
+      window.dismissSplashScreen();
+    });
 
     // Safety auto-dismiss for splash loading screen after Flutter starts
-    setTimeout(function() {
-      var el = document.getElementById('loading-screen');
-      if (el) el.remove();
+    setTimeout(function () {
+      window.dismissSplashScreen();
     }, 4500);
 
     // iOS Standalone Link Handling: Ngăn Safari mở tab mới khi bấm link/chuyển trang
     if (("standalone" in window.navigator) && window.navigator.standalone) {
-      document.addEventListener('click', function(e) {
+      document.addEventListener('click', function (e) {
         var ctarget = e.target;
         while (ctarget && ctarget.nodeName !== 'A') {
           ctarget = ctarget.parentNode;
@@ -153,12 +939,2928 @@
       }, false);
     }
   </script>
+
+  <!-- Hỗ trợ rung cuộc gọi đến chu kỳ 1s rung - 0.5s nghỉ -->
+  <script>
+    window._callVibrateTimer = null;
+    window._startCallVibration = function () {
+      if (window._callVibrateTimer) clearInterval(window._callVibrateTimer);
+      function doVib() {
+        try {
+          if (navigator && typeof navigator.vibrate === 'function') {
+            navigator.vibrate([1000, 500]);
+          }
+        } catch (_) { }
+      }
+      doVib();
+      window._callVibrateTimer = setInterval(doVib, 1500);
+      console.log('📳 [Vibration] Đã bắt đầu rung chu kỳ cuộc gọi đến!');
+    };
+    window._stopCallVibration = function () {
+      if (window._callVibrateTimer) {
+        clearInterval(window._callVibrateTimer);
+        window._callVibrateTimer = null;
+      }
+      try {
+        if (navigator && typeof navigator.vibrate === 'function') {
+          navigator.vibrate(0);
+        }
+      } catch (_) { }
+      console.log('📳 [Vibration] Đã dừng rung cuộc gọi.');
+    };
+  </script>
+
 </head>
+
 <body>
   <div id="loading-screen">
-    <div class="spinner"></div>
-    <div class="loading-text">Đang tải Chat Tho-Fi...</div>
+    <div class="splash-container">
+      <div class="splash-logo-box">
+        <img src="/tho_fi_logo_transparent.png" alt="Chat Tho-Fi" class="splash-logo"
+          onerror="this.src='/icon-192.png'">
+      </div>
+      <div class="splash-title">Chat Tho-Fi</div>
+      <div class="splash-subtitle">Kết nối tức thì • Siêu mượt mà</div>
+      <div class="splash-bar-wrap">
+        <div class="splash-bar-inner"></div>
+      </div>
+    </div>
   </div>
-  <script src="flutter_bootstrap.js?v=v_sk_shimmer_1789910000000" async></script>
+
+  <script>
+    const ChatSounds = {
+      _ctx: null,
+      _init() {
+        if (!this._ctx) {
+          this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (this._ctx.state === 'suspended') {
+          this._ctx.resume().catch(() => { });
+        }
+        return this._ctx;
+      },
+      playSend() {
+        try {
+          const ctx = this._init();
+          const now = ctx.currentTime;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(160, now);
+          osc.frequency.exponentialRampToValueAtTime(750, now + 0.12);
+          gain.gain.setValueAtTime(0.01, now);
+          gain.gain.linearRampToValueAtTime(0.65, now + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+          osc.start(now);
+          osc.stop(now + 0.15);
+        } catch (e) { }
+      },
+      playReceive() {
+        try {
+          const ctx = this._init();
+          const now = ctx.currentTime;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(800, now);
+          osc.frequency.exponentialRampToValueAtTime(400, now + 0.15);
+          gain.gain.setValueAtTime(0.01, now);
+          gain.gain.linearRampToValueAtTime(0.5, now + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+          osc.start(now);
+          osc.stop(now + 0.2);
+        } catch (e) { }
+      },
+      playReact() {
+        try {
+          const ctx = this._init();
+          const now = ctx.currentTime;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(350, now);
+          osc.frequency.exponentialRampToValueAtTime(1200, now + 0.08);
+          gain.gain.setValueAtTime(0.01, now);
+          gain.gain.linearRampToValueAtTime(0.55, now + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+          osc.start(now);
+          osc.stop(now + 0.09);
+        } catch (e) { }
+      }
+    };
+  </script>
+
+  <!-- AI History Drawer & Typing Animation -->
+  <style>
+    .ai-drawer-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 2147483646;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .ai-drawer-backdrop.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .ai-drawer-panel {
+      position: fixed;
+      top: 0;
+      left: -350px;
+      width: 320px;
+      max-width: 85vw;
+      height: 100vh;
+      background: #ffffff;
+      z-index: 2147483647;
+      box-shadow: 4px 0 24px rgba(0, 0, 0, 0.18);
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+      border-right: 1px solid rgba(0, 0, 0, 0.08);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    .ai-drawer-panel.dark {
+      background: #1e293b;
+      color: #ffffff;
+      border-right: 1px solid #334155;
+    }
+
+    .ai-drawer-panel.active {
+      transform: translateX(350px);
+    }
+
+    #ai-menu-button {
+      position: fixed;
+      top: 10px;
+      left: 12px;
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      background: #ffffff;
+      color: #0068FF;
+      box-shadow: 0 2px 10px rgba(0, 104, 255, 0.2);
+      border: 1.5px solid rgba(0, 104, 255, 0.25);
+      cursor: pointer;
+      z-index: 2147483645;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    #ai-menu-button:hover {
+      background: #0068FF;
+      color: #ffffff;
+      transform: scale(1.06);
+      box-shadow: 0 4px 14px rgba(0, 104, 255, 0.35);
+    }
+
+    #ai-menu-button.dark {
+      background: #1e293b;
+      color: #38bdf8;
+      border-color: #334155;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+    }
+
+    #ai-menu-button.dark:hover {
+      background: #0068FF;
+      color: #ffffff;
+    }
+
+    .ai-confirm-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+      z-index: 2147483647;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    .ai-confirm-backdrop.active {
+      display: flex;
+    }
+
+    .ai-confirm-box {
+      background: #ffffff;
+      border-radius: 20px;
+      padding: 24px 22px 20px;
+      width: 100%;
+      max-width: 320px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.28);
+      animation: aiModalZoom 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    body.dark .ai-confirm-box,
+    .dark .ai-confirm-box {
+      background: #1e293b;
+      color: #ffffff;
+      border: 1px solid #334155;
+    }
+
+    @keyframes aiModalZoom {
+      from {
+        transform: scale(0.9);
+        opacity: 0;
+      }
+
+      to {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    .ai-confirm-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: #fee2e2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 14px;
+    }
+
+    body.dark .ai-confirm-icon,
+    .dark .ai-confirm-icon {
+      background: #3f1d24;
+    }
+
+    .ai-confirm-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
+
+    body.dark .ai-confirm-title,
+    .dark .ai-confirm-title {
+      color: #f8fafc;
+    }
+
+    .ai-confirm-desc {
+      font-size: 13.5px;
+      color: #64748b;
+      line-height: 1.45;
+      margin-bottom: 20px;
+    }
+
+    body.dark .ai-confirm-desc,
+    .dark .ai-confirm-desc {
+      color: #94a3b8;
+    }
+
+    .ai-confirm-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .ai-confirm-btn-cancel {
+      flex: 1;
+      padding: 10px;
+      border-radius: 10px;
+      background: #f1f5f9;
+      color: #475569;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    body.dark .ai-confirm-btn-cancel,
+    .dark .ai-confirm-btn-cancel {
+      background: #334155;
+      color: #cbd5e1;
+    }
+
+    .ai-confirm-btn-danger {
+      flex: 1;
+      padding: 10px;
+      border-radius: 10px;
+      background: #ef4444;
+      color: #ffffff;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+    }
+
+    .ai-confirm-btn-danger:hover {
+      background: #dc2626;
+    }
+
+    .ai-drawer-header {
+      padding: 16px 18px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    }
+
+    .ai-drawer-panel.dark .ai-drawer-header {
+      border-bottom-color: #334155;
+    }
+
+    .ai-drawer-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 16px;
+      color: #0f172a;
+    }
+
+    .ai-drawer-panel.dark .ai-drawer-title {
+      color: #f8fafc;
+    }
+
+    .ai-drawer-close {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: #64748b;
+      padding: 6px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ai-drawer-close:hover {
+      background: rgba(0, 0, 0, 0.05);
+    }
+
+    .ai-new-chat-btn {
+      margin: 12px 16px;
+      padding: 11px 16px;
+      background: linear-gradient(135deg, #0068ff, #0091ff);
+      color: #ffffff;
+      border: none;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 104, 255, 0.28);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .ai-new-chat-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(0, 104, 255, 0.38);
+    }
+
+    .ai-new-chat-btn:active {
+      transform: scale(0.98);
+    }
+
+    .ai-section-label {
+      padding: 6px 18px 4px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      color: #94a3b8;
+      text-transform: uppercase;
+    }
+
+    .ai-sessions-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .ai-session-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      background: #f8fafc;
+      border: 1px solid #f1f5f9;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .ai-drawer-panel.dark .ai-session-item {
+      background: #0f172a;
+      border-color: #1e293b;
+    }
+
+    .ai-session-item:hover {
+      background: #eef2ff;
+      border-color: #c7d2fe;
+    }
+
+    .ai-drawer-panel.dark .ai-session-item:hover {
+      background: #1e293b;
+      border-color: #334155;
+    }
+
+    .ai-session-item.active {
+      background: #eff6ff;
+      border-color: #93c5fd;
+    }
+
+    .ai-drawer-panel.dark .ai-session-item.active {
+      background: #1e3a5f;
+      border-color: #0068ff;
+    }
+
+    .ai-session-info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .ai-session-name {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #1e293b;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .ai-drawer-panel.dark .ai-session-name {
+      color: #f1f5f9;
+    }
+
+    .ai-session-time {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+
+    .ai-session-delete-btn {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 6px;
+      opacity: 0.7;
+      transition: opacity 0.15s, color 0.15s;
+    }
+
+    .ai-session-delete-btn:hover {
+      opacity: 1;
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.1);
+    }
+
+    .ai-drawer-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: #94a3b8;
+      font-size: 13px;
+    }
+
+    /* Modal Xác Nhận Xóa Chat AI */
+    .ai-confirm-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 2147483647;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .ai-confirm-backdrop.active {
+      display: flex;
+      opacity: 1;
+    }
+
+    .ai-confirm-box {
+      background: #ffffff;
+      width: 88%;
+      max-width: 340px;
+      border-radius: 18px;
+      padding: 24px 20px;
+      box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.25);
+      text-align: center;
+      transform: scale(0.92);
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      box-sizing: border-box;
+    }
+
+    body.dark .ai-confirm-box,
+    .dark .ai-confirm-box {
+      background: #1e293b;
+      border-color: #334155;
+      color: #f1f5f9;
+    }
+
+    .ai-confirm-backdrop.active .ai-confirm-box {
+      transform: scale(1);
+    }
+
+    .ai-confirm-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: #fee2e2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+    }
+
+    body.dark .ai-confirm-icon,
+    .dark .ai-confirm-icon {
+      background: rgba(239, 68, 68, 0.2);
+    }
+
+    .ai-confirm-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
+
+    body.dark .ai-confirm-title,
+    .dark .ai-confirm-title {
+      color: #f8fafc;
+    }
+
+    .ai-confirm-desc {
+      font-size: 13.5px;
+      color: #64748b;
+      line-height: 1.5;
+      margin-bottom: 22px;
+    }
+
+    body.dark .ai-confirm-desc,
+    .dark .ai-confirm-desc {
+      color: #94a3b8;
+    }
+
+    .ai-confirm-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .ai-confirm-btn-cancel,
+    .ai-confirm-btn-danger {
+      flex: 1;
+      padding: 11px 16px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s;
+    }
+
+    .ai-confirm-btn-cancel {
+      background: #f1f5f9;
+      color: #475569;
+    }
+
+    .ai-confirm-btn-cancel:hover {
+      background: #e2e8f0;
+    }
+
+    body.dark .ai-confirm-btn-cancel,
+    .dark .ai-confirm-btn-cancel {
+      background: #334155;
+      color: #cbd5e1;
+    }
+
+    body.dark .ai-confirm-btn-cancel:hover,
+    .dark .ai-confirm-btn-cancel:hover {
+      background: #475569;
+    }
+
+    .ai-confirm-btn-danger {
+      background: #ef4444;
+      color: #ffffff;
+    }
+
+    .ai-confirm-btn-danger:hover {
+      background: #dc2626;
+    }
+
+    /* Hiệu ứng 3 chấm nảy (Bouncing Dots Indicator) */
+    .ai-typing-float {
+      position: fixed;
+      bottom: 74px;
+      left: 18px;
+      z-index: 999;
+      display: none;
+      align-items: flex-end;
+      gap: 8px;
+      animation: aiFadeIn 0.25s ease-out;
+      pointer-events: none;
+    }
+
+    .ai-typing-float.active {
+      display: flex;
+    }
+
+    .ai-typing-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      object-fit: cover;
+      box-shadow: 0 2px 8px rgba(0, 104, 255, 0.25);
+      border: 1.5px solid #0068ff;
+      background: #ffffff;
+    }
+
+    .ai-typing-bubble {
+      background: #ffffff;
+      padding: 10px 16px;
+      border-radius: 18px 18px 18px 4px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    body.dark .ai-typing-bubble,
+    .dark .ai-typing-bubble {
+      background: #1e293b;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+    }
+
+    .ai-typing-dot {
+      width: 7px;
+      height: 7px;
+      background: #0068ff;
+      border-radius: 50%;
+      display: inline-block;
+      animation: aiDotBounce 1.2s infinite ease-in-out;
+    }
+
+    .ai-typing-dot:nth-child(1) {
+      animation-delay: 0s;
+    }
+
+    .ai-typing-dot:nth-child(2) {
+      animation-delay: 0.18s;
+    }
+
+    .ai-typing-dot:nth-child(3) {
+      animation-delay: 0.36s;
+    }
+
+    @keyframes aiDotBounce {
+
+      0%,
+      80%,
+      100% {
+        transform: translateY(0);
+      }
+
+      40% {
+        transform: translateY(-7px);
+      }
+    }
+
+    @keyframes aiFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+
+  <div id="ai-drawer-backdrop" class="ai-drawer-backdrop" onclick="window.closeAiHistory()"></div>
+  <div id="ai-drawer-panel" class="ai-drawer-panel">
+    <div class="ai-drawer-header">
+      <div class="ai-drawer-title">
+        <img src="/icon.png" style="width:24px;height:24px;border-radius:50%;" />
+        <span>Lịch sử chat AI</span>
+      </div>
+      <button class="ai-drawer-close" onclick="window.closeAiHistory()">✕</button>
+    </div>
+    <div style="display:flex; gap:8px; padding: 10px 14px 0;">
+      <button class="ai-new-chat-btn" style="flex:1; margin:0;" onclick="window.createNewAiSession()">
+        <span style="font-size:18px;line-height:1;">+</span>
+        <span>Cuộc trò chuyện mới</span>
+      </button>
+      <button onclick="window.deleteAllAiSessions()"
+        style="background:#fee2e2; color:#ef4444; border:1px solid #fca5a5; border-radius:10px; padding:8px 12px; font-size:13px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:5px;"
+        title="Xóa toàn bộ lịch sử">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+        <span>Xóa hết</span>
+      </button>
+    </div>
+    <div class="ai-section-label">GẦN ĐÂY</div>
+    <div id="ai-sessions-list" class="ai-sessions-list">
+      <div class="ai-drawer-empty">Đang tải lịch sử...</div>
+    </div>
+  </div>
+
+
+
+  <div id="ai-confirm-modal" class="ai-confirm-backdrop">
+    <div class="ai-confirm-box">
+      <div class="ai-confirm-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          <line x1="10" y1="11" x2="10" y2="17"></line>
+          <line x1="14" y1="11" x2="14" y2="17"></line>
+        </svg>
+      </div>
+      <div class="ai-confirm-title">Xóa cuộc trò chuyện?</div>
+      <div class="ai-confirm-desc">Bạn có chắc chắn muốn xóa cuộc trò chuyện này không? Thao tác này không thể hoàn tác.
+      </div>
+      <div class="ai-confirm-actions">
+        <button class="ai-confirm-btn-cancel" onclick="window.closeAiConfirmModal()">Hủy</button>
+        <button id="ai-confirm-btn-ok" class="ai-confirm-btn-danger">Xóa</button>
+      </div>
+    </div>
+  </div>
+
+
+  <div id="ai-welcome-view" class="ai-welcome-container">
+    <div class="ai-welcome-content">
+      <div class="ai-welcome-logo-wrapper">
+        <img src="/icon.png" class="ai-welcome-logo" alt="Chat AI Tho-Fi" />
+      </div>
+      <div id="ai-welcome-title" class="ai-welcome-title">Hôm nay bạn thế nào, Tho?</div>
+    </div>
+  </div>
+
+  <div id="ai-typing-float" class="ai-typing-float">
+    <img src="/icon.png" class="ai-typing-avatar" />
+    <div class="ai-typing-bubble">
+      <span class="ai-typing-dot"></span>
+      <span class="ai-typing-dot"></span>
+      <span class="ai-typing-dot"></span>
+    </div>
+  </div>
+
+  <script>
+    window._currentAiConversationId = null;
+    window._chatScreenState = null;
+    window._isAiTabActive = false;
+
+    const AI_GREETINGS = [
+      "Hôm nay bạn thế nào, {name}?",
+      "Tôi có thể giúp gì cho bạn hôm nay, {name}?",
+      "Chào {name}, bạn đang nghĩ gì thế?",
+      "Hôm nay bạn muốn cùng tôi tìm hiểu điều gì?",
+      "Rất vui được gặp lại {name}! Cần tôi hỗ trợ gì nào?",
+      "Bạn đã sẵn sàng khám phá những điều mới chưa, {name}?",
+      "Cần tôi hỗ trợ điều gì hôm nay không, {name}?"
+    ];
+
+    function getAiUserName() {
+      try {
+        const tk = getAiAuthToken();
+        if (tk && tk.includes('.')) {
+          const parts = tk.split('.');
+          if (parts.length > 1) {
+            const payload = JSON.parse(atob(parts[1]));
+            if (payload && payload.username) {
+              const u = payload.username.trim();
+              return u.charAt(0).toUpperCase() + u.slice(1);
+            }
+          }
+        }
+      } catch (e) { }
+      try {
+        const rawU = localStorage.getItem('flutter.username') || localStorage.getItem('username');
+        if (rawU) {
+          const u = rawU.replace(/"/g, '').trim();
+          if (u) return u.charAt(0).toUpperCase() + u.slice(1);
+        }
+      } catch (e) { }
+      return 'Tho';
+    }
+
+    window.pickRandomAiGreeting = function () {
+      const name = getAiUserName();
+      const template = AI_GREETINGS[Math.floor(Math.random() * AI_GREETINGS.length)];
+      return template.replace(/{name}/g, name);
+    };
+
+    window.updateAiWelcomeState = function () {
+      const el = document.getElementById('ai-welcome-view');
+      if (!el) return;
+
+      const isTabActive = !!window._isAiTabActive;
+      const s = window._chatScreenState;
+      const hasMessages = s && s.cx && s.cx.length > 0;
+
+      if (isTabActive && !hasMessages) {
+        const titleEl = document.getElementById('ai-welcome-title');
+        if (titleEl) {
+          titleEl.textContent = window.pickRandomAiGreeting();
+        }
+        el.classList.add('active');
+      } else {
+        el.classList.remove('active');
+      }
+    };
+
+
+    window.scrollAiChatToBottom = function () {
+      setTimeout(function () {
+        const pane = document.querySelector('flt-glass-pane') || document.body;
+        const target = (pane && pane.shadowRoot) ? (pane.shadowRoot.querySelector('canvas') || pane.shadowRoot) : pane;
+        if (target) {
+          for (let k = 0; k < 12; k++) {
+            target.dispatchEvent(new WheelEvent('wheel', {
+              deltaY: 3000,
+              deltaMode: 0,
+              bubbles: true,
+              cancelable: true,
+              clientX: window.innerWidth / 2,
+              clientY: window.innerHeight / 2
+            }));
+          }
+        }
+      }, 150);
+      setTimeout(function () {
+        const pane = document.querySelector('flt-glass-pane') || document.body;
+        const target = (pane && pane.shadowRoot) ? (pane.shadowRoot.querySelector('canvas') || pane.shadowRoot) : pane;
+        if (target) {
+          for (let k = 0; k < 12; k++) {
+            target.dispatchEvent(new WheelEvent('wheel', {
+              deltaY: 3000,
+              deltaMode: 0,
+              bubbles: true,
+              cancelable: true,
+              clientX: window.innerWidth / 2,
+              clientY: window.innerHeight / 2
+            }));
+          }
+        }
+      }, 400);
+    };
+
+    let _lastAiRefreshTime = 0;
+    window.refreshAiTabHistory = async function () {
+      const now = Date.now();
+      if (now - _lastAiRefreshTime < 800) return;
+      _lastAiRefreshTime = now;
+      try {
+        const tk = getAiAuthToken();
+        if (!tk) return;
+        const res = await fetch('/api/ai/chat/history', {
+          headers: { 'Authorization': 'Bearer ' + tk }
+        });
+        const data = await res.json();
+        if (data && data.success) {
+          if (data.conversationId) {
+            window._currentAiConversationId = data.conversationId;
+          }
+          if (window._chatScreenState && window._chatScreenState.cx) {
+            const s = window._chatScreenState;
+            s.cx.length = 0;
+            if (Array.isArray(data.messages) && data.messages.length > 0) {
+              data.messages.forEach(function (m) {
+                if (window._dartMapHelper) {
+                  s.cx.push(window._dartMapHelper(m.role === 'user' ? 'user' : 'ai', m.content || ''));
+                }
+              });
+            }
+            if (s.c != null && typeof window._dartSetStateHelper === 'function') {
+              s.K(new window._dartSetStateHelper());
+            }
+            if (Array.isArray(data.messages) && data.messages.length > 0) {
+              window.scrollAiChatToBottom();
+            }
+          }
+          if (typeof window.updateAiWelcomeState === 'function') {
+            window.updateAiWelcomeState();
+          }
+        }
+      } catch (err) {
+        console.warn('Lỗi refresh AI history:', err);
+      }
+    };
+
+    window.updateAiMenuBtnState = function (isActive) {
+      window._isAiTabActive = !!isActive;
+      if (isActive) {
+        window.refreshAiTabHistory();
+      }
+      if (typeof window.updateAiWelcomeState === 'function') {
+        window.updateAiWelcomeState();
+      }
+    };
+
+    window.showAiConfirm = function ({ title, desc, onConfirm }) {
+      const modal = document.getElementById('ai-confirm-modal');
+      if (!modal) {
+        if (typeof onConfirm === 'function') onConfirm();
+        return;
+      }
+      if (title) modal.querySelector('.ai-confirm-title').textContent = title;
+      if (desc) modal.querySelector('.ai-confirm-desc').textContent = desc;
+      const okBtn = document.getElementById('ai-confirm-btn-ok');
+      okBtn.onclick = function () {
+        window.closeAiConfirmModal();
+        if (typeof onConfirm === 'function') onConfirm();
+      };
+      modal.classList.add('active');
+    };
+
+    window.closeAiConfirmModal = function () {
+      const modal = document.getElementById('ai-confirm-modal');
+      if (modal) modal.classList.remove('active');
+    };
+
+    window.clearCurrentAiChat = async function () {
+      console.log('🚀 Clearing current AI chat...');
+      try {
+        const tk = getAiAuthToken();
+        const convId = window._currentAiConversationId;
+
+        if (convId) {
+          await fetch('/api/ai/chat/session/' + convId, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + tk }
+          });
+        } else {
+          await fetch('/api/ai/chat/history', {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + tk }
+          });
+        }
+
+        window._currentAiConversationId = null;
+
+        if (window._chatScreenState && window._chatScreenState.cx) {
+          const s = window._chatScreenState;
+          s.cx.length = 0;
+          if (window._dartMapHelper) {
+            s.cx.push(window._dartMapHelper('ai', 'Đã xoá cuộc trò chuyện thành công! Tôi có thể giúp gì cho bạn hôm nay?'));
+          }
+          if (s.c != null) s.K(new window._dartSetStateHelper());
+        }
+
+        if (typeof window.fetchAiSessions === 'function') {
+          window.fetchAiSessions();
+        }
+      } catch (err) {
+        console.error('Lỗi khi xóa cuộc trò chuyện:', err);
+      }
+    };
+
+    window.openAiHistory = function () {
+      console.log('🚀 openAiHistory called!');
+      try {
+        const isDark = (document.body && document.body.classList.contains('dark')) || (localStorage.getItem('flutter.isDarkMode') === 'true');
+        const panel = document.getElementById('ai-drawer-panel');
+        const backdrop = document.getElementById('ai-drawer-backdrop');
+        if (panel && backdrop) {
+          if (isDark) panel.classList.add('dark'); else panel.classList.remove('dark');
+          panel.classList.add('active');
+          backdrop.classList.add('active');
+          if (typeof window.fetchAiSessions === 'function') {
+            window.fetchAiSessions();
+          }
+        }
+      } catch (err) {
+        console.error('Error opening AI history drawer:', err);
+      }
+    };
+
+    window.closeAiHistory = function () {
+      console.log('🚀 closeAiHistory called!');
+      try {
+        const panel = document.getElementById('ai-drawer-panel');
+        const backdrop = document.getElementById('ai-drawer-backdrop');
+        if (panel) panel.classList.remove('active');
+        if (backdrop) backdrop.classList.remove('active');
+      } catch (err) {
+        console.error('Error closing AI history drawer:', err);
+      }
+    };
+
+    function getAiAuthToken() {
+      let tk = '';
+      try {
+        const raw = localStorage.getItem('flutter.authToken') || localStorage.getItem('authToken');
+        if (raw) {
+          if (raw.startsWith('"') && raw.endsWith('"')) tk = JSON.parse(raw);
+          else tk = raw;
+        }
+      } catch (e) {
+        tk = localStorage.getItem('flutter.authToken') || localStorage.getItem('authToken') || '';
+      }
+      return (tk || '').replace(/^"+|"+$/g, '').trim();
+    }
+
+    window.fetchAiSessions = async function () {
+      const container = document.getElementById('ai-sessions-list');
+      if (!container) return;
+      try {
+        const res = await fetch('/api/ai/chat/sessions', {
+          headers: { 'Authorization': 'Bearer ' + getAiAuthToken() }
+        });
+        const data = await res.json();
+        if (data && data.success && Array.isArray(data.sessions)) {
+          if (data.sessions.length === 0) {
+            container.innerHTML = '<div class="ai-drawer-empty">Chưa có cuộc trò chuyện nào.<br>Bấm "+ Cuộc trò chuyện mới" để bắt đầu!</div>';
+            return;
+          }
+          container.innerHTML = '';
+          data.sessions.forEach(function (s) {
+            const isActive = window._currentAiConversationId === s.id;
+            const item = document.createElement('div');
+            item.className = 'ai-session-item' + (isActive ? ' active' : '');
+
+            const timeStr = s.createdAt ? new Date(s.createdAt).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '';
+
+            item.innerHTML = `
+              <div class="ai-session-info" style="cursor:pointer;" onclick="window.selectAiSession('${s.id}')">
+                <div class="ai-session-name">${escapeAiHtml(s.name || 'Cuộc trò chuyện mới')}</div>
+                <div class="ai-session-time">${timeStr}</div>
+              </div>
+              <button class="ai-session-delete-btn" title="Xóa" onclick="window.deleteAiSession('${s.id}', event)">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              </button>
+            `;
+            container.appendChild(item);
+          });
+        }
+      } catch (e) {
+        container.innerHTML = '<div class="ai-drawer-empty">Không thể tải lịch sử trò chuyện.</div>';
+      }
+    };
+
+    function escapeAiHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    window.createNewAiSession = async function () {
+      try {
+        const res = await fetch('/api/ai/chat/session/new', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + getAiAuthToken(), 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (data && data.success && data.session) {
+          window._currentAiConversationId = data.session.id;
+          window.closeAiHistory();
+          if (window._chatScreenState && window._chatScreenState.cx) {
+            const s = window._chatScreenState;
+            s.cx.length = 0;
+            if (s.c != null) s.K(new window._dartSetStateHelper());
+          }
+          if (typeof window.updateAiWelcomeState === 'function') {
+            window.updateAiWelcomeState();
+          }
+          if (typeof window.fetchAiSessions === 'function') {
+            window.fetchAiSessions();
+          }
+        }
+      } catch (e) {
+        console.error('Lỗi tạo phiên chat mới:', e);
+      }
+    };
+
+    window.selectAiSession = async function (id) {
+      try {
+        window._currentAiConversationId = id;
+        window.closeAiHistory();
+        const res = await fetch('/api/ai/chat/history?conversationId=' + id, {
+          headers: { 'Authorization': 'Bearer ' + getAiAuthToken() }
+        });
+        const data = await res.json();
+        if (data && data.success && Array.isArray(data.messages)) {
+          if (window._chatScreenState && window._chatScreenState.cx) {
+            const s = window._chatScreenState;
+            s.cx.length = 0;
+            if (data.messages.length === 0) {
+              // Để trống để hiện màn chào mừng Gemini
+            } else {
+              data.messages.forEach(function (m) {
+                if (window._dartMapHelper) {
+                  s.cx.push(window._dartMapHelper(m.role === 'user' ? 'user' : 'ai', m.content || ''));
+                }
+              });
+            }
+            if (s.c != null) s.K(new window._dartSetStateHelper());
+          }
+          if (typeof window.updateAiWelcomeState === 'function') {
+            window.updateAiWelcomeState();
+          }
+        }
+      } catch (e) {
+        console.error('Lỗi tải tin nhắn phiên chat:', e);
+      }
+    };
+
+    window.deleteAiSession = function (id, evt) {
+      if (evt) {
+        evt.stopPropagation();
+        evt.preventDefault();
+      }
+      window.showAiConfirm({
+        title: 'Xóa cuộc trò chuyện?',
+        desc: 'Bạn có chắc chắn muốn xóa cuộc trò chuyện này không? Thao tác này không thể hoàn tác.',
+        onConfirm: async function () {
+          console.log('🚀 Deleting session:', id);
+          try {
+            const res = await fetch('/api/ai/chat/session/' + id, {
+              method: 'DELETE',
+              headers: { 'Authorization': 'Bearer ' + getAiAuthToken() }
+            });
+            const data = await res.json();
+            console.log('🚀 Delete result:', data);
+            if (data && data.success) {
+              const wasCurrent = (!window._currentAiConversationId || window._currentAiConversationId === id);
+              if (wasCurrent) {
+                window._currentAiConversationId = null;
+                if (window._chatScreenState && window._chatScreenState.cx) {
+                  const s = window._chatScreenState;
+                  s.cx.length = 0;
+                  if (window._dartMapHelper) {
+                    s.cx.push(window._dartMapHelper('ai', 'Đã xoá cuộc trò chuyện thành công! Tôi có thể giúp gì cho bạn hôm nay?'));
+                  }
+                  if (s.c != null) s.K(new window._dartSetStateHelper());
+                }
+              }
+              await window.fetchAiSessions();
+            } else {
+              alert(data?.error || 'Không thể xóa cuộc trò chuyện.');
+            }
+          } catch (e) {
+            console.error('Lỗi xóa phiên chat:', e);
+          }
+        }
+      });
+    };
+
+    window.deleteAllAiSessions = function () {
+      window.showAiConfirm({
+        title: 'Xóa toàn bộ lịch sử?',
+        desc: 'Bạn có chắc chắn muốn xóa tất cả các cuộc trò chuyện AI không? Thao tác này không thể hoàn tác.',
+        onConfirm: async function () {
+          console.log('🚀 Deleting all AI sessions...');
+          try {
+            const res = await fetch('/api/ai/chat/sessions/all', {
+              method: 'DELETE',
+              headers: { 'Authorization': 'Bearer ' + getAiAuthToken() }
+            });
+            const data = await res.json();
+            console.log('🚀 Delete all result:', data);
+            if (data && data.success) {
+              window._currentAiConversationId = null;
+              if (window._chatScreenState && window._chatScreenState.cx) {
+                const s = window._chatScreenState;
+                s.cx.length = 0;
+                if (s.c != null) s.K(new window._dartSetStateHelper());
+              }
+              if (typeof window.updateAiWelcomeState === 'function') {
+                window.updateAiWelcomeState();
+              }
+              await window.fetchAiSessions();
+            } else {
+              alert(data?.error || 'Không thể xóa toàn bộ lịch sử.');
+            }
+          } catch (e) {
+            console.error('Lỗi xóa toàn bộ phiên chat:', e);
+          }
+        }
+      });
+    };
+
+    window.showAiThinking = function (show) {
+      const el = document.getElementById('ai-typing-float');
+      if (!el) return;
+      if (show) {
+        el.classList.add('active');
+      } else {
+        el.classList.remove('active');
+      }
+    };
+  </script>
+  <script>
+    window.flutterWebRenderer = "canvaskit";
+  </script>
+  <script src="flutter_bootstrap.js?v=v_sk_precise_1789920000000" async></script>
+
+  <script id="messenger-theme-picker-script">
+    window._openMessengerThemePicker = function (convId, convName) {
+      var oldOverlay = document.getElementById('messenger-theme-picker-overlay');
+      if (oldOverlay) oldOverlay.remove();
+
+      // Đảm bảo luôn lấy được convId chính xác
+      if (!convId && window.$ && window.$._currentActiveChatConvId) {
+        convId = window.$._currentActiveChatConvId;
+      }
+      if (!convId && window.$ && window.$._activeChatScreenState && window.$._activeChatScreenState._activeChatConvId) {
+        convId = window.$._activeChatScreenState._activeChatConvId;
+      }
+      if (!convId && typeof localStorage !== 'undefined') {
+        convId = localStorage.getItem('last_active_conv_id') || '';
+      }
+
+      var themes = [
+        { id: 'classic', name: 'Mặc định (Classic)', color1: '#0084FF', color2: '#0068FF' },
+        { id: 'sunset', name: 'Hoàng hôn (Sunset)', color1: '#FF512F', color2: '#DD2476' },
+        { id: 'ocean', name: 'Đại dương (Ocean)', color1: '#00B4DB', color2: '#0083B0' },
+        { id: 'berry', name: 'Quả mọng (Berry)', color1: '#8A2387', color2: '#E94057' },
+        { id: 'emerald', name: 'Ngọc bích (Emerald)', color1: '#11998E', color2: '#38EF7D' },
+        { id: 'love', name: 'Tình yêu (Love)', color1: '#FF3377', color2: '#FF6584' }
+      ];
+
+      // 1. Xác định currentTheme chuẩn xác
+      var savedLocal = (convId && localStorage.getItem('chat_theme_' + convId)) || localStorage.getItem('chat_current_theme');
+      var currentTheme = (window.$ && window.$._convThemes && window.$._convThemes[convId]) ||
+        (window.$ && window.$._currentActiveChatTheme) ||
+        savedLocal ||
+        'classic';
+      if (currentTheme === 'default' || !currentTheme) currentTheme = 'classic';
+      console.log('🔍 [Theme Modal] convId:', convId, 'currentTheme:', currentTheme);
+
+      var overlay = document.createElement('div');
+      overlay.id = 'messenger-theme-picker-overlay';
+      overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.6);backdrop-filter:blur(8px);z-index:9999999;display:flex;align-items:flex-end;justify-content:center;opacity:0;transition:opacity 0.25s ease;';
+
+      var sheet = document.createElement('div');
+      sheet.style.cssText = 'background:#ffffff;width:100%;max-width:440px;border-top-left-radius:24px;border-top-right-radius:24px;padding:16px 20px 28px;box-shadow:0 -12px 35px rgba(0,0,0,0.25);transform:translateY(100%);transition:transform 0.25s cubic-bezier(0.16,1,0.3,1);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;user-select:none;';
+
+      var html = '<div style="display:flex;justify-content:center;margin-bottom:12px;"><div style="width:40px;height:4px;background:#E2E8F0;border-radius:2px;"></div></div>';
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">';
+      html += '<h3 style="margin:0;font-size:18px;font-weight:700;color:#0F172A;">Chủ đề đoạn chat</h3>';
+      html += '<button id="close-theme-btn" style="border:none;background:#F1F5F9;width:32px;height:32px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#64748B;font-size:16px;font-weight:bold;">✕</button>';
+      html += '</div>';
+      html += '<p style="margin:0 0 16px;font-size:13px;color:#64748B;">Chọn màu chủ đề để áp dụng ngay lập tức cho cả hai bên</p>';
+      html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+
+      themes.forEach(function (t) {
+        var isSel = (t.id === currentTheme);
+        html += '<div class="theme-row" data-theme="' + t.id + '" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:16px;cursor:pointer;transition:background 0.15s;background:' + (isSel ? '#F8FAFC' : 'transparent') + ';border:' + (isSel ? '1.5px solid #0084FF' : '1.5px solid transparent') + ';">';
+        html += '<div style="display:flex;align-items:center;gap:14px;">';
+        html += '<div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,' + t.color1 + ',' + t.color2 + ');box-shadow:0 3px 8px ' + t.color1 + '55;border:2px solid #fff;"></div>';
+        html += '<span style="font-size:15px;font-weight:' + (isSel ? '700' : '500') + ';color:#0F172A;">' + t.name + '</span>';
+        html += '</div>';
+        if (isSel) {
+          html += '<div style="width:24px;height:24px;border-radius:50%;background:#0084FF;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:bold;">✓</div>';
+        } else {
+          html += '<div style="width:24px;height:24px;"></div>';
+        }
+        html += '</div>';
+      });
+      html += '</div>';
+
+      sheet.innerHTML = html;
+      overlay.appendChild(sheet);
+      document.body.appendChild(overlay);
+
+      requestAnimationFrame(function () {
+        overlay.style.opacity = '1';
+        sheet.style.transform = 'translateY(0)';
+      });
+
+      function closeOverlay() {
+        overlay.style.opacity = '0';
+        sheet.style.transform = 'translateY(100%)';
+        setTimeout(function () { overlay.remove(); }, 250);
+      }
+
+      overlay.addEventListener('click', function (e) {
+        if (e.target === overlay) closeOverlay();
+      });
+      document.getElementById('close-theme-btn').addEventListener('click', closeOverlay);
+
+      var rows = sheet.querySelectorAll('.theme-row');
+      rows.forEach(function (row) {
+        row.addEventListener('click', function () {
+          var selectedTheme = this.getAttribute('data-theme');
+          console.log('🎯 [Client] Chọn theme:', selectedTheme, 'cho conversationId:', convId);
+
+          // 1. Lưu ngay vào localStorage
+          if (convId) {
+            localStorage.setItem('chat_theme_' + convId, selectedTheme);
+          }
+          localStorage.setItem('chat_current_theme', selectedTheme);
+
+          // 2. Cập nhật ngay trên bộ nhớ Dart/JS và kích hoạt Flutter State re-render tức thì
+          if (window.$) {
+            if (!window.$._convThemes) window.$._convThemes = {};
+            if (convId) window.$._convThemes[convId] = selectedTheme;
+            window.$._currentActiveChatTheme = selectedTheme;
+
+            // Kích hoạt setState trên Flutter ChatScreen
+            if (window.$._activeChatScreenState) {
+              window.$._activeChatScreenState.Q = false; // Đảm bảo đóng emoji
+              if (typeof window.$._activeChatScreenState.K === 'function' && window.A && window.A.ax1) {
+                try {
+                  window.$._activeChatScreenState.K(new window.A.ax1());
+                } catch (e) { }
+              }
+            }
+          }
+
+          // 3. Phát socket realtime cho cả hai bên
+          var socketPayload = null;
+          if (window.A && typeof window.A.V === 'function' && window.t && window.t.N) {
+            try {
+              socketPayload = window.A.V(["conversationId", convId, "theme", selectedTheme], window.t.N, window.t.N);
+            } catch (e) { }
+          }
+          if (!socketPayload) {
+            socketPayload = { conversationId: convId, theme: selectedTheme };
+          }
+
+          if (window.$ && window.$.bj && typeof window.$.bj.cn === 'function') {
+            try {
+              window.$.bj.cn("update_conversation_theme", socketPayload);
+              console.log('⚡ [Client] Đã phát socket update_conversation_theme thành công!');
+            } catch (e) {
+              console.error('Lỗi phát socket theme:', e);
+            }
+          }
+
+          // 4. Gửi REST API lưu bền vững vào database
+          try {
+            var rawToken = localStorage.getItem('flutter.authToken') ||
+              localStorage.getItem('authToken') ||
+              localStorage.getItem('flutter.token') ||
+              localStorage.getItem('token') || '';
+            var cleanToken = rawToken;
+            try {
+              cleanToken = JSON.parse(rawToken);
+            } catch (e) {
+              if (cleanToken.startsWith('"') && cleanToken.endsWith('"')) {
+                cleanToken = cleanToken.slice(1, -1);
+              }
+            }
+
+            if (cleanToken && convId) {
+              var backendUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? '' : 'https://chat-tho-fi-vn-9s8u.onrender.com';
+              fetch(backendUrl + '/api/chat/conversations/' + convId + '/theme', {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': 'Bearer ' + cleanToken
+                },
+                body: JSON.stringify({ theme: selectedTheme })
+              }).then(function (res) { return res.json(); })
+                .then(function (data) { console.log('✅ API theme response:', data); })
+                .catch(function (err) { console.error('⚠️ Lỗi API theme:', err); });
+            }
+          } catch (e) {
+            console.error('Lỗi token/fetch:', e);
+          }
+
+          closeOverlay();
+        });
+      });
+    };
+  </script>
+
+
+  <!-- Modal Quản Lý Thông Báo & Web Push iOS -->
+  <style>
+    #notif-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 999999;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    #notif-modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    #notif-modal-sheet {
+      width: 100%;
+      max-width: 500px;
+      max-height: 88vh;
+      background: #ffffff;
+      border-top-left-radius: 26px;
+      border-top-right-radius: 26px;
+      box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.22);
+      display: flex;
+      flex-direction: column;
+      transform: translateY(100%);
+      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    #notif-modal-overlay.active #notif-modal-sheet {
+      transform: translateY(0);
+    }
+
+    .notif-drag-bar {
+      width: 40px;
+      height: 4px;
+      background: #cbd5e1;
+      border-radius: 2px;
+      margin: 12px auto 6px;
+    }
+
+    .notif-header {
+      padding: 10px 20px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .notif-header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .notif-header-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 13px;
+      background: linear-gradient(135deg, #8b5cf6, #6366f1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 20px;
+    }
+
+    .notif-header-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+
+    .notif-header-sub {
+      font-size: 12.5px;
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    .notif-close-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #f1f5f9;
+      border: none;
+      font-size: 16px;
+      color: #64748b;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .notif-content {
+      padding: 18px 20px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .notif-status-box {
+      padding: 14px 16px;
+      border-radius: 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      border: 1px solid transparent;
+    }
+
+    .notif-status-box.active {
+      background: #ecfdf5;
+      border-color: #a7f3d0;
+      color: #065f46;
+    }
+
+    .notif-status-box.inactive {
+      background: #fffbeb;
+      border-color: #fde68a;
+      color: #92400e;
+    }
+
+    .notif-btn-main {
+      width: 100%;
+      height: 48px;
+      background: #0068ff;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    .notif-btn-main:active {
+      transform: scale(0.98);
+      background: #0056d6;
+    }
+
+    .notif-btn-outline {
+      width: 100%;
+      height: 44px;
+      background: transparent;
+      color: #0068ff;
+      font-size: 14px;
+      font-weight: 600;
+      border: 1.5px solid #0068ff;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .notif-btn-outline:active {
+      background: rgba(0, 104, 255, 0.08);
+    }
+
+    .notif-test-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .notif-test-btn {
+      flex: 1;
+      height: 42px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #334155;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    .notif-guide-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 14px 16px;
+      font-size: 12.5px;
+    }
+
+    .notif-guide-title {
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .notif-guide-step {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 6px;
+      line-height: 1.35;
+      color: #475569;
+    }
+
+    .notif-step-badge {
+      width: 18px;
+      height: 18px;
+      background: #0068ff;
+      color: #fff;
+      border-radius: 50%;
+      font-size: 11px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+  </style>
+
+  <div id="notif-modal-overlay">
+    <div id="notif-modal-sheet">
+      <div class="notif-drag-bar"></div>
+      <div class="notif-header">
+        <div class="notif-header-left">
+          <div class="notif-header-icon">🔔</div>
+          <div>
+            <div class="notif-header-title">Thông báo & Âm thanh</div>
+            <div class="notif-header-sub">Nhận chuông gọi & tin nhắn khi khóa máy</div>
+          </div>
+        </div>
+        <button class="notif-close-btn" onclick="window.closeNotificationModal()">✕</button>
+      </div>
+
+      <div class="notif-content">
+        <!-- Status Box -->
+        <div id="notif-status-box" class="notif-status-box inactive">
+          <div style="font-size: 22px;" id="notif-status-icon">⚠️</div>
+          <div>
+            <div id="notif-status-title" style="font-weight: 700; font-size: 14.5px;">Chưa kích hoạt thông báo</div>
+            <div id="notif-status-desc" style="font-size: 12.5px; margin-top: 2px;">
+              Bấm nút bên dưới để bật chuông cuộc gọi và tin nhắn khi thoát app.
+            </div>
+          </div>
+        </div>
+
+        <!-- Button Kích hoạt -->
+        <button id="notif-activate-btn" class="notif-btn-main" onclick="window.handleActivateNotificationClick()">
+          <span id="notif-activate-icon">🔔</span>
+          <span id="notif-activate-text">Bật thông báo trên thiết bị này</span>
+        </button>
+
+        <!-- Button Gửi Test Push -->
+        <button id="notif-test-push-btn" class="notif-btn-outline" onclick="window.handleTestPushClick()">
+          <span>📲</span> Gửi thông báo đẩy thử nghiệm (Test Push)
+        </button>
+
+        <!-- Hàng nút Test Âm thanh & Rung -->
+        <div style="font-size: 12px; font-weight: 700; color: #64748b; letter-spacing: 0.5px; margin-top: 4px;">
+          KIỂM TRA ÂM THANH & RUNG
+        </div>
+        <div class="notif-test-row">
+          <button id="notif-test-call-btn" class="notif-test-btn" onclick="window.handleToggleTestCallSound()">
+            <span id="notif-test-call-icon">📞</span>
+            <span id="notif-test-call-text">Thử chuông gọi</span>
+          </button>
+          <button class="notif-test-btn" onclick="window.handleTestMessageSound()">
+            <span>💬</span> Thử âm tin nhắn
+          </button>
+        </div>
+
+        <!-- Hướng dẫn iOS -->
+        <div class="notif-guide-card">
+          <div class="notif-guide-title">
+            <span>🍎</span> Hướng dẫn quan trọng cho iPhone / iOS
+          </div>
+          <div class="notif-guide-step">
+            <div class="notif-step-badge">1</div>
+            <div>Mở bằng <b>Safari</b> trên iPhone (chỉ Safari hỗ trợ Web Push).</div>
+          </div>
+          <div class="notif-guide-step">
+            <div class="notif-step-badge">2</div>
+            <div>Bấm nút <b>Chia sẻ (⎋)</b> ở thanh dưới ➔ Chọn <b>"Thêm vào MH chính"</b>.</div>
+          </div>
+          <div class="notif-guide-step">
+            <div class="notif-step-badge">3</div>
+            <div>Mở app từ Màn hình chính và bấm nút <b>"Bật thông báo"</b> ở trên.</div>
+          </div>
+          <div class="notif-guide-step">
+            <div class="notif-step-badge">4</div>
+            <div>Vào <b>Cài đặt iPhone ➔ Thông báo ➔ Chat Tho-Fi</b> ➔ Bật Màn hình khóa, Biểu ngữ & Âm thanh.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let _testRingtoneAudio = null;
+    let _testVibrationInterval = null;
+
+    window.showNotificationModal = function () {
+      const overlay = document.getElementById('notif-modal-overlay');
+      if (!overlay) return;
+      window.updateNotificationModalState();
+      overlay.classList.add('active');
+    };
+
+    window.closeNotificationModal = function () {
+      const overlay = document.getElementById('notif-modal-overlay');
+      if (overlay) overlay.classList.remove('active');
+      window.stopTestCallSound();
+    };
+
+    // Đóng khi bấm ra ngoài vùng đen
+    document.addEventListener('click', function (e) {
+      const overlay = document.getElementById('notif-modal-overlay');
+      if (overlay && e.target === overlay) {
+        window.closeNotificationModal();
+      }
+    });
+
+    window.updateNotificationModalState = function () {
+      const isGranted = ('Notification' in window) && (Notification.permission === 'granted');
+      const statusBox = document.getElementById('notif-status-box');
+      const statusIcon = document.getElementById('notif-status-icon');
+      const statusTitle = document.getElementById('notif-status-title');
+      const statusDesc = document.getElementById('notif-status-desc');
+      const btnText = document.getElementById('notif-activate-text');
+
+      if (isGranted) {
+        if (statusBox) {
+          statusBox.className = 'notif-status-box active';
+          statusIcon.textContent = '✅';
+          statusTitle.textContent = 'Thông báo đang BẬT';
+          statusDesc.textContent = 'Thiết bị này đã sẵn sàng nhận chuông cuộc gọi & tin nhắn khi bạn khóa màn hình hoặc ra ngoài.';
+        }
+        if (btnText) btnText.textContent = 'Cập nhật lại quyền thông báo';
+      } else {
+        if (statusBox) {
+          statusBox.className = 'notif-status-box inactive';
+          statusIcon.textContent = '⚠️';
+          statusTitle.textContent = 'Thông báo CHƯA BẬT';
+          statusDesc.textContent = 'Vui lòng bấm nút bên dưới để cấp quyền nhận cuộc gọi và tin nhắn khi thoát app.';
+        }
+        if (btnText) btnText.textContent = 'Bật thông báo trên thiết bị này';
+      }
+    };
+
+    window.handleActivateNotificationClick = async function () {
+      const btn = document.getElementById('notif-activate-btn');
+      const btnText = document.getElementById('notif-activate-text');
+      const originalText = btnText ? btnText.textContent : '';
+
+      try {
+        if (btnText) btnText.textContent = 'Đang kích hoạt...';
+        if (btn) btn.disabled = true;
+
+        if (!('Notification' in window)) {
+          alert('Trình duyệt hiện tại chưa hỗ trợ Web Push. Nếu bạn dùng iPhone, hãy bấm nút Chia sẻ (⎋) -> "Thêm vào MH chính" rồi mở từ màn hình chính!');
+          return;
+        }
+
+        // Kích hoạt ngay trong User Gesture context của click này
+        const token = await window.registerFCMAndGetToken();
+
+        if (token) {
+          // Lưu token lên server
+          const authToken = localStorage.getItem('flutter.authToken') || localStorage.getItem('authToken');
+          const deviceId = window.getWebDeviceId ? window.getWebDeviceId() : 'web_device';
+
+          if (authToken) {
+            await fetch('/api/users/fcm-token', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + authToken.replace(/"/g, '')
+              },
+              body: JSON.stringify({
+                fcmToken: token,
+                platform: 'web',
+                deviceId: deviceId
+              })
+            }).catch(e => console.warn('Lưu fcm-token lỗi:', e));
+          }
+
+          window.updateNotificationModalState();
+          alert('🎉 Đã bật thông báo thành công! Bây giờ bạn có thể thử khóa màn hình hoặc thoát ra ngoài màn hình chính để kiểm tra.');
+        } else {
+          window.updateNotificationModalState();
+          alert('⚠️ Chưa thể kích hoạt thông báo. Nếu bạn đang dùng iPhone, hãy chắc chắn rằng bạn đã "Thêm vào MH chính" bằng Safari và mở ứng dụng từ màn hình chính!');
+        }
+      } catch (err) {
+        console.error('Lỗi kích hoạt:', err);
+        alert('Lỗi kích hoạt thông báo: ' + err.message);
+      } finally {
+        if (btn) btn.disabled = false;
+        if (btnText) btnText.textContent = originalText;
+      }
+    };
+
+    window.handleTestPushClick = async function () {
+      const btn = document.getElementById('notif-test-push-btn');
+      const originalHtml = btn ? btn.innerHTML : '';
+      try {
+        if (btn) {
+          btn.innerHTML = '<span>⏳</span> Đang gửi thông báo...';
+          btn.disabled = true;
+        }
+
+        const authToken = localStorage.getItem('flutter.authToken') || localStorage.getItem('authToken');
+        if (!authToken) {
+          alert('Bạn cần đăng nhập để gửi thông báo thử nghiệm.');
+          return;
+        }
+
+        const res = await fetch('/api/users/test-push', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + authToken.replace(/"/g, '')
+          }
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          alert('🔔 Đã bắn thông báo thử nghiệm! Bạn hãy thử khóa màn hình điện thoại hoặc thoát ra ngoài màn hình chính để kiểm tra.');
+        } else {
+          alert('⚠️ Gửi thông báo test thất bại: ' + (data.message || 'Chưa đăng ký thiết bị'));
+        }
+      } catch (err) {
+        alert('Lỗi gửi thông báo: ' + err.message);
+      } finally {
+        if (btn) {
+          btn.innerHTML = originalHtml;
+          btn.disabled = false;
+        }
+      }
+    };
+
+    window.handleToggleTestCallSound = function () {
+      const btnText = document.getElementById('notif-test-call-text');
+      const btnIcon = document.getElementById('notif-test-call-icon');
+      const btn = document.getElementById('notif-test-call-btn');
+
+      if (_testRingtoneAudio && !_testRingtoneAudio.paused) {
+        window.stopTestCallSound();
+      } else {
+        try {
+          if (!_testRingtoneAudio) {
+            _testRingtoneAudio = new Audio('/ringtone.mp3');
+            _testRingtoneAudio.loop = true;
+          }
+          _testRingtoneAudio.currentTime = 0;
+          _testRingtoneAudio.play().catch(() => { });
+
+          // Rung chu kỳ 1000ms rung, 500ms nghỉ
+          if (navigator.vibrate) {
+            navigator.vibrate([1000, 500, 1000, 500]);
+            clearInterval(_testVibrationInterval);
+            _testVibrationInterval = setInterval(() => {
+              if (_testRingtoneAudio && !_testRingtoneAudio.paused) {
+                navigator.vibrate([1000, 500]);
+              } else {
+                clearInterval(_testVibrationInterval);
+              }
+            }, 1500);
+          }
+
+          if (btnText) btnText.textContent = 'Dừng chuông';
+          if (btnIcon) btnIcon.textContent = '⏹️';
+          if (btn) btn.style.background = '#fee2e2';
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    };
+
+    window.stopTestCallSound = function () {
+      if (_testRingtoneAudio) {
+        _testRingtoneAudio.pause();
+        _testRingtoneAudio.currentTime = 0;
+      }
+      clearInterval(_testVibrationInterval);
+      if (navigator.vibrate) navigator.vibrate(0);
+
+      const btnText = document.getElementById('notif-test-call-text');
+      const btnIcon = document.getElementById('notif-test-call-icon');
+      const btn = document.getElementById('notif-test-call-btn');
+      if (btnText) btnText.textContent = 'Thử chuông gọi';
+      if (btnIcon) btnIcon.textContent = '📞';
+      if (btn) btn.style.background = '#f8fafc';
+    };
+
+    window.handleTestMessageSound = function () {
+      try {
+        const audio = new Audio('/amthanhtinnhan.mp3');
+        audio.play().catch(() => { });
+        if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    // [Call Sync] Lắng nghe tín hiệu call_ended từ Service Worker để đóng màn hình gọi ngay lập tức
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', function (event) {
+        if (event.data && (event.data.type === 'call_ended' || event.data.type === 'CALL_ENDED')) {
+          console.log('🔴 [SW Message] Cuộc gọi đã kết thúc -> Đóng toàn bộ chuông và màn hình cuộc gọi!');
+          if (window.dismissIncomingCallNow) {
+            window.dismissIncomingCallNow();
+          }
+        }
+      });
+    }
+  </script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', function (e) {
+        if (e.data && (e.data.type === 'call_ended' || e.data.type === 'CALL_ENDED')) {
+          if (window.dismissIncomingCallNow) window.dismissIncomingCallNow();
+        }
+      });
+    }
+  </script>
+
+  <script>
+    // ============================================================
+    // [Call Sync V14] Standalone polling + dismiss
+    // Không phụ thuộc main.dart.js?v=v_sk_precise_1789920000000'';
+        var calleeId = window._currentUserId || (typeof $ !== 'undefined' && $.aLM) || '';
+        if (!callerId && !calleeId) return;
+        if (window._activeCallShowing) { _stopPoll(); return; }
+        var bUrl = (window.location.hostname.includes('pages.dev') || window.location.hostname.includes('workers.dev') || window.location.hostname.includes('cloudflare'))
+          ? 'https://chat-tho-fi-vn-9s8u.onrender.com'
+          : '';
+        fetch(bUrl + '/api/call/status?callerId=' + encodeURIComponent(callerId)
+          + '&calleeId=' + encodeURIComponent(calleeId)
+          + '&t=' + Date.now(), { cache: 'no-store' })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data && data.active === false) {
+              console.log('[Call-V14] Cuộc gọi đã kết thúc trên server -> Dismiss ngay!');
+              _stopPoll();
+              if (window.dismissIncomingCallNow) {
+                window.dismissIncomingCallNow();
+              } else {
+                // Thử lại sau 200ms nếu dismissIncomingCallNow chưa sẵn sàng
+                setTimeout(function () {
+                  if (window.dismissIncomingCallNow) window.dismissIncomingCallNow();
+                }, 200);
+              }
+            }
+          })
+          .catch(function () { });
+      }
+
+      function _startPoll() {
+        _stopPoll();
+        console.log('[Call-V14] Bắt đầu polling trạng thái cuộc gọi mỗi 600ms...');
+        _pollInterval = setInterval(function () {
+          var isShowing = window._incomingCallShowing || window._incomingRejectAction || window._incomingCallContext;
+          if (!isShowing) {
+            _stopPoll();
+            return;
+          }
+          _doCallStatusCheck();
+        }, _pollDelay);
+        // Check ngay lập tức lần đầu sau 300ms
+        setTimeout(_doCallStatusCheck, 300);
+      }
+
+      function _stopPoll() {
+        if (_pollInterval) {
+          clearInterval(_pollInterval);
+          _pollInterval = null;
+          console.log('[Call-V14] Đã dừng polling.');
+        }
+      }
+
+      // Expose ra global để main.dart.js?v=v_sk_precise_1789920000000'[Call-V14] App visible lại, kiểm tra trạng thái cuộc gọi...');
+          _doCallStatusCheck();
+          // Cũng restart poll nếu đã bị dừng
+          if (!_pollInterval) _startPoll();
+        }
+      }
+
+      window.addEventListener('focus', _onResume);
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') _onResume();
+      });
+
+      // Lắng nghe postMessage từ Service Worker (call_ended push notification)
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', function (event) {
+          if (event.data && (event.data.type === 'call_ended' || event.data.type === 'CALL_ENDED')) {
+            console.log('[Call-V14] Service Worker báo call_ended -> Dismiss ngay!');
+            _stopPoll();
+            if (window.dismissIncomingCallNow) window.dismissIncomingCallNow();
+          }
+        });
+      }
+
+      console.log('[Call-V14] Call Sync polling engine sẵn sàng.');
+
+    window._bindCallAudioUnlockListeners = function () {
+      if (window._callAudioEngine && window._callAudioEngine.unlockCallAudio) {
+        window._callAudioEngine.unlockCallAudio();
+      }
+    };
+    window.addEventListener('click', window._bindCallAudioUnlockListeners, { passive: true });
+    window.addEventListener('touchstart', window._bindCallAudioUnlockListeners, { passive: true });
+    
+    })();
+  </script>
+
+  <!-- Thẻ audio và video chuyên biệt cho WebRTC và chuông cuộc gọi -->
+  <audio id="remoteAudioPlayer" autoplay playsinline
+    style="position:fixed;bottom:0;right:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:999999;"></audio>
+  <video id="remoteVideoPlayer" autoplay playsinline
+    style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; object-fit:cover; z-index:0; pointer-events:none; background:#090D1A;"></video>
+  <video id="localVideoPlayer" autoplay playsinline muted
+    style="display:none; position:fixed; top:24px; right:24px; width:130px; height:170px; object-fit:cover; z-index:2147483647; border-radius:16px; border:2px solid rgba(255,255,255,0.8); box-shadow:0 10px 30px rgba(0,0,0,0.6); transform: scaleX(-1); pointer-events:none;"></video>
+  <audio id="callRingtoneAudio" loop preload="auto" src="/ringtone.mp3" style="display:none;"></audio>
+  <audio id="callTutTutAudio" loop preload="auto" src="/tuttut.mp3" style="display:none;"></audio>
+  <audio id="callEndAudio" preload="auto" src="/amthanhtat.mp3" style="display:none;"></audio>
+
+  <script id="call-audio-engine-script">
+    (function () {
+      var audioCtx = null;
+
+      function getAudioCtx() {
+        if (!audioCtx || audioCtx.state === 'closed') {
+          var AC = window.AudioContext || window.webkitAudioContext;
+          if (AC) audioCtx = new AC();
+        }
+        if (audioCtx && audioCtx.state === 'suspended') {
+          audioCtx.resume().catch(function () { });
+        }
+        return audioCtx;
+      }
+
+      
+      // Intercept RTCPeerConnection addTrack to prevent Dart WebRTC wrapper failures
+      const _origAddTrack = window.RTCPeerConnection.prototype.addTrack;
+      window.RTCPeerConnection.prototype.addTrack = function(track, stream) {
+        console.log("🛠️ [Native Intercept] addTrack called for:", track ? track.kind : 'unknown');
+        try {
+          return _origAddTrack.apply(this, arguments);
+        } catch (err) {
+          console.warn("⚠️ [Native Intercept] addTrack error (likely Dart wrapper type mismatch):", err);
+          try {
+            if (stream) {
+              console.log("🛠️ [Native Intercept] Using fallback addStream()...");
+              this.addStream(stream);
+              console.log("✅ [Native Intercept] Fallback addStream succeeded!");
+            }
+          } catch(err2) {
+            console.error("❌ [Native Intercept] addStream fallback failed:", err2);
+          }
+        }
+      };
+
+      function unlockAudio() {
+        try {
+          var ctx = getAudioCtx();
+          if (ctx && ctx.state === 'suspended') {
+            ctx.resume().catch(function () { });
+          }
+        } catch (_) {}
+      }
+      ['click', 'touchstart'].forEach(function (evt) {
+        window.addEventListener(evt, unlockAudio, { once: true, passive: true });
+      });
+
+      // Đảm bảo không có âm thanh nào tự phát khi khởi tạo trang
+      try {
+        ['callRingtoneAudio', 'callTutTutAudio', 'callEndAudio'].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el) {
+            el.pause();
+            el.currentTime = 0;
+          }
+        });
+      } catch (_) {}
+
+      window._callAudioEngine = {
+        playIncomingRingtone: function () {
+          this.stopCallRingtones();
+          this.unlockCallAudio();
+          var el = document.getElementById('callRingtoneAudio');
+          if (el) {
+            el.currentTime = 0;
+            el.muted = false;
+            el.volume = 1.0;
+            var p = el.play();
+            if (p && p.catch) p.catch(function (e) { });
+          }
+        },
+        playWaitingTutTut: function () {
+          this.stopCallRingtones();
+          this.unlockCallAudio();
+          var el = document.getElementById('callTutTutAudio');
+          if (el) {
+            el.currentTime = 0;
+            el.muted = false;
+            el.volume = 1.0;
+            var p = el.play();
+            if (p && p.catch) p.catch(function (e) { });
+          }
+        },
+        playCallEndSound: function () {
+          this.stopCallRingtones();
+          var el = document.getElementById('callEndAudio');
+          if (el) {
+            el.currentTime = 0;
+            el.muted = false;
+            el.volume = 1.0;
+            var p = el.play();
+            if (p && p.catch) p.catch(function (e) { });
+          }
+        },
+        stopCallRingtones: function () {
+          var ring = document.getElementById('callRingtoneAudio');
+          if (ring) { ring.pause(); ring.currentTime = 0; }
+          var tut = document.getElementById('callTutTutAudio');
+          if (tut) { tut.pause(); tut.currentTime = 0; }
+        },
+        // 🌟 CỰC KỲ QUAN TRỌNG: stopAllCallSounds CHỈ dừng chuông & tút tút, TUYỆT ĐỐI KHÔNG ĐƯỢC ngắt luồng đàm thoại!
+        stopAllCallSounds: function () {
+          this.stopCallRingtones();
+          var end = document.getElementById('callEndAudio');
+          if (end) { end.pause(); end.currentTime = 0; }
+        },
+        // 🌟 CHỈ gọi destroyCallAudio khi cuộc gọi THỰC SỰ KẾT THÚC (end_call / hangup)
+        destroyCallAudio: function () {
+          this.stopCallRingtones();
+          var end = document.getElementById('callEndAudio');
+          if (end) { end.pause(); end.currentTime = 0; }
+          window._activeRemoteStreamId = null;
+          window._isAudioPlaying = false;
+          if (window._remoteAudioSourceNode) {
+            try { window._remoteAudioSourceNode.disconnect(); } catch(_) {}
+            window._remoteAudioSourceNode = null;
+          }
+          var me = document.getElementById('remoteAudioMediaElement');
+          if (me) { try { me.pause(); me.srcObject = null; } catch(_) {} }
+          var ra = document.getElementById('remoteAudioPlayer');
+          if (ra) { try { ra.pause(); ra.srcObject = null; } catch(_) {} }
+          var btn = document.getElementById('callAudioUnmuteBanner');
+          if (btn) { try { btn.remove(); } catch(_) {} }
+          console.log('🛑 [CallAudioEngine] Đã hủy toàn bộ luồng âm thanh sau khi tắt máy');
+        },
+                unlockCallAudio: function () {
+          try {
+            var ctx = getAudioCtx();
+            if (ctx && ctx.state === 'suspended') {
+              ctx.resume().catch(function () {});
+            }
+
+            // 🌟 TẠO VÀ MỞ KHÓA #remoteAudioPlayer NGAY TRONG LÚC USER BẤM NÚT (TRUSTED USER GESTURE)
+            var ra = document.getElementById('remoteAudioPlayer');
+            if (!ra) {
+              ra = document.createElement('audio');
+              ra.id = 'remoteAudioPlayer';
+              ra.autoplay = true;
+              ra.setAttribute('playsinline', 'true');
+              ra.setAttribute('webkit-playsinline', 'true');
+              ra.style.cssText = 'position:fixed;bottom:10px;right:10px;width:60px;height:30px;opacity:0.05;pointer-events:none;z-index:999999;';
+              document.body.appendChild(ra);
+            }
+            ra.muted = false;
+            ra.volume = 1.0;
+
+            // Kích hoạt audio bằng data URI wav im lặng (chỉ 44 bytes) để trình duyệt cấp phép vĩnh viễn
+            if (!ra.srcObject) {
+              ra.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+              var p = ra.play();
+              if (p && p.catch) p.catch(function () {});
+              console.log('🔓 [CallAudioEngine] #remoteAudioPlayer đã được mở khóa Autoplay trong User Gesture!');
+            }
+          } catch(err) {
+            console.warn('unlockCallAudio error:', err);
+          }
+        },
+        playRemoteStream: function (stream) {
+          if (!stream) return;
+          var audioTracks = stream.getAudioTracks ? stream.getAudioTracks() : [];
+          if (audioTracks.length === 0) {
+            console.log('ℹ️ [playRemoteStream] Bỏ qua stream không có track audio');
+            return;
+          }
+
+          // Dừng toàn bộ chuông gọi và chuông chờ
+          this.stopCallRingtones();
+
+          var audioEl = document.getElementById('remoteAudioPlayer');
+          if (!audioEl) {
+            audioEl = document.createElement('audio');
+            audioEl.id = 'remoteAudioPlayer';
+            audioEl.autoplay = true;
+            audioEl.setAttribute('playsinline', 'true');
+            audioEl.setAttribute('webkit-playsinline', 'true');
+            audioEl.style.cssText = 'position:fixed;bottom:10px;right:10px;width:60px;height:30px;opacity:0.05;pointer-events:none;z-index:999999;';
+            document.body.appendChild(audioEl);
+          }
+
+          // Gán stream trực tiếp vào phần tử âm thanh
+          try {
+            if(audioEl.src) audioEl.removeAttribute('src');
+            audioEl.srcObject = stream;
+            audioEl.muted = false;
+            audioEl.volume = 1.0;
+          } catch(e) {
+            console.warn('Gán stream lỗi:', e);
+          }
+
+          // Kích hoạt tất cả audio tracks và gắn listener unmute
+          audioTracks.forEach(function (track) {
+            track.enabled = true;
+            console.log('🎤 [AudioTrack LIVE]:', track.id, 'label:', track.label, 'muted:', track.muted);
+            track.addEventListener('unmute', function () {
+              console.log('🔊 [AudioTrack UNMUTED - PACKETS FLOWING!]:', track.id);
+              if (audioEl) {
+                audioEl.muted = false;
+                audioEl.volume = 1.0;
+                audioEl.play().catch(function () {});
+              }
+            });
+          });
+
+          window._activeRemoteStreamId = stream.id;
+          console.log('🔊 [_callAudioEngine] Đang phát âm thanh WebRTC ra loa...');
+
+          var pAudio = audioEl.play();
+          if (pAudio && pAudio.catch) {
+            pAudio.catch(function (err) {
+              console.warn('⚠️ audioEl.play() bị chặn:', err);
+              setTimeout(function () {
+                if (audioEl) {
+                  audioEl.muted = false;
+                  audioEl.volume = 1.0;
+                  audioEl.play().catch(function () {});
+                }
+              }, 300);
+            });
+          }
+        }
+      };
+    })();
+  </script>
+
+
+  <script>
+    (function () {
+      let deferredInstallPrompt = null;
+
+      // Đăng ký Service Worker để Chrome/Edge và Android kích hoạt cờ cài đặt ứng dụng (PWA)
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('/flutter_service_worker.js?v=audio_unlocked_1789574188368.2.1').then(function (reg) {
+            console.log('[PWA] Service Worker đăng ký thành công cho PWA');
+          }).catch(function (err) {
+            console.warn('[PWA] Service Worker registration failed:', err);
+          });
+        });
+      }
+
+      // Lắng nghe sự kiện trước khi trình duyệt hiển thị prompt mặc định
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        deferredInstallPrompt = e;
+        window.deferredInstallPrompt = e;
+        console.log('[PWA] Đã bắt được sự kiện beforeinstallprompt!');
+      });
+
+      window.addEventListener('appinstalled', function () {
+        deferredInstallPrompt = null;
+        window.deferredInstallPrompt = null;
+        console.log('[PWA] Ứng dụng đã được cài đặt thành công!');
+        window.hidePwaFloatingBar();
+      });
+
+      // Điều kiện: Cho phép hiển thị trên cả Điện thoại (Android) và Máy tính
+      window.canInstallPwa = function () {
+        try {
+          if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+            return false;
+          }
+          return true;
+        } catch (e) {
+          return true;
+        }
+      };
+
+      // Xử lý khi người dùng bấm nút: Tự động kích hoạt cài đặt vào điện thoại hoặc máy tính
+      window.triggerPwaInstall = async function () {
+        console.log('[PWA] Người dùng bấm Cài đặt ứng dụng');
+        const promptEvent = deferredInstallPrompt || window.deferredInstallPrompt;
+        if (promptEvent) {
+          try {
+            promptEvent.prompt();
+            const choiceResult = await promptEvent.userChoice;
+            console.log('[PWA] Kết quả chọn của người dùng:', choiceResult.outcome);
+            if (choiceResult.outcome === 'accepted') {
+              deferredInstallPrompt = null;
+              window.deferredInstallPrompt = null;
+              window.hidePwaFloatingBar();
+            }
+          } catch (err) {
+            console.warn('[PWA] Lỗi gọi prompt:', err);
+          }
+        } else {
+          console.log('[PWA] Đang chuẩn bị trình cài đặt...');
+        }
+      };
+
+      let _pwaBarShowTimer = null;
+      window.showPwaFloatingBarWhenReady = function () {
+        if (_pwaBarShowTimer) clearTimeout(_pwaBarShowTimer);
+        // Đợi 200ms để Flutter vẽ hoàn chỉnh các ô nhập Username & Mật khẩu lên màn hình
+        _pwaBarShowTimer = setTimeout(function () {
+          const bar = document.getElementById('pwa-floating-install-bar');
+          if (!bar) return;
+
+          // 1. Nếu màn hình khởi động (Splash / Loading) đang hiển thị -> Tuyệt đối ẩn
+          const splash = document.getElementById('loading-screen');
+          if (splash && splash.dataset.dismissed !== 'true') return;
+
+          // 2. Nếu đang mở trong app độc lập (Standalone PWA) -> Không hiện
+          const isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || (window.navigator && window.navigator.standalone === true);
+          if (isStandalone) return;
+
+          // 3. Nếu đã đăng nhập có token -> Không hiện
+          const token = localStorage.getItem('flutter.authToken');
+          if (token) return;
+
+          // Nếu thanh đã hiển thị rồi thì không lặp lại animation
+          if (bar.classList.contains('visible') && !bar.classList.contains('hidden')) return;
+
+          // CHÍNH XÁC: Kích hoạt hiệu ứng trượt mượt mà từ dưới lên trên!
+          bar.classList.remove('hidden');
+          bar.classList.add('visible');
+        }, 200);
+      };
+
+      window.hidePwaFloatingBar = function () {
+        if (_pwaBarShowTimer) clearTimeout(_pwaBarShowTimer);
+        const bar = document.getElementById('pwa-floating-install-bar');
+        if (bar) {
+          bar.classList.remove('visible');
+          bar.classList.add('hidden');
+        }
+      };
+
+      function checkPwaFloatingBanner() {
+        // Tự động ẩn nếu người dùng đã đăng nhập vào trong màn hình chat
+        const token = localStorage.getItem('flutter.authToken');
+        const isChatActive = !!(window._chatScreenState || (window.$ && window.$._activeChatScreenState) || window._currentUser);
+        if (token || isChatActive) {
+          window.hidePwaFloatingBar();
+        }
+      }
+
+      window.checkPwaFloatingBanner = checkPwaFloatingBanner;
+      setInterval(checkPwaFloatingBanner, 600);
+    })();
+  </script>
+
+  <!-- Floating PWA Install Action Bar (Android, iOS & Desktop) -->
+  <style>
+    .pwa-floating-bar {
+      position: fixed;
+      bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+      left: 50%;
+      transform: translateX(-50%) translateY(calc(100% + 80px));
+      z-index: 2147483640;
+      width: calc(100% - 32px);
+      max-width: 400px;
+      background: linear-gradient(135deg, #0068ff 0%, #0050d8 100%);
+      color: #ffffff;
+      border-radius: 20px;
+      padding: 12px 18px;
+      box-shadow: 0 14px 36px rgba(0, 104, 255, 0.38), 0 3px 10px rgba(0, 0, 0, 0.12);
+      cursor: pointer;
+      border: 1.5px solid rgba(255, 255, 255, 0.28);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 0.4s ease, opacity 0.3s ease, box-shadow 0.25s ease;
+      will-change: transform, opacity;
+    }
+
+    /* Hiệu ứng xuất hiện trượt từ dưới lên trên (Slide Up Entrance with smooth bounce) */
+    .pwa-floating-bar.visible {
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      transform: translateX(-50%) translateY(0) !important;
+      animation: pwaSlideUpEntrance 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .pwa-floating-bar.hidden {
+      opacity: 0 !important;
+      pointer-events: none !important;
+      transform: translateX(-50%) translateY(calc(100% + 80px)) !important;
+      animation: none !important;
+    }
+
+    @keyframes pwaSlideUpEntrance {
+      0% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(calc(100% + 80px));
+      }
+      65% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(-6px);
+      }
+      85% {
+        transform: translateX(-50%) translateY(2px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+    }
+
+    .pwa-floating-bar.visible:hover {
+      animation: none !important;
+      transform: translateX(-50%) translateY(-3px) !important;
+      box-shadow: 0 18px 44px rgba(0, 104, 255, 0.48);
+    }
+
+    .pwa-floating-bar.visible:active {
+      animation: none !important;
+      transform: translateX(-50%) translateY(1px) scale(0.98) !important;
+    }
+
+    .pwa-floating-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .pwa-floating-icon-wrap {
+      width: 40px;
+      height: 40px;
+      background: rgba(255, 255, 255, 0.22);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+
+    .pwa-floating-title {
+      font-weight: 800;
+      font-size: 14.5px;
+      letter-spacing: 0.4px;
+      color: #ffffff;
+      line-height: 1.25;
+    }
+
+    .pwa-floating-subtitle {
+      font-size: 11.5px;
+      color: rgba(255, 255, 255, 0.9);
+      margin-top: 2px;
+      font-weight: 500;
+    }
+
+    .pwa-floating-btn-pill {
+      background: #ffffff;
+      color: #0068ff;
+      font-weight: 800;
+      font-size: 13px;
+      padding: 7px 16px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    }
+
+    @media (max-height: 480px) {
+      .pwa-floating-bar {
+        display: none !important;
+      }
+    }
+  </style>
+
+  <div id="pwa-floating-install-bar" class="pwa-floating-bar hidden" onclick="window.triggerPwaInstall()">
+    <div class="pwa-floating-left">
+      <div class="pwa-floating-icon-wrap">📲</div>
+      <div>
+        <div class="pwa-floating-title">CÀI ĐẶT ỨNG DỤNG</div>
+        <div class="pwa-floating-subtitle">Thêm vào Màn hình chính ngay</div>
+      </div>
+    </div>
+    <div class="pwa-floating-btn-pill">
+      <span>Cài đặt</span>
+      <span style="font-size: 14px;">➔</span>
+    </div>
+  </div>
+<script>
+/**
+ * Chat Tho-Fi - Reaction Detail Modal & Bottom Sheet
+ * Supports viewing reaction details & removing own reaction ("Bạn" + "Gỡ" button)
+ * Compatible with http://localhost:3000 & production
+ */
+(function() {
+  var emojiAssets = {
+    '❤️': '/assets/emojis/2764-fe0f.png',
+    '😆': '/assets/emojis/1f606.png',
+    '😮': '/assets/emojis/1f62e.png',
+    '😢': '/assets/emojis/1f622.png',
+    '😡': '/assets/emojis/1f621.png',
+    '👍': '/assets/emojis/1f44d.png'
+  };
+
+  function normalizeEmoji(em) {
+    if (!em) return '';
+    em = String(em).trim();
+    if (em.indexOf('❤️') !== -1 || em.indexOf('\u2764') !== -1) return '❤️';
+    if (em.indexOf('😆') !== -1 || em.indexOf('\ud83d\ude06') !== -1) return '😆';
+    if (em.indexOf('😮') !== -1 || em.indexOf('\ud83d\ude2e') !== -1) return '😮';
+    if (em.indexOf('😢') !== -1 || em.indexOf('\ud83d\ude22') !== -1) return '😢';
+    if (em.indexOf('😡') !== -1 || em.indexOf('\ud83d\ude21') !== -1) return '😡';
+    if (em.indexOf('👍') !== -1 || em.indexOf('\ud83d\udc4d') !== -1) return '👍';
+    if (em.indexOf('😂') !== -1 || em.indexOf('\ud83d\ude02') !== -1) return '😂';
+    return em;
+  }
+
+  function renderEmoji(emoji, size) {
+    size = size || 24;
+    var norm = normalizeEmoji(emoji);
+    var asset = emojiAssets[norm];
+    if (asset) {
+      return '<img src="' + asset + '" width="' + size + '" height="' + size + '" style="vertical-align:middle;object-fit:contain;display:inline-block;" alt="' + norm + '" onerror="this.outerHTML=\'' + norm + '\'"/>';
+    }
+    return '<span style="font-size:' + size + 'px;line-height:1;display:inline-block;vertical-align:middle;">' + (norm || '') + '</span>';
+  }
+
+  function formatAvatarUrl(url) {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('blob:')) return url;
+    var base = window.location.origin || 'http://localhost:3000';
+    return base + (url.startsWith('/') ? url : '/' + url);
+  }
+
+  window._openReactionDetailModal = function(msg, scope) {
+    var old = document.getElementById('reaction-detail-modal-overlay');
+    if (old) old.remove();
+
+    if (!msg) return;
+    var msgId = msg.a;
+
+    var rawReactions = {};
+    try {
+      if (msg && msg.Q) {
+        if (typeof msg.Q.geK === 'function') {
+          var entries = msg.Q.geK(msg.Q).fa(0);
+          for (var i = 0; i < entries.length; i++) {
+            var ent = entries[i];
+            if (ent) {
+              var u = (ent.a !== undefined) ? ent.a : ent.key;
+              var em = (ent.b !== undefined) ? ent.b : ent.value;
+              if (u && em) rawReactions[u] = em;
+            }
+          }
+        }
+        if (Object.keys(rawReactions).length === 0 && msg.Q.e) {
+          var curr = msg.Q.e;
+          while (curr) {
+            if (curr.a && curr.b) rawReactions[curr.a] = curr.b;
+            curr = curr.c;
+          }
+        }
+        if (Object.keys(rawReactions).length === 0 && msg.Q.b) {
+          for (var k in msg.Q.b) {
+            var node = msg.Q.b[k];
+            if (node && node.a && node.b) rawReactions[node.a] = node.b;
+          }
+        }
+        if (Object.keys(rawReactions).length === 0 && typeof msg.Q === 'object') {
+          for (var k in msg.Q) {
+            if (typeof msg.Q[k] === 'string') rawReactions[k] = msg.Q[k];
+          }
+        }
+      }
+    } catch(e) {
+      console.error('Error reading msg reactions:', e);
+    }
+
+    var userIds = Object.keys(rawReactions);
+    if (userIds.length === 0) return;
+
+    var chatState = (scope && scope.a && typeof scope.a.K === 'function') ? scope.a : scope;
+    var provider = (scope && scope.b) ? scope.b : (chatState && chatState.d);
+    var conv = (scope && scope.d) ? scope.d : (provider && provider.c ? provider.c : null);
+    var currentUser = (provider && provider.a) ? provider.a : null;
+
+    var currentUserId = (currentUser && currentUser.a) || (window.$ && window.$.aLM) || '';
+    var currentUserAvatar = (currentUser && (currentUser.r || currentUser.e || currentUser.avatar)) || '';
+
+    if (!currentUserId) {
+      try {
+        var userStr = localStorage.getItem('flutter.userData') || localStorage.getItem('user');
+        if (userStr) {
+          var u = JSON.parse(userStr);
+          currentUserId = u.id || u.userId || '';
+          currentUserAvatar = currentUserAvatar || u.avatar || '';
+        }
+      } catch(e) {}
+    }
+
+    var membersMap = {};
+    var convName = (conv && conv.b) || 'Người dùng';
+    var convAvatar = (conv && conv.c) || '';
+    var convId = (conv && conv.a) || msg.b || '';
+
+    if (conv && conv.x && conv.x.length) {
+      for (var mi = 0; mi < conv.x.length; mi++) {
+        var m = conv.x[mi];
+        if (m) {
+          var uid = m.a;
+          var displayName = (typeof m.gCo === 'function' ? m.gCo() : (m.d || m.c || m.b || ''));
+          var avatar = m.r || m.e || m.avatar || '';
+          if (uid) membersMap[uid] = { name: displayName, avatar: avatar };
+        }
+      }
+    }
+
+    userIds.forEach(function(uid) {
+      if (uid !== currentUserId && !membersMap[uid]) {
+        membersMap[uid] = { name: convName, avatar: convAvatar };
+      }
+    });
+
+    var selectedEmojiFilter = null;
+
+    var overlay = document.createElement('div');
+    overlay.id = 'reaction-detail-modal-overlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.48);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:99999999;display:flex;align-items:flex-end;justify-content:center;opacity:0;transition:opacity 0.22s ease;';
+
+    var sheet = document.createElement('div');
+    sheet.id = 'reaction-detail-sheet';
+    sheet.style.cssText = 'background:#ffffff;width:100%;max-width:440px;max-height:78vh;border-top-left-radius:24px;border-top-right-radius:24px;padding:12px 0 24px;box-shadow:0 -12px 40px rgba(0,0,0,0.22);transform:translateY(100%);transition:transform 0.25s cubic-bezier(0.16,1,0.3,1);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;user-select:none;display:flex;flex-direction:column;box-sizing:border-box;';
+
+    if (window.innerWidth > 600) {
+      overlay.style.alignItems = 'center';
+      sheet.style.borderRadius = '24px';
+      sheet.style.maxHeight = '520px';
+      sheet.style.transform = 'scale(0.92)';
+      sheet.style.transition = 'transform 0.22s cubic-bezier(0.16,1,0.3,1), opacity 0.22s ease';
+    }
+
+    function closeModal() {
+      overlay.style.opacity = '0';
+      if (window.innerWidth > 600) {
+        sheet.style.transform = 'scale(0.92)';
+      } else {
+        sheet.style.transform = 'translateY(100%)';
+      }
+      setTimeout(function() {
+        if (overlay && overlay.parentNode) {
+          overlay.parentNode.removeChild(overlay);
+        }
+      }, 220);
+    }
+
+    overlay.onclick = function(e) {
+      if (e.target === overlay) closeModal();
+    };
+
+    function renderContent() {
+      var allUserIds = Object.keys(rawReactions);
+      if (allUserIds.length === 0) {
+        closeModal();
+        return;
+      }
+
+      var emojiCounts = {};
+      for (var uid in rawReactions) {
+        var em = normalizeEmoji(rawReactions[uid]);
+        if (em) emojiCounts[em] = (emojiCounts[em] || 0) + 1;
+      }
+
+      if (selectedEmojiFilter && !emojiCounts[selectedEmojiFilter]) {
+        selectedEmojiFilter = null;
+      }
+
+      var filteredUserIds = allUserIds.filter(function(uid) {
+        if (!selectedEmojiFilter) return true;
+        return normalizeEmoji(rawReactions[uid]) === selectedEmojiFilter;
+      });
+
+      filteredUserIds.sort(function(a, b) {
+        if (a === currentUserId) return -1;
+        if (b === currentUserId) return 1;
+        return 0;
+      });
+
+      var html = '';
+      html += '<div style="display:flex;justify-content:center;margin-bottom:10px;"><div style="width:40px;height:4px;background:#CBD5E1;border-radius:2px;"></div></div>';
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:2px 20px 10px;">';
+      html += '<div style="font-size:18px;font-weight:700;color:#0F172A;letter-spacing:-0.2px;">Cảm xúc về tin nhắn</div>';
+      html += '<button id="reaction-modal-close-btn" style="border:none;background:#F1F5F9;width:32px;height:32px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#64748B;font-size:16px;font-weight:bold;transition:background 0.15s, transform 0.1s;">✕</button>';
+      html += '</div>';
+
+      html += '<div style="display:gap:8px;padding:4px 20px 12px;overflow-x:auto;-webkit-overflow-scrolling:touch;display:flex;">';
+      var allSel = (selectedEmojiFilter === null);
+      html += '<div class="rx-tab-btn" data-emoji="" style="padding:6px 14px;border-radius:20px;cursor:pointer;white-space:nowrap;font-size:13px;font-weight:' + (allSel ? '700' : '600') + ';background:' + (allSel ? '#EBF5FF' : '#F1F5F9') + ';color:' + (allSel ? '#0068FF' : '#475569') + ';border:' + (allSel ? '1.5px solid #0068FF' : '1.5px solid transparent') + ';box-shadow:' + (allSel ? '0 1px 4px rgba(0,104,255,0.18)' : 'none') + ';transition:all 0.15s;">Tất cả ' + allUserIds.length + '</div>';
+
+      for (var em in emojiCounts) {
+        var isSel = (selectedEmojiFilter === em);
+        html += '<div class="rx-tab-btn" data-emoji="' + em + '" style="display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:20px;cursor:pointer;white-space:nowrap;font-size:13px;font-weight:' + (isSel ? '700' : '600') + ';background:' + (isSel ? '#EBF5FF' : '#F1F5F9') + ';color:' + (isSel ? '#0068FF' : '#475569') + ';border:' + (isSel ? '1.5px solid #0068FF' : '1.5px solid transparent') + ';box-shadow:' + (isSel ? '0 1px 4px rgba(0,104,255,0.18)' : 'none') + ';transition:all 0.15s;">' + renderEmoji(em, 16) + ' ' + emojiCounts[em] + '</div>';
+      }
+      html += '</div>';
+
+      html += '<div style="height:1px;background:#F1F5F9;margin-bottom:8px;"></div>';
+      html += '<div style="flex:1;overflow-y:auto;padding:0 16px;max-height:50vh;display:flex;flex-direction:column;gap:6px;">';
+
+      filteredUserIds.forEach(function(uid) {
+        var isMe = (currentUserId && uid === currentUserId);
+        var rawEm = rawReactions[uid];
+        var emoji = normalizeEmoji(rawEm);
+        var member = membersMap[uid];
+
+        var displayName = isMe ? 'Bạn' : ((member && member.name) || convName || 'Người dùng');
+        var avatarUrl = isMe ? currentUserAvatar : ((member && member.avatar) || convAvatar || '');
+        var firstLetter = (displayName && displayName[0] ? displayName[0].toUpperCase() : 'U');
+
+        html += '<div class="rx-user-row" data-uid="' + uid + '" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:14px;background:' + (isMe ? '#F8FAFC' : '#FFFFFF') + ';border:' + (isMe ? '1px solid #E2E8F0' : '1px solid transparent') + ';transition:background 0.15s;' + (isMe ? 'cursor:pointer;' : '') + '">';
+        html += '<div style="display:flex;align-items:center;gap:12px;min-width:0;flex:1;">';
+        html += '<div style="position:relative;width:44px;height:44px;flex-shrink:0;">';
+        if (avatarUrl) {
+          html += '<img src="' + formatAvatarUrl(avatarUrl) + '" style="width:44px;height:44px;border-radius:50%;object-fit:cover;background:#E2E8F0;display:block;" alt="' + displayName + '" onerror="this.style.display=\'none\';if(this.nextSibling)this.nextSibling.style.display=\'flex\';"/>';
+          html += '<div style="display:none;width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#0068FF,#00A3FF);align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:17px;">' + firstLetter + '</div>';
+        } else {
+          html += '<div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#0068FF,#00A3FF);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:17px;">' + firstLetter + '</div>';
+        }
+        html += '<div style="position:absolute;right:-4px;bottom:-3px;background:#ffffff;border-radius:50%;padding:2px;box-shadow:0 1px 4px rgba(0,0,0,0.18);line-height:0;display:flex;align-items:center;justify-content:center;">' + renderEmoji(emoji, 15) + '</div>';
+        html += '</div>';
+
+        html += '<div style="display:flex;flex-direction:column;min-width:0;flex:1;">';
+        html += '<span style="font-size:15px;font-weight:' + (isMe ? '700' : '600') + ';color:#0F172A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + displayName + '</span>';
+        if (isMe) {
+          html += '<span style="font-size:12px;color:#64748B;margin-top:1px;">Nhấp để gỡ cảm xúc</span>';
+        }
+        html += '</div>';
+        html += '</div>';
+
+        if (isMe) {
+          html += '<button class="rx-remove-btn" data-emoji="' + emoji + '" style="border:none;background:#FEE2E2;color:#EF4444;font-size:13px;font-weight:700;padding:7px 15px;border-radius:20px;cursor:pointer;display:flex;align-items:center;gap:5px;flex-shrink:0;box-shadow:0 1px 3px rgba(239,68,68,0.15);transition:all 0.15s;">';
+          html += '<span style="font-size:13px;line-height:1;">✕</span> <span>Gỡ</span>';
+          html += '</button>';
+        } else {
+          html += '<div style="flex-shrink:0;padding-left:8px;">' + renderEmoji(emoji, 26) + '</div>';
+        }
+
+        html += '</div>';
+      });
+
+      html += '</div>';
+      sheet.innerHTML = html;
+
+      var tabBtns = sheet.querySelectorAll('.rx-tab-btn');
+      tabBtns.forEach(function(btn) {
+        btn.onclick = function() {
+          selectedEmojiFilter = this.getAttribute('data-emoji') || null;
+          renderContent();
+        };
+      });
+
+      var closeBtn = sheet.querySelector('#reaction-modal-close-btn');
+      if (closeBtn) closeBtn.onclick = closeModal;
+
+      var removeBtns = sheet.querySelectorAll('.rx-remove-btn');
+      removeBtns.forEach(function(btn) {
+        btn.onclick = function(e) {
+          e.stopPropagation();
+          var emojiToRemove = this.getAttribute('data-emoji') || rawReactions[currentUserId];
+          handleRemoveOwnReaction(emojiToRemove);
+        };
+      });
+
+      var userRows = sheet.querySelectorAll('.rx-user-row');
+      userRows.forEach(function(row) {
+        var uid = row.getAttribute('data-uid');
+        if (uid === currentUserId) {
+          row.onclick = function() {
+            var emojiToRemove = rawReactions[currentUserId];
+            handleRemoveOwnReaction(emojiToRemove);
+          };
+        }
+      });
+    }
+
+    function handleRemoveOwnReaction(emoji) {
+      if (!currentUserId || !rawReactions[currentUserId]) {
+        closeModal();
+        return;
+      }
+
+      emoji = normalizeEmoji(emoji) || normalizeEmoji(rawReactions[currentUserId]) || '👍';
+      delete rawReactions[currentUserId];
+
+      if (msg && msg.Q && typeof msg.Q.E === 'function') {
+        try { msg.Q.E(0, currentUserId); } catch(e) {}
+      }
+
+      if (chatState && typeof chatState.K === 'function') {
+        try { chatState.K(new window.A.ax1()); } catch(e) {}
+      }
+
+      var socketSent = false;
+      if (window.$ && window.$.bj && typeof window.$.bj.cn === 'function' && window.$.bj.y) {
+        try {
+          var t = window.t;
+          window.$.bj.cn("react_message", window.A.V(["messageId", msgId, "conversationId", convId, "emoji", emoji], t.N, t.N));
+          socketSent = true;
+        } catch(e) {}
+      }
+
+      if (!socketSent) {
+        try {
+          var token = '';
+          var tStr = localStorage.getItem('flutter.authToken') || localStorage.getItem('authToken');
+          if (tStr) {
+            try { token = JSON.parse(tStr); } catch(e) { token = tStr; }
+          }
+          var base = (window.location.origin || 'http://localhost:3000') + '/api';
+          fetch(base + '/chat/messages/' + msgId + '/react', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': token ? ('Bearer ' + token) : ''
+            },
+            body: JSON.stringify({ reaction: emoji })
+          }).catch(function(err){ console.error('Lỗi gọi API react:', err); });
+        } catch(e) {}
+      }
+
+      if (Object.keys(rawReactions).length === 0) {
+        closeModal();
+      } else {
+        renderContent();
+      }
+    }
+
+    renderContent();
+    overlay.appendChild(sheet);
+    document.body.appendChild(overlay);
+
+    requestAnimationFrame(function() {
+      overlay.style.opacity = '1';
+      if (window.innerWidth > 600) {
+        sheet.style.transform = 'scale(1)';
+      } else {
+        sheet.style.transform = 'translateY(0)';
+      }
+    });
+  };
+})();
+</script>
 </body>
+
 </html>
