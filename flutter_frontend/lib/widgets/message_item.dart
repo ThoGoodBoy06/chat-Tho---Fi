@@ -6,7 +6,7 @@ import '../services/api_service.dart';
 /// Độc lập, được cô lập bằng RepaintBoundary và ValueKey để GPU không phải vẽ lại
 /// các bong bóng khác khi một tin nhắn thay đổi trạng thái (seen, reaction, typing).
 class MessageItemBubble extends StatelessWidget {
-  final Message message;
+  final MessageModel message;
   final bool isMe;
   final String? avatarUrl;
   final String senderName;
@@ -27,7 +27,7 @@ class MessageItemBubble extends StatelessWidget {
     this.onTap,
     this.onLongPress,
     this.onDoubleTap,
-  }) : super(key: key ?? (message.id.isNotEmpty ? ValueKey(message.id) : null));
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {

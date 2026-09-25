@@ -312,18 +312,18 @@ app.use(express.static(staticPath, {
         const basename = path.basename(filePath);
         // HTML, version.json và Service Worker luôn revalidate để nhận diện bản build mới ngay tức thì
         if (basename === "index.html" || basename === "version.json" || basename.includes("service_worker") || basename.includes("sw.js") || basename === "flutter.js" || basename.includes("main.dart") || basename.includes("flutter_bootstrap") || basename.includes("webrtc_audio_helper")) {
-            res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+            res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
             res.setHeader("Pragma", "no-cache");
             res.setHeader("Expires", "0");
         } else if (filePath.match(/\.(wasm|js\.symbols)$/)) {
-            // Canvaskit WASM (6.7MB), symbol maps: Cache vĩnh viễn + immutable
-            res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+            // Canvaskit WASM (6.7MB), symbol maps: Revalidate unversioned URLs; release worker handles warm cache
+            res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
         } else if (filePath.match(/\.(otf|ttf|woff|woff2)$/)) {
-            // Fonts: Cache vĩnh viễn
-            res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+            // Fonts: revalidate HTTP cache across releases
+            res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
         } else if (basename.endsWith(".js")) {
-            // Script có query version: Cache 1 ngày + stale-while-revalidate 7 ngày
-            res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
+            // Scripts: ETag revalidation prevents mixing old and new releases
+            res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
         } else if (filePath.match(/\.(png|jpg|jpeg|svg|gif|webp|ico|mp3)$/)) {
             // Hình ảnh, âm thanh: Cache 7 ngày
             res.setHeader("Cache-Control", "public, max-age=604800, stale-while-revalidate=86400");

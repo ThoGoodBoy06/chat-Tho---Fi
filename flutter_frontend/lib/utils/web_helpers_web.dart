@@ -132,3 +132,14 @@ void registerVideoPlayerView(String viewId, String videoUrl) {
   }
 }
 
+
+void vibrateWeb(Object pattern) {
+  final navigator = js.context['navigator'];
+  if (navigator != null && js_util.hasProperty(navigator, 'vibrate')) {
+    js_util.callMethod(navigator, 'vibrate', [
+      pattern is List ? js_util.jsify(pattern) : pattern,
+    ]);
+  }
+}
+
+dynamic callWebFunction(String name, List<dynamic> arguments) => js.context.callMethod(name, arguments);

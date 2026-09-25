@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/chat_provider.dart';
 import '../services/api_service.dart';
-import '../services/socket_service.dart';
 import '../utils/web_utils.dart' as web_utils;
 
 class LoginScreen extends StatefulWidget {
@@ -281,7 +280,7 @@ class _LoginScreenState extends State<LoginScreen> {
               userId = userMap['id']?.toString();
               await provider.setCurrentUser(userMap);
             }
-            await SocketService.connect(userId: userId ?? '');
+            // setCurrentUser starts the socket once for this session.
             widget.onLoginSuccess();
           }
         } else {
@@ -300,7 +299,7 @@ class _LoginScreenState extends State<LoginScreen> {
               userId = userMap['id']?.toString();
               await provider.setCurrentUser(userMap);
             }
-            await SocketService.connect(userId: userId ?? '');
+            // setCurrentUser starts the socket once for this session.
             widget.onLoginSuccess();
           }
         } else {

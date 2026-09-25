@@ -6,6 +6,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 
 class ApiService {
+  // Reuse connections across requests, particularly on Android and iOS.
+  static http.Client _client = http.Client();
+
+  @visibleForTesting
+  static void setClientForTesting(http.Client client) {
+    _client.close();
+    _client = client;
+  }
+
   static String get baseUrl {
     if (kIsWeb) {
       final host = Uri.base.host;
@@ -57,7 +66,7 @@ class ApiService {
 
   // Auth: Login
   static Future<Map<String, dynamic>> login(String identifier, String password) async {
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse('$baseUrl/auth/login'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'identifier': identifier, 'password': password}),
@@ -67,7 +76,7 @@ class ApiService {
 
   // Auth: Register
   static Future<Map<String, dynamic>> register(Map<String, String> data) async {
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse('$baseUrl/auth/register'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(data),
@@ -78,7 +87,7 @@ class ApiService {
   // Auth: Get Current User Profile
   static Future<Map<String, dynamic>> getMe() async {
     final headers = await _getHeaders();
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse('$baseUrl/auth/me'),
       headers: headers,
     ).timeout(const Duration(seconds: 15));
@@ -92,7 +101,7 @@ class ApiService {
   static Future<List<dynamic>?> getConversations() async {
     final headers = await _getHeaders();
     try {
-      final response = await http.get(
+      final response = await _client.get(
         Uri.parse('$baseUrl/chat/conversations'),
         headers: headers,
       ).timeout(const Duration(seconds: 25));
@@ -119,7 +128,7 @@ class ApiService {
   // Fetch Messages for a conversation
   static Future<Map<String, dynamic>> getMessages(String conversationId, {int limit = 50}) async {
     final headers = await _getHeaders();
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse('$baseUrl/chat/$conversationId/messages?limit=$limit'),
       headers: headers,
     ).timeout(const Duration(seconds: 15));
@@ -128,14 +137,14 @@ class ApiService {
       if (decoded is Map<String, dynamic>) return decoded;
       if (decoded is Map) return Map<String, dynamic>.from(decoded);
     }
-    return {'data': []};
+    throw http.ClientException('Unable to load messages (${response.statusCode})');
   }
 
   // Mark all unread messages as read in a conversation
   static Future<void> markAsRead(String conversationId) async {
     try {
       final headers = await _getHeaders();
-      await http.post(
+      await _client.post(
         Uri.parse('$baseUrl/chat/conversations/$conversationId/read'),
         headers: headers,
       ).timeout(const Duration(seconds: 15));
@@ -148,7 +157,7 @@ class ApiService {
   static Future<void> markAsDelivered(String messageId, {String? conversationId}) async {
     try {
       final headers = await _getHeaders();
-      await http.post(
+      await _client.post(
         Uri.parse('$baseUrl/chat/messages/mark-delivered'),
         headers: headers,
         body: jsonEncode({
@@ -165,7 +174,7 @@ class ApiService {
   static Future<bool> deleteConversation(String conversationId) async {
     try {
       final headers = await _getHeaders();
-      final response = await http.delete(
+      final response = await _client.delete(
         Uri.parse('$baseUrl/chat/conversations/$conversationId'),
         headers: headers,
       ).timeout(const Duration(seconds: 15));
@@ -179,7 +188,7 @@ class ApiService {
   // Create or get 1-on-1 private conversation
   static Future<Map<String, dynamic>> createConversation(String receiverId) async {
     final headers = await _getHeaders();
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse('$baseUrl/chat/conversations'),
       headers: headers,
       body: jsonEncode({'receiverId': receiverId}),
@@ -198,7 +207,7 @@ class ApiService {
     if (replyMessageId != null && replyMessageId.isNotEmpty) {
       bodyMap['replyMessageId'] = replyMessageId;
     }
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse('$baseUrl/chat/$conversationId/messages'),
       headers: headers,
       body: jsonEncode(bodyMap),
@@ -236,7 +245,7 @@ class ApiService {
     if (clientTempId != null && clientTempId.isNotEmpty) {
       request.fields['clientTempId'] = clientTempId;
     }
-    final streamedResponse = await request.send().timeout(const Duration(seconds: 180));
+    final streamedResponse = await _client.send(request).timeout(const Duration(seconds: 180));
     final response = await http.Response.fromStream(streamedResponse);
     return jsonDecode(response.body);
   }
@@ -244,7 +253,7 @@ class ApiService {
   // Get all users (Contacts)
   static Future<List<dynamic>> getUsers() async {
     final headers = await _getHeaders();
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse('$baseUrl/users'),
       headers: headers,
     ).timeout(const Duration(seconds: 45));
@@ -263,7 +272,7 @@ class ApiService {
   static Future<List<dynamic>> getFriends() async {
     try {
       final headers = await _getHeaders();
-      final response = await http.get(
+      final response = await _client.get(
         Uri.parse('$baseUrl/users/friends?_=${DateTime.now().millisecondsSinceEpoch}'),
         headers: headers,
       ).timeout(const Duration(seconds: 30));
@@ -285,7 +294,7 @@ class ApiService {
   static Future<bool> updateFcmToken(String fcmToken, {String platform = 'web', String? deviceId}) async {
     try {
       final headers = await _getHeaders();
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('$baseUrl/users/fcm-token'),
         headers: headers,
         body: jsonEncode({
@@ -306,7 +315,7 @@ class ApiService {
   static Future<Map<String, dynamic>> sendTestPushNotification() async {
     try {
       final headers = await _getHeaders();
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('$baseUrl/users/test-push'),
         headers: headers,
       ).timeout(const Duration(seconds: 15));
@@ -321,7 +330,7 @@ class ApiService {
   static Future<Map<String, dynamic>> changePassword(String currentPassword, String newPassword) async {
     try {
       final headers = await _getHeaders();
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('$baseUrl/users/change-password'),
         headers: headers,
         body: jsonEncode({
@@ -345,7 +354,7 @@ class ApiService {
   static Future<bool> updateProfile({String? fullName, String? bio}) async {
     try {
       final headers = await _getHeaders();
-      final response = await http.put(
+      final response = await _client.put(
         Uri.parse('$baseUrl/users/profile'),
         headers: headers,
         body: jsonEncode({
@@ -364,7 +373,7 @@ class ApiService {
   static Future<bool> updateAvatar(String base64Image) async {
     try {
       final headers = await _getHeaders();
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('$baseUrl/users/avatar'),
         headers: headers,
         body: jsonEncode({'avatar': base64Image}),
@@ -380,7 +389,7 @@ class ApiService {
   static Future<bool> updateCoverImage(String base64Image) async {
     try {
       final headers = await _getHeaders();
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('$baseUrl/users/cover'),
         headers: headers,
         body: jsonEncode({'coverPhoto': base64Image}),
@@ -396,7 +405,7 @@ class ApiService {
   static Future<Map<String, dynamic>> reactToMessage(String messageId, String emoji, {bool isRemoved = false}) async {
     try {
       final headers = await _getHeaders();
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('$baseUrl/chat/messages/$messageId/react'),
         headers: headers,
         body: jsonEncode({'reaction': emoji, 'isRemoved': isRemoved}),
@@ -412,7 +421,7 @@ class ApiService {
   static Future<bool> recallMessage(String messageId) async {
     try {
       final headers = await _getHeaders();
-      final response = await http.put(
+      final response = await _client.put(
         Uri.parse('$baseUrl/chat/messages/$messageId/recall'),
         headers: headers,
       ).timeout(const Duration(seconds: 15));
@@ -430,7 +439,7 @@ class ApiService {
   static Future<bool> updateNickname(String conversationId, String userId, String? nickname) async {
     try {
       final headers = await _getHeaders();
-      final response = await http.put(
+      final response = await _client.put(
         Uri.parse('$baseUrl/chat/conversations/$conversationId/members/$userId/nickname'),
         headers: headers,
         body: jsonEncode({'nickname': nickname}),
@@ -448,7 +457,7 @@ class ApiService {
   static Future<AdminStatsModel?> getAdminStats() async {
     try {
       final headers = await _getHeaders();
-      final response = await http.get(
+      final response = await _client.get(
         Uri.parse('$baseUrl/admin/stats'),
         headers: headers,
       ).timeout(const Duration(seconds: 30));
@@ -469,7 +478,7 @@ class ApiService {
     try {
       final headers = await _getHeaders();
       final queryParams = 'search=${Uri.encodeComponent(search)}&page=$page&limit=$limit';
-      final response = await http.get(
+      final response = await _client.get(
         Uri.parse('$baseUrl/admin/users?$queryParams'),
         headers: headers,
       ).timeout(const Duration(seconds: 30));
@@ -490,7 +499,7 @@ class ApiService {
       if (isBlocked != null) bodyMap['isBlocked'] = isBlocked;
       if (role != null) bodyMap['role'] = role;
 
-      final response = await http.put(
+      final response = await _client.put(
         Uri.parse('$baseUrl/admin/users/$userId/status'),
         headers: headers,
         body: jsonEncode(bodyMap),
@@ -506,7 +515,7 @@ class ApiService {
   static Future<List<dynamic>> getAdminConversations() async {
     try {
       final headers = await _getHeaders();
-      final response = await http.get(
+      final response = await _client.get(
         Uri.parse('$baseUrl/admin/conversations'),
         headers: headers,
       ).timeout(const Duration(seconds: 30));
@@ -526,7 +535,7 @@ class ApiService {
   static Future<List<MessageModel>> getAdminMessages(String conversationId) async {
     try {
       final headers = await _getHeaders();
-      final response = await http.get(
+      final response = await _client.get(
         Uri.parse('$baseUrl/admin/conversations/$conversationId/messages'),
         headers: headers,
       ).timeout(const Duration(seconds: 30));
@@ -548,7 +557,7 @@ class ApiService {
   static Future<bool> deleteAdminMessage(String messageId) async {
     try {
       final headers = await _getHeaders();
-      final response = await http.delete(
+      final response = await _client.delete(
         Uri.parse('$baseUrl/admin/messages/$messageId'),
         headers: headers,
       ).timeout(const Duration(seconds: 15));
@@ -563,7 +572,7 @@ class ApiService {
   static Future<List<ReportModel>> getAdminReports() async {
     try {
       final headers = await _getHeaders();
-      final response = await http.get(
+      final response = await _client.get(
         Uri.parse('$baseUrl/admin/reports'),
         headers: headers,
       ).timeout(const Duration(seconds: 30));
@@ -585,7 +594,7 @@ class ApiService {
   static Future<bool> updateReportStatus(String reportId, String status) async {
     try {
       final headers = await _getHeaders();
-      final response = await http.put(
+      final response = await _client.put(
         Uri.parse('$baseUrl/admin/reports/$reportId'),
         headers: headers,
         body: jsonEncode({'status': status}),
@@ -601,7 +610,7 @@ class ApiService {
   static Future<List<dynamic>> getPendingFriendRequests() async {
     try {
       final headers = await _getHeaders();
-      final response = await http.get(
+      final response = await _client.get(
         Uri.parse('$baseUrl/users/friend-requests'),
         headers: headers,
       ).timeout(const Duration(seconds: 30));
@@ -621,7 +630,7 @@ class ApiService {
   static Future<bool> acceptFriendRequest(String requestId) async {
     try {
       final headers = await _getHeaders();
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('$baseUrl/users/friend-requests/$requestId/accept'),
         headers: headers,
       ).timeout(const Duration(seconds: 30));
@@ -639,7 +648,7 @@ class ApiService {
   static Future<bool> rejectFriendRequest(String requestId) async {
     try {
       final headers = await _getHeaders();
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('$baseUrl/users/friend-requests/$requestId/reject'),
         headers: headers,
       ).timeout(const Duration(seconds: 30));
@@ -657,7 +666,7 @@ class ApiService {
   static Future<List<dynamic>> searchUsers(String query) async {
     try {
       final headers = await _getHeaders();
-      final response = await http.get(
+      final response = await _client.get(
         Uri.parse('$baseUrl/users/search?q=${Uri.encodeComponent(query)}&_=${DateTime.now().millisecondsSinceEpoch}'),
         headers: headers,
       ).timeout(const Duration(seconds: 30));
@@ -677,7 +686,7 @@ class ApiService {
   static Future<Map<String, dynamic>> searchUsersWithSuggestions(String query) async {
     try {
       final headers = await _getHeaders();
-      final response = await http.get(
+      final response = await _client.get(
         Uri.parse('$baseUrl/users/search?q=${Uri.encodeComponent(query)}&_=${DateTime.now().millisecondsSinceEpoch}'),
         headers: headers,
       ).timeout(const Duration(seconds: 30));
@@ -702,7 +711,7 @@ class ApiService {
   static Future<bool> sendFriendRequest(String targetUserId) async {
     try {
       final headers = await _getHeaders();
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('$baseUrl/users/friend-requests'),
         headers: headers,
         body: jsonEncode({'receiverId': targetUserId}),
@@ -721,13 +730,13 @@ class ApiService {
   static Future<bool> deleteFriend(String friendId) async {
     try {
       final headers = await _getHeaders();
-      var response = await http.delete(
+      var response = await _client.delete(
         Uri.parse('$baseUrl/users/friends/$friendId'),
         headers: headers,
       ).timeout(const Duration(seconds: 15));
 
       if (response.statusCode != 200) {
-        response = await http.post(
+        response = await _client.post(
           Uri.parse('$baseUrl/users/friends/$friendId/delete'),
           headers: headers,
           body: jsonEncode({'friendId': friendId}),
@@ -748,7 +757,7 @@ class ApiService {
   static Future<bool> cancelFriendRequest(String receiverId) async {
     try {
       final headers = await _getHeaders();
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('$baseUrl/users/friend-requests/$receiverId/cancel'),
         headers: headers,
       ).timeout(const Duration(seconds: 30));
@@ -770,7 +779,7 @@ class ApiService {
         cleanId = cleanId.substring(1).trim();
       }
       final headers = await _getHeaders();
-      final response = await http.get(
+      final response = await _client.get(
         Uri.parse('$baseUrl/users/${Uri.encodeComponent(cleanId)}/lookup?_=${DateTime.now().millisecondsSinceEpoch}'),
         headers: headers,
       ).timeout(const Duration(seconds: 15));
@@ -792,7 +801,7 @@ class ApiService {
       final headers = await _getHeaders();
       final bodyMap = {'prompt': prompt};
       if (conversationId != null) bodyMap['conversationId'] = conversationId;
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('$baseUrl/ai/chat'),
         headers: headers,
         body: jsonEncode(bodyMap),
@@ -817,7 +826,7 @@ class ApiService {
   static Future<List<Map<String, dynamic>>> getAiSessions() async {
     try {
       final headers = await _getHeaders();
-      final response = await http.get(
+      final response = await _client.get(
         Uri.parse('$baseUrl/ai/chat/sessions'),
         headers: headers,
       ).timeout(const Duration(seconds: 15));
@@ -838,7 +847,7 @@ class ApiService {
   static Future<Map<String, dynamic>?> createAiSession() async {
     try {
       final headers = await _getHeaders();
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('$baseUrl/ai/chat/session/new'),
         headers: headers,
       ).timeout(const Duration(seconds: 15));
@@ -859,7 +868,7 @@ class ApiService {
   static Future<bool> deleteAiSession(String id) async {
     try {
       final headers = await _getHeaders();
-      final response = await http.delete(
+      final response = await _client.delete(
         Uri.parse('$baseUrl/ai/chat/session/$id'),
         headers: headers,
       ).timeout(const Duration(seconds: 15));
@@ -881,7 +890,7 @@ class ApiService {
       final url = conversationId != null
           ? '$baseUrl/ai/chat/history?conversationId=$conversationId'
           : '$baseUrl/ai/chat/history';
-      final response = await http.get(
+      final response = await _client.get(
         Uri.parse(url),
         headers: headers,
       ).timeout(const Duration(seconds: 15));
@@ -917,7 +926,7 @@ class ApiService {
       final url = conversationId != null
           ? '$baseUrl/ai/chat/history?conversationId=$conversationId'
           : '$baseUrl/ai/chat/history';
-      final response = await http.delete(
+      final response = await _client.delete(
         Uri.parse(url),
         headers: headers,
       ).timeout(const Duration(seconds: 15));
@@ -936,7 +945,7 @@ class ApiService {
   static Future<Map<String, dynamic>> updateConversationTheme(String conversationId, String theme) async {
     try {
       final headers = await _getHeaders();
-      final response = await http.patch(
+      final response = await _client.patch(
         Uri.parse('$baseUrl/chat/conversations/$conversationId/theme'),
         headers: headers,
         body: jsonEncode({'theme': theme}),

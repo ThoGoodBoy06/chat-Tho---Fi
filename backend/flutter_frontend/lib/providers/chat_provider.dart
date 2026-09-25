@@ -12,6 +12,36 @@ class ChatProvider extends ChangeNotifier {
   ConversationModel? selectedConversation;
   List<MessageModel> messages = [];
   final Map<String, List<MessageModel>> _messagesCache = {};
+  static const int _maxCachedConversations = 12;
+  static const int _maxCachedMessages = 100;
+  final Map<String, Future<Map<String, dynamic>>> _messageRequests = {};
+  int _messageLoadRevision = 0;
+  int _sessionRevision = 0;
+  bool _disposed = false;
+
+  void _cacheMessages(String id, List<MessageModel> value) {
+    _messagesCache.remove(id);
+    _messagesCache[id] = value.length > _maxCachedMessages
+        ? value.sublist(value.length - _maxCachedMessages)
+        : List<MessageModel>.from(value);
+    while (_messagesCache.length > _maxCachedConversations) {
+      _messagesCache.remove(_messagesCache.keys.first);
+    }
+  }
+
+  Future<Map<String, dynamic>> _loadMessages(String id) {
+    return _messageRequests.putIfAbsent(id, () {
+      final request = ApiService.getMessages(id);
+      // Remove only this request: logout may have started a new session.
+      request.then((_) {
+        if (identical(_messageRequests[id], request)) _messageRequests.remove(id);
+      }, onError: (Object error, StackTrace stack) {
+        if (identical(_messageRequests[id], request)) _messageRequests.remove(id);
+      });
+      return request;
+    });
+  }
+
   bool isLoadingConversations = false;
   bool isLoadingMessages = false;
   bool isPartnerTyping = false;
@@ -26,6 +56,7 @@ class ChatProvider extends ChangeNotifier {
   StreamSubscription? _readSubscription;
   StreamSubscription? _userStatusSubscription;
   StreamSubscription? _nicknameSubscription;
+  StreamSubscription? _conversationNicknamesSubscription;
   StreamSubscription? _profileUpdatedSubscription;
   StreamSubscription? _themeSubscription;
 
@@ -69,18 +100,16 @@ class ChatProvider extends ChangeNotifier {
       final nickname = data['nickname']?.toString() ?? data['senderName']?.toString() ?? 'Người dùng';
 
       if (convId != null && uid != null && uid != currentUser?.id) {
+        if (typingUsers[convId] == nickname) return;
         typingUsers[convId] = nickname;
-        if (selectedConversation != null && selectedConversation!.id == convId) {
-          isPartnerTyping = true;
-          onNewMessageReceived?.call();
-        }
+        if (selectedConversation?.id == convId) isPartnerTyping = true;
         notifyListeners();
       }
     });
 
     _stopTypingSubscription = SocketService.onUserStopTyping.listen((data) {
       final convId = data['conversationId']?.toString();
-      if (convId != null) {
+      if (convId != null && typingUsers.containsKey(convId)) {
         typingUsers.remove(convId);
         if (selectedConversation != null && selectedConversation!.id == convId) {
           isPartnerTyping = false;
@@ -179,7 +208,7 @@ class ChatProvider extends ChangeNotifier {
     };
 
     _nicknameSubscription = SocketService.onNicknameChanged.listen(handleNicknameUpdate);
-    SocketService.onConversationNicknamesUpdated.listen(handleNicknameUpdate);
+    _conversationNicknamesSubscription = SocketService.onConversationNicknamesUpdated.listen(handleNicknameUpdate);
 
     _profileUpdatedSubscription = SocketService.onUserProfileUpdated.listen((data) {
       final updatedUserId = data['id']?.toString() ?? data['userId']?.toString();
@@ -248,34 +277,36 @@ class ChatProvider extends ChangeNotifier {
 
     // Optimistic update locally for instant feedback
     final index = messages.indexWhere((m) => m.id == messageId);
-    bool isRemoved = false;
     if (index != -1 && currentUser != null) {
       final msg = messages[index];
       final Map<String, String> updatedReactions = Map<String, String>.from(msg.reactions);
       final userId = currentUser!.id;
 
-      // Logic toggle: nếu đã thả icon này rồi -> HỦY (xóa bỏ). Ngược lại -> thêm/đổi icon mới
-      if (updatedReactions[userId] == emoji) {
+      bool isSame(String? a, String? b) {
+        if (a == null || b == null) return false;
+        if (a == b) return true;
+        return a.replaceAll('\uFE0F', '').trim() == b.replaceAll('\uFE0F', '').trim();
+      }
+
+      if (isSame(updatedReactions[userId], emoji)) {
         updatedReactions.remove(userId);
-        isRemoved = true;
       } else {
         updatedReactions[userId] = emoji;
-        isRemoved = false;
       }
 
       messages[index] = msg.copyWith(reactions: updatedReactions);
       notifyListeners();
     }
 
-    // Phát âm thanh phản hồi
+    // Play local reaction sound immediately
     SocketService.playReactSound();
 
-    // Phát tín hiệu qua Socket nếu đang kết nối. Nếu không có socket mới fallback sang REST API
-    // (Tránh gọi đồng thời cả hai gây xung đột toggle 2 lần liên tiếp)
+    // Emit socket event for real-time broadcast and DB persistence
     if (SocketService.isConnected) {
-      SocketService.emitReactMessage(messageId, selectedConversation!.id, emoji, isRemoved: isRemoved);
+      SocketService.emitReactMessage(messageId, selectedConversation!.id, emoji);
     } else {
-      ApiService.reactToMessage(messageId, emoji, isRemoved: isRemoved).catchError((e) {
+      // Call REST API fallback only when socket is disconnected
+      ApiService.reactToMessage(messageId, emoji).catchError((e) {
         debugPrint('⚠️ Fallback react API error: $e');
       });
     }
@@ -321,6 +352,9 @@ class ChatProvider extends ChangeNotifier {
         // Chỉ tăng +1 duy nhất một lần cho mỗi mã tin nhắn (tránh bị nhân bản do socket)
         if (msg.id.isNotEmpty && !_processedMessageIdsForUnread.contains(msg.id)) {
           _processedMessageIdsForUnread.add(msg.id);
+          if (_processedMessageIdsForUnread.length > 2000) {
+            _processedMessageIdsForUnread.remove(_processedMessageIdsForUnread.first);
+          }
           newUnreadCount = old.unreadCount + 1;
         }
       }
@@ -369,15 +403,15 @@ class ChatProvider extends ChangeNotifier {
     }
 
     // Kiểm tra trùng lặp (bao gồm cả optimistic message và socket relay message)
-    final existingIdx = messages.lastIndexWhere((m) => m.id == msg.id || (msg.clientTempId != null && m.clientTempId == msg.clientTempId));
+    final existingIdx = messages.indexWhere((m) => m.id == msg.id);
     if (existingIdx != -1) {
       // Cập nhật tin nhắn đã có (thay thế optimistic/relay bằng real)
       messages[existingIdx] = msg;
     } else {
       // Kiểm tra xem có phải tin nhắn đã có dạng tạm (optimistic-* hoặc rt-*)
-      final tempIdx = messages.lastIndexWhere((m) =>
-          (m.id.startsWith('optimistic-') || m.id.startsWith('rt-') || m.id.startsWith('temp_')) &&
-          (m.content == msg.content || (m.type == msg.type && m.status == 'sending')) &&
+      final tempIdx = messages.indexWhere((m) =>
+          (m.id.startsWith('optimistic-') || m.id.startsWith('rt-')) &&
+          m.content == msg.content &&
           m.senderId == msg.senderId);
       if (tempIdx != -1) {
         messages[tempIdx] = msg;
@@ -386,19 +420,8 @@ class ChatProvider extends ChangeNotifier {
       }
     }
 
-    // Đồng bộ cache tin nhắn
-    if (msg.conversationId != null && msg.conversationId!.isNotEmpty) {
-      final convId = msg.conversationId!;
-      if (!_messagesCache.containsKey(convId)) {
-        _messagesCache[convId] = [];
-      }
-      final cacheList = _messagesCache[convId]!;
-      final cIdx = cacheList.indexWhere((m) => m.id == msg.id);
-      if (cIdx != -1) {
-        cacheList[cIdx] = msg;
-      } else {
-        cacheList.add(msg);
-      }
+    if (selectedConversation != null) {
+      _cacheMessages(selectedConversation!.id, messages);
     }
 
     notifyListeners();
@@ -408,6 +431,9 @@ class ChatProvider extends ChangeNotifier {
   }
 
   Future<void> setCurrentUser(Map<String, dynamic> userJson) async {
+    if (currentUser?.id != userJson['id']?.toString()) {
+      clearCurrentUser();
+    }
     currentUser = UserModel.fromJson(userJson);
     if (currentUser != null && currentUser!.id.isNotEmpty) {
       SocketService.connect(userId: currentUser!.id);
@@ -416,6 +442,19 @@ class ChatProvider extends ChangeNotifier {
   }
 
   void clearCurrentUser() {
+    _sessionRevision++;
+    _messageLoadRevision++;
+    _messageRequests.clear();
+    _messagesCache.clear();
+    _processedMessageIdsForUnread.clear();
+    typingUsers.clear();
+    isPartnerTyping = false;
+    replyingToMessage = null;
+    selectedConversationId = null;
+    isLoadingMessages = false;
+    isLoadingConversations = false;
+    _isFetchingConversations = false;
+    _lastFetchTime = null;
     currentUser = null;
     selectedConversation = null;
     messages = [];
@@ -424,9 +463,13 @@ class ChatProvider extends ChangeNotifier {
   }
 
   Future<void> _loadCachedConversations() async {
+    final userId = currentUser?.id;
+    if (userId == null) return;
+    final session = _sessionRevision;
     try {
       final prefs = await SharedPreferences.getInstance();
-      final cachedStr = prefs.getString('cached_conversations');
+      if (_disposed || session != _sessionRevision) return;
+      final cachedStr = prefs.getString('cached_conversations_$userId');
       if (cachedStr != null && cachedStr.isNotEmpty && conversations.isEmpty) {
         final decoded = jsonDecode(cachedStr);
         if (decoded is List) {
@@ -448,6 +491,7 @@ class ChatProvider extends ChangeNotifier {
     if (_lastFetchTime != null && DateTime.now().difference(_lastFetchTime!).inMilliseconds < 2500) {
       return;
     }
+    final session = _sessionRevision;
     _lastFetchTime = DateTime.now();
     _isFetchingConversations = true;
 
@@ -456,6 +500,7 @@ class ChatProvider extends ChangeNotifier {
       await _loadCachedConversations();
     }
 
+    if (_disposed || session != _sessionRevision) return;
     if (showLoading && conversations.isEmpty) {
       isLoadingConversations = true;
       notifyListeners();
@@ -464,12 +509,14 @@ class ChatProvider extends ChangeNotifier {
     try {
       if (currentUser == null) {
         final meRes = await ApiService.getMe();
+        if (_disposed || session != _sessionRevision) return;
         final userObj = meRes['data'] ?? meRes['user'];
         if (userObj is Map<String, dynamic>) {
           currentUser = UserModel.fromJson(userObj);
         }
       }
       final rawList = await ApiService.getConversations();
+      if (_disposed || session != _sessionRevision) return;
       if (rawList != null) {
         final parsed = rawList
             .map((c) {
@@ -488,16 +535,20 @@ class ChatProvider extends ChangeNotifier {
           conversations = parsed;
           try {
             final prefs = await SharedPreferences.getInstance();
-            await prefs.setString('cached_conversations', jsonEncode(rawList));
+            if (!_disposed && session == _sessionRevision && currentUser != null) {
+              await prefs.setString('cached_conversations_${currentUser!.id}', jsonEncode(rawList));
+            }
           } catch (_) {}
         }
       }
     } catch (e) {
       debugPrint('Error fetching conversations: $e');
     } finally {
-      _isFetchingConversations = false;
-      isLoadingConversations = false;
-      notifyListeners();
+      if (!_disposed && session == _sessionRevision) {
+        _isFetchingConversations = false;
+        isLoadingConversations = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -510,6 +561,11 @@ class ChatProvider extends ChangeNotifier {
   }
 
   void clearSelectedConversation() {
+    if (selectedConversation != null) _cacheMessages(selectedConversation!.id, messages);
+    _messageLoadRevision++;
+    isLoadingMessages = false;
+    isPartnerTyping = false;
+    replyingToMessage = null;
     selectedConversation = null;
     selectedConversationId = null;
     messages = [];
@@ -517,7 +573,12 @@ class ChatProvider extends ChangeNotifier {
   }
 
   Future<void> selectConversation(ConversationModel conv) async {
+    if (selectedConversation != null) _cacheMessages(selectedConversation!.id, messages);
+    final revision = ++_messageLoadRevision;
+    final session = _sessionRevision;
     selectedConversation = conv;
+    isPartnerTyping = typingUsers.containsKey(conv.id);
+    replyingToMessage = null;
     selectedConversationId = conv.id;
 
     // Đặt unreadCount của đoạn chat được chọn về 0 lập tức ở local
@@ -558,8 +619,10 @@ class ChatProvider extends ChangeNotifier {
     // Join vào room của conversation để nhận tin nhắn real-time
     SocketService.joinRoom(conv.id);
 
+    final messagesAtStart = {for (final message in messages) message.id: message};
     try {
-      final res = await ApiService.getMessages(conv.id);
+      final res = await _loadMessages(conv.id);
+      if (_disposed || session != _sessionRevision || revision != _messageLoadRevision || selectedConversation?.id != conv.id) return;
       final rawData = res['data'] as List? ?? [];
       final fetched = rawData.map((m) {
         if (m is Map<String, dynamic>) return MessageModel.fromJson(m);
@@ -585,24 +648,34 @@ class ChatProvider extends ChangeNotifier {
         cleanFetched.add(m);
       }
 
-      messages = cleanFetched;
-      _messagesCache[conv.id] = cleanFetched;
+      // Preserve messages/receipts/reactions received while the HTTP request ran.
+      final merged = {for (final message in cleanFetched) message.id: message};
+      for (final message in messages) {
+        if (!identical(messagesAtStart[message.id], message) ||
+            message.id.startsWith('optimistic-') || message.id.startsWith('rt-')) {
+          final temporary = message.id.startsWith('optimistic-') || message.id.startsWith('rt-');
+          final acknowledged = temporary && cleanFetched.any((item) =>
+              item.senderId == message.senderId && item.content == message.content &&
+              item.createdAt.difference(message.createdAt).inSeconds.abs() < 30);
+          if (!acknowledged) merged[message.id] = message;
+        }
+      }
+      messages = merged.values.toList()..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      _cacheMessages(conv.id, messages);
     } catch (e) {
       debugPrint('Error fetching messages: $e');
     } finally {
-      isLoadingMessages = false;
-      notifyListeners();
-
-      // Nhảy ngay xuống tin nhắn mới nhất khi chọn đoạn chat
-      onConversationSelected?.call();
+      if (!_disposed && session == _sessionRevision && revision == _messageLoadRevision && selectedConversation?.id == conv.id) {
+        isLoadingMessages = false;
+        notifyListeners();
+        if (messagesAtStart.isEmpty) onConversationSelected?.call();
+      }
     }
   }
 
   void deselectConversation() {
     SocketService.leaveRoom();
-    selectedConversation = null;
-    messages = [];
-    notifyListeners();
+    clearSelectedConversation();
   }
 
   Future<void> startPrivateChat(String receiverId) async {
@@ -627,6 +700,8 @@ class ChatProvider extends ChangeNotifier {
 
   Future<void> sendMessage(String text, {String type = 'text'}) async {
     if (selectedConversation == null || text.trim().isEmpty) return;
+    final conversation = selectedConversation!;
+    final session = _sessionRevision;
 
     emitStopTyping();
     SocketService.playSendSound();
@@ -635,10 +710,10 @@ class ChatProvider extends ChangeNotifier {
     replyingToMessage = null;
 
     // Optimistic UI message (Hiển thị tức thì trên màn hình)
-    final optId = 'optimistic-${DateTime.now().millisecondsSinceEpoch}';
+    final optId = 'optimistic-${DateTime.now().microsecondsSinceEpoch}';
     final optMsg = MessageModel(
       id: optId,
-      conversationId: selectedConversation!.id,
+      conversationId: conversation.id,
       senderId: currentUser?.id,
       content: text,
       type: type,
@@ -647,6 +722,7 @@ class ChatProvider extends ChangeNotifier {
     );
 
     messages.add(optMsg);
+    _cacheMessages(conversation.id, messages);
     _updateLastMessageInConversation(optMsg);
     notifyListeners();
     onNewMessageReceived?.call();
@@ -654,34 +730,42 @@ class ChatProvider extends ChangeNotifier {
     // ⚡ Bắn tín hiệu tin nhắn tức thời qua Socket.IO (<20ms)
     if (SocketService.socket != null && SocketService.socket!.connected) {
       SocketService.socket!.emit('send_message', {
-        'conversationId': selectedConversation!.id,
+        'conversationId': conversation.id,
         'content': text,
         'type': type,
         'tempId': optId,
         'senderId': currentUser?.id,
         'senderName': currentUser?.fullName,
         'replyMessageId': replyId,
-        'receiverId': selectedConversation!.targetUserId,
-        'memberIds': selectedConversation!.members.map((m) => m.id).toList(),
+        'receiverId': conversation.targetUserId,
+        'memberIds': conversation.members.map((m) => m.id).toList(),
       });
     }
 
     try {
       final res = await ApiService.sendMessage(
-        selectedConversation!.id,
+        conversation.id,
         text,
         type: type,
         replyMessageId: replyId,
       );
+      if (_disposed || session != _sessionRevision) return;
       final msgData = res['data'] ?? (res['success'] == true ? res : null);
       if (msgData is Map<String, dynamic>) {
         final realMsg = MessageModel.fromJson(msgData);
-        final idx = messages.indexWhere((m) => m.id == optId);
-        if (idx != -1) {
-          messages[idx] = realMsg;
-        } else if (!messages.any((m) => m.id == realMsg.id)) {
-          messages.add(realMsg);
+        final targetMessages = selectedConversation?.id == conversation.id
+            ? messages : (_messagesCache[conversation.id] ?? <MessageModel>[]);
+        final idx = targetMessages.indexWhere((m) => m.id == optId);
+        final realIdx = targetMessages.indexWhere((m) => m.id == realMsg.id);
+        if (realIdx != -1) {
+          targetMessages[realIdx] = realMsg;
+          targetMessages.removeWhere((m) => m.id == optId);
+        } else if (idx != -1) {
+          targetMessages[idx] = realMsg;
+        } else {
+          targetMessages.add(realMsg);
         }
+        _cacheMessages(conversation.id, targetMessages);
         _updateLastMessageInConversation(realMsg);
         notifyListeners();
       }
@@ -694,10 +778,12 @@ class ChatProvider extends ChangeNotifier {
     try {
       final success = await ApiService.deleteConversation(conversationId);
       if (success) {
+        _messagesCache.remove(conversationId);
         conversations.removeWhere((c) => c.id == conversationId);
         if (selectedConversation != null && selectedConversation!.id == conversationId) {
           clearSelectedConversation();
         }
+        _messagesCache.remove(conversationId);
         notifyListeners();
         return true;
       }
@@ -861,6 +947,10 @@ class ChatProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
+    _sessionRevision++;
+    _messageLoadRevision++;
+    _conversationNicknamesSubscription?.cancel();
     _socketSubscription?.cancel();
     _recalledSubscription?.cancel();
     _typingSubscription?.cancel();

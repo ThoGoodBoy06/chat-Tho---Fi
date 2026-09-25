@@ -24,6 +24,8 @@ import 'qr_scanner_screen.dart';
 import 'other_user_profile_screen.dart';
 import 'profile_tab.dart';
 import '../utils/web_helpers.dart';
+import '../utils/inline_image_cache.dart';
+import '../widgets/inline_message_image.dart';
 
 class ChatScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -34,9 +36,11 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
+  ChatProvider? _boundProvider;
   int _currentTabIndex = 0; // 0: Tin nhắn, 1: Danh bạ, 2: Tin tức, 3: Trợ lý AI, 4: Cá nhân
   final _textController = TextEditingController();
-  final _scrollController = ScrollController(initialScrollOffset: 999999.0);
+  final _scrollController = ScrollController();
+  final _inlineImageCache = InlineImageCache();
   final _inputFocusNode = FocusNode();
   bool _isAttachmentMenuOpen = false;
   bool _isTyping = false;
@@ -139,8 +143,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = Provider.of<ChatProvider>(context, listen: false);
+      _boundProvider = provider;
       provider.fetchConversations();
-      provider.onNewMessageReceived = _scrollToBottom;
+      provider.onNewMessageReceived = _scrollToBottomIfNearBottom;
       provider.onConversationSelected = _jumpToBottom;
       _initCallListeners();
       _fetchPendingRequestsCount();
@@ -247,11 +252,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     _incomingEndSub?.cancel();
     _debounceTimer?.cancel();
     _pendingRefreshTimer?.cancel();
-    try {
-      final provider = Provider.of<ChatProvider>(context, listen: false);
-      provider.onNewMessageReceived = null;
-      provider.onConversationSelected = null;
-    } catch (_) {}
+    _incomingCallSub?.cancel();
+    _boundProvider?.onNewMessageReceived = null;
+    _boundProvider?.onConversationSelected = null;
+    _boundProvider = null;
     _textController.removeListener(_onTextChanged);
     _scrollController.removeListener(_onScroll);
     _textController.dispose();
@@ -259,6 +263,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     _searchController.dispose();
     _contactSearchController.dispose();
     _scrollController.dispose();
+    _inlineImageCache.clear();
+    _inputFocusNode.dispose();
+    _aiScrollController.dispose();
     super.dispose();
   }
 
@@ -402,34 +409,76 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   }
 
   int _lastMessageCount = 0;
+  String? _lastTypingUser;
+  bool _bottomScrollScheduled = false;
+  bool _animateBottomScroll = true;
+  bool _forceBottomScroll = false;
+  int _bottomScrollSettlingFrames = 0;
+
+  bool get _isNearBottom => !_scrollController.hasClients ||
+      _scrollController.position.extentAfter < 160;
 
   void _jumpToBottom() {
-    int frameCount = 0;
-    void doJump() {
-      if (!mounted) return;
-      if (_scrollController.hasClients) {
-        final maxScroll = _scrollController.position.maxScrollExtent;
-        if (maxScroll > 0 && (_scrollController.offset < maxScroll)) {
-          _scrollController.jumpTo(maxScroll);
-        }
-      }
-      if (frameCount++ < 2) {
-        WidgetsBinding.instance.addPostFrameCallback((_) => doJump());
-      }
-    }
-    doJump();
+    // Allow the lazy list to settle when a conversation is first opened.
+    _queueBottomScroll(animate: false, force: true, settlingFrames: 2);
   }
 
   void _scrollToBottom() {
+    _queueBottomScroll(animate: true, force: true);
+  }
+
+  void _scrollToBottomIfNearBottom() {
+    _queueBottomScroll(animate: true, force: false);
+  }
+
+  void _queueBottomScroll({
+    required bool animate,
+    required bool force,
+    int settlingFrames = 0,
+  }) {
+    if (!mounted || (!force && !_isNearBottom)) return;
+    if (!force && _scrollController.hasClients &&
+        _scrollController.position.isScrollingNotifier.value) return;
+
+    // Socket callbacks and the following rebuild share one scroll per frame.
+    _animateBottomScroll = _animateBottomScroll && animate;
+    _forceBottomScroll = _forceBottomScroll || force;
+    _bottomScrollSettlingFrames = max(_bottomScrollSettlingFrames, settlingFrames);
+    if (_bottomScrollScheduled) return;
+    _bottomScrollScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOut,
+      _bottomScrollScheduled = false;
+      final shouldAnimate = _animateBottomScroll;
+      final shouldForce = _forceBottomScroll;
+      final remainingFrames = _bottomScrollSettlingFrames;
+      _animateBottomScroll = true;
+      _forceBottomScroll = false;
+      _bottomScrollSettlingFrames = 0;
+      if (!mounted || !_scrollController.hasClients ||
+          _lastOpenedConversationId == null) return;
+      final position = _scrollController.position;
+      if (!shouldForce && position.isScrollingNotifier.value) return;
+      final target = position.maxScrollExtent;
+      if ((position.pixels - target).abs() > 1) {
+        if (shouldAnimate) {
+          _scrollController.animateTo(
+            target,
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+          );
+        } else {
+          _scrollController.jumpTo(target);
+        }
+      }
+      if (remainingFrames > 0) {
+        _queueBottomScroll(
+          animate: false,
+          force: true,
+          settlingFrames: remainingFrames - 1,
         );
       }
     });
+    WidgetsBinding.instance.ensureVisualUpdate();
   }
 
   /// Kiểm tra tin nhắn chỉ chứa emoji (không có text thường)
@@ -453,6 +502,15 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   }
 
   void _showMessengerStyleContextMenu(BuildContext context, MessageModel msg, ChatProvider provider, bool isMe) {
+    final menuContent = msg.content.toLowerCase();
+    final isImg = msg.type == 'image' || menuContent.startsWith('data:image') ||
+        (msg.imageUrl != null && msg.imageUrl!.isNotEmpty) ||
+        ['.jpg', '.jpeg', '.png', '.webp', '.gif'].any((ext) =>
+            menuContent.endsWith(ext) || menuContent.contains('${ext}?'));
+    final isVideo = msg.type == 'video' || menuContent.startsWith('data:video') ||
+        (msg.videoUrl != null && msg.videoUrl!.isNotEmpty) ||
+        ['.mp4', '.mov', '.webm', '.mkv'].any((ext) =>
+            menuContent.endsWith(ext) || menuContent.contains('${ext}?'));
     final parentOverlay = Overlay.of(context, rootOverlay: true);
 
     showGeneralDialog(
@@ -718,7 +776,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                         : (msg.imageUrl != null && msg.imageUrl!.isNotEmpty ? msg.imageUrl! : msg.content);
                                     final formatted = ApiService.formatImageUrl(mediaUrl);
                                     if (kIsWeb) {
-                                      html.window.callMethod('downloadMediaDirectly', [
+                                      callWebFunction('downloadMediaDirectly', [
                                         formatted,
                                         (isVideo ? 'video_' : 'anh_') + '${DateTime.now().millisecondsSinceEpoch}' + (isVideo ? '.mp4' : '.jpg'),
                                         isVideo ? 'video' : 'image'
@@ -1266,7 +1324,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildChatList(ChatProvider provider) {
-    if (_lastOpenedConversationId != null) {
+    if (provider.selectedConversation == null && _lastOpenedConversationId != null) {
       _lastOpenedConversationId = null;
       _expandedTimestampMessageIds.clear();
       _showEmojiPicker = false;
@@ -1298,7 +1356,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             height: 56,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
-              color: resolvedHeaderBgColor,
+              color: headerBgColor,
               border: Border(bottom: BorderSide(color: borderColor, width: 1)),
             ),
             child: Row(
@@ -1316,12 +1374,17 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                   tooltip: 'Thông báo',
                 ),
                 // Center: Title "Chat Tho-Fi" (18px, Bold, #007AFF)
-                Text(
-                  'Chat Tho-Fi',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF007AFF),
+                const Expanded(
+                  child: Text(
+                    'Chat Tho-Fi',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF007AFF),
+                    ),
                   ),
                 ),
                 // Right: QR Scanner + Add Friend Button
@@ -1774,6 +1837,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                           );
                         },
                       ),
+                ),
           ),
         ],
       ),
@@ -2210,6 +2274,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
     if (_lastOpenedConversationId != conv.id) {
       _lastOpenedConversationId = conv.id;
+      _lastMessageCount = 0;
+      _lastTypingUser = null;
       _expandedTimestampMessageIds.clear();
       _showEmojiPicker = false;
       _jumpToBottom();
@@ -2228,7 +2294,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         ? null
         : BoxDecoration(gradient: activeTheme.backgroundGradient);
     final resolvedBgColor = bgDecoration != null ? null : defaultBgColor;
-    final resolvedHeaderBgColor = (isDark || activeTheme.headerColor == null)
+    final headerBgColor = (isDark || activeTheme.headerColor == null)
         ? defaultHeaderBgColor
         : activeTheme.headerColor!;
 
@@ -2255,7 +2321,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               children: [
                 if (!isDesktop)
                   IconButton(
-                    icon: const Icon(Icons.chevron_left_rounded, color: primaryColor, size: 28),
+                    icon: Icon(Icons.chevron_left_rounded, color: primaryColor, size: 28),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                     onPressed: () {
@@ -2375,21 +2441,21 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.phone_rounded, color: primaryColor, size: 22),
+                  icon: Icon(Icons.phone_rounded, color: primaryColor, size: 22),
                   padding: const EdgeInsets.all(6),
                   constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                   onPressed: () => _startVoiceCall(provider),
                   tooltip: 'Gọi thoại',
                 ),
                 IconButton(
-                  icon: const Icon(Icons.videocam_rounded, color: primaryColor, size: 24),
+                  icon: Icon(Icons.videocam_rounded, color: primaryColor, size: 24),
                   padding: const EdgeInsets.all(6),
                   constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                   onPressed: () => _startVideoCall(provider),
                   tooltip: 'Gọi Video',
                 ),
                 IconButton(
-                  icon: const Icon(Icons.info_outline, color: primaryColor, size: 22),
+                  icon: Icon(Icons.info_outline, color: primaryColor, size: 22),
                   padding: const EdgeInsets.all(6),
                   constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                   onPressed: () => _showChatInfo(provider),
@@ -2406,30 +2472,16 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 : Builder(
                     builder: (context) {
                       final messageCount = provider.messages.length;
-                      if (_lastMessageCount != messageCount && messageCount > 0) {
+                      if (_lastMessageCount != messageCount) {
                         _lastMessageCount = messageCount;
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (mounted) _jumpToBottom();
-                        });
+                        if (messageCount > 0) _scrollToBottomIfNearBottom();
                       }
                       final lastSentMessageIndex = provider.messages.lastIndexWhere((m) => m.senderId == provider.currentUser?.id);
                       final typingUser = provider.getTypingUserForSelectedConversation();
                       final hasTyping = typingUser != null && typingUser.isNotEmpty;
-
-                      if (hasTyping) {
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (_scrollController.hasClients) {
-                            final maxScroll = _scrollController.position.maxScrollExtent;
-                            final currentScroll = _scrollController.offset;
-                            if (maxScroll - currentScroll < 160) {
-                              _scrollController.animateTo(
-                                maxScroll,
-                                duration: const Duration(milliseconds: 150),
-                                curve: Curves.easeOut,
-                              );
-                            }
-                          }
-                        });
+                      if (_lastTypingUser != typingUser) {
+                        _lastTypingUser = typingUser;
+                        if (hasTyping) _scrollToBottomIfNearBottom();
                       }
 
                       return ListView.builder(
@@ -2630,7 +2682,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                                        lowerMsgContent.endsWith('.png') || lowerMsgContent.endsWith('.webp') ||
                                                        lowerMsgContent.endsWith('.gif') || lowerMsgContent.contains('/chat-media/') ||
                                                        lowerMsgContent.contains('.jpg?') || lowerMsgContent.contains('.png?');
-                                                   final isPureImage = (msg.type == 'image' || msg.content.startsWith('data:image') || (msg.imageUrl != null && msg.imageUrl!.isNotEmpty) || hasImgUrl || (isVideo && msg.imageUrl != null && msg.imageUrl!.isNotEmpty));
+                                                   final isPureImage = (msg.type == 'image' || msg.content.startsWith('data:image') || (msg.imageUrl != null && msg.imageUrl!.isNotEmpty) || hasImgUrl);
 
                                                   // Emoji-only: hiển thị to, không nền (giống Messenger)
                                                   if (isEmojiMsg && !msg.isRecalled) {
@@ -2824,7 +2876,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                         children: [
                           Text(
                             'Đang trả lời $senderName:',
-                            style: const TextStyle(color: primaryColor, fontSize: 12, fontWeight: FontWeight.bold),
+                            style: TextStyle(color: primaryColor, fontSize: 12, fontWeight: FontWeight.bold),
                           ),
                           Text(
                             replyMsg.content,
@@ -2888,7 +2940,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                         ),
                         const SizedBox(width: 6),
                         IconButton(
-                          icon: const Icon(Icons.send_rounded, color: primaryColor, size: 26),
+                          icon: Icon(Icons.send_rounded, color: primaryColor, size: 26),
                           onPressed: () => _stopAndSendRecording(provider),
                           tooltip: 'Gửi tin nhắn thoại',
                         ),
@@ -2908,7 +2960,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                     turns: _isAttachmentMenuOpen ? 0.125 : 0.0,
                                     duration: const Duration(milliseconds: 300),
                                     curve: Curves.easeOutBack,
-                                    child: const Icon(Icons.add_circle_rounded, color: primaryColor, size: 28),
+                                    child: Icon(Icons.add_circle_rounded, color: primaryColor, size: 28),
                                   ),
                                   onPressed: () {
                                     setState(() {
@@ -2927,28 +2979,28 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             IconButton(
-                                              icon: const Icon(Icons.camera_alt_rounded, color: primaryColor, size: 24),
+                                              icon: Icon(Icons.camera_alt_rounded, color: primaryColor, size: 24),
                                               onPressed: () => _captureCameraImage(provider),
                                               padding: EdgeInsets.zero,
                                               constraints: const BoxConstraints(minWidth: 36),
                                               tooltip: 'Chụp ảnh',
                                             ),
                                             IconButton(
-                                              icon: const Icon(Icons.image_rounded, color: primaryColor, size: 24),
+                                              icon: Icon(Icons.image_rounded, color: primaryColor, size: 24),
                                               onPressed: () => _pickAndUploadImage(provider),
                                               padding: EdgeInsets.zero,
                                               constraints: const BoxConstraints(minWidth: 36),
                                               tooltip: 'Gửi ảnh',
                                             ),
                                             IconButton(
-                                              icon: const Icon(Icons.videocam_rounded, color: primaryColor, size: 24),
+                                              icon: Icon(Icons.videocam_rounded, color: primaryColor, size: 24),
                                               onPressed: () => _pickAndUploadVideo(provider),
                                               padding: EdgeInsets.zero,
                                               constraints: const BoxConstraints(minWidth: 36),
                                               tooltip: 'Gửi video',
                                             ),
                                             IconButton(
-                                              icon: const Icon(Icons.mic_rounded, color: primaryColor, size: 24),
+                                              icon: Icon(Icons.mic_rounded, color: primaryColor, size: 24),
                                               onPressed: () => _handleVoiceRecording(provider),
                                               padding: EdgeInsets.zero,
                                               constraints: const BoxConstraints(minWidth: 36),
@@ -2991,7 +3043,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                   ),
                                 ),
                                 IconButton(
-                                  icon: const Icon(Icons.sentiment_satisfied_alt_rounded, color: primaryColor, size: 22),
+                                  icon: Icon(Icons.sentiment_satisfied_alt_rounded, color: primaryColor, size: 22),
                                   onPressed: () => _toggleEmojiPicker(),
                                   padding: EdgeInsets.zero,
                                   constraints: const BoxConstraints(minWidth: 30),
@@ -3757,12 +3809,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(18),
                     child: Image.asset(
-                      'assets/icon.png',
+                      'assets/tho_fi_logo_transparent.png',
                       width: 36,
                       height: 36,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Image.network(
-                        '/icon.png',
+                        '/tho_fi_logo_transparent.png',
                         width: 36,
                         height: 36,
                         fit: BoxFit.cover,
@@ -3871,12 +3923,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(14),
                               child: Image.asset(
-                                'assets/icon.png',
+                                'assets/tho_fi_logo_transparent.png',
                                 width: 28,
                                 height: 28,
                                 fit: BoxFit.cover,
                                 errorBuilder: (_, __, ___) => Image.network(
-                                  '/icon.png',
+                                  '/tho_fi_logo_transparent.png',
                                   width: 28,
                                   height: 28,
                                   fit: BoxFit.cover,
@@ -4289,7 +4341,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           if (bytes != null && bytes.isNotEmpty) {
             String mimeType = file.type;
             if (mimeType.isEmpty) {
-              final ext = (file.name.split('.').pop() ?? '').toLowerCase();
+              final ext = file.name.split('.').last.toLowerCase();
               if (ext == 'png') mimeType = 'image/png';
               else if (ext == 'webp') mimeType = 'image/webp';
               else if (ext == 'gif') mimeType = 'image/gif';
@@ -4484,7 +4536,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           if (bytes != null && bytes.isNotEmpty) {
             String mimeType = file.type;
             if (mimeType.isEmpty) {
-              final ext = (file.name.split('.').pop() ?? '').toLowerCase();
+              final ext = file.name.split('.').last.toLowerCase();
               if (ext == 'mov') mimeType = 'video/quicktime';
               else if (ext == 'webm') mimeType = 'video/webm';
               else if (ext == 'mkv') mimeType = 'video/x-matroska';
@@ -4585,6 +4637,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   void _showGifPicker(ChatProvider provider) {
     provider.sendMessage('https://media.giphy.com/media/l0HlHJGHe3yAMhdQY/giphy.gif', type: 'image');
+    _scrollToBottom();
   }
 
   Future<void> _handleVoiceRecording(ChatProvider provider) async {
@@ -5266,16 +5319,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
     if (isImage) {
       String? imageUrl = msg.imageUrl;
-      Uint8List? imageBytes;
+      final inlineSource = content.startsWith('data:image') ? content :
+          (imageUrl?.startsWith('data:image') == true ? imageUrl : null);
 
-      if (content.startsWith('data:image')) {
-        try {
-          final base64Str = content.split(',').last;
-          imageBytes = base64Decode(base64Str);
-        } catch (e) {
-          debugPrint('Base64 decode error: $e');
-        }
-      } else if (content.startsWith('http') || content.startsWith('/')) {
+      if (inlineSource == null && (content.startsWith('http') || content.startsWith('/'))) {
         imageUrl = content;
       }
 
@@ -5284,9 +5331,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       }
 
       Widget imgWidget;
-      if (imageBytes != null) {
-        imgWidget = Image.memory(
-          imageBytes,
+      if (inlineSource != null) {
+        imgWidget = InlineMessageImage(
+          key: ValueKey('inline_image_' + msg.id),
+          messageId: msg.id,
+          source: inlineSource,
+          cache: _inlineImageCache,
           cacheWidth: 800,
           fit: BoxFit.cover,
           errorBuilder: (_, __, ___) => Container(
@@ -5383,7 +5433,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           final targetMediaUrl = imageUrl ?? (content.startsWith('data:image') ? content : '');
           if (kIsWeb && targetMediaUrl.isNotEmpty) {
             try {
-              html.window.callMethod('openImageModal', [targetMediaUrl]);
+              callWebFunction('openImageModal', [targetMediaUrl]);
               return;
             } catch (_) {}
           }
@@ -5408,7 +5458,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                             tooltip: 'Lưu ảnh vào máy',
                             onPressed: () {
                               if (kIsWeb) {
-                                html.window.callMethod('downloadMediaDirectly', [
+                                callWebFunction('downloadMediaDirectly', [
                                   targetMediaUrl,
                                   'anh_${DateTime.now().millisecondsSinceEpoch}.jpg',
                                   'image'
@@ -5939,6 +5989,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               ),
             ),
           ),
+        );
       },
     ).then((_) {
       autoRejectTimer?.cancel();
@@ -6020,6 +6071,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     required String targetUserId,
     required bool isCaller,
   }) {
+    final callerId = context.read<ChatProvider>().currentUser?.id;
     bool isMuted = false;
     bool isSpeakerOn = true;
     bool isCameraOff = false;
@@ -6441,9 +6493,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                   return;
                 }
                 try {
-                  final bUrl = (kIsWeb && (html.window.location.hostname.contains('pages.dev') ||
-                                          html.window.location.hostname.contains('workers.dev') ||
-                                          html.window.location.hostname.contains('cloudflare')))
+                  final bUrl = (kIsWeb && ((html.window.location.hostname ?? '').contains('pages.dev') ||
+                                          (html.window.location.hostname ?? '').contains('workers.dev') ||
+                                          (html.window.location.hostname ?? '').contains('cloudflare')))
                       ? 'https://chat-tho-fi-vn-9s8u.onrender.com'
                       : '';
                   final res = await html.HttpRequest.getString('$bUrl/api/call/status?callerId=$callerId&calleeId=$targetUserId&t=${DateTime.now().millisecondsSinceEpoch}');
@@ -7044,6 +7096,7 @@ class _SpringEmojiPickerItemState extends State<_SpringEmojiPickerItem> with Sin
           ),
         ),
       ),
+      ),
     );
   }
 }
@@ -7475,12 +7528,12 @@ class _AiBouncingDotsBubbleState extends State<_AiBouncingDotsBubble> with Singl
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(14),
                 child: Image.asset(
-                  'assets/icon.png',
+                  'assets/tho_fi_logo_transparent.png',
                   width: 28,
                   height: 28,
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => Image.network(
-                    '/icon.png',
+                    '/tho_fi_logo_transparent.png',
                     width: 28,
                     height: 28,
                     fit: BoxFit.cover,
@@ -7910,6 +7963,8 @@ class _ReactionDetailSheetState extends State<_ReactionDetailSheet> {
     );
   }
 
+}
+
   // --- Skeleton Loading Helpers (Animated Shimmer) ---
   Widget _buildSkeletonBox({
     required double width,
@@ -8096,7 +8151,6 @@ class _ReactionDetailSheetState extends State<_ReactionDetailSheet> {
       ),
     );
   }
-}
 
 class _AnimatedShimmerBox extends StatefulWidget {
   final double width;

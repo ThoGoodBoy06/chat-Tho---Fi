@@ -33,6 +33,7 @@ class SmoothWebScrollBehavior extends MaterialScrollBehavior {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  GoogleFonts.config.allowRuntimeFetching = false;
   runApp(
     MultiProvider(
       providers: [
@@ -54,7 +55,6 @@ class ChatThoFiApp extends StatefulWidget {
 class _ChatThoFiAppState extends State<ChatThoFiApp> {
   bool _isLoggedIn = false;
   bool _isCheckingAuth = true;
-  bool _showSplash = true;
 
   @override
   void initState() {
@@ -77,14 +77,12 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
         final userObj = meRes['data'] ?? meRes['user'];
         if (userObj is Map && userObj['id'] != null) {
           final userMap = Map<String, dynamic>.from(userObj);
-          final userId = userMap['id'].toString();
           if (mounted) {
             await Provider.of<ChatProvider>(context, listen: false).setCurrentUser(userMap);
             setState(() {
               _isLoggedIn = true;
             });
           }
-          await SocketService.connect(userId: userId);
           FCMService.initAndRegisterToken();
         } else {
           await ApiService.clearToken();
@@ -182,31 +180,16 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
           child: child!,
         );
       },
-      home: _showSplash
-          ? SplashScreen(
-              onFinish: () {
-                if (mounted) {
-                  setState(() {
-                    _showSplash = false;
-                  });
-                }
+      home: _isCheckingAuth
+          ? const SplashScreen()
+          : Selector<ChatProvider, bool>(
+              selector: (_, provider) => provider.currentUser != null,
+              builder: (context, isLoggedIn, _) {
+                return isLoggedIn
+                    ? ChatScreen(onLogout: _onLogout)
+                    : LoginScreen(onLoginSuccess: _onLoginSuccess);
               },
-            )
-          : (_isCheckingAuth
-              ? const Scaffold(
-                  backgroundColor: Colors.white,
-                  body: Center(
-                    child: CircularProgressIndicator(color: Color(0xFF0068FF)),
-                  ),
-                )
-              : Selector<ChatProvider, bool>(
-                  selector: (_, provider) => provider.currentUser != null,
-                  builder: (context, isLoggedIn, _) {
-                    return isLoggedIn
-                        ? ChatScreen(onLogout: _onLogout)
-                        : LoginScreen(onLoginSuccess: _onLoginSuccess);
-                  },
-                )),
+            ),
     );
   }
 }

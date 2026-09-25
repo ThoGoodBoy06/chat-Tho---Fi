@@ -10,23 +10,20 @@
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
 
   <!-- Fast CDN Preconnects -->
+  <link rel="preconnect" href="https://chat-tho-fi-vn-9s8u.onrender.com" crossorigin>
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
   <!-- High Priority Preloads for Instant Native Startup -->
-  <link rel="preload" href="flutter_bootstrap.js?v=v_sk_precise_1789920000000" as="script">
-  <link rel="preload" href="main.dart.js?v=v_sk_precise_1789920000000" as="script">
-  <link rel="preload" href="canvaskit/canvaskit.wasm" as="fetch" crossorigin="anonymous">
+  <link rel="preload" href="flutter_bootstrap.js?v=11300cbfd1622c58" as="script">
+  <link rel="preload" href="main.dart.js?v=11300cbfd1622c58" as="script">
+
   <link rel="preload" href="/tho_fi_logo_transparent.png" as="image">
-  <!-- Official Messenger Reaction Emoji Preloads -->
-  <link rel="preload" href="/assets/emojis/2764-fe0f.png" as="image">
-  <link rel="preload" href="/assets/emojis/1f606.png" as="image">
-  <link rel="preload" href="/assets/emojis/1f62e.png" as="image">
-  <link rel="preload" href="/assets/emojis/1f622.png" as="image">
-  <link rel="preload" href="/assets/emojis/1f621.png" as="image">
-  <link rel="preload" href="/assets/emojis/1f44d.png" as="image">
+  <!-- Reaction emoji load when needed, leaving startup bandwidth to the app. -->
+  <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" as="style">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap">
 
 
@@ -114,6 +111,10 @@
         var blueBtn = isDark ? '#0D47A1' : '#0068FF';
 
         el.style.background = bg;
+        var hasBottomBar = (type === 'chats' || type === 'contacts') && window.innerWidth < 900;
+        var hasTopBar = (type === 'chats' || type === 'contacts');
+        el.style.top = hasTopBar ? 'calc(56px + env(safe-area-inset-top, 0px))' : '0';
+        el.style.bottom = hasBottomBar ? 'calc(72px + env(safe-area-inset-bottom, 0px))' : '0';
         if (isDark) el.classList.add('sk-dark'); else el.classList.remove('sk-dark');
 
         var html = '';
@@ -180,28 +181,7 @@
 
         } else if (type === 'chats') {
           // === MÀN HÌNH DANH SÁCH TIN NHẮN (CHATS TAB) ===
-          // 1. Top App Bar: Chuông + Chat Tho-Fi + QR + Thêm bạn bè
-          html += '<div class="sk-header" style="background:'+cardBg+';height:52px;padding:0 16px;display:flex;align-items:center;gap:12px">';
-          html += '<div class="sk-bar sk-circle" style="width:22px;height:22px;background:'+shim+'"></div>';
-          html += '<div class="sk-bar sk-rect" style="width:105px;height:18px;background:'+blueBtn+'"></div>';
-          html += '<div style="flex:1"></div>';
-          html += '<div class="sk-bar sk-rect" style="width:22px;height:22px;border-radius:5px;background:'+base+'"></div>';
-          html += '<div class="sk-bar sk-pill" style="width:110px;height:32px;background:'+blueBtn+'"></div>';
-          html += '</div>';
-
-          // 2. Tiêu đề "Tin nhắn" + Switch
-          html += '<div style="padding:10px 16px 6px;display:flex;align-items:center;justify-content:space-between">';
-          html += '<div class="sk-bar sk-rect" style="width:85px;height:22px;background:'+shim+'"></div>';
-          html += '<div class="sk-bar sk-pill" style="width:38px;height:20px;background:'+base+'"></div>';
-          html += '</div>';
-
-          // 3. Filter tabs: "Tất cả" & "Chưa đọc"
-          html += '<div style="padding:4px 16px 10px;display:flex;gap:8px">';
-          html += '<div class="sk-bar sk-pill" style="width:64px;height:28px;background:'+blueBtn+'"></div>';
-          html += '<div class="sk-bar sk-pill" style="width:74px;height:28px;background:'+base+'"></div>';
-          html += '</div>';
-
-          // 4. Danh sách hội thoại (Avatar tròn 52px + Tên + Tin nhắn + Giờ)
+          // Danh sách hội thoại (Avatar tròn 52px + Tên + Tin nhắn + Giờ)
           html += '<div class="sk-content" style="padding:0">';
           for (var i = 0; i < 7; i++) {
             var nw = 110 + ((i * 29) % 70);
@@ -221,29 +201,8 @@
           }
           html += '</div>';
 
-          // 5. Floating Bottom Navigation Bar (5 tabs)
-          html += '<div style="padding:8px 16px 14px">';
-          html += '<div class="sk-bar sk-pill" style="height:54px;background:'+cardBg+';border:1px solid '+(isDark?'#334155':'#E2E8F0')+';display:flex;align-items:center;justify-content:space-around;padding:0 10px">';
-          html += '<div class="sk-bar sk-pill" style="width:84px;height:36px;background:'+blueTint+'"></div>';
-          html += '<div class="sk-bar sk-circle" style="width:26px;height:26px;background:'+base+'"></div>';
-          html += '<div class="sk-bar sk-circle" style="width:26px;height:26px;background:'+base+'"></div>';
-          html += '<div class="sk-bar sk-circle" style="width:26px;height:26px;background:'+base+'"></div>';
-          html += '<div class="sk-bar sk-circle" style="width:26px;height:26px;background:'+base+'"></div>';
-          html += '</div></div>';
-
         } else if (type === 'contacts') {
           // === MÀN HÌNH DANH BẠ (CONTACTS TAB) ===
-          html += '<div class="sk-header" style="background:'+cardBg+';height:52px;padding:0 16px;display:flex;align-items:center;gap:12px">';
-          html += '<div class="sk-bar sk-circle" style="width:22px;height:22px;background:'+shim+'"></div>';
-          html += '<div class="sk-bar sk-rect" style="width:105px;height:18px;background:'+blueBtn+'"></div>';
-          html += '<div style="flex:1"></div>';
-          html += '<div class="sk-bar sk-pill" style="width:110px;height:32px;background:'+blueBtn+'"></div>';
-          html += '</div>';
-
-          html += '<div style="padding:10px 16px 6px">';
-          html += '<div class="sk-bar sk-rect" style="width:85px;height:22px;background:'+shim+'"></div>';
-          html += '</div>';
-
           html += '<div class="sk-content" style="padding:0">';
           for (var i = 0; i < 8; i++) {
             var nw = 100 + ((i * 23) % 60);
@@ -258,15 +217,6 @@
             html += '</div>';
           }
           html += '</div>';
-
-          html += '<div style="padding:8px 16px 14px">';
-          html += '<div class="sk-bar sk-pill" style="height:54px;background:'+cardBg+';border:1px solid '+(isDark?'#334155':'#E2E8F0')+';display:flex;align-items:center;justify-content:space-around;padding:0 10px">';
-          html += '<div class="sk-bar sk-circle" style="width:26px;height:26px;background:'+base+'"></div>';
-          html += '<div class="sk-bar sk-pill" style="width:84px;height:36px;background:'+blueTint+'"></div>';
-          html += '<div class="sk-bar sk-circle" style="width:26px;height:26px;background:'+base+'"></div>';
-          html += '<div class="sk-bar sk-circle" style="width:26px;height:26px;background:'+base+'"></div>';
-          html += '<div class="sk-bar sk-circle" style="width:26px;height:26px;background:'+base+'"></div>';
-          html += '</div></div>';
 
         } else if (type === 'requests') {
           // === MÀN HÌNH LỜI MỜI KẾT BẠN ===
@@ -337,6 +287,8 @@
         if (el) {
           el.classList.remove('active');
           el.innerHTML = '';
+          el.style.top = '0';
+          el.style.bottom = '0';
         }
         _skLastType = null;
       };
@@ -549,9 +501,24 @@
           firebase.initializeApp(firebaseConfig);
         }
 
-        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js?v=1789906672768.2.1789540000000', { scope: '/' });
-        await registration.update();
-        await navigator.serviceWorker.ready;
+        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js?v=push-scope-2', {
+          scope: '/firebase-cloud-messaging-push-scope', updateViaCache: 'none'
+        });
+        // Wait for this push worker, not the root PWA worker's ready promise.
+        if (!registration.active) {
+          await new Promise((resolve, reject) => {
+            const worker = registration.installing || registration.waiting;
+            if (!worker) { reject(new Error('Push worker unavailable')); return; }
+            const timer = setTimeout(() => { cleanup(); reject(new Error('Push worker activation timed out')); }, 15000);
+            function cleanup() { clearTimeout(timer); worker.removeEventListener('statechange', changed); }
+            function changed() {
+              if (worker.state === 'activated') { cleanup(); resolve(); }
+              if (worker.state === 'redundant') { cleanup(); reject(new Error('Push worker failed')); }
+            }
+            worker.addEventListener('statechange', changed);
+            changed();
+          });
+        }
 
         const effectiveVapidKey = vapidKey || 'BBtraQSvar7RExe_T8aVhoA3TebgLw0S-ucoMcuV-Oef-H7ULkJGWyBctnxfY5tLnawpWQ9Wn8Aihi-wJaLiGu0';
 
@@ -1729,14 +1696,14 @@
   <div id="ai-welcome-view" class="ai-welcome-container">
     <div class="ai-welcome-content">
       <div class="ai-welcome-logo-wrapper">
-        <img src="/icon.png" class="ai-welcome-logo" alt="Chat AI Tho-Fi" />
+        <img src="/tho_fi_logo_transparent.png" class="ai-welcome-logo" alt="Chat AI Tho-Fi" />
       </div>
       <div id="ai-welcome-title" class="ai-welcome-title">Hôm nay bạn thế nào, Tho?</div>
     </div>
   </div>
 
   <div id="ai-typing-float" class="ai-typing-float">
-    <img src="/icon.png" class="ai-typing-avatar" />
+    <img src="/tho_fi_logo_transparent.png" class="ai-typing-avatar" />
     <div class="ai-typing-bubble">
       <span class="ai-typing-dot"></span>
       <span class="ai-typing-dot"></span>
@@ -1785,7 +1752,10 @@
 
     window.pickRandomAiGreeting = function () {
       const name = getAiUserName();
-      const template = AI_GREETINGS[Math.floor(Math.random() * AI_GREETINGS.length)];
+      if (!window._appSessionGreetingTemplate) {
+        window._appSessionGreetingTemplate = AI_GREETINGS[Math.floor(Math.random() * AI_GREETINGS.length)];
+      }
+      const template = window._appSessionGreetingTemplate;
       return template.replace(/{name}/g, name);
     };
 
@@ -2190,7 +2160,7 @@
   <script>
     window.flutterWebRenderer = "canvaskit";
   </script>
-  <script src="flutter_bootstrap.js?v=v_sk_precise_1789920000000" async></script>
+  <script src="flutter_bootstrap.js?v=11300cbfd1622c58" async></script>
 
   <script id="messenger-theme-picker-script">
     window._openMessengerThemePicker = function (convId, convName) {
@@ -2913,92 +2883,23 @@
   </script>
 
   <script>
-    // ============================================================
-    // [Call Sync V14] Standalone polling + dismiss
-    // Không phụ thuộc main.dart.js?v=v_sk_precise_1789920000000'';
-        var calleeId = window._currentUserId || (typeof $ !== 'undefined' && $.aLM) || '';
-        if (!callerId && !calleeId) return;
-        if (window._activeCallShowing) { _stopPoll(); return; }
-        var bUrl = (window.location.hostname.includes('pages.dev') || window.location.hostname.includes('workers.dev') || window.location.hostname.includes('cloudflare'))
-          ? 'https://chat-tho-fi-vn-9s8u.onrender.com'
-          : '';
-        fetch(bUrl + '/api/call/status?callerId=' + encodeURIComponent(callerId)
-          + '&calleeId=' + encodeURIComponent(calleeId)
-          + '&t=' + Date.now(), { cache: 'no-store' })
-          .then(function (r) { return r.json(); })
-          .then(function (data) {
-            if (data && data.active === false) {
-              console.log('[Call-V14] Cuộc gọi đã kết thúc trên server -> Dismiss ngay!');
-              _stopPoll();
-              if (window.dismissIncomingCallNow) {
-                window.dismissIncomingCallNow();
-              } else {
-                // Thử lại sau 200ms nếu dismissIncomingCallNow chưa sẵn sàng
-                setTimeout(function () {
-                  if (window.dismissIncomingCallNow) window.dismissIncomingCallNow();
-                }, 200);
-              }
-            }
-          })
-          .catch(function () { });
-      }
-
-      function _startPoll() {
-        _stopPoll();
-        console.log('[Call-V14] Bắt đầu polling trạng thái cuộc gọi mỗi 600ms...');
-        _pollInterval = setInterval(function () {
-          var isShowing = window._incomingCallShowing || window._incomingRejectAction || window._incomingCallContext;
-          if (!isShowing) {
-            _stopPoll();
-            return;
-          }
-          _doCallStatusCheck();
-        }, _pollDelay);
-        // Check ngay lập tức lần đầu sau 300ms
-        setTimeout(_doCallStatusCheck, 300);
-      }
-
-      function _stopPoll() {
-        if (_pollInterval) {
-          clearInterval(_pollInterval);
-          _pollInterval = null;
-          console.log('[Call-V14] Đã dừng polling.');
-        }
-      }
-
-      // Expose ra global để main.dart.js?v=v_sk_precise_1789920000000'[Call-V14] App visible lại, kiểm tra trạng thái cuộc gọi...');
-          _doCallStatusCheck();
-          // Cũng restart poll nếu đã bị dừng
-          if (!_pollInterval) _startPoll();
-        }
-      }
-
-      window.addEventListener('focus', _onResume);
-      document.addEventListener('visibilitychange', function () {
-        if (document.visibilityState === 'visible') _onResume();
-      });
-
-      // Lắng nghe postMessage từ Service Worker (call_ended push notification)
+    // Push callbacks may arrive while Flutter is resuming. Keep this bridge
+    // independent of compiler-generated symbol names; SocketService owns calls.
+    (function () {
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.addEventListener('message', function (event) {
           if (event.data && (event.data.type === 'call_ended' || event.data.type === 'CALL_ENDED')) {
-            console.log('[Call-V14] Service Worker báo call_ended -> Dismiss ngay!');
-            _stopPoll();
-            if (window.dismissIncomingCallNow) window.dismissIncomingCallNow();
+            if (typeof window.dismissIncomingCallNow === 'function') window.dismissIncomingCallNow();
           }
         });
       }
-
-      console.log('[Call-V14] Call Sync polling engine sẵn sàng.');
-
-    window._bindCallAudioUnlockListeners = function () {
-      if (window._callAudioEngine && window._callAudioEngine.unlockCallAudio) {
-        window._callAudioEngine.unlockCallAudio();
-      }
-    };
-    window.addEventListener('click', window._bindCallAudioUnlockListeners, { passive: true });
-    window.addEventListener('touchstart', window._bindCallAudioUnlockListeners, { passive: true });
-    
+      window._bindCallAudioUnlockListeners = function () {
+        if (window._callAudioEngine && window._callAudioEngine.unlockCallAudio) {
+          window._callAudioEngine.unlockCallAudio();
+        }
+      };
+      window.addEventListener('click', window._bindCallAudioUnlockListeners, {passive: true});
+      window.addEventListener('touchstart', window._bindCallAudioUnlockListeners, {passive: true});
     })();
   </script>
 
@@ -3246,7 +3147,7 @@
       // Đăng ký Service Worker để Chrome/Edge và Android kích hoạt cờ cài đặt ứng dụng (PWA)
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function () {
-          navigator.serviceWorker.register('/flutter_service_worker.js?v=audio_unlocked_1789574188368.2.1').then(function (reg) {
+          navigator.serviceWorker.register('/app_service_worker.js', {updateViaCache: 'none'}).then(function (reg) {
             console.log('[PWA] Service Worker đăng ký thành công cho PWA');
           }).catch(function (err) {
             console.warn('[PWA] Service Worker registration failed:', err);

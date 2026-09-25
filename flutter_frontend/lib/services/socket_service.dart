@@ -13,7 +13,7 @@ class SocketService {
   static final _incomingCallController = StreamController<Map<String, dynamic>>.broadcast();
   static final _callAcceptedController = StreamController<Map<String, dynamic>>.broadcast();
   static final _callRejectedController = StreamController<Map<String, dynamic>>.broadcast();
-  static final _callEndedController = StreamController<void>.broadcast();
+  static final _callEndedController = StreamController<Map<String, dynamic>>.broadcast();
   static final _webrtcSignalController = StreamController<Map<String, dynamic>>.broadcast();
   static final _typingController = StreamController<Map<String, dynamic>>.broadcast();
   static final _stopTypingController = StreamController<Map<String, dynamic>>.broadcast();
@@ -38,7 +38,7 @@ class SocketService {
   static Stream<Map<String, dynamic>> get onIncomingCall => _incomingCallController.stream;
   static Stream<Map<String, dynamic>> get onCallAccepted => _callAcceptedController.stream;
   static Stream<Map<String, dynamic>> get onCallRejected => _callRejectedController.stream;
-  static Stream<void> get onCallEnded => _callEndedController.stream;
+  static Stream<Map<String, dynamic>> get onCallEnded => _callEndedController.stream;
   static Stream<Map<String, dynamic>> get onWebrtcSignal => _webrtcSignalController.stream;
   static Stream<Map<String, dynamic>> get onUserTyping => _typingController.stream;
   static Stream<Map<String, dynamic>> get onUserStopTyping => _stopTypingController.stream;

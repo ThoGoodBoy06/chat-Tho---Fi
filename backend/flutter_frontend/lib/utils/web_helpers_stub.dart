@@ -26,3 +26,7 @@ Future<bool> requestWebNotificationPermission() async => true;
 void forceDismissWebCallDialog() {}
 
 void registerVideoPlayerView(String viewId, String videoUrl) {}
+
+void vibrateWeb(Object pattern) {}
+
+dynamic callWebFunction(String name, List<dynamic> arguments) => null;
