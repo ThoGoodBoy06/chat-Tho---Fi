@@ -411,6 +411,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   int _lastMessageCount = 0;
   String? _lastTypingUser;
   bool _bottomScrollScheduled = false;
+  bool _pendingInitialBottomScroll = false;
   bool _animateBottomScroll = true;
   bool _forceBottomScroll = false;
   int _bottomScrollSettlingFrames = 0;
@@ -2278,6 +2279,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       _lastTypingUser = null;
       _expandedTimestampMessageIds.clear();
       _showEmojiPicker = false;
+      _pendingInitialBottomScroll = true;
       _jumpToBottom();
     }
 
@@ -2472,9 +2474,17 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 : Builder(
                     builder: (context) {
                       final messageCount = provider.messages.length;
+                      final messagesById = {for (final message in provider.messages) message.id: message};
                       if (_lastMessageCount != messageCount) {
                         _lastMessageCount = messageCount;
-                        if (messageCount > 0) _scrollToBottomIfNearBottom();
+                        if (messageCount > 0) {
+                          if (_pendingInitialBottomScroll) {
+                            _pendingInitialBottomScroll = false;
+                            _queueBottomScroll(animate: false, force: true, settlingFrames: 2);
+                          } else {
+                            _scrollToBottomIfNearBottom();
+                          }
+                        }
                       }
                       final lastSentMessageIndex = provider.messages.lastIndexWhere((m) => m.senderId == provider.currentUser?.id);
                       final typingUser = provider.getTypingUserForSelectedConversation();
@@ -2733,13 +2743,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                                               if (msg.replyMessageId != null && msg.replyMessageId!.isNotEmpty) ...[
                                                                 Builder(
                                                                   builder: (context) {
-                                                                    MessageModel? originMsg;
-                                                                    for (final m in provider.messages) {
-                                                                      if (m.id == msg.replyMessageId) {
-                                                                        originMsg = m;
-                                                                        break;
-                                                                      }
-                                                                    }
+                                                                    final originMsg = messagesById[msg.replyMessageId];
                                                                     final originContent = originMsg?.content ?? 'Tin nhắn';
                                                                     final originSender = (originMsg != null && originMsg.senderId == provider.currentUser?.id)
                                                                         ? 'Bạn'

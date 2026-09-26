@@ -631,19 +631,19 @@ class ChatProvider extends ChangeNotifier {
       }).whereType<MessageModel>().toList();
 
       final List<MessageModel> cleanFetched = [];
+      final systemTimesByContent = <String, List<DateTime>>{};
+      final callTimes = <DateTime>[];
       for (final m in fetched) {
         if (m.type == 'system') {
-          final hasDup = cleanFetched.any((prev) =>
-              prev.type == 'system' &&
-              prev.content == m.content &&
-              prev.createdAt.difference(m.createdAt).inSeconds.abs() < 5);
+          final times = systemTimesByContent.putIfAbsent(m.content, () => []);
+          final hasDup = times.any((time) => time.difference(m.createdAt).inSeconds.abs() < 5);
           if (hasDup) continue;
+          times.add(m.createdAt);
         }
         if (m.type == 'missed_call' || m.type == 'call' || m.type == 'video_call') {
-          final hasDupCall = cleanFetched.any((prev) =>
-              (prev.type == 'missed_call' || prev.type == 'call' || prev.type == 'video_call') &&
-              prev.createdAt.difference(m.createdAt).inSeconds.abs() < 15);
+          final hasDupCall = callTimes.any((time) => time.difference(m.createdAt).inSeconds.abs() < 15);
           if (hasDupCall) continue;
+          callTimes.add(m.createdAt);
         }
         cleanFetched.add(m);
       }

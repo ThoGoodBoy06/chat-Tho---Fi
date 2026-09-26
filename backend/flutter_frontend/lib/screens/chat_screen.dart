@@ -2472,6 +2472,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 : Builder(
                     builder: (context) {
                       final messageCount = provider.messages.length;
+                      final messagesById = {for (final message in provider.messages) message.id: message};
                       if (_lastMessageCount != messageCount) {
                         _lastMessageCount = messageCount;
                         if (messageCount > 0) _scrollToBottomIfNearBottom();
@@ -2733,13 +2734,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                                               if (msg.replyMessageId != null && msg.replyMessageId!.isNotEmpty) ...[
                                                                 Builder(
                                                                   builder: (context) {
-                                                                    MessageModel? originMsg;
-                                                                    for (final m in provider.messages) {
-                                                                      if (m.id == msg.replyMessageId) {
-                                                                        originMsg = m;
-                                                                        break;
-                                                                      }
-                                                                    }
+                                                                    final originMsg = messagesById[msg.replyMessageId];
                                                                     final originContent = originMsg?.content ?? 'Tin nhắn';
                                                                     final originSender = (originMsg != null && originMsg.senderId == provider.currentUser?.id)
                                                                         ? 'Bạn'
