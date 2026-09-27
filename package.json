@@ -6,6 +6,8 @@
     "scripts": {
         "start": "node server.js",
         "build": "node scripts/build-flutter-web.js && npx prisma generate",
+        "build:web": "node scripts/build-web.js",
+        "watch:web": "node scripts/watch-web.js",
         "postinstall": "npx prisma generate"
     },
     "type": "commonjs",

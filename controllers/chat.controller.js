@@ -1,4 +1,7 @@
 const prisma = require("../prisma");
+const crypto = require("crypto");
+let sharp;
+try { sharp = require("sharp"); } catch (_) {}
 
 const { v4: uuidv4 } = require("uuid");
 
@@ -43,6 +46,20 @@ if (!getApps().length) {
 
 // Cache ngắn hạn 3s để bảo vệ Connection Pool khỏi bị bão request
 const conversationsCache = new Map();
+
+// Cache ngắn hạn 3s cho tin nhắn để phản hồi tức thì và triệt tiêu độ trễ khi chuyển chat
+const messagesCache = new Map();
+
+function clearConversationMessagesCache(conversationId) {
+    if (conversationId) {
+        for (const key of messagesCache.keys()) {
+            if (key.startsWith(conversationId + ":")) {
+                messagesCache.delete(key);
+            }
+        }
+    }
+}
+exports.clearConversationMessagesCache = clearConversationMessagesCache;
 
 // 1. Lấy danh sách đoạn chat của user hiện tại
 
@@ -229,23 +246,23 @@ exports.getMessages = async(req, res) => {
         const { conversationId } = req.params;
         const limit = Math.min(parseInt(req.query.limit) || 50, 100); // Giới hạn tối đa 100
         const before = req.query.before; // ID tin nhắn cursor (optional)
+        const userId = req.user.id;
 
-        // Cập nhật ngay trạng thái isRead & isDelivered vào DB cho tất cả tin nhắn trong phòng này do người khác gửi
-        prisma.messages.updateMany({
-            where: {
-                conversationId,
-                senderId: { not: req.user.id },
-                OR: [{ isRead: false }, { isDelivered: false }],
-            },
-            data: { isRead: true, isDelivered: true },
-        }).catch((err) => console.error("Lỗi cập nhật isRead/isDelivered trong getMessages:", err.message));
+        // ⚡ PHẢN HỒI SIÊU TỐC TỪ CACHE (0ms) khi tải trang đầu tiên (không có cursor before)
+        const cacheKey = `${conversationId}:${userId}:${limit}`;
+        if (!before) {
+            const cached = messagesCache.get(cacheKey);
+            if (cached && (Date.now() - cached.timestamp < 60000)) {
+                return res.status(200).json(cached.data);
+            }
+        }
 
         // Xây dựng điều kiện where
         const whereClause = {
             conversationId,
             NOT: {
                 deletedBy: {
-                    has: req.user.id,
+                    has: userId,
                 },
             },
         };
@@ -262,8 +279,8 @@ exports.getMessages = async(req, res) => {
             }
         }
 
-        // ⚡ TỐI ƯU HÓA SONG SONG: Chạy song song các truy vấn DB độc lập bằng Promise.all
-        const [conversation, messages, membersWithNicknames] = await Promise.all([
+        // ⚡ TỐI ƯU HÓA SONG SONG TẤT CẢ TRUY VẤN: Chạy song song cả conversation, messages, members và block
+        const [conversation, messages, membersWithNicknames, blockRecord] = await Promise.all([
             prisma.conversations.findUnique({
                 where: { id: conversationId },
                 select: { theme: true },
@@ -282,10 +299,17 @@ exports.getMessages = async(req, res) => {
                 where: { conversationId },
                 select: { userId: true, nickname: true },
             }),
+            prisma.block.findFirst({
+                where: {
+                    OR: [
+                        { blockerId: userId },
+                        { blockedId: userId }
+                    ]
+                }
+            }).catch(() => null)
         ]);
 
-        const otherMember = membersWithNicknames.find((m) => m.userId !== req.user.id);
-
+        const otherMember = membersWithNicknames.find((m) => m.userId !== userId);
         const theme = conversation ? conversation.theme : "default";
 
         // Kiểm tra có còn trang tiếp không
@@ -295,58 +319,41 @@ exports.getMessages = async(req, res) => {
         // Đảo ngược lại thứ tự: cũ nhất trước, mới nhất sau (để frontend render đúng)
         messages.reverse();
 
-        // Batch-fetch tin nhắn gốc (Parent Messages) và Block State song song
+        // Batch-fetch tin nhắn gốc (Parent Messages) nếu có trích dẫn reply
         const replyIds = messages.map(m => m.replyMessageId).filter(Boolean);
         let parentMap = {};
-        let blockState = { blocked: false, blockerId: null, blockedId: null };
-
-        const secondaryTasks = [];
 
         if (replyIds.length > 0) {
-            secondaryTasks.push(
-                prisma.messages.findMany({
+            try {
+                const parents = await prisma.messages.findMany({
                     where: { id: { in: replyIds } },
                     include: {
                         Users: { select: { id: true, fullName: true } }
                     }
-                }).then(parents => {
-                    parents.forEach(p => {
-                        parentMap[p.id] = {
-                            id: p.id,
-                            content: p.content,
-                            senderId: p.senderId,
-                            type: p.type,
-                            isRecalled: p.isRecalled || false,
-                            senderName: p.Users ? p.Users.fullName : "Người dùng"
-                        };
-                    });
-                }).catch(err => console.error("Lỗi khi tải thông tin trích dẫn tin nhắn gốc:", err.message))
-            );
+                });
+                parents.forEach(p => {
+                    parentMap[p.id] = {
+                        id: p.id,
+                        content: p.content,
+                        senderId: p.senderId,
+                        type: p.type,
+                        isRecalled: p.isRecalled || false,
+                        senderName: p.Users ? p.Users.fullName : "Người dùng"
+                    };
+                });
+            } catch (err) {
+                console.error("Lỗi khi tải thông tin trích dẫn tin nhắn gốc:", err.message);
+            }
         }
 
-        if (otherMember) {
-            secondaryTasks.push(
-                prisma.block.findFirst({
-                    where: {
-                        OR: [
-                            { blockerId: req.user.id, blockedId: otherMember.userId },
-                            { blockerId: otherMember.userId, blockedId: req.user.id }
-                        ]
-                    }
-                }).then(blockRecord => {
-                    if (blockRecord) {
-                        blockState = {
-                            blocked: true,
-                            blockerId: blockRecord.blockerId,
-                            blockedId: blockRecord.blockedId
-                        };
-                    }
-                }).catch(err => console.error("Lỗi kiểm tra block:", err.message))
-            );
-        }
-
-        if (secondaryTasks.length > 0) {
-            await Promise.all(secondaryTasks);
+        let blockState = { blocked: false, blockerId: null, blockedId: null };
+        if (blockRecord && otherMember &&
+            (blockRecord.blockerId === otherMember.userId || blockRecord.blockedId === otherMember.userId)) {
+            blockState = {
+                blocked: true,
+                blockerId: blockRecord.blockerId,
+                blockedId: blockRecord.blockedId
+            };
         }
 
         const mappedMessages = messages.map((m) => {
@@ -356,7 +363,7 @@ exports.getMessages = async(req, res) => {
                     ...m.Users,
                     avatar: `/api/users/${m.Users.id}/avatar`,
                 },
-            } : {...m };
+            } : { ...m };
 
             if (m.replyMessageId && parentMap[m.replyMessageId]) {
                 mapped.replyMessage = parentMap[m.replyMessageId];
@@ -369,7 +376,17 @@ exports.getMessages = async(req, res) => {
             if (m.nickname) nicknames[m.userId] = m.nickname;
         });
 
-        res.status(200).json({ success: true, data: mappedMessages, hasMore, theme, nicknames, blockState });
+        const responsePayload = { success: true, data: mappedMessages, hasMore, theme, nicknames, blockState };
+
+        // Lưu vào cache nếu là trang đầu tiên
+        if (!before) {
+            messagesCache.set(cacheKey, { timestamp: Date.now(), data: responsePayload });
+            if (messagesCache.size > 300) {
+                messagesCache.delete(messagesCache.keys().next().value);
+            }
+        }
+
+        res.status(200).json(responsePayload);
     } catch (error) {
         console.error("Lỗi getMessages:", error);
         res.status(500).json({ message: "Lỗi server", error: error.message });
@@ -510,6 +527,8 @@ exports.sendMessage = async(req, res) => {
                 },
             },
         });
+
+        clearConversationMessagesCache(conversationId);
 
         // Lấy thông tin tin nhắn gốc nếu đây là tin nhắn trả lời (Reply)
         let parentMessageObj = null;
@@ -884,6 +903,8 @@ exports.recallMessage = async (req, res) => {
             data: { isRecalled: true },
         });
 
+        clearConversationMessagesCache(message.conversationId);
+
         // 4. Phát tín hiệu Socket.IO real-time
         const io = req.app.get("io");
         if (io && message.conversationId) {
@@ -938,6 +959,8 @@ exports.editMessage = async(req, res) => {
                 updatedAt: new Date(),
             },
         });
+
+        clearConversationMessagesCache(message.conversationId);
 
         const members = await prisma.conversationMembers.findMany({
             where: { conversationId: message.conversationId },
@@ -1035,6 +1058,8 @@ exports.reactToMessage = async(req, res) => {
             // Phải chuyển Object thành Chuỗi JSON thì CSDL mới cho phép lưu
             data: { reactions: JSON.stringify(currentReactions) },
         });
+
+        clearConversationMessagesCache(message.conversationId);
 
         // Lấy danh sách thành viên trong cuộc trò chuyện
 
@@ -1675,6 +1700,7 @@ exports.deleteMessageForMe = async (req, res) => {
                     },
                 },
             });
+            clearConversationMessagesCache(message.conversationId);
         }
 
         res.status(200).json({
@@ -2639,3 +2665,142 @@ exports.downloadMediaProxy = async (req, res) => {
         return res.status(500).send("Lỗi máy chủ khi tải tệp: " + err.message);
     }
 };
+
+// ═══════════════════════════════════════════════════════
+// 13. TẠO & PHẢN HỒI THUMBNAIL SIÊU NHANH CHO FLUTTER WEB
+// ═══════════════════════════════════════════════════════
+const THUMBNAIL_DIR = path.join(__dirname, "../uploads/thumbnails");
+if (!fs.existsSync(THUMBNAIL_DIR)) {
+    try { fs.mkdirSync(THUMBNAIL_DIR, { recursive: true }); } catch (_) {}
+}
+
+const thumbnailMemoryCache = new Map();
+const MAX_THUMBNAIL_MEMORY_ITEMS = 300;
+
+exports.getMediaThumbnail = async (req, res) => {
+    try {
+        let { url, w, q } = req.query;
+        if (!url) {
+            return res.status(400).send("Thiếu tham số URL");
+        }
+
+        const targetWidth = Math.min(Math.max(parseInt(w) || 450, 60), 1200);
+        const targetQuality = Math.min(Math.max(parseInt(q) || 80, 40), 95);
+
+        // Tạo hash duy nhất cho thumbnail dựa trên URL + kích thước + chất lượng
+        const hash = crypto.createHash("md5").update(`${url}_w${targetWidth}_q${targetQuality}`).digest("hex");
+        const cacheFilename = `${hash}.webp`;
+        const cacheFilePath = path.join(THUMBNAIL_DIR, cacheFilename);
+
+        // 1. Kiểm tra RAM cache (0ms)
+        const memCached = thumbnailMemoryCache.get(hash);
+        if (memCached) {
+            const buffer = Buffer.isBuffer(memCached) ? memCached : memCached.buffer;
+            const cType = (memCached && memCached.contentType) ? memCached.contentType : "image/webp";
+            res.setHeader("Content-Type", cType);
+            res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+            res.setHeader("Access-Control-Allow-Origin", "*");
+            res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+            return res.send(buffer);
+        }
+
+        // 2. Kiểm tra Disk cache (1ms)
+        if (fs.existsSync(cacheFilePath)) {
+            try {
+                const diskBuffer = await fs.promises.readFile(cacheFilePath);
+                if (thumbnailMemoryCache.size >= MAX_THUMBNAIL_MEMORY_ITEMS) {
+                    const firstKey = thumbnailMemoryCache.keys().next().value;
+                    thumbnailMemoryCache.delete(firstKey);
+                }
+                thumbnailMemoryCache.set(hash, { buffer: diskBuffer, contentType: "image/webp" });
+
+                res.setHeader("Content-Type", "image/webp");
+                res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+                res.setHeader("Access-Control-Allow-Origin", "*");
+                res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+                return res.send(diskBuffer);
+            } catch (_) {}
+        }
+
+        // 3. Đọc dữ liệu ảnh gốc (Local hoặc Remote)
+        let inputBuffer = null;
+        let originalContentType = "image/jpeg";
+
+        if (url.startsWith("/uploads/") || url.startsWith("uploads/")) {
+            const relPath = url.startsWith("/") ? url.slice(1) : url;
+            const localPath = path.join(__dirname, "..", relPath);
+            if (fs.existsSync(localPath)) {
+                inputBuffer = await fs.promises.readFile(localPath);
+            }
+        }
+
+        if (!inputBuffer) {
+            let targetUrl = url;
+            if (!targetUrl.startsWith("http://") && !targetUrl.startsWith("https://")) {
+                const port = process.env.PORT || 3000;
+                targetUrl = "http://localhost:" + port + (targetUrl.startsWith("/") ? "" : "/") + targetUrl;
+            }
+
+            const response = await fetch(targetUrl);
+            if (!response.ok) {
+                return res.status(response.status).send("Không thể tải ảnh từ nguồn: HTTP " + response.status);
+            }
+            originalContentType = response.headers.get("content-type") || "image/jpeg";
+            const ab = await response.arrayBuffer();
+            inputBuffer = Buffer.from(ab);
+        }
+
+        if (!inputBuffer || inputBuffer.length === 0) {
+            return res.status(404).send("Không tìm thấy ảnh");
+        }
+
+        // 4. Dùng Sharp nén & tối ưu sang WebP siêu nhẹ
+        let outputBuffer = null;
+        let outputContentType = "image/webp";
+
+        if (inputBuffer.length < 100) {
+            // File quá nhỏ để là ảnh hợp lệ (file rỗng hoặc placeholder test), trả về trực tiếp
+            outputBuffer = inputBuffer;
+            outputContentType = originalContentType;
+        } else if (sharp) {
+            try {
+                outputBuffer = await sharp(inputBuffer, { failOnError: false })
+                    .rotate()
+                    .resize({
+                        width: targetWidth,
+                        withoutEnlargement: true,
+                        fit: "inside"
+                    })
+                    .webp({
+                        quality: targetQuality,
+                        effort: 3
+                    })
+                    .toBuffer();
+            } catch (sharpErr) {
+                outputBuffer = inputBuffer;
+                outputContentType = originalContentType;
+            }
+        } else {
+            outputBuffer = inputBuffer;
+            outputContentType = originalContentType;
+        }
+
+        // 5. Lưu vào Disk & RAM cache (lưu cả fallback để không bao giờ phải xử lý lại)
+        fs.promises.writeFile(cacheFilePath, outputBuffer).catch(() => {});
+        if (thumbnailMemoryCache.size >= MAX_THUMBNAIL_MEMORY_ITEMS) {
+            const firstKey = thumbnailMemoryCache.keys().next().value;
+            thumbnailMemoryCache.delete(firstKey);
+        }
+        thumbnailMemoryCache.set(hash, { buffer: outputBuffer, contentType: outputContentType });
+
+        res.setHeader("Content-Type", outputContentType);
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+        return res.send(outputBuffer);
+    } catch (err) {
+        console.error("❌ Lỗi getMediaThumbnail:", err);
+        return res.status(500).send("Lỗi xử lý ảnh thumbnail: " + err.message);
+    }
+};
+

@@ -18,15 +18,157 @@ class ChatProvider extends ChangeNotifier {
   int _messageLoadRevision = 0;
   int _sessionRevision = 0;
   bool _disposed = false;
+  SharedPreferences? _sharedPreferences;
+  final Map<String, Timer> _messageCacheTimers = {};
+  static const int _maxLocalMessageCacheChars = 512 * 1024;
+  static const int _maxCachedMessageChars = 32 * 1024;
+
+  bool _hasNearbyTimestamp(
+      List<DateTime> times, DateTime timestamp, int seconds) {
+    final timestampMicros = timestamp.microsecondsSinceEpoch;
+    final windowMicros = seconds * Duration.microsecondsPerSecond;
+    final lowerBound = timestampMicros - windowMicros;
+    final upperBound = timestampMicros + windowMicros;
+    var low = 0;
+    var high = times.length;
+    while (low < high) {
+      final middle = (low + high) >> 1;
+      if (times[middle].microsecondsSinceEpoch < lowerBound) {
+        low = middle + 1;
+      } else {
+        high = middle;
+      }
+    }
+    for (var i = low;
+        i < times.length && times[i].microsecondsSinceEpoch <= upperBound;
+        i++) {
+      if (times[i].difference(timestamp).inSeconds.abs() < seconds) return true;
+    }
+    return false;
+  }
+
+  void _insertTimestamp(List<DateTime> times, DateTime timestamp) {
+    var low = 0;
+    var high = times.length;
+    final value = timestamp.microsecondsSinceEpoch;
+    while (low < high) {
+      final middle = (low + high) >> 1;
+      if (times[middle].microsecondsSinceEpoch < value) {
+        low = middle + 1;
+      } else {
+        high = middle;
+      }
+    }
+    times.insert(low, timestamp);
+  }
 
   void _cacheMessages(String id, List<MessageModel> value) {
     _messagesCache.remove(id);
-    _messagesCache[id] = value.length > _maxCachedMessages
+    final trimmed = value.length > _maxCachedMessages
         ? value.sublist(value.length - _maxCachedMessages)
         : List<MessageModel>.from(value);
+    _messagesCache[id] = trimmed;
     while (_messagesCache.length > _maxCachedConversations) {
       _messagesCache.remove(_messagesCache.keys.first);
     }
+    _scheduleSaveLocalCachedMessages(id, trimmed);
+  }
+
+  void _scheduleSaveLocalCachedMessages(
+      String convId, List<MessageModel> msgs) {
+    _messageCacheTimers.remove(convId)?.cancel();
+    if (msgs.isEmpty) return;
+    // Cache writes are deliberately coalesced: socket bursts and an HTTP refresh
+    // should not repeatedly encode the same history on the UI isolate.
+    _messageCacheTimers[convId] = Timer(const Duration(milliseconds: 250), () {
+      _messageCacheTimers.remove(convId);
+      _saveLocalCachedMessages(convId, msgs);
+    });
+  }
+
+  Map<String, dynamic>? _localMessageJson(MessageModel message) {
+    final json = message.toJson();
+    final content = json['content']?.toString() ?? '';
+    final media = <String?>[
+      json['imageUrl']?.toString(),
+      json['videoUrl']?.toString(),
+      json['audioUrl']?.toString(),
+    ];
+    final hasInlineMedia = content.startsWith('data:image') ||
+        content.startsWith('data:video') ||
+        content.startsWith('data:audio') ||
+        media.any((value) => value != null && value.startsWith('data:'));
+    if (hasInlineMedia &&
+        (content.length > _maxCachedMessageChars ||
+            media.any((value) =>
+                value != null && value.length > _maxCachedMessageChars))) {
+      return null;
+    }
+    return json;
+  }
+
+  void _saveLocalCachedMessages(String convId, List<MessageModel> msgs) {
+    if (msgs.isEmpty || _disposed) return;
+    try {
+      final raw = <Map<String, dynamic>>[];
+      var chars = 2;
+      for (final message in msgs.reversed) {
+        final encoded = _localMessageJson(message);
+        if (encoded == null) continue;
+        final candidateChars = jsonEncode(encoded).length;
+        if (raw.isNotEmpty &&
+            chars + candidateChars > _maxLocalMessageCacheChars) break;
+        raw.insert(0, encoded);
+        chars += candidateChars;
+      }
+      if (raw.isEmpty) {
+        final prefs = _sharedPreferences;
+        if (prefs != null) {
+          unawaited(prefs.remove('cached_msgs_$convId'));
+        } else {
+          SharedPreferences.getInstance().then((p) async {
+            if (_disposed) return false;
+            _sharedPreferences = p;
+            return await p.remove('cached_msgs_$convId');
+          }).catchError((_) => false);
+        }
+        return;
+      }
+      final jsonStr = jsonEncode(raw);
+      final prefs = _sharedPreferences;
+      if (prefs != null) {
+        unawaited(prefs.setString('cached_msgs_$convId', jsonStr));
+      } else {
+        SharedPreferences.getInstance().then((p) async {
+          if (_disposed) return false;
+          _sharedPreferences = p;
+          return await p.setString('cached_msgs_$convId', jsonStr);
+        }).catchError((_) => false);
+      }
+    } catch (_) {}
+  }
+
+  List<MessageModel>? _loadLocalCachedMessages(String convId) {
+    try {
+      final str = _sharedPreferences?.getString('cached_msgs_$convId');
+      if (str != null && str.isNotEmpty) {
+        final decoded = jsonDecode(str);
+        if (decoded is List) {
+          final list = decoded
+              .map((m) {
+                try {
+                  return MessageModel.fromJson(Map<String, dynamic>.from(m));
+                } catch (_) {
+                  return null;
+                }
+              })
+              .whereType<MessageModel>()
+              .toList();
+          if (list.isNotEmpty) return list;
+        }
+      }
+    } catch (_) {}
+    return null;
   }
 
   Future<Map<String, dynamic>> _loadMessages(String id) {
@@ -34,9 +176,11 @@ class ChatProvider extends ChangeNotifier {
       final request = ApiService.getMessages(id);
       // Remove only this request: logout may have started a new session.
       request.then((_) {
-        if (identical(_messageRequests[id], request)) _messageRequests.remove(id);
+        if (identical(_messageRequests[id], request))
+          _messageRequests.remove(id);
       }, onError: (Object error, StackTrace stack) {
-        if (identical(_messageRequests[id], request)) _messageRequests.remove(id);
+        if (identical(_messageRequests[id], request))
+          _messageRequests.remove(id);
       });
       return request;
     });
@@ -76,6 +220,9 @@ class ChatProvider extends ChangeNotifier {
   }
 
   ChatProvider() {
+    SharedPreferences.getInstance().then<void>((p) {
+      if (!_disposed) _sharedPreferences = p;
+    }).catchError((Object _) {});
     _initSocket();
   }
 
@@ -83,13 +230,22 @@ class ChatProvider extends ChangeNotifier {
     _socketSubscription = SocketService.onMessageReceived.listen((data) {
       print('📨 ChatProvider nhận tin nhắn từ socket: ${data['id']}');
       final newMsg = MessageModel.fromJson(data);
-      addRealtimeMessage(newMsg);
-      _updateLastMessageInConversation(newMsg);
+      final messageChanged = addRealtimeMessage(newMsg, notify: false);
+      final conversationChanged =
+          _updateLastMessageInConversation(newMsg, notify: false);
+      if (messageChanged || conversationChanged) {
+        notifyListeners();
+        if (messageChanged) onNewMessageReceived?.call();
+      }
       if (newMsg.senderId != currentUser?.id) {
         SocketService.playReceiveSound();
-        SocketService.emitMarkAsDelivered(newMsg.id, conversationId: newMsg.conversationId);
-        if (selectedConversation != null && selectedConversation!.id == newMsg.conversationId && currentUser != null) {
-          SocketService.emitMarkAsRead(newMsg.id, conversationId: newMsg.conversationId);
+        SocketService.emitMarkAsDelivered(newMsg.id,
+            conversationId: newMsg.conversationId);
+        if (selectedConversation != null &&
+            selectedConversation!.id == newMsg.conversationId &&
+            currentUser != null) {
+          SocketService.emitMarkAsRead(newMsg.id,
+              conversationId: newMsg.conversationId);
         }
       }
     });
@@ -97,7 +253,9 @@ class ChatProvider extends ChangeNotifier {
     _typingSubscription = SocketService.onUserTyping.listen((data) {
       final convId = data['conversationId']?.toString();
       final uid = data['userId']?.toString() ?? data['senderId']?.toString();
-      final nickname = data['nickname']?.toString() ?? data['senderName']?.toString() ?? 'Người dùng';
+      final nickname = data['nickname']?.toString() ??
+          data['senderName']?.toString() ??
+          'Người dùng';
 
       if (convId != null && uid != null && uid != currentUser?.id) {
         if (typingUsers[convId] == nickname) return;
@@ -111,7 +269,8 @@ class ChatProvider extends ChangeNotifier {
       final convId = data['conversationId']?.toString();
       if (convId != null && typingUsers.containsKey(convId)) {
         typingUsers.remove(convId);
-        if (selectedConversation != null && selectedConversation!.id == convId) {
+        if (selectedConversation != null &&
+            selectedConversation!.id == convId) {
           isPartnerTyping = false;
         }
         notifyListeners();
@@ -162,10 +321,12 @@ class ChatProvider extends ChangeNotifier {
     _readSubscription = SocketService.onMessagesRead.listen((data) {
       final convId = data['conversationId']?.toString();
       final readBy = data['readBy']?.toString();
-      if (selectedConversation != null && (convId == null || selectedConversation!.id == convId)) {
+      if (selectedConversation != null &&
+          (convId == null || selectedConversation!.id == convId)) {
         bool updated = false;
         for (int i = 0; i < messages.length; i++) {
-          if (!messages[i].isRead && (readBy == null || messages[i].senderId != readBy)) {
+          if (!messages[i].isRead &&
+              (readBy == null || messages[i].senderId != readBy)) {
             messages[i] = messages[i].copyWith(isRead: true, isDelivered: true);
             updated = true;
           }
@@ -190,8 +351,10 @@ class ChatProvider extends ChangeNotifier {
       if (rawData is! Map) return;
       final data = Map<String, dynamic>.from(rawData);
       final convId = data['conversationId']?.toString();
-      final userId = data['targetUserId']?.toString() ?? data['userId']?.toString();
-      final nickname = data['newNickname']?.toString() ?? data['nickname']?.toString();
+      final userId =
+          data['targetUserId']?.toString() ?? data['userId']?.toString();
+      final nickname =
+          data['newNickname']?.toString() ?? data['nickname']?.toString();
       final rawNicknames = data['nicknames'];
       Map<String, String>? nicknamesMap;
       if (rawNicknames is Map) {
@@ -203,17 +366,25 @@ class ChatProvider extends ChangeNotifier {
         });
       }
       if (convId != null && userId != null) {
-        updateMemberNickname(convId, userId, nickname, newNicknamesMap: nicknamesMap);
+        updateMemberNickname(convId, userId, nickname,
+            newNicknamesMap: nicknamesMap);
       }
     };
 
-    _nicknameSubscription = SocketService.onNicknameChanged.listen(handleNicknameUpdate);
-    _conversationNicknamesSubscription = SocketService.onConversationNicknamesUpdated.listen(handleNicknameUpdate);
+    _nicknameSubscription =
+        SocketService.onNicknameChanged.listen(handleNicknameUpdate);
+    _conversationNicknamesSubscription = SocketService
+        .onConversationNicknamesUpdated
+        .listen(handleNicknameUpdate);
 
-    _profileUpdatedSubscription = SocketService.onUserProfileUpdated.listen((data) {
-      final updatedUserId = data['id']?.toString() ?? data['userId']?.toString();
+    _profileUpdatedSubscription =
+        SocketService.onUserProfileUpdated.listen((data) {
+      final updatedUserId =
+          data['id']?.toString() ?? data['userId']?.toString();
       debugPrint('👤 Real-time user profile update for ID $updatedUserId');
-      if (updatedUserId != null && currentUser != null && currentUser!.id == updatedUserId) {
+      if (updatedUserId != null &&
+          currentUser != null &&
+          currentUser!.id == updatedUserId) {
         final updatedMap = Map<String, dynamic>.from(currentUser!.toJson());
         if (data['fullName'] != null) updatedMap['fullName'] = data['fullName'];
         if (data['bio'] != null) updatedMap['bio'] = data['bio'];
@@ -227,7 +398,8 @@ class ChatProvider extends ChangeNotifier {
       notifyListeners();
     });
 
-    _themeSubscription = SocketService.onConversationThemeUpdated.listen((data) {
+    _themeSubscription =
+        SocketService.onConversationThemeUpdated.listen((data) {
       final convId = data['conversationId']?.toString();
       final theme = data['theme']?.toString();
       if (convId != null && theme != null) {
@@ -247,7 +419,8 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> updateConversationTheme(String conversationId, String theme) async {
+  Future<void> updateConversationTheme(
+      String conversationId, String theme) async {
     // 1. Phản hồi tức thời trên giao diện (Optimistic UI)
     _updateConversationThemeLocally(conversationId, theme);
 
@@ -279,13 +452,15 @@ class ChatProvider extends ChangeNotifier {
     final index = messages.indexWhere((m) => m.id == messageId);
     if (index != -1 && currentUser != null) {
       final msg = messages[index];
-      final Map<String, String> updatedReactions = Map<String, String>.from(msg.reactions);
+      final Map<String, String> updatedReactions =
+          Map<String, String>.from(msg.reactions);
       final userId = currentUser!.id;
 
       bool isSame(String? a, String? b) {
         if (a == null || b == null) return false;
         if (a == b) return true;
-        return a.replaceAll('\uFE0F', '').trim() == b.replaceAll('\uFE0F', '').trim();
+        return a.replaceAll('\uFE0F', '').trim() ==
+            b.replaceAll('\uFE0F', '').trim();
       }
 
       if (isSame(updatedReactions[userId], emoji)) {
@@ -303,7 +478,8 @@ class ChatProvider extends ChangeNotifier {
 
     // Emit socket event for real-time broadcast and DB persistence
     if (SocketService.isConnected) {
-      SocketService.emitReactMessage(messageId, selectedConversation!.id, emoji);
+      SocketService.emitReactMessage(
+          messageId, selectedConversation!.id, emoji);
     } else {
       // Call REST API fallback only when socket is disconnected
       ApiService.reactToMessage(messageId, emoji).catchError((e) {
@@ -336,83 +512,125 @@ class ChatProvider extends ChangeNotifier {
 
   final Set<String> _processedMessageIdsForUnread = {};
 
-  /// Cập nhật tin nhắn mới nhất trong danh sách đoạn chat hoàn toàn ở bộ nhớ (không cần gọi API getConversations)
-  void _updateLastMessageInConversation(MessageModel msg) {
-    if (msg.conversationId == null || msg.conversationId!.isEmpty) return;
+  bool _updateLastMessageInConversation(MessageModel msg,
+      {bool notify = true}) {
+    if (msg.conversationId == null || msg.conversationId!.isEmpty) return false;
     final idx = conversations.indexWhere((c) => c.id == msg.conversationId);
-    if (idx != -1) {
-      final old = conversations[idx];
-      final isFromSelf = (currentUser != null && msg.senderId != null && msg.senderId == currentUser!.id);
-      final isCurrentlySelected = (selectedConversation != null && selectedConversation!.id == old.id);
+    if (idx == -1) return false;
+    final old = conversations[idx];
+    final isFromSelf = (currentUser != null &&
+        msg.senderId != null &&
+        msg.senderId == currentUser!.id);
+    final isCurrentlySelected =
+        (selectedConversation != null && selectedConversation!.id == old.id);
 
-      int newUnreadCount = old.unreadCount;
-      if (isFromSelf || isCurrentlySelected) {
-        newUnreadCount = 0;
-      } else {
-        // Chỉ tăng +1 duy nhất một lần cho mỗi mã tin nhắn (tránh bị nhân bản do socket)
-        if (msg.id.isNotEmpty && !_processedMessageIdsForUnread.contains(msg.id)) {
-          _processedMessageIdsForUnread.add(msg.id);
-          if (_processedMessageIdsForUnread.length > 2000) {
-            _processedMessageIdsForUnread.remove(_processedMessageIdsForUnread.first);
-          }
-          newUnreadCount = old.unreadCount + 1;
-        }
+    int newUnreadCount = old.unreadCount;
+    if (isFromSelf || isCurrentlySelected) {
+      newUnreadCount = 0;
+    } else if (msg.id.isNotEmpty &&
+        !_processedMessageIdsForUnread.contains(msg.id)) {
+      _processedMessageIdsForUnread.add(msg.id);
+      if (_processedMessageIdsForUnread.length > 2000) {
+        _processedMessageIdsForUnread
+            .remove(_processedMessageIdsForUnread.first);
       }
-
-      final updatedConv = ConversationModel(
-        id: old.id,
-        name: old.name,
-        avatar: old.avatar,
-        type: old.type,
-        lastMessage: msg.content,
-        unreadCount: newUnreadCount,
-        updatedAt: msg.createdAt,
-        targetUserId: old.targetUserId,
-        members: old.members,
-      );
-      conversations.removeAt(idx);
-      conversations.insert(0, updatedConv);
-      notifyListeners();
+      newUnreadCount = old.unreadCount + 1;
     }
+
+    final updatedConv = ConversationModel(
+      id: old.id,
+      name: old.name,
+      avatar: old.avatar,
+      type: old.type,
+      lastMessage: msg.content,
+      unreadCount: newUnreadCount,
+      updatedAt: msg.createdAt,
+      targetUserId: old.targetUserId,
+      members: old.members,
+      theme: old.theme,
+      nicknames: old.nicknames,
+    );
+    if (old.lastMessage == updatedConv.lastMessage &&
+        old.unreadCount == updatedConv.unreadCount &&
+        old.updatedAt == updatedConv.updatedAt &&
+        idx == 0) {
+      return false;
+    }
+    conversations.removeAt(idx);
+    conversations.insert(0, updatedConv);
+    if (notify) notifyListeners();
+    return true;
+  }
+
+  bool _messagesEquivalent(MessageModel left, MessageModel right) {
+    if (left.id != right.id ||
+        left.content != right.content ||
+        left.type != right.type ||
+        left.senderId != right.senderId ||
+        left.imageUrl != right.imageUrl ||
+        left.videoUrl != right.videoUrl ||
+        left.audioUrl != right.audioUrl ||
+        left.replyMessageId != right.replyMessageId ||
+        left.status != right.status ||
+        left.clientTempId != right.clientTempId ||
+        left.createdAt != right.createdAt ||
+        left.isRead != right.isRead ||
+        left.isDelivered != right.isDelivered ||
+        left.isRecalled != right.isRecalled ||
+        left.isForwarded != right.isForwarded ||
+        left.reactions.length != right.reactions.length) {
+      return false;
+    }
+    for (final entry in left.reactions.entries) {
+      if (right.reactions[entry.key] != entry.value) return false;
+    }
+    return true;
   }
 
   /// Thêm tin nhắn real-time vào danh sách, tránh trùng lặp
-  void addRealtimeMessage(MessageModel msg) {
-    if (selectedConversation == null) return;
+  bool addRealtimeMessage(MessageModel msg, {bool notify = true}) {
+    if (selectedConversation == null) return false;
     if (msg.conversationId != null &&
         msg.conversationId!.isNotEmpty &&
         msg.conversationId != selectedConversation!.id) {
-      return;
+      return false;
     }
 
-    // Chống trùng lặp tin nhắn hệ thống (system message) có cùng nội dung trong vòng 5 giây
     if (msg.type == 'system') {
       final isDupSystem = messages.any((m) =>
           m.type == 'system' &&
-          (m.id == msg.id || (m.content == msg.content && m.createdAt.difference(msg.createdAt).inSeconds.abs() < 5)));
-      if (isDupSystem) return;
+          (m.id == msg.id ||
+              (m.content == msg.content &&
+                  m.createdAt.difference(msg.createdAt).inSeconds.abs() < 5)));
+      if (isDupSystem) return false;
     }
 
-    // Chống spam / trùng lặp cuộc gọi nhỡ (trong vòng 15 giây)
-    if (msg.type == 'missed_call' || msg.type == 'call' || msg.type == 'video_call') {
+    if (msg.type == 'missed_call' ||
+        msg.type == 'call' ||
+        msg.type == 'video_call') {
       final isDupCall = messages.any((m) =>
-          (m.type == 'missed_call' || m.type == 'call' || m.type == 'video_call') &&
+          (m.type == 'missed_call' ||
+              m.type == 'call' ||
+              m.type == 'video_call') &&
           m.conversationId == msg.conversationId &&
           m.createdAt.difference(msg.createdAt).inSeconds.abs() < 15);
-      if (isDupCall) return;
+      if (isDupCall) return false;
     }
 
-    // Kiểm tra trùng lặp (bao gồm cả optimistic message và socket relay message)
     final existingIdx = messages.indexWhere((m) => m.id == msg.id);
     if (existingIdx != -1) {
-      // Cập nhật tin nhắn đã có (thay thế optimistic/relay bằng real)
+      if (_messagesEquivalent(messages[existingIdx], msg)) return false;
       messages[existingIdx] = msg;
     } else {
-      // Kiểm tra xem có phải tin nhắn đã có dạng tạm (optimistic-* hoặc rt-*)
       final tempIdx = messages.indexWhere((m) =>
-          (m.id.startsWith('optimistic-') || m.id.startsWith('rt-')) &&
-          m.content == msg.content &&
-          m.senderId == msg.senderId);
+          ((msg.clientTempId != null &&
+                  msg.clientTempId!.isNotEmpty &&
+                  (m.id == msg.clientTempId ||
+                      m.clientTempId == msg.clientTempId)) ||
+              ((m.id.startsWith('optimistic-') || m.id.startsWith('rt-')) &&
+                  m.senderId == msg.senderId &&
+                  (m.content == msg.content ||
+                      (m.type == msg.type && m.type != 'text')))));
       if (tempIdx != -1) {
         messages[tempIdx] = msg;
       } else {
@@ -420,14 +638,12 @@ class ChatProvider extends ChangeNotifier {
       }
     }
 
-    if (selectedConversation != null) {
-      _cacheMessages(selectedConversation!.id, messages);
+    _cacheMessages(selectedConversation!.id, messages);
+    if (notify) {
+      notifyListeners();
+      onNewMessageReceived?.call();
     }
-
-    notifyListeners();
-
-    // Gọi callback để UI cuộn xuống
-    onNewMessageReceived?.call();
+    return true;
   }
 
   Future<void> setCurrentUser(Map<String, dynamic> userJson) async {
@@ -445,6 +661,8 @@ class ChatProvider extends ChangeNotifier {
     _sessionRevision++;
     _messageLoadRevision++;
     _messageRequests.clear();
+    _messageCacheTimers.values.forEach((timer) => timer.cancel());
+    _messageCacheTimers.clear();
     _messagesCache.clear();
     _processedMessageIdsForUnread.clear();
     typingUsers.clear();
@@ -468,14 +686,22 @@ class ChatProvider extends ChangeNotifier {
     final session = _sessionRevision;
     try {
       final prefs = await SharedPreferences.getInstance();
+      _sharedPreferences = prefs;
       if (_disposed || session != _sessionRevision) return;
       final cachedStr = prefs.getString('cached_conversations_$userId');
       if (cachedStr != null && cachedStr.isNotEmpty && conversations.isEmpty) {
         final decoded = jsonDecode(cachedStr);
         if (decoded is List) {
           conversations = decoded
-              .map((c) => ConversationModel.fromJson(c, currentUserId: currentUser?.id))
+              .map((c) =>
+                  ConversationModel.fromJson(c, currentUserId: currentUser?.id))
               .toList();
+          for (final c in conversations.take(8)) {
+            final msgs = _loadLocalCachedMessages(c.id);
+            if (msgs != null && msgs.isNotEmpty) {
+              _messagesCache[c.id] = msgs;
+            }
+          }
           notifyListeners();
         }
       }
@@ -488,7 +714,8 @@ class ChatProvider extends ChangeNotifier {
   Future<void> fetchConversations({bool showLoading = true}) async {
     // Debounce: Nếu đang fetch hoặc vừa fetch trong vòng 2.5s thì bỏ qua
     if (_isFetchingConversations) return;
-    if (_lastFetchTime != null && DateTime.now().difference(_lastFetchTime!).inMilliseconds < 2500) {
+    if (_lastFetchTime != null &&
+        DateTime.now().difference(_lastFetchTime!).inMilliseconds < 2500) {
       return;
     }
     final session = _sessionRevision;
@@ -521,7 +748,8 @@ class ChatProvider extends ChangeNotifier {
         final parsed = rawList
             .map((c) {
               try {
-                return ConversationModel.fromJson(c, currentUserId: currentUser?.id);
+                return ConversationModel.fromJson(c,
+                    currentUserId: currentUser?.id);
               } catch (err) {
                 debugPrint('Lỗi parse 1 conversation: $err');
                 return null;
@@ -535,8 +763,18 @@ class ChatProvider extends ChangeNotifier {
           conversations = parsed;
           try {
             final prefs = await SharedPreferences.getInstance();
-            if (!_disposed && session == _sessionRevision && currentUser != null) {
-              await prefs.setString('cached_conversations_${currentUser!.id}', jsonEncode(rawList));
+            _sharedPreferences = prefs;
+            if (!_disposed &&
+                session == _sessionRevision &&
+                currentUser != null) {
+              await prefs.setString('cached_conversations_${currentUser!.id}',
+                  jsonEncode(rawList));
+            }
+            for (final c in conversations.take(8)) {
+              final msgs = _loadLocalCachedMessages(c.id);
+              if (msgs != null && msgs.isNotEmpty) {
+                _messagesCache[c.id] = msgs;
+              }
             }
           } catch (_) {}
         }
@@ -548,8 +786,53 @@ class ChatProvider extends ChangeNotifier {
         _isFetchingConversations = false;
         isLoadingConversations = false;
         notifyListeners();
+        _preloadTopConversationsSilently();
       }
     }
+  }
+
+  bool _isPreloadingTopConversations = false;
+
+  Future<void> _preloadTopConversationsSilently() async {
+    if (_isPreloadingTopConversations || _disposed || conversations.isEmpty) return;
+    _isPreloadingTopConversations = true;
+    final session = _sessionRevision;
+    // Delay 300ms so UI has finished initial layout without interference
+    await Future.delayed(const Duration(milliseconds: 300));
+    if (_disposed || session != _sessionRevision) {
+      _isPreloadingTopConversations = false;
+      return;
+    }
+    final topList = conversations.take(5).toList();
+    await Future.wait(topList.map((conv) async {
+      if (_disposed || session != _sessionRevision) return;
+      final cached = _messagesCache[conv.id];
+      if (cached != null && cached.isNotEmpty) return;
+      try {
+        final res = await ApiService.getMessages(conv.id, limit: 50);
+        if (_disposed || session != _sessionRevision) return;
+        final rawData = res['data'] as List? ?? [];
+        final fetched = rawData
+            .map((m) {
+              if (m is Map<String, dynamic>) return MessageModel.fromJson(m);
+              if (m is Map) return MessageModel.fromJson(Map<String, dynamic>.from(m));
+              return null;
+            })
+            .whereType<MessageModel>()
+            .toList()
+          ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+        if (fetched.isNotEmpty) {
+          _cacheMessages(conv.id, fetched);
+          if (selectedConversation?.id == conv.id && messages.isEmpty) {
+            messages = List.from(fetched);
+            isLoadingMessages = false;
+            notifyListeners();
+            onConversationSelected?.call();
+          }
+        }
+      } catch (_) {}
+    }));
+    _isPreloadingTopConversations = false;
   }
 
   String? selectedConversationId;
@@ -561,7 +844,8 @@ class ChatProvider extends ChangeNotifier {
   }
 
   void clearSelectedConversation() {
-    if (selectedConversation != null) _cacheMessages(selectedConversation!.id, messages);
+    if (selectedConversation != null)
+      _cacheMessages(selectedConversation!.id, messages);
     _messageLoadRevision++;
     isLoadingMessages = false;
     isPartnerTyping = false;
@@ -573,16 +857,25 @@ class ChatProvider extends ChangeNotifier {
   }
 
   Future<void> selectConversation(ConversationModel conv) async {
-    if (selectedConversation != null) _cacheMessages(selectedConversation!.id, messages);
+    final previousId = selectedConversation?.id;
+    final isSameConversation = previousId == conv.id;
+    if (!isSameConversation && selectedConversation != null) {
+      _cacheMessages(selectedConversation!.id, messages);
+    }
     final revision = ++_messageLoadRevision;
     final session = _sessionRevision;
     selectedConversation = conv;
-    isPartnerTyping = typingUsers.containsKey(conv.id);
+    final nextTyping = typingUsers.containsKey(conv.id);
+    final selectionChanged = !isSameConversation ||
+        isPartnerTyping != nextTyping ||
+        replyingToMessage != null;
+    isPartnerTyping = nextTyping;
     replyingToMessage = null;
     selectedConversationId = conv.id;
 
     // Đặt unreadCount của đoạn chat được chọn về 0 lập tức ở local
     final idx = conversations.indexWhere((c) => c.id == conv.id);
+    var unreadChanged = false;
     if (idx != -1) {
       final old = conversations[idx];
       if (old.unreadCount > 0) {
@@ -596,39 +889,91 @@ class ChatProvider extends ChangeNotifier {
           updatedAt: old.updatedAt,
           targetUserId: old.targetUserId,
           members: old.members,
+          theme: old.theme,
+          nicknames: old.nicknames,
         );
+        unreadChanged = true;
       }
     }
 
-    // ⚡ INSTANT DISPLAY: Nếu đã có cache tin nhắn của cuộc trò chuyện này, hiển thị ngay lập tức (0ms)
-    if (_messagesCache.containsKey(conv.id) && _messagesCache[conv.id]!.isNotEmpty) {
-      messages = List.from(_messagesCache[conv.id]!);
-      isLoadingMessages = false;
-    } else {
-      isLoadingMessages = true;
-      messages = [];
+    // ⚡ TẢI NGAY TỪ BỘ NHỚ ĐỆM (RAM HOẶC LOCAL STORAGE) ĐỂ MỞ CHAT TỨC THÌ TRONG 0MS
+    var cachedMessages = _messagesCache[conv.id];
+    if (cachedMessages == null || cachedMessages.isEmpty) {
+      final localMsgs = _loadLocalCachedMessages(conv.id);
+      if (localMsgs != null && localMsgs.isNotEmpty) {
+        _cacheMessages(conv.id, localMsgs);
+        cachedMessages = localMsgs;
+      }
     }
-    notifyListeners();
 
-    // Báo cho server socket & REST API biết người dùng đã xem tất cả tin nhắn trong cuộc trò chuyện này
-    if (currentUser != null) {
-      SocketService.markMessagesRead(conv.id, currentUser!.id);
+    final hasCachedMessages =
+        cachedMessages != null && cachedMessages.isNotEmpty;
+    final previousLoading = isLoadingMessages;
+    if (!isSameConversation) {
+      if (hasCachedMessages) {
+        messages = List.from(cachedMessages!);
+        isLoadingMessages = false;
+      } else if (conv.lastMessage != null &&
+          conv.lastMessage!.trim().isNotEmpty) {
+        // Hiển thị ngay tin nhắn mới nhất dạng Preview để giao diện mở tức thì, không bị đừng/đơ 2-3s
+        messages = [
+          MessageModel(
+            id: 'preview_${conv.id}',
+            conversationId: conv.id,
+            senderId: conv.targetUserId ?? '',
+            type: 'text',
+            content: conv.lastMessage!,
+            createdAt: conv.updatedAt ?? DateTime.now(),
+            isRead: true,
+            isDelivered: true,
+          )
+        ];
+        isLoadingMessages = false;
+      } else {
+        isLoadingMessages = true;
+        messages = [];
+      }
     }
-    ApiService.markAsRead(conv.id).catchError((_) {});
+    final initialStateChanged = selectionChanged ||
+        unreadChanged ||
+        (!isSameConversation &&
+            (previousLoading != isLoadingMessages ||
+                messages.isNotEmpty ||
+                hasCachedMessages));
+    if (initialStateChanged) notifyListeners();
+
+    // Chỉ gửi lệnh Đã đọc đến máy chủ KHI THỰC SỰ có tin nhắn chưa đọc (tránh spam lock DB)
+    if (currentUser != null && unreadChanged) {
+      if (SocketService.isConnected) {
+        SocketService.markMessagesRead(conv.id, currentUser!.id);
+      } else {
+        ApiService.markAsRead(conv.id).catchError((_) {});
+      }
+    }
 
     // Join vào room của conversation để nhận tin nhắn real-time
     SocketService.joinRoom(conv.id);
 
-    final messagesAtStart = {for (final message in messages) message.id: message};
+    final messagesAtStart = {
+      for (final message in messages) message.id: message
+    };
+    var messagesUpdated = false;
     try {
       final res = await _loadMessages(conv.id);
-      if (_disposed || session != _sessionRevision || revision != _messageLoadRevision || selectedConversation?.id != conv.id) return;
+      if (_disposed ||
+          session != _sessionRevision ||
+          revision != _messageLoadRevision ||
+          selectedConversation?.id != conv.id) return;
       final rawData = res['data'] as List? ?? [];
-      final fetched = rawData.map((m) {
-        if (m is Map<String, dynamic>) return MessageModel.fromJson(m);
-        if (m is Map) return MessageModel.fromJson(Map<String, dynamic>.from(m));
-        return null;
-      }).whereType<MessageModel>().toList();
+      final fetched = rawData
+          .map((m) {
+            if (m is Map<String, dynamic>) return MessageModel.fromJson(m);
+            if (m is Map)
+              return MessageModel.fromJson(Map<String, dynamic>.from(m));
+            return null;
+          })
+          .whereType<MessageModel>()
+          .toList();
 
       final List<MessageModel> cleanFetched = [];
       final systemTimesByContent = <String, List<DateTime>>{};
@@ -636,38 +981,59 @@ class ChatProvider extends ChangeNotifier {
       for (final m in fetched) {
         if (m.type == 'system') {
           final times = systemTimesByContent.putIfAbsent(m.content, () => []);
-          final hasDup = times.any((time) => time.difference(m.createdAt).inSeconds.abs() < 5);
-          if (hasDup) continue;
-          times.add(m.createdAt);
+          if (_hasNearbyTimestamp(times, m.createdAt, 5)) continue;
+          _insertTimestamp(times, m.createdAt);
         }
-        if (m.type == 'missed_call' || m.type == 'call' || m.type == 'video_call') {
-          final hasDupCall = callTimes.any((time) => time.difference(m.createdAt).inSeconds.abs() < 15);
-          if (hasDupCall) continue;
-          callTimes.add(m.createdAt);
+        if (m.type == 'missed_call' ||
+            m.type == 'call' ||
+            m.type == 'video_call') {
+          if (_hasNearbyTimestamp(callTimes, m.createdAt, 15)) continue;
+          _insertTimestamp(callTimes, m.createdAt);
         }
         cleanFetched.add(m);
       }
 
-      // Preserve messages/receipts/reactions received while the HTTP request ran.
+      final fetchedTimesBySenderAndContent =
+          <String, Map<String, List<DateTime>>>{};
+      for (final item in cleanFetched) {
+        final times = fetchedTimesBySenderAndContent
+            .putIfAbsent(item.senderId ?? '', () => {})
+            .putIfAbsent(item.content, () => []);
+        _insertTimestamp(times, item.createdAt);
+      }
       final merged = {for (final message in cleanFetched) message.id: message};
       for (final message in messages) {
         if (!identical(messagesAtStart[message.id], message) ||
-            message.id.startsWith('optimistic-') || message.id.startsWith('rt-')) {
-          final temporary = message.id.startsWith('optimistic-') || message.id.startsWith('rt-');
-          final acknowledged = temporary && cleanFetched.any((item) =>
-              item.senderId == message.senderId && item.content == message.content &&
-              item.createdAt.difference(message.createdAt).inSeconds.abs() < 30);
+            message.id.startsWith('optimistic-') ||
+            message.id.startsWith('rt-')) {
+          final temporary = message.id.startsWith('optimistic-') ||
+              message.id.startsWith('rt-');
+          final matchingTimes =
+              fetchedTimesBySenderAndContent[message.senderId ?? '']
+                  ?[message.content];
+          final acknowledged = temporary &&
+              matchingTimes != null &&
+              _hasNearbyTimestamp(matchingTimes, message.createdAt, 30);
           if (!acknowledged) merged[message.id] = message;
         }
       }
-      messages = merged.values.toList()..sort((a, b) => a.createdAt.compareTo(b.createdAt));
-      _cacheMessages(conv.id, messages);
+      final newMessages = merged.values.toList()
+        ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      _cacheMessages(conv.id, newMessages);
+      final hasRealDifferences = newMessages.length != messagesAtStart.length ||
+          !newMessages.every((m) => identical(messagesAtStart[m.id], m) || _messagesEquivalent(messagesAtStart[m.id] ?? m, m));
+      messages = newMessages;
+      messagesUpdated = hasRealDifferences;
     } catch (e) {
       debugPrint('Error fetching messages: $e');
     } finally {
-      if (!_disposed && session == _sessionRevision && revision == _messageLoadRevision && selectedConversation?.id == conv.id) {
+      if (!_disposed &&
+          session == _sessionRevision &&
+          revision == _messageLoadRevision &&
+          selectedConversation?.id == conv.id) {
+        final wasLoading = isLoadingMessages;
         isLoadingMessages = false;
-        notifyListeners();
+        if (wasLoading || messagesUpdated) notifyListeners();
         if (messagesAtStart.isEmpty) onConversationSelected?.call();
       }
     }
@@ -683,12 +1049,14 @@ class ChatProvider extends ChangeNotifier {
       final res = await ApiService.createConversation(receiverId);
       final convData = res['data'];
       if (convData is Map<String, dynamic>) {
-        final convId = convData['id']?.toString() ?? convData['conversationId']?.toString();
+        final convId = convData['id']?.toString() ??
+            convData['conversationId']?.toString();
         await fetchConversations();
         if (convId != null) {
           final found = conversations.firstWhere(
             (c) => c.id == convId,
-            orElse: () => ConversationModel.fromJson(convData, currentUserId: currentUser?.id),
+            orElse: () => ConversationModel.fromJson(convData,
+                currentUserId: currentUser?.id),
           );
           selectConversation(found);
         }
@@ -723,7 +1091,7 @@ class ChatProvider extends ChangeNotifier {
 
     messages.add(optMsg);
     _cacheMessages(conversation.id, messages);
-    _updateLastMessageInConversation(optMsg);
+    _updateLastMessageInConversation(optMsg, notify: false);
     notifyListeners();
     onNewMessageReceived?.call();
 
@@ -754,7 +1122,8 @@ class ChatProvider extends ChangeNotifier {
       if (msgData is Map<String, dynamic>) {
         final realMsg = MessageModel.fromJson(msgData);
         final targetMessages = selectedConversation?.id == conversation.id
-            ? messages : (_messagesCache[conversation.id] ?? <MessageModel>[]);
+            ? messages
+            : (_messagesCache[conversation.id] ?? <MessageModel>[]);
         final idx = targetMessages.indexWhere((m) => m.id == optId);
         final realIdx = targetMessages.indexWhere((m) => m.id == realMsg.id);
         if (realIdx != -1) {
@@ -766,7 +1135,7 @@ class ChatProvider extends ChangeNotifier {
           targetMessages.add(realMsg);
         }
         _cacheMessages(conversation.id, targetMessages);
-        _updateLastMessageInConversation(realMsg);
+        _updateLastMessageInConversation(realMsg, notify: false);
         notifyListeners();
       }
     } catch (e) {
@@ -780,7 +1149,8 @@ class ChatProvider extends ChangeNotifier {
       if (success) {
         _messagesCache.remove(conversationId);
         conversations.removeWhere((c) => c.id == conversationId);
-        if (selectedConversation != null && selectedConversation!.id == conversationId) {
+        if (selectedConversation != null &&
+            selectedConversation!.id == conversationId) {
           clearSelectedConversation();
         }
         _messagesCache.remove(conversationId);
@@ -793,7 +1163,8 @@ class ChatProvider extends ChangeNotifier {
     return false;
   }
 
-  void updateUserOnlineStatus(String userId, bool isOnline, {DateTime? lastActive}) {
+  void updateUserOnlineStatus(String userId, bool isOnline,
+      {DateTime? lastActive}) {
     bool updated = false;
     for (int i = 0; i < conversations.length; i++) {
       final conv = conversations[i];
@@ -836,8 +1207,11 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> updateNickname(String conversationId, String userId, String? nickname) async {
-    final cleanNick = (nickname != null && nickname.trim().isNotEmpty) ? nickname.trim() : null;
+  Future<bool> updateNickname(
+      String conversationId, String userId, String? nickname) async {
+    final cleanNick = (nickname != null && nickname.trim().isNotEmpty)
+        ? nickname.trim()
+        : null;
 
     // 1. Phản hồi tức thì trên UI (Optimistic UI)
     updateMemberNickname(conversationId, userId, cleanNick);
@@ -846,18 +1220,24 @@ class ChatProvider extends ChangeNotifier {
     SocketService.emitUpdateNickname(conversationId, userId, cleanNick);
 
     // 3. Gọi REST API song song để lưu DB
-    final success = await ApiService.updateNickname(conversationId, userId, cleanNick);
+    final success =
+        await ApiService.updateNickname(conversationId, userId, cleanNick);
     return success;
   }
 
-  void updateMemberNickname(String conversationId, String userId, String? nickname, {Map<String, String>? newNicknamesMap}) {
+  void updateMemberNickname(
+      String conversationId, String userId, String? nickname,
+      {Map<String, String>? newNicknamesMap}) {
     bool updated = false;
     for (int i = 0; i < conversations.length; i++) {
       if (conversations[i].id == conversationId) {
         final conv = conversations[i];
-        final cleanNickname = (nickname != null && nickname.trim().isNotEmpty) ? nickname.trim() : null;
+        final cleanNickname = (nickname != null && nickname.trim().isNotEmpty)
+            ? nickname.trim()
+            : null;
 
-        Map<String, String> updatedNicknames = Map<String, String>.from(conv.nicknames ?? {});
+        Map<String, String> updatedNicknames =
+            Map<String, String>.from(conv.nicknames ?? {});
         if (newNicknamesMap != null) {
           updatedNicknames = Map<String, String>.from(newNicknamesMap);
         } else {
@@ -887,14 +1267,17 @@ class ChatProvider extends ChangeNotifier {
 
         String newConvName = conv.name;
         if (conv.type == 'private') {
-          final partnerId = conv.targetUserId ?? (memberIndex != -1 ? updatedMembers[memberIndex].id : null);
+          final partnerId = conv.targetUserId ??
+              (memberIndex != -1 ? updatedMembers[memberIndex].id : null);
           if (partnerId != null) {
-            if (updatedNicknames.containsKey(partnerId) && updatedNicknames[partnerId]!.isNotEmpty) {
+            if (updatedNicknames.containsKey(partnerId) &&
+                updatedNicknames[partnerId]!.isNotEmpty) {
               newConvName = updatedNicknames[partnerId]!;
             } else {
               final partner = updatedMembers.firstWhere(
                 (m) => m.id == partnerId,
-                orElse: () => UserModel(id: partnerId, username: '', fullName: ''),
+                orElse: () =>
+                    UserModel(id: partnerId, username: '', fullName: ''),
               );
               if (partner.fullName.isNotEmpty) {
                 newConvName = partner.fullName;
@@ -950,6 +1333,10 @@ class ChatProvider extends ChangeNotifier {
     _disposed = true;
     _sessionRevision++;
     _messageLoadRevision++;
+    for (final timer in _messageCacheTimers.values) {
+      timer.cancel();
+    }
+    _messageCacheTimers.clear();
     _conversationNicknamesSubscription?.cancel();
     _socketSubscription?.cancel();
     _recalledSubscription?.cancel();

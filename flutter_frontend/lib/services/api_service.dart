@@ -41,6 +41,14 @@ class ApiService {
     return '$cleanBase$cleanPath';
   }
 
+  static String formatThumbnailUrl(String? url, {int width = 450}) {
+    if (url == null || url.trim().isEmpty) return '';
+    final trimmed = url.trim();
+    if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) return trimmed;
+    final cleanBase = baseUrl.replaceAll('/api', '');
+    return '$cleanBase/api/chat/thumbnail?url=${Uri.encodeComponent(trimmed)}&w=$width';
+  }
+
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('authToken');

@@ -21,7 +21,13 @@
   <link rel="preload" href="main.dart.js?v=__APP_BUILD_VERSION__" as="script">
 
   <link rel="preload" href="/tho_fi_logo_transparent.png" as="image">
-  <!-- Reaction emoji load when needed, leaving startup bandwidth to the app. -->
+  <!-- Preload Reaction Emojis for Instant Zero-Lag Reaction & Chat Render -->
+  <link rel="preload" href="/assets/assets/emojis/2764-fe0f.png" as="image">
+  <link rel="preload" href="/assets/assets/emojis/1f44d.png" as="image">
+  <link rel="preload" href="/assets/assets/emojis/1f606.png" as="image">
+  <link rel="preload" href="/assets/assets/emojis/1f62e.png" as="image">
+  <link rel="preload" href="/assets/assets/emojis/1f622.png" as="image">
+  <link rel="preload" href="/assets/assets/emojis/1f621.png" as="image">
   <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" as="style">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap">
@@ -2893,13 +2899,20 @@
           }
         });
       }
+      var _callAudioUnlocked = false;
       window._bindCallAudioUnlockListeners = function () {
+        if (_callAudioUnlocked) return;
+        _callAudioUnlocked = true;
+        try {
+          window.removeEventListener('click', window._bindCallAudioUnlockListeners);
+          window.removeEventListener('touchstart', window._bindCallAudioUnlockListeners);
+        } catch (_) {}
         if (window._callAudioEngine && window._callAudioEngine.unlockCallAudio) {
           window._callAudioEngine.unlockCallAudio();
         }
       };
-      window.addEventListener('click', window._bindCallAudioUnlockListeners, {passive: true});
-      window.addEventListener('touchstart', window._bindCallAudioUnlockListeners, {passive: true});
+      window.addEventListener('click', window._bindCallAudioUnlockListeners, {passive: true, once: true});
+      window.addEventListener('touchstart', window._bindCallAudioUnlockListeners, {passive: true, once: true});
     })();
   </script>
 
@@ -3041,13 +3054,15 @@
           console.log('🛑 [CallAudioEngine] Đã hủy toàn bộ luồng âm thanh sau khi tắt máy');
         },
                 unlockCallAudio: function () {
+          if (this._isUnlocked) return;
+          this._isUnlocked = true;
           try {
             var ctx = getAudioCtx();
             if (ctx && ctx.state === 'suspended') {
               ctx.resume().catch(function () {});
             }
 
-            // 🌟 TẠO VÀ MỞ KHÓA #remoteAudioPlayer NGAY TRONG LÚC USER BẤM NÚT (TRUSTED USER GESTURE)
+            // 🌟 TẠO VÀ MỞ KHÓA #remoteAudioPlayer DUY NHẤT 1 LẦN KHI USER BẤM NÚT (TRUSTED USER GESTURE)
             var ra = document.getElementById('remoteAudioPlayer');
             if (!ra) {
               ra = document.createElement('audio');
@@ -3061,8 +3076,8 @@
             ra.muted = false;
             ra.volume = 1.0;
 
-            // Kích hoạt audio bằng data URI wav im lặng (chỉ 44 bytes) để trình duyệt cấp phép vĩnh viễn
-            if (!ra.srcObject) {
+            // Kích hoạt audio bằng data URI wav im lặng (chỉ 44 bytes) duy nhất 1 lần để cấp phép
+            if (!ra.srcObject && !ra.src) {
               ra.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
               var p = ra.play();
               if (p && p.catch) p.catch(function () {});

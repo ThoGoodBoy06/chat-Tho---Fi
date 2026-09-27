@@ -1,6 +1,6 @@
 const prisma = require("../prisma");
 const { v4: uuidv4 } = require("uuid");
-const { sendPushNotification } = require("../controllers/chat.controller");
+const { sendPushNotification, clearConversationMessagesCache } = require("../controllers/chat.controller");
 
 const jwt = require("jsonwebtoken");
 
@@ -569,6 +569,7 @@ module.exports = (io) => {
         if (!data || !data.conversationId) return;
         const { conversationId, content, type, tempId, senderId, senderName, replyMessageId, receiverId, memberIds } = data;
         const uid = senderId || socket.userId;
+        clearConversationMessagesCache(conversationId);
 
         // Tự động nhận diện nếu content là ảnh hoặc video
         const isImg = type === "image" || (typeof content === "string" && (
@@ -1369,6 +1370,7 @@ module.exports = (io) => {
         });
 
         const targetConvId = conversationId || message.conversationId;
+        clearConversationMessagesCache(targetConvId);
 
         // Phát tín hiệu tới tất cả client trong phòng chat
         io.to(targetConvId).emit("message_reacted", {
@@ -1397,6 +1399,7 @@ module.exports = (io) => {
 
         const targetConvId = conversationId;
         if (targetConvId) {
+          clearConversationMessagesCache(targetConvId);
           io.to(targetConvId).emit("message_recalled", {
             messageId,
             conversationId: targetConvId,

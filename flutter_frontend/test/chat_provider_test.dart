@@ -49,9 +49,12 @@ class _ApiHarness {
 
 UserModel _user(String id) => UserModel(id: id, username: id, fullName: id);
 
-ConversationModel _conversation(String id) => ConversationModel(id: id, name: id);
+ConversationModel _conversation(String id) =>
+    ConversationModel(id: id, name: id);
 
-Map<String, dynamic> _message(String id, String conversationId, {int second = 0}) => {
+Map<String, dynamic> _message(String id, String conversationId,
+        {int second = 0}) =>
+    {
       'id': id,
       'conversationId': conversationId,
       'senderId': 'partner',
@@ -81,10 +84,99 @@ void main() {
   tearDown(() {
     if (!disposed) provider.dispose();
     SocketService.disconnect();
-    expect(api.unexpected, isEmpty, reason: 'All test HTTP traffic must be mocked.');
+    expect(api.unexpected, isEmpty,
+        reason: 'All test HTTP traffic must be mocked.');
   });
 
-  test('a slow previous conversation cannot replace the current conversation', () async {
+  test('realtime message changes notify listeners once', () async {
+    provider.selectedConversation = _conversation('a');
+    provider.selectedConversationId = 'a';
+    provider.conversations = [_conversation('a')];
+    var notifications = 0;
+    provider.addListener(() => notifications++);
+
+    provider
+        .addRealtimeMessage(MessageModel.fromJson(_message('live-once', 'a')));
+
+    expect(notifications, 1);
+    expect(_messageIds(provider), ['live-once']);
+  });
+
+  test('large inline media is not written into the local message cache',
+      () async {
+    provider.selectedConversation = _conversation('a');
+    provider.selectedConversationId = 'a';
+    final payload = 'data:image/png;base64,${'A' * 40000}';
+
+    provider.addRealtimeMessage(MessageModel(
+      id: 'large-media',
+      conversationId: 'a',
+      senderId: 'partner',
+      type: 'image',
+      content: payload,
+      imageUrl: payload,
+      createdAt: DateTime.utc(2026, 1, 1),
+    ));
+    await Future<void>.delayed(const Duration(milliseconds: 350));
+
+    expect(provider.messages.single.content, payload);
+    final prefs = await SharedPreferences.getInstance();
+    final cached = prefs.getString('cached_msgs_a');
+    expect(cached, isNull);
+    expect(cached ?? '', isNot(contains(payload)));
+  });
+
+  test(
+      'reselecting the current conversation avoids a redundant state notification',
+      () async {
+    final pending = api.enqueue('/api/chat/a/messages');
+    final firstLoad = provider.selectConversation(_conversation('a'));
+    await pending.started.future;
+    pending.complete([_message('a-1', 'a')]);
+    await firstLoad;
+
+    var notifications = 0;
+    provider.addListener(() => notifications++);
+    final refresh = api.enqueue('/api/chat/a/messages');
+    final reselect = provider.selectConversation(_conversation('a'));
+    await refresh.started.future;
+    expect(notifications, 0);
+
+    refresh.complete([_message('a-1', 'a')]);
+    await reselect;
+    expect(notifications, 1);
+  });
+
+  test(
+      'selecting a conversation preserves theme and nicknames while clearing unread',
+      () async {
+    final initial = api.enqueue('/api/chat/a/messages');
+    final loading = provider.selectConversation(_conversation('a'));
+    await initial.started.future;
+    initial.complete([_message('a-1', 'a')]);
+    await loading;
+    provider.conversations = [
+      ConversationModel(
+        id: 'a',
+        name: 'a',
+        unreadCount: 3,
+        theme: 'ocean',
+        nicknames: const {'partner': 'Bạn chat'},
+      )
+    ];
+
+    final refresh = api.enqueue('/api/chat/a/messages');
+    final selecting = provider.selectConversation(_conversation('a'));
+    expect(provider.conversations.single.unreadCount, 0);
+    expect(provider.conversations.single.theme, 'ocean');
+    expect(provider.conversations.single.nicknames, {'partner': 'Bạn chat'});
+    await refresh.started.future;
+    refresh.complete([_message('a-1', 'a')]);
+    await selecting;
+  });
+
+  test('a slow previous conversation cannot replace the current conversation',
+      () async {
     final a = api.enqueue('/api/chat/a/messages');
     final b = api.enqueue('/api/chat/b/messages');
     final loadingA = provider.selectConversation(_conversation('a'));
@@ -102,7 +194,8 @@ void main() {
     expect(provider.isLoadingMessages, isFalse);
   });
 
-  test('rapidly reopening a loading conversation reuses its pending request', () async {
+  test('rapidly reopening a loading conversation reuses its pending request',
+      () async {
     final a = api.enqueue('/api/chat/a/messages');
     final b = api.enqueue('/api/chat/b/messages');
     final firstA = provider.selectConversation(_conversation('a'));
@@ -120,7 +213,8 @@ void main() {
     expect(_messageIds(provider), ['a-1']);
   });
 
-  test('logout prevents a late message response from restoring old state', () async {
+  test('logout prevents a late message response from restoring old state',
+      () async {
     final pending = api.enqueue('/api/chat/a/messages');
     final loading = provider.selectConversation(_conversation('a'));
     await pending.started.future;
@@ -136,19 +230,62 @@ void main() {
     expect(provider.isLoadingMessages, isFalse);
   });
 
-  test('a message received during refresh survives an older HTTP snapshot', () async {
+  test('a message received during refresh survives an older HTTP snapshot',
+      () async {
     final pending = api.enqueue('/api/chat/a/messages');
     final loading = provider.selectConversation(_conversation('a'));
     await pending.started.future;
 
-    provider.addRealtimeMessage(MessageModel.fromJson(_message('live', 'a', second: 2)));
+    provider.addRealtimeMessage(
+        MessageModel.fromJson(_message('live', 'a', second: 2)));
     pending.complete([_message('old', 'a')]);
     await loading;
 
     expect(_messageIds(provider), ['old', 'live']);
   });
 
-  test('cached messages appear synchronously and survive a failed refresh', () async {
+  test(
+      'an optimistic message is acknowledged by sender, content, and time window',
+      () async {
+    final pending = api.enqueue('/api/chat/a/messages');
+    final loading = provider.selectConversation(_conversation('a'));
+    await pending.started.future;
+
+    provider.addRealtimeMessage(MessageModel.fromJson({
+      ..._message('optimistic-1', 'a', second: 10),
+      'senderId': 'alice',
+      'content': 'Hello',
+    }));
+    pending.complete([
+      {
+        ..._message('saved-1', 'a', second: 20),
+        'senderId': 'alice',
+        'content': 'Hello'
+      },
+    ]);
+    await loading;
+
+    expect(_messageIds(provider), ['saved-1']);
+  });
+
+  test('an unmatched optimistic message survives history refresh', () async {
+    final pending = api.enqueue('/api/chat/a/messages');
+    final loading = provider.selectConversation(_conversation('a'));
+    await pending.started.future;
+
+    provider.addRealtimeMessage(MessageModel.fromJson({
+      ..._message('optimistic-1', 'a', second: 10),
+      'senderId': 'alice',
+      'content': 'Unsent yet',
+    }));
+    pending.complete([_message('other', 'a', second: 20)]);
+    await loading;
+
+    expect(_messageIds(provider), ['optimistic-1', 'other']);
+  });
+
+  test('cached messages appear synchronously and survive a failed refresh',
+      () async {
     final initial = api.enqueue('/api/chat/a/messages');
     final firstLoad = provider.selectConversation(_conversation('a'));
     await initial.started.future;
@@ -168,7 +305,8 @@ void main() {
     expect(provider.isLoadingMessages, isFalse);
   });
 
-  test('a receipt or reaction received during refresh is not rolled back', () async {
+  test('a receipt or reaction received during refresh is not rolled back',
+      () async {
     final initial = api.enqueue('/api/chat/a/messages');
     final firstLoad = provider.selectConversation(_conversation('a'));
     await initial.started.future;
@@ -191,7 +329,8 @@ void main() {
     expect(provider.messages.single.reactions, {'alice': 'like'});
   });
 
-  test('logout clears memory cache before another account opens the same chat', () async {
+  test('logout clears memory cache before another account opens the same chat',
+      () async {
     final initial = api.enqueue('/api/chat/a/messages');
     final firstLoad = provider.selectConversation(_conversation('a'));
     await initial.started.future;
@@ -211,10 +350,16 @@ void main() {
     expect(_messageIds(provider), ['bob-private']);
   });
 
-  test('conversation disk cache and late refreshes stay scoped to their account', () async {
+  test(
+      'conversation disk cache and late refreshes stay scoped to their account',
+      () async {
     SharedPreferences.setMockInitialValues({
-      'cached_conversations_alice': jsonEncode([{'id': 'alice-cached', 'name': 'Alice'}]),
-      'cached_conversations_bob': jsonEncode([{'id': 'bob-cached', 'name': 'Bob'}]),
+      'cached_conversations_alice': jsonEncode([
+        {'id': 'alice-cached', 'name': 'Alice'}
+      ]),
+      'cached_conversations_bob': jsonEncode([
+        {'id': 'bob-cached', 'name': 'Bob'}
+      ]),
     });
     final alice = api.enqueue('/api/chat/conversations');
     final aliceLoad = provider.fetchConversations();
@@ -228,18 +373,24 @@ void main() {
     await bob.started.future;
     expect(provider.conversations.single.id, 'bob-cached');
 
-    bob.complete([{'id': 'bob-fresh', 'name': 'Bob'}]);
+    bob.complete([
+      {'id': 'bob-fresh', 'name': 'Bob'}
+    ]);
     await bobLoad;
-    alice.complete([{'id': 'alice-late', 'name': 'Alice'}]);
+    alice.complete([
+      {'id': 'alice-late', 'name': 'Alice'}
+    ]);
     await aliceLoad;
 
     expect(provider.conversations.single.id, 'bob-fresh');
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getString('cached_conversations_bob'), contains('bob-fresh'));
-    expect(prefs.getString('cached_conversations_alice'), contains('alice-cached'));
+    expect(prefs.getString('cached_conversations_alice'),
+        contains('alice-cached'));
   });
 
-  test('disposing during a request prevents late listener notifications', () async {
+  test('disposing during a request prevents late listener notifications',
+      () async {
     final pending = api.enqueue('/api/chat/a/messages');
     final loading = provider.selectConversation(_conversation('a'));
     await pending.started.future;

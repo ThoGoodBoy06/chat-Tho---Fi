@@ -1302,7 +1302,11 @@
       window.addEventListener('keydown', keyListener);
 
       modal.addEventListener('click', function (e) {
-        if (e.target === modal || e.target === track) {
+        if (e.target.tagName !== 'IMG' && 
+            e.target.tagName !== 'BUTTON' && 
+            !e.target.closest('#galleryThumbs') && 
+            !e.target.closest('#galleryReactionRow') &&
+            !e.target.closest('header')) {
           cleanupAndClose();
         }
       });
