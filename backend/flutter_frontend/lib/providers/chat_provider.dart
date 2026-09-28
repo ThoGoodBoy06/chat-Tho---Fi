@@ -680,6 +680,30 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  List<ConversationModel> _deduplicateConversationList(List<ConversationModel> list) {
+    final seenConvIds = <String>{};
+    final seenPartnerIds = <String>{};
+    final result = <ConversationModel>[];
+
+    for (final conv in list) {
+      if (conv.id.isEmpty || seenConvIds.contains(conv.id)) continue;
+
+      if (!conv.isGroup) {
+        final partnerId = conv.targetUserId?.trim();
+        if (partnerId != null && partnerId.isNotEmpty) {
+          if (seenPartnerIds.contains(partnerId)) {
+            continue;
+          }
+          seenPartnerIds.add(partnerId);
+        }
+      }
+
+      seenConvIds.add(conv.id);
+      result.add(conv);
+    }
+    return result;
+  }
+
   Future<void> _loadCachedConversations() async {
     final userId = currentUser?.id;
     if (userId == null) return;
@@ -692,10 +716,11 @@ class ChatProvider extends ChangeNotifier {
       if (cachedStr != null && cachedStr.isNotEmpty && conversations.isEmpty) {
         final decoded = jsonDecode(cachedStr);
         if (decoded is List) {
-          conversations = decoded
+          final loaded = decoded
               .map((c) =>
                   ConversationModel.fromJson(c, currentUserId: currentUser?.id))
               .toList();
+          conversations = _deduplicateConversationList(loaded);
           for (final c in conversations.take(8)) {
             final msgs = _loadLocalCachedMessages(c.id);
             if (msgs != null && msgs.isNotEmpty) {
@@ -758,9 +783,11 @@ class ChatProvider extends ChangeNotifier {
             .whereType<ConversationModel>()
             .toList();
 
+        final deduplicated = _deduplicateConversationList(parsed);
+
         // 🛡️ BẢO VỆ: Nếu đã có danh sách cuộc trò chuyện mà kết quả mới rỗng, không xóa mất giao diện của người dùng!
-        if (parsed.isNotEmpty || conversations.isEmpty) {
-          conversations = parsed;
+        if (deduplicated.isNotEmpty || conversations.isEmpty) {
+          conversations = deduplicated;
           try {
             final prefs = await SharedPreferences.getInstance();
             _sharedPreferences = prefs;

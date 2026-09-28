@@ -227,9 +227,26 @@ exports.getConversations = async(req, res) => {
             };
         });
 
-        console.log(`📤 [getConversations] Hoàn thành trong ${Date.now() - t0} ms (tìm thấy ${mappedConversations.length} cuộc trò chuyện)`);
-        conversationsCache.set(userId, { data: mappedConversations, timestamp: Date.now() });
-        res.status(200).json({ success: true, data: mappedConversations });
+        // Lọc chống trùng lặp phòng chat 1-1 cho cùng một đối phương
+        const seenPartners = new Set();
+        const deduplicatedConversations = [];
+        for (const item of mappedConversations) {
+            const conv = item.Conversations;
+            if (conv && conv.type === "private" && Array.isArray(conv.ConversationMembers)) {
+                const partner = conv.ConversationMembers.find((m) => m.userId !== userId);
+                if (partner && partner.userId) {
+                    if (seenPartners.has(partner.userId)) {
+                        continue;
+                    }
+                    seenPartners.add(partner.userId);
+                }
+            }
+            deduplicatedConversations.push(item);
+        }
+
+        console.log(`📤 [getConversations] Hoàn thành trong ${Date.now() - t0} ms (tìm thấy ${deduplicatedConversations.length} cuộc trò chuyện)`);
+        conversationsCache.set(userId, { data: deduplicatedConversations, timestamp: Date.now() });
+        res.status(200).json({ success: true, data: deduplicatedConversations });
     } catch (error) {
         console.error("!!! LỖI TẢI DANH SÁCH CUỘC TRÒ CHUYỆN:", error);
         res.status(500).json({ message: "Lỗi server", error: error.message });
@@ -816,44 +833,31 @@ exports.createConversation = async(req, res) => {
         }
 
         // Kiểm tra xem 2 người đã từng chat với nhau qua kênh 1-1 (private) chưa
-        const existingPrivateMembers = await prisma.conversationMembers.findMany({
+        const existingConv = await prisma.conversations.findFirst({
             where: {
-                userId,
-                Conversations: {
-                    type: "private"
-                }
+                type: "private",
+                AND: [
+                    { ConversationMembers: { some: { userId } } },
+                    { ConversationMembers: { some: { userId: receiverId } } },
+                ],
             },
-            select: { conversationId: true }
+            select: { id: true },
         });
 
-        const privateConversationIds = existingPrivateMembers
-            .map((c) => c.conversationId)
-            .filter((id) => id !== null);
-
-        const match = await prisma.conversationMembers.findFirst({
-            where: {
-                conversationId: { in: privateConversationIds },
-                userId: receiverId,
-            },
-        });
-
-        if (match) {
+        if (existingConv) {
             // Đã từng chat, trả về phòng chat cũ thay vì tạo mới
-            return res.status(200).json({ success: true, data: { id: match.conversationId } });
+            return res.status(200).json({ success: true, data: { id: existingConv.id } });
         }
 
         // Tạo phòng chat và tự động thêm 2 người vào phòng
-
         const newConversation = await prisma.conversations.create({
             data: {
                 id: uuidv4(),
-
+                type: "private",
+                createdBy: userId,
                 ConversationMembers: {
                     create: [
-                        // Cung cấp ID tường minh cho từng thành viên trong phòng chat
-
                         { id: uuidv4(), userId: userId },
-
                         { id: uuidv4(), userId: receiverId },
                     ],
                 },
