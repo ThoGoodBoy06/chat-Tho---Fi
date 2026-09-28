@@ -57,9 +57,14 @@ class ChatScreen extends StatefulWidget {
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
+class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, TickerProviderStateMixin {
   ChatProvider? _boundProvider;
   int _currentTabIndex = 0; // 0: Tin nhắn, 1: Danh bạ, 2: Tin tức, 3: Trợ lý AI, 4: Cá nhân
+  late AnimationController _mobileChatSlideController;
+  late Animation<double> _mobileChatSlideAnimation;
+  ConversationModel? _activeMobileConversation;
+  bool _isEdgeDragging = false;
+  bool _isClosingMobileChat = false;
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
   final _inlineImageCache = InlineImageCache();
@@ -138,6 +143,16 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    _mobileChatSlideController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 280),
+      reverseDuration: const Duration(milliseconds: 240),
+    );
+    _mobileChatSlideAnimation = CurvedAnimation(
+      parent: _mobileChatSlideController,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         final chatProv = Provider.of<ChatProvider>(context, listen: false);
@@ -337,7 +352,41 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     _clearMessageRenderCaches();
     _inputFocusNode.dispose();
     _aiScrollController.dispose();
+    _mobileChatSlideController.dispose();
     super.dispose();
+  }
+
+  void _openMobileConversation(ConversationModel conv, ChatProvider provider) {
+    setState(() {
+      _activeMobileConversation = conv;
+    });
+    provider.selectConversation(conv);
+    _mobileChatSlideController.forward(from: 0.0);
+  }
+
+  Future<void> _closeMobileChatWithAnimation() async {
+    if (_isClosingMobileChat) return;
+    _isClosingMobileChat = true;
+    setState(() {
+      _lastOpenedConversationId = null;
+      _expandedTimestampMessageIds.clear();
+      _showEmojiPicker = false;
+      _isAttachmentMenuOpen = false;
+    });
+    FocusScope.of(context).unfocus();
+    try {
+      await _mobileChatSlideController.reverse();
+    } catch (_) {}
+    if (mounted) {
+      final provider = Provider.of<ChatProvider>(context, listen: false);
+      provider.clearSelectedConversation();
+      setState(() {
+        _activeMobileConversation = null;
+        _isClosingMobileChat = false;
+      });
+    } else {
+      _isClosingMobileChat = false;
+    }
   }
 
   static const Map<String, String> reactionEmojiAssets = {
@@ -1200,81 +1249,214 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<ChatProvider>(context, listen: false);
-    final selectedConvId = context.select<ChatProvider, String?>((p) => p.selectedConversation?.id);
-    final isChatOpen = (selectedConvId != null);
+    final selectedConv = context.select<ChatProvider, ConversationModel?>((p) => p.selectedConversation);
+    if (selectedConv != null && _activeMobileConversation?.id != selectedConv.id) {
+      _activeMobileConversation = selectedConv;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _mobileChatSlideController.status != AnimationStatus.forward && _mobileChatSlideController.value < 0.99) {
+          _mobileChatSlideController.forward(from: 0.0);
+        }
+      });
+    } else if (selectedConv == null && _activeMobileConversation != null && !_isClosingMobileChat) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _mobileChatSlideController.status != AnimationStatus.reverse && _mobileChatSlideController.value > 0.0) {
+          _mobileChatSlideController.reverse().then((_) {
+            if (mounted) {
+              setState(() {
+                _activeMobileConversation = null;
+              });
+            }
+          });
+        }
+      });
+    }
+
     final isDark = Provider.of<ThemeProvider>(context).isDarkMode;
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth >= 900;
+    final isChatOpen = (selectedConv != null || _mobileChatSlideController.value > 0.01);
 
     final bgColor = isDark ? const Color(0xFF0F172A) : const Color(0xFFF0F2F5);
 
-    return Scaffold(
-      backgroundColor: bgColor,
-      body: Stack(
-        children: [
-          SafeArea(
-            child: Container(
-              color: bgColor,
-              child: Row(
-                children: [
-                  if (isDesktop) _buildDesktopNavRail(),
-                  Expanded(
-                    child: _buildBodyForCurrentTab(provider, isDesktop),
-                  ),
-                ],
+    return PopScope(
+      canPop: !isChatOpen,
+      onPopInvoked: (didPop) {
+        if (!didPop && isChatOpen) {
+          _closeMobileChatWithAnimation();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: bgColor,
+        body: Stack(
+          children: [
+            SafeArea(
+              child: Container(
+                color: bgColor,
+                child: Row(
+                  children: [
+                    if (isDesktop) _buildDesktopNavRail(),
+                    Expanded(
+                      child: _buildBodyForCurrentTab(provider, isDesktop),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          const Positioned(
-            left: -9999,
-            top: -9999,
-            child: _ShaderWarmupWidget(),
-          ),
-        ],
+            const Positioned(
+              left: -9999,
+              top: -9999,
+              child: _ShaderWarmupWidget(),
+            ),
+          ],
+        ),
       ),
-      bottomNavigationBar: (!isDesktop && !(_currentTabIndex == 0 && isChatOpen))
-          ? Container(
-              color: bgColor,
-              child: _buildMobileBottomBar(),
-            )
-          : null,
     );
   }
 
   Widget _buildBodyForCurrentTab(ChatProvider provider, bool isDesktop) {
-    switch (_currentTabIndex) {
-      case 0: // Tin nhắn (Messenger Style)
-        if (isDesktop) {
-          return Row(
-            children: [
-              SizedBox(
-                width: MediaQuery.of(context).size.width * 0.35,
-                child: _buildChatList(provider),
-              ),
-              const VerticalDivider(width: 1, color: Color(0xFFE4E6EB)),
-              Expanded(
-                child: provider.selectedConversation != null
-                    ? _buildChatWindow(provider, isDesktop: true)
-                    : _buildEmptyChatPlaceholder(),
-              ),
-            ],
-          );
-        } else {
-          return provider.selectedConversation != null
-              ? _buildChatWindow(provider, isDesktop: false)
-              : _buildChatList(provider);
-        }
-      case 1: // Danh bạ
-        return _buildContactsTab(provider);
-      case 2: // Tin tức AI
-        return _buildNewsTab();
-      case 3: // Trợ lý AI
-        return _buildAiAssistantTab();
-      case 4: // Cá nhân
-        return _buildProfileTab(provider);
-      default:
-        return _buildChatList(provider);
+    if (_currentTabIndex == 0) {
+      if (isDesktop) {
+        return Row(
+          children: [
+            SizedBox(
+              width: MediaQuery.of(context).size.width * 0.35,
+              child: _buildChatList(provider),
+            ),
+            const VerticalDivider(width: 1, color: Color(0xFFE4E6EB)),
+            Expanded(
+              child: provider.selectedConversation != null
+                  ? _buildChatWindow(provider, isDesktop: true)
+                  : _buildEmptyChatPlaceholder(),
+            ),
+          ],
+        );
+      } else {
+        return _buildMobileMessengerView(provider);
+      }
     }
+
+    Widget content;
+    switch (_currentTabIndex) {
+      case 1: // Danh bạ
+        content = _buildContactsTab(provider);
+        break;
+      case 2: // Tin tức AI
+        content = _buildNewsTab();
+        break;
+      case 3: // Trợ lý AI
+        content = _buildAiAssistantTab();
+        break;
+      case 4: // Cá nhân
+        content = _buildProfileTab(provider);
+        break;
+      default:
+        content = _buildChatList(provider);
+    }
+
+    if (!isDesktop) {
+      return Column(
+        children: [
+          Expanded(child: content),
+          _buildMobileBottomBar(),
+        ],
+      );
+    }
+    return content;
+  }
+
+  Widget _buildMobileMessengerView(ChatProvider provider) {
+    final activeConv = provider.selectedConversation ?? _activeMobileConversation;
+    final isDark = Provider.of<ThemeProvider>(context).isDarkMode;
+    final bgColor = isDark ? const Color(0xFF0F172A) : const Color(0xFFF0F2F5);
+
+    return AnimatedBuilder(
+      animation: _mobileChatSlideAnimation,
+      builder: (context, _) {
+        final progress = _mobileChatSlideAnimation.value;
+        final isChatVisible = (activeConv != null && (progress > 0.001 || provider.selectedConversation != null));
+
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            // 1. LỚP DANH SÁCH CHAT + BOTTOM BAR: Parallax lùi nhẹ sang trái 25% khi mở chat
+            Transform.translate(
+              offset: Offset(-MediaQuery.of(context).size.width * 0.25 * progress, 0),
+              child: IgnorePointer(
+                ignoring: progress > 0.85,
+                child: Column(
+                  children: [
+                    Expanded(child: _buildChatList(provider)),
+                    _buildMobileBottomBar(),
+                  ],
+                ),
+              ),
+            ),
+
+            // 2. LỚP PHỦ MỜ (Dimming scrim): Tối dần tự nhiên khi chat trượt vào
+            if (progress > 0.01)
+              IgnorePointer(
+                ignoring: progress < 0.99,
+                child: Container(
+                  color: Colors.black.withOpacity(0.18 * progress),
+                ),
+              ),
+
+            // 3. MÀN HÌNH ĐOẠN CHAT: Trượt từ phải sang trái (1.0 -> 0.0)
+            // Kèm hiệu ứng kéo mép trái (Interactive Edge Swipe) như Messenger / Zalo
+            if (isChatVisible && activeConv != null)
+              Transform.translate(
+                offset: Offset(MediaQuery.of(context).size.width * (1.0 - progress), 0),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onHorizontalDragStart: (details) {
+                    if (details.globalPosition.dx < 45) {
+                      _isEdgeDragging = true;
+                    }
+                  },
+                  onHorizontalDragUpdate: (details) {
+                    if (_isEdgeDragging) {
+                      final delta = details.primaryDelta ?? 0;
+                      final screenWidth = MediaQuery.of(context).size.width;
+                      if (screenWidth > 0) {
+                        final currentVal = _mobileChatSlideController.value;
+                        _mobileChatSlideController.value =
+                            (currentVal - (delta / screenWidth)).clamp(0.0, 1.0);
+                      }
+                    }
+                  },
+                  onHorizontalDragEnd: (details) {
+                    if (_isEdgeDragging) {
+                      _isEdgeDragging = false;
+                      final velocity = details.primaryVelocity ?? 0;
+                      if (_mobileChatSlideController.value < 0.65 || velocity > 350) {
+                        _closeMobileChatWithAnimation();
+                      } else {
+                        _mobileChatSlideController.forward();
+                      }
+                    }
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: bgColor,
+                      boxShadow: progress > 0.01
+                          ? [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.20 * progress),
+                                blurRadius: 18,
+                                spreadRadius: 1,
+                                offset: const Offset(-5, 0),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: _buildChatWindow(provider, isDesktop: false),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
   }
 
   Widget _buildDesktopNavRail() {
@@ -1768,7 +1950,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
                           final avatarImg = _partnerAvatarProvider(conv.avatar, width: 104, height: 104);
                           return InkWell(
-                            onTap: () => provider.selectConversation(conv),
+                            onTap: () {
+                              final isDesktopScreen = MediaQuery.of(context).size.width >= 900;
+                              if (isDesktopScreen) {
+                                provider.selectConversation(conv);
+                              } else {
+                                _openMobileConversation(conv, provider);
+                              }
+                            },
                             hoverColor: isDark ? const Color(0xFF1E293B) : const Color(0x05000000),
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -2431,12 +2620,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                     onPressed: () {
-                      setState(() {
-                        _lastOpenedConversationId = null;
-                        _expandedTimestampMessageIds.clear();
-                        _showEmojiPicker = false;
-                      });
-                      provider.clearSelectedConversation();
+                      _closeMobileChatWithAnimation();
                     },
                   ),
                 Expanded(
