@@ -10,10 +10,12 @@ let flutterCmd = 'flutter';
 const fallbackFlutter = 'C:\\Users\\MSI PC\\Documents\\Codex\\2026-09-25\\b-n-l-m-app-c\\work\\flutter-validation\\flutter\\bin\\flutter.bat';
 const fallbackPubCache = 'C:\\Users\\MSI PC\\Documents\\Codex\\2026-09-25\\b-n-l-m-app-c\\work\\flutter-validation\\pub-cache';
 
-const checkFlutter = spawnSync(process.platform === 'win32' ? 'where.exe' : 'which', ['flutter'], { shell: true });
-if (checkFlutter.status !== 0) {
-    if (fs.existsSync(fallbackFlutter)) {
-        flutterCmd = fallbackFlutter;
+if (fs.existsSync(fallbackFlutter)) {
+    flutterCmd = fallbackFlutter;
+} else {
+    const checkFlutter = spawnSync(process.platform === 'win32' ? 'where.exe' : 'which', ['flutter.bat'], { shell: true });
+    if (checkFlutter.status === 0) {
+        flutterCmd = 'flutter.bat';
     }
 }
 

@@ -1199,7 +1199,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final provider = Provider.of<ChatProvider>(context);
+    final provider = Provider.of<ChatProvider>(context, listen: false);
+    final selectedConvId = context.select<ChatProvider, String?>((p) => p.selectedConversation?.id);
+    final isChatOpen = (selectedConvId != null);
     final isDark = Provider.of<ThemeProvider>(context).isDarkMode;
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth >= 900;
@@ -1230,7 +1232,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           ),
         ],
       ),
-      bottomNavigationBar: (!isDesktop && !(_currentTabIndex == 0 && provider.selectedConversation != null))
+      bottomNavigationBar: (!isDesktop && !(_currentTabIndex == 0 && isChatOpen))
           ? Container(
               color: bgColor,
               child: _buildMobileBottomBar(),
@@ -1751,7 +1753,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                             ],
                           )
                         : ListView.builder(
-                            physics: const AlwaysScrollableScrollPhysics(),
+                            physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                            cacheExtent: 500,
                             itemCount: filteredList.length,
                         itemBuilder: (context, index) {
                           final conv = filteredList[index];
@@ -1763,6 +1766,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                               ? (isDark ? const Color(0xFF1E293B) : const Color(0x0D007AFF))
                               : bgColor;
 
+                          final avatarImg = _partnerAvatarProvider(conv.avatar, width: 104, height: 104);
                           return InkWell(
                             onTap: () => provider.selectConversation(conv),
                             hoverColor: isDark ? const Color(0xFF1E293B) : const Color(0x05000000),
@@ -1784,12 +1788,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                         height: 52,
                                         decoration: BoxDecoration(
                                           shape: BoxShape.circle,
-                                          gradient: (conv.avatar == null || conv.avatar!.isEmpty)
+                                          gradient: (avatarImg == null)
                                               ? _getAvatarGradient(conv.name)
                                               : null,
-                                          image: (conv.avatar != null && conv.avatar!.isNotEmpty)
+                                          image: avatarImg != null
                                               ? DecorationImage(
-                                                  image: NetworkImage(ApiService.formatImageUrl(conv.avatar!)),
+                                                  image: avatarImg,
                                                   fit: BoxFit.cover,
                                                 )
                                               : null,
@@ -2580,42 +2584,44 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                   });
                 }
               },
-              child: (provider.isLoadingMessages && provider.messages.isEmpty)
-                  ? _buildMessageSkeletonList(isDark)
-                  : Builder(
-                    builder: (context) {
-                      final allMessages = provider.messages;
-                      final messageCount = allMessages.length;
-                      final messagesChanged = !identical(_indexedMessages, allMessages) || _lastMessageCount != messageCount;
-                      if (messagesChanged) {
-                        final previousMessageCount = _lastMessageCount;
-                        _indexedMessages = allMessages;
-                        _lastMessageCount = messageCount;
-                        _messagesById = null;
-                        if (previousMessageCount != messageCount && messageCount > 0) {
-                          _scrollToBottomIfNearBottom();
-                        }
-                      }
-                      final typingUser = provider.getTypingUserForSelectedConversation();
-                      final hasTyping = typingUser != null && typingUser.isNotEmpty;
-                      if (_lastTypingUser != typingUser) {
-                        _lastTypingUser = typingUser;
-                        if (hasTyping) _scrollToBottomIfNearBottom();
-                      }
+              child: Consumer<ChatProvider>(
+                builder: (context, chatProv, _) {
+                  if (chatProv.isLoadingMessages && chatProv.messages.isEmpty) {
+                    return _buildMessageSkeletonList(isDark);
+                  }
+                  final allMessages = chatProv.messages;
+                  final messageCount = allMessages.length;
+                  final messagesChanged = !identical(_indexedMessages, allMessages) || _lastMessageCount != messageCount;
+                  if (messagesChanged) {
+                    final previousMessageCount = _lastMessageCount;
+                    _indexedMessages = allMessages;
+                    _lastMessageCount = messageCount;
+                    _messagesById = null;
+                    if (previousMessageCount != messageCount && messageCount > 0) {
+                      _scrollToBottomIfNearBottom();
+                    }
+                  }
+                  final typingUser = chatProv.getTypingUserForSelectedConversation();
+                  final hasTyping = typingUser != null && typingUser.isNotEmpty;
+                  if (_lastTypingUser != typingUser) {
+                    _lastTypingUser = typingUser;
+                    if (hasTyping) _scrollToBottomIfNearBottom();
+                  }
 
-                      String? lastSentMessageId;
-                      for (int i = messageCount - 1; i >= 0; i--) {
-                        if (allMessages[i].senderId == provider.currentUser?.id) {
-                          lastSentMessageId = allMessages[i].id;
-                          break;
-                        }
-                      }
+                  String? lastSentMessageId;
+                  for (int i = messageCount - 1; i >= 0; i--) {
+                    if (allMessages[i].senderId == chatProv.currentUser?.id) {
+                      lastSentMessageId = allMessages[i].id;
+                      break;
+                    }
+                  }
 
-                      Map<String, MessageModel>? messagesById;
+                      final maxBubbleWidth = MediaQuery.of(context).size.width * 0.72;
                       return ListView.builder(
                         controller: _scrollController,
                         reverse: true,
-                        cacheExtent: 120,
+                        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                        cacheExtent: 600,
                         addAutomaticKeepAlives: false,
                         addRepaintBoundaries: true,
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -2673,14 +2679,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                           final msgIndex = hasTyping ? index - 1 : index;
                           final origIdx = messageCount - 1 - msgIndex;
                           final msg = allMessages[origIdx];
-                          final isMe = msg.senderId == provider.currentUser?.id;
+                          final isMe = msg.senderId == chatProv.currentUser?.id;
                           final isLastSentMessage = (msg.id == lastSentMessageId);
                           final showTime = origIdx == 0 || (origIdx > 0 && msg.createdAt.difference(allMessages[origIdx - 1].createdAt).inMinutes > 30);
 
                       if (msg.type == 'system') {
                         return RepaintBoundary(
                           key: ValueKey('system_${msg.id}'),
-                          child: _buildSystemMessage(msg, conv, provider.currentUser),
+                          child: _buildSystemMessage(msg, conv, chatProv.currentUser),
                         );
                       }
 
@@ -2722,7 +2728,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                     const SizedBox(width: 8),
                                   ],
                                   Flexible(
-                                    child: _buildCallNotificationCard(msg, isMe, provider),
+                                    child: _buildCallNotificationCard(msg, isMe, chatProv),
                                   ),
                                 ],
                               ),
@@ -2812,7 +2818,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                                   // Emoji-only: hiển thị to, không nền (giống Messenger)
                                                   if (isEmojiMsg && !msg.isRecalled) {
                                                     return Container(
-                                                      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
+                                                      constraints: BoxConstraints(maxWidth: maxBubbleWidth),
                                                       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                                                       child: Text(
                                                         msg.content,
@@ -2822,7 +2828,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                                   }
 
                                                   return Container(
-                                                    constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
+                                                    constraints: BoxConstraints(maxWidth: maxBubbleWidth),
                                                     padding: isPureImage
                                                         ? EdgeInsets.zero
                                                         : (isSpecialType
@@ -6999,8 +7005,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildMobileBottomBar() {
-    final chatProvider = Provider.of<ChatProvider>(context);
-    final unreadMessagesCount = chatProvider.totalUnreadCount;
+    final unreadMessagesCount = context.select<ChatProvider, int>((p) => p.totalUnreadCount);
     final pendingRequestsCount = _pendingFriendRequestsCount;
 
     final List<Map<String, dynamic>> tabs = [
@@ -7174,6 +7179,7 @@ class _SwipeToReplyWrapper extends StatefulWidget {
 
 class _SwipeToReplyWrapperState extends State<_SwipeToReplyWrapper> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
+  late Animation<double> _animation;
   double _dragOffset = 0.0;
   static const double _maxDrag = 48.0;
   bool _triggered = false;
@@ -7183,8 +7189,18 @@ class _SwipeToReplyWrapperState extends State<_SwipeToReplyWrapper> with SingleT
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 250),
+      duration: const Duration(milliseconds: 200),
     );
+    _animation = Tween<double>(begin: 0.0, end: 0.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
+    );
+    _controller.addListener(() {
+      if (mounted) {
+        setState(() {
+          _dragOffset = _animation.value;
+        });
+      }
+    });
   }
 
   @override
@@ -7193,32 +7209,27 @@ class _SwipeToReplyWrapperState extends State<_SwipeToReplyWrapper> with SingleT
     super.dispose();
   }
 
-  void _onDragUpdate(DragUpdateDetails details) {
-    setState(() {
-      _dragOffset += details.delta.dx;
-      if (_dragOffset > _maxDrag) _dragOffset = _maxDrag;
-      if (_dragOffset < -_maxDrag) _dragOffset = -_maxDrag;
+  void _onHorizontalDragUpdate(DragUpdateDetails details) {
+    final dx = details.delta.dx;
+    // Don't register tiny accidental horizontal shifts to keep vertical scroll smooth
+    if (_dragOffset == 0.0 && dx.abs() < 1.5) return;
 
-      if (_dragOffset.abs() >= 30.0 && !_triggered) {
+    setState(() {
+      _dragOffset = (_dragOffset + dx).clamp(-_maxDrag, _maxDrag);
+      if (_dragOffset.abs() >= 28.0 && !_triggered) {
         _triggered = true;
       }
     });
   }
 
-  void _onDragEnd(DragEndDetails details) {
+  void _onHorizontalDragEnd(DragEndDetails details) {
     if (_triggered) {
       widget.onReply();
     }
     _triggered = false;
-    final start = _dragOffset;
-    final animation = Tween<double>(begin: start, end: 0.0).animate(
+    _animation = Tween<double>(begin: _dragOffset, end: 0.0).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
     );
-    animation.addListener(() {
-      setState(() {
-        _dragOffset = animation.value;
-      });
-    });
     _controller.forward(from: 0.0);
   }
 
@@ -7226,8 +7237,9 @@ class _SwipeToReplyWrapperState extends State<_SwipeToReplyWrapper> with SingleT
   Widget build(BuildContext context) {
     final progress = (_dragOffset.abs() / _maxDrag).clamp(0.0, 1.0);
     return GestureDetector(
-      onHorizontalDragUpdate: _onDragUpdate,
-      onHorizontalDragEnd: _onDragEnd,
+      behavior: HitTestBehavior.translucent,
+      onHorizontalDragUpdate: _onHorizontalDragUpdate,
+      onHorizontalDragEnd: _onHorizontalDragEnd,
       child: Stack(
         alignment: _dragOffset > 0 ? Alignment.centerLeft : Alignment.centerRight,
         children: [
