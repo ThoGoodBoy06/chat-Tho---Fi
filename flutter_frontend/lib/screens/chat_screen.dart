@@ -3122,13 +3122,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                               tooltip: 'Gửi ảnh',
                                             ),
                                             IconButton(
-                                              icon: Icon(Icons.videocam_rounded, color: primaryColor, size: 24),
-                                              onPressed: () => _pickAndUploadVideo(provider),
-                                              padding: EdgeInsets.zero,
-                                              constraints: const BoxConstraints(minWidth: 36),
-                                              tooltip: 'Gửi video',
-                                            ),
-                                            IconButton(
                                               icon: Icon(Icons.mic_rounded, color: primaryColor, size: 24),
                                               onPressed: () => _handleVoiceRecording(provider),
                                               padding: EdgeInsets.zero,
