@@ -123,15 +123,15 @@ class SocketService {
     });
 
     socket?.onConnectError((data) {
-      print('⚠️ Socket connect_error: $data');
+      print('⚠️ Socket connect_error');
     });
 
     socket?.onError((data) {
-      print('⚠️ Socket error: $data');
+      print('⚠️ Socket error');
     });
 
     socket?.on('receive_message', (data) {
-      print('📩 Socket receive_message: $data');
+      print('📩 Socket receive_message');
       if (data is Map<String, dynamic>) {
         _messageController.add(data);
       } else if (data is Map) {
@@ -140,14 +140,14 @@ class SocketService {
     });
 
     socket?.on('incoming_call', (data) {
-      print('📞 Socket incoming_call: $data');
+      print('📞 Socket incoming_call');
       if (data is Map) {
         _incomingCallController.add(Map<String, dynamic>.from(data));
       }
     });
 
     socket?.on('call_accepted', (data) {
-      print('✅ Socket call_accepted: $data');
+      print('✅ Socket call_accepted');
       if (data is Map) {
         _callAcceptedController.add(Map<String, dynamic>.from(data));
       } else {
@@ -156,7 +156,7 @@ class SocketService {
     });
 
     socket?.on('call_rejected', (data) {
-      print('❌ Socket call_rejected: $data');
+      print('❌ Socket call_rejected');
       if (data is Map) {
         _callRejectedController.add(Map<String, dynamic>.from(data));
       } else {
@@ -165,7 +165,7 @@ class SocketService {
     });
 
     socket?.on('call_ended', (data) {
-      print('🔴 Socket call_ended: $data');
+      print('🔴 Socket call_ended');
       if (data is Map) {
         _callEndedController.add(Map<String, dynamic>.from(data));
       } else {
@@ -212,7 +212,7 @@ class SocketService {
     });
 
     socket?.on('message_recalled', (data) {
-      print('🔄 Socket message_recalled received: $data');
+      print('🔄 Socket message_recalled received');
       if (data is Map) {
         _recalledController.add(Map<String, dynamic>.from(data));
       }
@@ -237,21 +237,21 @@ class SocketService {
     });
 
     socket?.on('user_status_changed', (data) {
-      print('👤 Socket user_status_changed: $data');
+      print('👤 Socket user_status_changed');
       if (data is Map) {
         _userStatusController.add(Map<String, dynamic>.from(data));
       }
     });
 
     socket?.on('user_status_change', (data) {
-      print('👤 Socket user_status_change: $data');
+      print('👤 Socket user_status_change');
       if (data is Map) {
         _userStatusController.add(Map<String, dynamic>.from(data));
       }
     });
 
     socket?.on('user_online', (data) {
-      print('👤 Socket user_online: $data');
+      print('👤 Socket user_online');
       if (data is Map) {
         _userStatusController.add(Map<String, dynamic>.from(data));
       } else if (data is String) {
@@ -260,7 +260,7 @@ class SocketService {
     });
 
     socket?.on('user_offline', (data) {
-      print('👤 Socket user_offline: $data');
+      print('👤 Socket user_offline');
       if (data is Map) {
         _userStatusController.add(Map<String, dynamic>.from(data));
       } else if (data is String) {
@@ -269,60 +269,60 @@ class SocketService {
     });
 
     socket?.on('nickname_changed', (data) {
-      print('🏷️ Socket nickname_changed: $data');
+      print('🏷️ Socket nickname_changed');
       if (data is Map) {
         _nicknameController.add(Map<String, dynamic>.from(data));
       }
     });
 
     socket?.on('conversation_nicknames_updated', (data) {
-      print('🏷️ Socket conversation_nicknames_updated: $data');
+      print('🏷️ Socket conversation_nicknames_updated');
       if (data is Map) {
         _conversationNicknamesController.add(Map<String, dynamic>.from(data));
       }
     });
 
     socket?.on('new_friend_request', (data) {
-      print('📩 Socket new_friend_request: $data');
+      print('📩 Socket new_friend_request');
       _friendRequestController.add(data is Map ? Map<String, dynamic>.from(data) : {'data': data});
     });
 
     socket?.on('initial_friend_requests', (data) {
-      print('📩 Socket initial_friend_requests: $data');
+      print('📩 Socket initial_friend_requests');
       if (data is List) {
         _friendRequestController.add({'type': 'initial', 'count': data.length, 'data': data});
       }
     });
 
     socket?.on('friend_request_updated', (data) {
-      print('📩 Socket friend_request_updated: $data');
+      print('📩 Socket friend_request_updated');
       _friendRequestController.add(data is Map ? Map<String, dynamic>.from(data) : {'data': data});
     });
 
     socket?.on('friend_request_accepted', (data) {
-      print('🤝 Socket friend_request_accepted: $data');
+      print('🤝 Socket friend_request_accepted');
       _friendRequestController.add(data is Map ? Map<String, dynamic>.from(data) : {'data': data});
     });
 
     socket?.on('user_unfriended', (data) {
-      print('❌ Socket user_unfriended: $data');
+      print('❌ Socket user_unfriended');
       _unfriendController.add(data is Map ? Map<String, dynamic>.from(data) : {'data': data});
     });
 
     socket?.on('unfriended', (data) {
-      print('❌ Socket unfriended: $data');
+      print('❌ Socket unfriended');
       _unfriendController.add(data is Map ? Map<String, dynamic>.from(data) : {'data': data});
     });
 
     socket?.on('user_profile_updated', (data) {
-      print('👤 Socket user_profile_updated: $data');
+      print('👤 Socket user_profile_updated');
       if (data is Map) {
         _profileUpdatedController.add(Map<String, dynamic>.from(data));
       }
     });
 
     socket?.on('conversation_theme_updated', (data) {
-      print('🎨 Socket conversation_theme_updated: $data');
+      print('🎨 Socket conversation_theme_updated');
       if (data is Map) {
         _themeController.add(Map<String, dynamic>.from(data));
       }

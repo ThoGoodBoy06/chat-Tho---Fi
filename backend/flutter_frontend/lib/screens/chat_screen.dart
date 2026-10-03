@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:universal_html/html.dart' as html;
@@ -192,6 +193,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     });
     _textController.addListener(_onTextChanged);
     _scrollController.addListener(_onScroll);
+    _inputFocusNode.addListener(_onInputFocusChanged);
   }
 
   @override
@@ -256,10 +258,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     if (!_scrollController.hasClients) return;
     final maxScroll = _scrollController.position.maxScrollExtent;
     final currentScroll = _scrollController.offset;
-    final show = (maxScroll - currentScroll) > 150;
-    if (show != _showScrollToBottomButton) {
-      setState(() => _showScrollToBottomButton = show);
-    }
+    _showScrollToBottomButton = (maxScroll - currentScroll) > 150;
   }
 
   void _onTextChanged() {
@@ -280,6 +279,22 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     } else {
       _debounceTimer?.cancel();
       provider.emitStopTyping();
+    }
+  }
+
+  void _onInputFocusChanged() {
+    if (_inputFocusNode.hasFocus) {
+      if (_showEmojiPicker || _isAttachmentMenuOpen) {
+        setState(() {
+          _showEmojiPicker = false;
+          _isAttachmentMenuOpen = false;
+        });
+      }
+      Future.delayed(const Duration(milliseconds: 200), () {
+        if (mounted && _scrollController.hasClients) {
+          _scrollToBottomIfNearBottom();
+        }
+      });
     }
   }
 
@@ -350,6 +365,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     _scrollController.dispose();
     _inlineImageCache.clear();
     _clearMessageRenderCaches();
+    _inputFocusNode.removeListener(_onInputFocusChanged);
     _inputFocusNode.dispose();
     _aiScrollController.dispose();
     _mobileChatSlideController.dispose();
@@ -621,6 +637,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     _textController.clear();
     _debounceTimer?.cancel();
     provider.emitStopTyping();
+    try {
+      HapticFeedback.lightImpact();
+    } catch (_) {}
     provider.sendMessage(sendText);
     _scrollToBottom();
   }
@@ -2781,6 +2800,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                     _indexedMessages = allMessages;
                     _lastMessageCount = messageCount;
                     _messagesById = null;
+                    _lastSentMessageIndex = -1;
+                    for (int i = messageCount - 1; i >= 0; i--) {
+                      if (allMessages[i].senderId == chatProv.currentUser?.id) {
+                        _lastSentMessageIndex = i;
+                        break;
+                      }
+                    }
                     if (previousMessageCount != messageCount && messageCount > 0) {
                       _scrollToBottomIfNearBottom();
                     }
@@ -2792,13 +2818,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                     if (hasTyping) _scrollToBottomIfNearBottom();
                   }
 
-                  String? lastSentMessageId;
-                  for (int i = messageCount - 1; i >= 0; i--) {
-                    if (allMessages[i].senderId == chatProv.currentUser?.id) {
-                      lastSentMessageId = allMessages[i].id;
-                      break;
-                    }
-                  }
+                  final lastSentMessageId = _lastSentMessageIndex >= 0 &&
+                          _lastSentMessageIndex < messageCount
+                      ? allMessages[_lastSentMessageIndex].id
+                      : null;
 
                       final maxBubbleWidth = MediaQuery.of(context).size.width * 0.72;
                       return ListView.builder(
@@ -2806,6 +2829,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                         reverse: true,
                         physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
                         cacheExtent: 600,
+                        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                         addAutomaticKeepAlives: false,
                         addRepaintBoundaries: true,
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -2991,11 +3015,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                             children: [
                                               Builder(
                                                 builder: (context) {
-                                                  final isEmojiMsg = _renderFlags(msg).isEmoji;
+                                                  final isEmojiMsg = renderFlags.isEmoji;
                                                   final isSpecialType = msg.type == 'image' || msg.type == 'audio' || msg.type == 'file' || msg.type == 'missed_call' || msg.type == 'call'
                                                       || msg.content.startsWith('data:image') || msg.content.startsWith('data:audio')
                                                       || (msg.imageUrl != null && msg.imageUrl!.isNotEmpty);
-                                                  final renderFlags = _renderFlags(msg);
                                                   final hasImgUrl = renderFlags.hasImgUrl;
                                                   final isPureImage = renderFlags.isImage;
 
@@ -3097,7 +3120,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                                                   },
                                                                 ),
                                                               ],
-                                                              _buildMessageBubbleContent(msg, isMe),
+                                                              _buildMessageBubbleContent(msg, isMe, flags: renderFlags),
                                                             ],
                                                           ),
                                                   );
@@ -3260,114 +3283,139 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                       ],
                     )
                   : Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         TextFieldTapRegion(
                           child: Focus(
                             canRequestFocus: false,
                             descendantsAreFocusable: false,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: AnimatedRotation(
-                                    turns: _isAttachmentMenuOpen ? 0.125 : 0.0,
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 2),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: AnimatedRotation(
+                                      turns: _isAttachmentMenuOpen ? 0.125 : 0.0,
+                                      duration: const Duration(milliseconds: 300),
+                                      curve: Curves.easeOutBack,
+                                      child: Icon(Icons.add_circle_rounded, color: primaryColor, size: 28),
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _isAttachmentMenuOpen = !_isAttachmentMenuOpen;
+                                      });
+                                    },
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(minWidth: 36),
+                                    tooltip: _isAttachmentMenuOpen ? 'Đóng menu' : 'Mở menu tiện ích',
+                                  ),
+                                  AnimatedSize(
                                     duration: const Duration(milliseconds: 300),
                                     curve: Curves.easeOutBack,
-                                    child: Icon(Icons.add_circle_rounded, color: primaryColor, size: 28),
+                                    child: _isAttachmentMenuOpen
+                                        ? Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              IconButton(
+                                                icon: Icon(Icons.camera_alt_rounded, color: primaryColor, size: 24),
+                                                onPressed: () => _captureCameraImage(provider),
+                                                padding: EdgeInsets.zero,
+                                                constraints: const BoxConstraints(minWidth: 36),
+                                                tooltip: 'Chụp ảnh',
+                                              ),
+                                              IconButton(
+                                                icon: Icon(Icons.image_rounded, color: primaryColor, size: 24),
+                                                onPressed: () => _pickAndUploadImage(provider),
+                                                padding: EdgeInsets.zero,
+                                                constraints: const BoxConstraints(minWidth: 36),
+                                                tooltip: 'Gửi ảnh',
+                                              ),
+                                              IconButton(
+                                                icon: Icon(Icons.mic_rounded, color: primaryColor, size: 24),
+                                                onPressed: () => _handleVoiceRecording(provider),
+                                                padding: EdgeInsets.zero,
+                                                constraints: const BoxConstraints(minWidth: 36),
+                                                tooltip: 'Ghi âm',
+                                              ),
+                                            ],
+                                          )
+                                        : const SizedBox(width: 0, height: 0),
                                   ),
-                                  onPressed: () {
-                                    setState(() {
-                                      _isAttachmentMenuOpen = !_isAttachmentMenuOpen;
-                                    });
-                                  },
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(minWidth: 36),
-                                  tooltip: _isAttachmentMenuOpen ? 'Đóng menu' : 'Mở menu tiện ích',
-                                ),
-                                AnimatedSize(
-                                  duration: const Duration(milliseconds: 300),
-                                  curve: Curves.easeOutBack,
-                                  child: _isAttachmentMenuOpen
-                                      ? Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            IconButton(
-                                              icon: Icon(Icons.camera_alt_rounded, color: primaryColor, size: 24),
-                                              onPressed: () => _captureCameraImage(provider),
-                                              padding: EdgeInsets.zero,
-                                              constraints: const BoxConstraints(minWidth: 36),
-                                              tooltip: 'Chụp ảnh',
-                                            ),
-                                            IconButton(
-                                              icon: Icon(Icons.image_rounded, color: primaryColor, size: 24),
-                                              onPressed: () => _pickAndUploadImage(provider),
-                                              padding: EdgeInsets.zero,
-                                              constraints: const BoxConstraints(minWidth: 36),
-                                              tooltip: 'Gửi ảnh',
-                                            ),
-                                            IconButton(
-                                              icon: Icon(Icons.mic_rounded, color: primaryColor, size: 24),
-                                              onPressed: () => _handleVoiceRecording(provider),
-                                              padding: EdgeInsets.zero,
-                                              constraints: const BoxConstraints(minWidth: 36),
-                                              tooltip: 'Ghi âm',
-                                            ),
-                                          ],
-                                        )
-                                      : const SizedBox(width: 0, height: 0),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
                         Expanded(
                           child: Container(
-                            height: 38,
+                            constraints: const BoxConstraints(minHeight: 38, maxHeight: 110),
                             padding: const EdgeInsets.only(left: 14, right: 6),
                             decoration: BoxDecoration(
                               color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF0F2F5),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 Expanded(
-                                  child: TextField(
-                                    controller: _textController,
-                                    focusNode: _inputFocusNode,
-                                    onTapOutside: (event) {
-                                      FocusScope.of(context).unfocus();
+                                  child: Focus(
+                                    onKeyEvent: (node, event) {
+                                      if (event is KeyDownEvent &&
+                                          event.logicalKey == LogicalKeyboardKey.enter &&
+                                          !HardwareKeyboard.instance.isShiftPressed) {
+                                        _handleSend(provider);
+                                        return KeyEventResult.handled;
+                                      }
+                                      return KeyEventResult.ignored;
                                     },
-                                    style: TextStyle(color: textColor, fontSize: 15),
-                                    decoration: InputDecoration(
-                                      hintText: 'Aa',
-                                      hintStyle: TextStyle(color: subTextColor, fontSize: 15),
-                                      border: InputBorder.none,
-                                      isDense: true,
-                                      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                                    child: TextField(
+                                      controller: _textController,
+                                      focusNode: _inputFocusNode,
+                                      keyboardType: TextInputType.multiline,
+                                      textInputAction: TextInputAction.newline,
+                                      minLines: 1,
+                                      maxLines: 4,
+                                      onTapOutside: (event) {
+                                        FocusScope.of(context).unfocus();
+                                      },
+                                      style: TextStyle(color: textColor, fontSize: 15),
+                                      decoration: InputDecoration(
+                                        hintText: 'Aa',
+                                        hintStyle: TextStyle(color: subTextColor, fontSize: 15),
+                                        border: InputBorder.none,
+                                        isDense: true,
+                                        contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                                      ),
                                     ),
-                                    onSubmitted: (_) => _handleSend(provider),
                                   ),
                                 ),
-                                IconButton(
-                                  icon: Icon(Icons.sentiment_satisfied_alt_rounded, color: primaryColor, size: 22),
-                                  onPressed: () => _toggleEmojiPicker(),
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(minWidth: 30),
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 2),
+                                  child: IconButton(
+                                    icon: Icon(Icons.sentiment_satisfied_alt_rounded, color: primaryColor, size: 22),
+                                    onPressed: () => _toggleEmojiPicker(),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(minWidth: 30),
+                                  ),
                                 ),
                               ],
                             ),
                           ),
                         ),
                         const SizedBox(width: 4),
-                        IconButton(
-                          icon: Icon(
-                            _isTyping ? Icons.send_rounded : Icons.thumb_up_rounded,
-                            color: primaryColor,
-                            size: 26,
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 2),
+                          child: IconButton(
+                            icon: Icon(
+                              _isTyping ? Icons.send_rounded : Icons.thumb_up_rounded,
+                              color: primaryColor,
+                              size: 26,
+                            ),
+                            onPressed: () => _handleSend(provider),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(minWidth: 36),
                           ),
-                          onPressed: () => _handleSend(provider),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(minWidth: 36),
                         ),
                       ],
                     ),
@@ -5720,7 +5768,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     _showNicknameSelectionSheet(provider, conv);
   }
 
-  Widget _buildMessageBubbleContent(MessageModel msg, bool isMe) {
+  Widget _buildMessageBubbleContent(MessageModel msg, bool isMe, {_MessageRenderFlags? flags}) {
     final isDark = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
     if (msg.isRecalled) {
       return const Text(
@@ -5733,11 +5781,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
       );
     }
     final content = msg.content;
-    final flags = _renderFlags(msg);
-    final isImage = flags.isImage;
-    final isVideo = flags.isVideo;
-    final isAudio = flags.isAudio;
-    final isFile = flags.isFile;
+    final effectiveFlags = flags ?? _renderFlags(msg);
+    final isImage = effectiveFlags.isImage;
+    final isVideo = effectiveFlags.isVideo;
+    final isAudio = effectiveFlags.isAudio;
+    final isFile = effectiveFlags.isFile;
     final isMissedCall = msg.type == 'missed_call' || msg.type == 'call';
 
     if (isImage) {
@@ -7357,9 +7405,12 @@ class _SwipeToReplyWrapper extends StatefulWidget {
 class _SwipeToReplyWrapperState extends State<_SwipeToReplyWrapper> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
-  double _dragOffset = 0.0;
+  final ValueNotifier<double> _dragOffsetNotifier = ValueNotifier<double>(0.0);
   static const double _maxDrag = 48.0;
   bool _triggered = false;
+  Offset? _startPointerPosition;
+  bool _isSwipingHorizontally = false;
+  bool _isVerticalScroll = false;
 
   @override
   void initState() {
@@ -7372,74 +7423,106 @@ class _SwipeToReplyWrapperState extends State<_SwipeToReplyWrapper> with SingleT
       CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
     );
     _controller.addListener(() {
-      if (mounted) {
-        setState(() {
-          _dragOffset = _animation.value;
-        });
-      }
+      _dragOffsetNotifier.value = _animation.value;
     });
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _dragOffsetNotifier.dispose();
     super.dispose();
   }
 
-  void _onHorizontalDragUpdate(DragUpdateDetails details) {
-    final dx = details.delta.dx;
-    // Don't register tiny accidental horizontal shifts to keep vertical scroll smooth
-    if (_dragOffset == 0.0 && dx.abs() < 1.5) return;
-
-    setState(() {
-      _dragOffset = (_dragOffset + dx).clamp(-_maxDrag, _maxDrag);
-      if (_dragOffset.abs() >= 28.0 && !_triggered) {
-        _triggered = true;
-      }
-    });
+  void _onPointerDown(PointerDownEvent event) {
+    _startPointerPosition = event.position;
+    _isSwipingHorizontally = false;
+    _isVerticalScroll = false;
+    _triggered = false;
   }
 
-  void _onHorizontalDragEnd(DragEndDetails details) {
-    if (_triggered) {
-      widget.onReply();
+  void _onPointerMove(PointerMoveEvent event) {
+    if (_isVerticalScroll || _startPointerPosition == null) return;
+
+    final dx = event.position.dx - _startPointerPosition!.dx;
+    final dy = event.position.dy - _startPointerPosition!.dy;
+
+    // Nếu người dùng đang cuộn dọc (dy > dx hoặc dy > 6px) -> lập tức nhường hoàn toàn cho cuộn dọc!
+    if (!_isSwipingHorizontally) {
+      if (dy.abs() > 6.0 || dy.abs() > dx.abs()) {
+        _isVerticalScroll = true;
+        return;
+      }
+      // Chỉ khi người dùng vuốt rõ ràng sang phải (dx > 12px và góc lệch ngang lớn hơn dọc)
+      if (dx > 12.0 && dx > dy.abs() * 1.6) {
+        _isSwipingHorizontally = true;
+      } else {
+        return;
+      }
     }
-    _triggered = false;
-    _animation = Tween<double>(begin: _dragOffset, end: 0.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
-    );
-    _controller.forward(from: 0.0);
+
+    if (_isSwipingHorizontally) {
+      final currentDrag = (dx - 12.0).clamp(0.0, _maxDrag);
+      _dragOffsetNotifier.value = currentDrag;
+      if (currentDrag >= 28.0 && !_triggered) {
+        _triggered = true;
+      }
+    }
+  }
+
+  void _onPointerUpOrCancel(PointerEvent event) {
+    _startPointerPosition = null;
+    _isVerticalScroll = false;
+    if (_isSwipingHorizontally) {
+      _isSwipingHorizontally = false;
+      if (_triggered) {
+        widget.onReply();
+      }
+      _triggered = false;
+      _animation = Tween<double>(begin: _dragOffsetNotifier.value, end: 0.0).animate(
+        CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
+      );
+      _controller.forward(from: 0.0);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final progress = (_dragOffset.abs() / _maxDrag).clamp(0.0, 1.0);
-    return GestureDetector(
+    return Listener(
       behavior: HitTestBehavior.translucent,
-      onHorizontalDragUpdate: _onHorizontalDragUpdate,
-      onHorizontalDragEnd: _onHorizontalDragEnd,
-      child: Stack(
-        alignment: _dragOffset > 0 ? Alignment.centerLeft : Alignment.centerRight,
-        children: [
-          if (progress > 0.05)
-            Opacity(
-              opacity: progress,
-              child: Transform.scale(
-                scale: progress,
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 12),
-                  child: CircleAvatar(
-                    radius: 14,
-                    backgroundColor: Color(0xFF0068FF),
-                    child: Icon(Icons.reply_rounded, color: Colors.white, size: 16),
+      onPointerDown: _onPointerDown,
+      onPointerMove: _onPointerMove,
+      onPointerUp: _onPointerUpOrCancel,
+      onPointerCancel: _onPointerUpOrCancel,
+      child: ValueListenableBuilder<double>(
+        valueListenable: _dragOffsetNotifier,
+        builder: (context, dragOffset, _) {
+          final progress = (dragOffset / _maxDrag).clamp(0.0, 1.0);
+          return Stack(
+            alignment: Alignment.centerLeft,
+            children: [
+              if (progress > 0.05)
+                Opacity(
+                  opacity: progress,
+                  child: Transform.scale(
+                    scale: progress,
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12),
+                      child: CircleAvatar(
+                        radius: 14,
+                        backgroundColor: Color(0xFF0068FF),
+                        child: Icon(Icons.reply_rounded, color: Colors.white, size: 16),
+                      ),
+                    ),
                   ),
                 ),
+              Transform.translate(
+                offset: Offset(dragOffset, 0),
+                child: widget.child,
               ),
-            ),
-          Transform.translate(
-            offset: Offset(_dragOffset, 0),
-            child: widget.child,
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }

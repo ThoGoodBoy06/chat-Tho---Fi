@@ -2,7 +2,6 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'providers/chat_provider.dart';
 import 'providers/theme_provider.dart';
 import 'services/api_service.dart';
@@ -33,7 +32,6 @@ class SmoothWebScrollBehavior extends MaterialScrollBehavior {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  GoogleFonts.config.allowRuntimeFetching = false;
   runApp(
     MultiProvider(
       providers: [
@@ -146,8 +144,8 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
           surface: Colors.white,
           background: Color(0xFFF8FAFC),
         ),
-        fontFamily: GoogleFonts.inter().fontFamily,
-        fontFamilyFallback: const ['Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji'],
+        fontFamily: 'Helvetica Neue',
+        fontFamilyFallback: const ['Arial', 'Roboto', 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji'],
       ),
       darkTheme: ThemeData(
         brightness: Brightness.dark,
@@ -165,8 +163,8 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
           surface: Color(0xFF1E293B),
           background: Color(0xFF0F172A),
         ),
-        fontFamily: GoogleFonts.inter().fontFamily,
-        fontFamilyFallback: const ['Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji'],
+        fontFamily: 'Helvetica Neue',
+        fontFamilyFallback: const ['Arial', 'Roboto', 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji'],
       ),
       builder: (context, child) {
         final mediaQueryData = MediaQuery.of(context);
