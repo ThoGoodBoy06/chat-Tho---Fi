@@ -663,6 +663,7 @@ class ChatProvider extends ChangeNotifier {
     _sessionRevision++;
     _messageLoadRevision++;
     _messageRequests.clear();
+    _preloadFuture = null;
     _messageCacheTimers.values.forEach((timer) => timer.cancel());
     _messageCacheTimers.clear();
     _messagesCache.clear();
@@ -738,7 +739,7 @@ class ChatProvider extends ChangeNotifier {
   bool _isFetchingConversations = false;
   DateTime? _lastFetchTime;
 
-  Future<void> fetchConversations({bool showLoading = true}) async {
+  Future<void> fetchConversations({bool showLoading = true, bool preload = true}) async {
     // Debounce: Nếu đang fetch hoặc vừa fetch trong vòng 2.5s thì bỏ qua
     if (_isFetchingConversations) return;
     if (_lastFetchTime != null &&
@@ -815,30 +816,46 @@ class ChatProvider extends ChangeNotifier {
         _isFetchingConversations = false;
         isLoadingConversations = false;
         notifyListeners();
-        _preloadTopConversationsSilently();
+        if (preload) _preloadTopConversationsSilently();
       }
     }
   }
 
-  bool _isPreloadingTopConversations = false;
+  Future<void>? _preloadFuture;
 
-  Future<void> _preloadTopConversationsSilently() async {
-    if (_isPreloadingTopConversations || _disposed || conversations.isEmpty) return;
-    _isPreloadingTopConversations = true;
+  /// Prepare a bounded working set while the authenticated splash is visible.
+  Future<void> prepareInitialConversations() async {
     final session = _sessionRevision;
-    // Delay 300ms so UI has finished initial layout without interference
-    await Future.delayed(const Duration(milliseconds: 300));
-    if (_disposed || session != _sessionRevision) {
-      _isPreloadingTopConversations = false;
-      return;
+    await fetchConversations(showLoading: false, preload: false);
+    if (_disposed || session != _sessionRevision) return;
+    await _preloadTopConversationsSilently(immediate: true);
+  }
+
+  Future<void> _preloadTopConversationsSilently({bool immediate = false}) async {
+    if (_disposed || conversations.isEmpty) return;
+    final existing = _preloadFuture;
+    if (existing != null) return existing;
+    final future = _preloadRecentMessages(immediate);
+    _preloadFuture = future;
+    try {
+      await future;
+    } finally {
+      if (identical(_preloadFuture, future)) _preloadFuture = null;
     }
+  }
+
+  Future<void> _preloadRecentMessages(bool immediate) async {
+    final session = _sessionRevision;
+    if (!immediate) await Future.delayed(const Duration(milliseconds: 300));
+    if (_disposed || session != _sessionRevision) return;
     final topList = conversations.take(5).toList();
-    await Future.wait(topList.map((conv) async {
+    // One request at a time avoids competing with the active conversation.
+    for (final conv in topList) {
       if (_disposed || session != _sessionRevision) return;
       final cached = _messagesCache[conv.id];
-      if (cached != null && cached.isNotEmpty) return;
+      if (cached != null && cached.isNotEmpty) continue;
       try {
-        final res = await ApiService.getMessages(conv.id, limit: 50);
+        final res = await _loadMessages(conv.id);
         if (_disposed || session != _sessionRevision) return;
         final rawData = res['data'] as List? ?? [];
         final fetched = rawData
@@ -860,8 +877,7 @@ class ChatProvider extends ChangeNotifier {
           }
         }
       } catch (_) {}
-    }));
-    _isPreloadingTopConversations = false;
+    }
   }
 
   String? selectedConversationId;

@@ -77,6 +77,8 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
           final userMap = Map<String, dynamic>.from(userObj);
           if (mounted) {
             await Provider.of<ChatProvider>(context, listen: false).setCurrentUser(userMap);
+            await _prepareApp();
+            if (!mounted) return;
             setState(() {
               _isLoggedIn = true;
             });
@@ -102,9 +104,50 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
     }
   }
 
-  void _onLoginSuccess() {
+  Future<void> _prepareApp() async {
+    final provider = context.read<ChatProvider>();
+    // Slow networks must not keep the user on the splash indefinitely.
+    try {
+      await provider.prepareInitialConversations().timeout(
+        const Duration(seconds: 4), onTimeout: () {},
+      );
+    } catch (error) {
+      debugPrint('Initial message preparation: $error');
+    }
+    if (!mounted) return;
+    final avatars = provider.conversations.take(12)
+        .map((conversation) => conversation.avatar)
+        .whereType<String>().where((avatar) => avatar.isNotEmpty).toSet().toList();
+    final deadline = DateTime.now().add(const Duration(seconds: 1));
+    var nextAvatar = 0;
+    Future<void> warmAvatars() async {
+      while (mounted && nextAvatar < avatars.length && DateTime.now().isBefore(deadline)) {
+        final url = ApiService.formatImageUrl(avatars[nextAvatar++]);
+        // Match the cache keys used by the sidebar and message avatars.
+        for (final size in [104, 56]) {
+          if (!mounted || DateTime.now().isAfter(deadline)) return;
+          await precacheImage(
+            ResizeImage(NetworkImage(url), width: size, height: size), context,
+            onError: (_, __) {},
+          );
+        }
+      }
+    }
+    await Future.wait([warmAvatars(), warmAvatars()])
+        .timeout(const Duration(seconds: 1), onTimeout: () => []);
+  }
+
+  void _onLoginSuccess() async {
+    setState(() => _isCheckingAuth = true);
+    try {
+      await _prepareApp();
+    } catch (error) {
+      debugPrint('Initial cache preparation: $error');
+    }
+    if (!mounted) return;
     setState(() {
       _isLoggedIn = true;
+      _isCheckingAuth = false;
     });
     FCMService.initAndRegisterToken();
   }

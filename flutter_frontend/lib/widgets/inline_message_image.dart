@@ -64,6 +64,11 @@ class _InlineMessageImageState extends State<InlineMessageImage> {
 
   @override
   Widget build(BuildContext context) {
+    // Keep scroll geometry identical before and after decoding.
+    return SizedBox(width: 240, height: 180, child: _buildImage(context));
+  }
+
+  Widget _buildImage(BuildContext context) {
     if (_bytes == null && _error == null) {
       if (Scrollable.recommendDeferredLoadingForContext(context)) {
         _deferredDecode ??= Timer(const Duration(milliseconds: 120), () {

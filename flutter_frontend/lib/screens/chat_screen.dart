@@ -614,6 +614,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     _bottomScrollSettlingFrames = max(_bottomScrollSettlingFrames, settlingFrames);
     if (_bottomScrollScheduled) return;
     _bottomScrollScheduled = true;
+    final conversationId = context.read<ChatProvider>().selectedConversation?.id;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _bottomScrollScheduled = false;
       final shouldAnimate = _animateBottomScroll;
@@ -623,9 +624,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
       _forceBottomScroll = false;
       _bottomScrollSettlingFrames = 0;
       if (!mounted || !_scrollController.hasClients ||
-          _lastOpenedConversationId == null) return;
+          _lastOpenedConversationId == null ||
+          _lastOpenedConversationId != conversationId) return;
       final position = _scrollController.position;
-      if (!shouldForce && position.isScrollingNotifier.value) return;
+      if (!shouldForce &&
+          (position.isScrollingNotifier.value || !_isNearBottom)) return;
       const target = 0.0;
       if (position.pixels > 1) {
         if (shouldAnimate) {
@@ -2866,7 +2869,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                       : null;
 
                       final maxBubbleWidth = MediaQuery.of(context).size.width * 0.72;
+                      final rowIndices = <Key, int>{
+                        if (hasTyping) const ValueKey('chat_typing_indicator'): 0,
+                        for (var i = 0; i < messageCount; i++)
+                          ValueKey('message_${allMessages[i].id}'):
+                            messageCount - 1 - i + (hasTyping ? 1 : 0),
+                      };
                       return ListView.builder(
+                        findChildIndexCallback: (key) => rowIndices[key],
                         controller: _scrollController,
                         reverse: true,
                         physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
@@ -2935,7 +2945,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
 
                       if (msg.type == 'system') {
                         return RepaintBoundary(
-                          key: ValueKey('system_${msg.id}'),
+                          key: ValueKey('message_${msg.id}'),
                           child: _buildSystemMessage(msg, conv, chatProv.currentUser),
                         );
                       }
@@ -2947,7 +2957,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
 
                       if (isCallMsg) {
                         return RepaintBoundary(
-                          key: ValueKey('call_${msg.id}'),
+                          key: ValueKey('message_${msg.id}'),
                           child: Column(
                           children: [
                             if (showTime)
@@ -2989,7 +2999,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                       }
 
                       return RepaintBoundary(
-                        key: ValueKey('msg_${msg.id}'),
+                        key: ValueKey('message_${msg.id}'),
                         child: Column(
                         children: [
                           if (showTime)
@@ -5850,7 +5860,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
           messageId: msg.id,
           source: inlineSource,
           cache: _inlineImageCache,
-          cacheWidth: 800,
+          cacheWidth: 450,
           fit: BoxFit.cover,
           errorBuilder: (_, __, ___) => Container(
             padding: const EdgeInsets.all(12),
@@ -6002,7 +6012,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: Container(
-            constraints: const BoxConstraints(maxWidth: 240, maxHeight: 300),
+            width: 240,
+            height: 180,
             child: imageContent,
           ),
         ),

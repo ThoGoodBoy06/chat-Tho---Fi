@@ -88,6 +88,42 @@ void main() {
         reason: 'All test HTTP traffic must be mocked.');
   });
 
+  test('startup prepares recent messages and selection reuses the in-flight request', () async {
+    final list = api.enqueue('/api/chat/conversations');
+    final history = api.enqueue('/api/chat/a/messages');
+    final preparation = provider.prepareInitialConversations();
+    await list.started.future;
+    list.complete([{'id': 'a', 'name': 'a'}]);
+    await history.started.future;
+    final selection = provider.selectConversation(provider.conversations.single);
+    history.complete([_message('ready', 'a')]);
+    await Future.wait([preparation, selection]);
+    expect(_messageIds(provider), ['ready']);
+    expect(api.requests['/api/chat/a/messages'], 1);
+  });
+
+  test('startup preload is bounded and can prepare a newly recent conversation later', () async {
+    final list = api.enqueue('/api/chat/conversations');
+    final histories = List.generate(5, (i) => api.enqueue('/api/chat/$i/messages'));
+    final preparation = provider.prepareInitialConversations();
+    await list.started.future;
+    list.complete(List.generate(6, (i) => {'id': '$i', 'name': '$i'}));
+    for (var i = 0; i < histories.length; i++) {
+      await histories[i].started.future;
+      histories[i].complete([_message('ready-$i', '$i')]);
+    }
+    await preparation;
+    expect(api.requests['/api/chat/5/messages'], isNull);
+    await provider.prepareInitialConversations();
+    final later = api.enqueue('/api/chat/5/messages');
+    provider.conversations = [_conversation('5'), ...provider.conversations.take(5)];
+    final secondPreparation = provider.prepareInitialConversations();
+    await later.started.future;
+    later.complete([_message('ready-5', '5')]);
+    await secondPreparation;
+    expect(api.requests['/api/chat/5/messages'], 1);
+  });
+
   test('realtime message changes notify listeners once', () async {
     provider.selectedConversation = _conversation('a');
     provider.selectedConversationId = 'a';

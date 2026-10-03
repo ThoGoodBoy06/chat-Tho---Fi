@@ -38,9 +38,13 @@ void main() {
     await tester.pumpWidget(content());
     await tester.pump(const Duration(milliseconds: 120));
     expect(cache.decodes, 0);
+    final reservedSize = tester.getSize(find.byType(InlineMessageImage));
     defer.value = false;
     await tester.pump(const Duration(milliseconds: 120));
+    await tester.pump(const Duration(milliseconds: 100));
     expect(cache.decodes, 1);
+    expect(tester.getSize(find.byType(InlineMessageImage)), reservedSize,
+        reason: 'Finishing image decoding must not change the scroll geometry.');
     await tester.pumpWidget(const SizedBox.shrink());
     defer.value = true;
     await tester.pumpWidget(content());
