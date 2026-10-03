@@ -29,7 +29,7 @@ import '../utils/inline_image_cache.dart';
 import '../widgets/inline_message_image.dart';
 
 class _MessageRenderFlags {
-  final String signature;
+  final MessageModel message;
   final bool hasImgUrl;
   final bool isImage;
   final bool isVideo;
@@ -39,7 +39,7 @@ class _MessageRenderFlags {
   final bool isEmoji;
 
   const _MessageRenderFlags({
-    required this.signature,
+    required this.message,
     required this.hasImgUrl,
     required this.isImage,
     required this.isVideo,
@@ -131,7 +131,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   Future<void> _fetchPendingRequestsCount() async {
     try {
       final list = await ApiService.getPendingFriendRequests();
-      if (mounted) {
+      if (mounted && _pendingFriendRequestsCount != list.length) {
         setState(() {
           _pendingFriendRequestsCount = list.length;
         });
@@ -177,7 +177,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
 
     // Auto-refresh pending friend requests count badge in background every 60 seconds (socket events handle real-time)
     _pendingRefreshTimer = Timer.periodic(const Duration(seconds: 60), (_) {
-      if (mounted) {
+      if (mounted && (!kIsWeb || html.document.hidden != true)) {
         _fetchPendingRequestsCount();
       }
     });
@@ -261,8 +261,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     _showScrollToBottomButton = (maxScroll - currentScroll) > 150;
   }
 
+  String _lastTypingText = '';
+  DateTime? _lastTypingEmission;
+
   void _onTextChanged() {
     final text = _textController.text;
+    if (text == _lastTypingText) return;
+    _lastTypingText = text;
     final typing = text.trim().isNotEmpty;
     if (typing != _isTyping) {
       setState(() => _isTyping = typing);
@@ -271,18 +276,28 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     final provider = Provider.of<ChatProvider>(context, listen: false);
 
     if (typing) {
-      provider.emitTyping();
+      final now = DateTime.now();
+      if (_lastTypingEmission == null ||
+          now.difference(_lastTypingEmission!).inMilliseconds >= 1000) {
+        provider.emitTyping();
+        _lastTypingEmission = now;
+      }
       _debounceTimer?.cancel();
       _debounceTimer = Timer(const Duration(milliseconds: 1800), () {
         provider.emitStopTyping();
+        _lastTypingEmission = null;
       });
     } else {
+      _lastTypingEmission = null;
       _debounceTimer?.cancel();
       provider.emitStopTyping();
     }
   }
 
+  Timer? _focusScrollTimer;
+
   void _onInputFocusChanged() {
+    _focusScrollTimer?.cancel();
     if (_inputFocusNode.hasFocus) {
       if (_showEmojiPicker || _isAttachmentMenuOpen) {
         setState(() {
@@ -290,7 +305,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
           _isAttachmentMenuOpen = false;
         });
       }
-      Future.delayed(const Duration(milliseconds: 200), () {
+      _focusScrollTimer = Timer(const Duration(milliseconds: 200), () {
         if (mounted && _scrollController.hasClients) {
           _scrollToBottomIfNearBottom();
         }
@@ -310,19 +325,25 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
 
   _MessageRenderFlags _renderFlags(MessageModel msg) {
     final content = msg.content;
-    final signature = '${msg.type}|$content|${msg.imageUrl}|${msg.videoUrl}|${msg.audioUrl}|${msg.isRecalled}';
-    final key = msg.id.isEmpty ? 'content:$signature' : msg.id;
-    final cached = _messageRenderFlags[key];
-    if (cached != null && cached.signature == signature) return cached;
-    final lower = content.toLowerCase();
+    final key = msg.id;
+    final cached = key.isEmpty ? null : _messageRenderFlags[key];
+    if (cached != null &&
+        cached.message.type == msg.type && cached.message.content == content &&
+        cached.message.imageUrl == msg.imageUrl && cached.message.videoUrl == msg.videoUrl &&
+        cached.message.audioUrl == msg.audioUrl && cached.message.isRecalled == msg.isRecalled) {
+      return cached;
+    }
+    // Inline media can contain megabytes of base64: never scan it as chat text.
+    final inlineMedia = content.startsWith('data:');
+    final lower = inlineMedia ? '' : content.toLowerCase();
     final hasImgUrl = lower.endsWith('.jpg') || lower.endsWith('.jpeg') ||
         lower.endsWith('.png') || lower.endsWith('.webp') || lower.endsWith('.gif') ||
         lower.contains('/chat-media/') || lower.contains('.jpg?') || lower.contains('.png?');
     final hasVideoUrl = lower.endsWith('.mp4') || lower.endsWith('.mov') ||
         lower.endsWith('.webm') || lower.endsWith('.mkv') || lower.contains('.mp4?');
-    final isEmoji = !msg.isRecalled && (msg.type == null || msg.type == 'text') && _isEmojiOnly(content);
+    final isEmoji = !inlineMedia && !msg.isRecalled && (msg.type == null || msg.type == 'text') && _isEmojiOnly(content);
     final flags = _MessageRenderFlags(
-      signature: signature,
+      message: msg,
       hasImgUrl: hasImgUrl,
       isImage: msg.type == 'image' || content.startsWith('data:image') ||
           (msg.imageUrl?.isNotEmpty ?? false) || hasImgUrl,
@@ -330,11 +351,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
           (msg.videoUrl?.isNotEmpty ?? false) || hasVideoUrl,
       isAudio: msg.type == 'audio' || content.startsWith('data:audio'),
       isFile: msg.type == 'file',
-      isCall: msg.type == 'call' || msg.type == 'missed_call' || msg.type == 'video_call',
+      isCall: msg.type == 'call' || msg.type == 'missed_call' || msg.type == 'video_call' ||
+          ((msg.type == null || msg.type == 'text') &&
+              (lower.contains('cuộc gọi') || lower.contains('cuoc goi'))),
       isEmoji: isEmoji,
     );
     if (_messageRenderFlags.length > 240) _messageRenderFlags.clear();
-    _messageRenderFlags[key] = flags;
+    if (key.isNotEmpty) _messageRenderFlags[key] = flags;
     return flags;
   }
 
@@ -352,6 +375,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     _incomingEndSub?.cancel();
     _debounceTimer?.cancel();
     _pendingRefreshTimer?.cancel();
+    _focusScrollTimer?.cancel();
     _incomingCallSub?.cancel();
     _boundProvider?.onNewMessageReceived = null;
     _boundProvider?.onConversationSelected = null;
@@ -1388,6 +1412,20 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     final isDark = Provider.of<ThemeProvider>(context).isDarkMode;
     final bgColor = isDark ? const Color(0xFF0F172A) : const Color(0xFFF0F2F5);
 
+    final screenWidth = MediaQuery.of(context).size.width;
+    // Build expensive content once per state change, outside animation ticks.
+    final conversationList = RepaintBoundary(
+      child: Column(
+        children: [
+          Expanded(child: _buildChatList(provider)),
+          _buildMobileBottomBar(),
+        ],
+      ),
+    );
+    final chatWindow = activeConv == null
+        ? null
+        : RepaintBoundary(child: _buildChatWindow(provider, isDesktop: false));
+
     return AnimatedBuilder(
       animation: _mobileChatSlideAnimation,
       builder: (context, _) {
@@ -1399,14 +1437,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
           children: [
             // 1. LỚP DANH SÁCH CHAT + BOTTOM BAR: Parallax lùi nhẹ sang trái 25% khi mở chat
             Transform.translate(
-              offset: Offset(-MediaQuery.of(context).size.width * 0.25 * progress, 0),
+              offset: Offset(-screenWidth * 0.25 * progress, 0),
               child: IgnorePointer(
                 ignoring: progress > 0.85,
-                child: Column(
-                  children: [
-                    Expanded(child: _buildChatList(provider)),
-                    _buildMobileBottomBar(),
-                  ],
+                child: TickerMode(
+                  enabled: progress < 0.99,
+                  child: conversationList,
                 ),
               ),
             ),
@@ -1424,7 +1460,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
             // Kèm hiệu ứng kéo mép trái (Interactive Edge Swipe) như Messenger / Zalo
             if (isChatVisible && activeConv != null)
               Transform.translate(
-                offset: Offset(MediaQuery.of(context).size.width * (1.0 - progress), 0),
+                offset: Offset(screenWidth * (1.0 - progress), 0),
                 child: GestureDetector(
                   behavior: HitTestBehavior.translucent,
                   onHorizontalDragStart: (details) {
@@ -1468,7 +1504,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                             ]
                           : null,
                     ),
-                    child: _buildChatWindow(provider, isDesktop: false),
+                    child: chatWindow,
                   ),
                 ),
               ),
@@ -1629,6 +1665,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   }
 
   Widget _buildChatList(ChatProvider provider) {
+    return Consumer<ChatProvider>(
+      builder: (context, updatedProvider, _) => _buildChatListContent(updatedProvider),
+    );
+  }
+
+  Widget _buildChatListContent(ChatProvider provider) {
     if (provider.selectedConversation == null && _lastOpenedConversationId != null) {
       _lastOpenedConversationId = null;
       _expandedTimestampMessageIds.clear();
@@ -2828,7 +2870,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                         controller: _scrollController,
                         reverse: true,
                         physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-                        cacheExtent: 600,
+                        cacheExtent: isDesktop ? 600 : 250,
                         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                         addAutomaticKeepAlives: false,
                         addRepaintBoundaries: true,
@@ -2900,7 +2942,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
 
                       final renderFlags = _renderFlags(msg);
                       final isCallMsg = !msg.isRecalled && (
-                          renderFlags.isCall || msg.content.toLowerCase().contains('cuộc gọi') || msg.content.toLowerCase().contains('cuoc goi')
+                          renderFlags.isCall
                       );
 
                       if (isCallMsg) {

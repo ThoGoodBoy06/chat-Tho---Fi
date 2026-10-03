@@ -1,6 +1,5 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({Key? key}) : super(key: key);
@@ -146,7 +145,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                     children: [
                       Text(
                         'Chat Tho-Fi',
-                        style: GoogleFonts.outfit(
+                        style: TextStyle(
                           fontSize: 34,
                           fontWeight: FontWeight.w800,
                           color: const Color(0xFF0068FF),
@@ -156,7 +155,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                       const SizedBox(height: 8),
                       Text(
                         'Kết nối mọi lúc • Chia sẻ mọi nơi',
-                        style: GoogleFonts.inter(
+                        style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                           color: const Color(0xFF64748B),
@@ -185,7 +184,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                       const SizedBox(height: 12),
                       Text(
                         'Tho-Fi Ecosystem',
-                        style: GoogleFonts.inter(
+                        style: TextStyle(
                           fontSize: 12,
                           color: const Color(0xFF94A3B8),
                           fontWeight: FontWeight.w500,

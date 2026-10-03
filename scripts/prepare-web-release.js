@@ -17,6 +17,7 @@ for (const name of ['index.html', 'app_service_worker.js', '_headers']) {
   fs.copyFileSync(path.join(source, name), path.join(web, name));
 }
 let bootstrap = fs.readFileSync(path.join(web, 'flutter_bootstrap.js'), 'utf8');
+bootstrap = bootstrap.replaceAll('"renderer":"auto"', '"renderer":"canvaskit"');
 bootstrap = bootstrap.replace(/\?v=[a-f0-9]{16}/g, '?v=__APP_BUILD_VERSION__');
 fs.writeFileSync(path.join(web, 'flutter_bootstrap.js'), bootstrap);
 for (const file of files(web).sort()) {

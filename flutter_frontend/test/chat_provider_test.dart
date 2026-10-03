@@ -102,6 +102,41 @@ void main() {
     expect(_messageIds(provider), ['live-once']);
   });
 
+  test('local cache stays bounded and preserves recent message order', () async {
+    provider.selectedConversation = _conversation('a');
+    provider.selectedConversationId = 'a';
+    for (var i = 0; i < 8; i++) {
+      provider.addRealtimeMessage(MessageModel(
+        id: 'bounded-$i', conversationId: 'a', senderId: 'partner',
+        content: '"\\\n' * 15000,
+        createdAt: DateTime.utc(2026, 1, 1, 0, 0, i),
+      ));
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 350));
+    final prefs = await SharedPreferences.getInstance();
+    final cached = prefs.getString('cached_msgs_a')!;
+    expect(cached.length, lessThanOrEqualTo(512 * 1024));
+    final decoded = jsonDecode(cached) as List;
+    expect(decoded.last['id'], 'bounded-7');
+    expect(decoded.length, lessThan(8));
+    final ids = decoded.map((m) => m['id']).toList();
+    expect(ids, List.generate(decoded.length, (i) => 'bounded-' + (8 - decoded.length + i).toString()));
+    expect(decoded.last['content'], provider.messages.last.content);
+  });
+
+  test('oversized text stays in memory without entering persistent cache', () async {
+    provider.selectedConversation = _conversation('a');
+    provider.selectedConversationId = 'a';
+    provider.addRealtimeMessage(MessageModel(
+      id: 'oversized', conversationId: 'a', senderId: 'partner',
+      content: 'x' * (600 * 1024), createdAt: DateTime.utc(2026, 1, 1),
+    ));
+    await Future<void>.delayed(const Duration(milliseconds: 350));
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('cached_msgs_a'), isNull);
+    expect(provider.messages.single.content.length, 600 * 1024);
+  });
+
   test('large inline media is not written into the local message cache',
       () async {
     provider.selectedConversation = _conversation('a');
@@ -144,7 +179,7 @@ void main() {
 
     refresh.complete([_message('a-1', 'a')]);
     await reselect;
-    expect(notifications, 1);
+    expect(notifications, 0, reason: 'Identical refreshed history must not rebuild listeners.');
   });
 
   test(

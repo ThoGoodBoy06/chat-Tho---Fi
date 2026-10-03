@@ -421,7 +421,7 @@
       btn = document.createElement('div');
       btn.id = 'callAudioUnmuteBanner';
       btn.innerHTML = '🔊 <b>Bấm vào đây để nghe tiếng cuộc gọi</b>';
-      btn.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:#10B981;color:#fff;padding:14px 28px;border-radius:28px;font-size:16px;font-family:sans-serif;font-weight:700;box-shadow:0 8px 32px rgba(0,0,0,0.8);z-index:2147483647;cursor:pointer;';
+      btn.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:#10B981;color:#fff;padding:14px 28px;border-radius:28px;font-size:16px;font-family:Arimo,Arial,sans-serif;font-weight:700;box-shadow:0 8px 32px rgba(0,0,0,0.8);z-index:2147483647;cursor:pointer;';
       const handleTap = function (ev) {
         if (ev) {
           try { ev.stopPropagation(); ev.preventDefault(); } catch (_) {}
@@ -653,7 +653,7 @@
       var toast = document.createElement('div');
       toast.id = 'thoFiDownloadToast';
       toast.textContent = message;
-      toast.style.cssText = 'position:fixed;top:28px;left:50%;transform:translateX(-50%);background:rgba(15,23,42,0.92);color:#fff;padding:12px 26px;border-radius:30px;font-size:14px;font-family:sans-serif;font-weight:600;box-shadow:0 12px 32px rgba(0,0,0,0.4);z-index:999999999;border:1px solid rgba(255,255,255,0.18);backdrop-filter:blur(10px);pointer-events:none;animation:toastAnim 0.3s cubic-bezier(0.16,1,0.3,1);text-align:center;';
+      toast.style.cssText = 'position:fixed;top:28px;left:50%;transform:translateX(-50%);background:rgba(15,23,42,0.92);color:#fff;padding:12px 26px;border-radius:30px;font-size:14px;font-family:Arimo,Arial,sans-serif;font-weight:600;box-shadow:0 12px 32px rgba(0,0,0,0.4);z-index:999999999;border:1px solid rgba(255,255,255,0.18);backdrop-filter:blur(10px);pointer-events:none;animation:toastAnim 0.3s cubic-bezier(0.16,1,0.3,1);text-align:center;';
 
       var style = document.getElementById('downloadToastStyle');
       if (!style) {
@@ -800,7 +800,7 @@
 
       var dlBtn = document.createElement('button');
       dlBtn.innerHTML = '⬇ Lưu video vào máy';
-      dlBtn.style.cssText = 'background:rgba(0,104,255,0.85);color:#fff;border:none;border-radius:24px;padding:9px 20px;font-size:14px;font-family:sans-serif;font-weight:600;cursor:pointer;backdrop-filter:blur(6px);display:inline-flex;align-items:center;transition:all 0.2s;box-shadow:0 4px 14px rgba(0,104,255,0.4);';
+      dlBtn.style.cssText = 'background:rgba(0,104,255,0.85);color:#fff;border:none;border-radius:24px;padding:9px 20px;font-size:14px;font-family:Arimo,Arial,sans-serif;font-weight:600;cursor:pointer;backdrop-filter:blur(6px);display:inline-flex;align-items:center;transition:all 0.2s;box-shadow:0 4px 14px rgba(0,104,255,0.4);';
       dlBtn.onmouseover = function () { dlBtn.style.background = '#0052cc'; dlBtn.style.transform = 'scale(1.03)'; };
       dlBtn.onmouseout = function () { dlBtn.style.background = 'rgba(0,104,255,0.85)'; dlBtn.style.transform = 'scale(1)'; };
       dlBtn.onclick = function (e) {
@@ -810,7 +810,7 @@
 
       var closeBtn = document.createElement('button');
       closeBtn.innerHTML = '✕';
-      closeBtn.style.cssText = 'background:rgba(255,255,255,0.18);color:#fff;border:none;border-radius:50%;width:40px;height:40px;font-size:20px;font-family:sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;';
+      closeBtn.style.cssText = 'background:rgba(255,255,255,0.18);color:#fff;border:none;border-radius:50%;width:40px;height:40px;font-size:20px;font-family:Arimo,Arial,sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;';
       closeBtn.onmouseover = function () { closeBtn.style.background = '#EF4444'; closeBtn.style.transform = 'scale(1.08)'; };
       closeBtn.onmouseout = function () { closeBtn.style.background = 'rgba(255,255,255,0.18)'; closeBtn.style.transform = 'scale(1)'; };
       closeBtn.onclick = closeHandler;
@@ -913,7 +913,7 @@
       header.style.cssText = 'width:100%;max-width:1200px;display:flex;align-items:center;justify-content:space-between;z-index:100;padding:4px 16px;box-sizing:border-box;';
 
       var counterPill = document.createElement('div');
-      counterPill.style.cssText = 'background:rgba(255,255,255,0.18);color:#fff;font-family:sans-serif;font-size:14px;font-weight:700;padding:6px 15px;border-radius:20px;display:inline-flex;align-items:center;gap:7px;letter-spacing:0.5px;box-shadow:0 2px 8px rgba(0,0,0,0.3);';
+      counterPill.style.cssText = 'background:rgba(255,255,255,0.18);color:#fff;font-family:Arimo,Arial,sans-serif;font-size:14px;font-weight:700;padding:6px 15px;border-radius:20px;display:inline-flex;align-items:center;gap:7px;letter-spacing:0.5px;box-shadow:0 2px 8px rgba(0,0,0,0.3);';
       counterPill.innerHTML = (isAlbum ? '<span>⊞</span> ' : '<span>🖼</span> ') + '<span id="galleryCounterText">' + (currentIndex + 1) + ' / ' + list.length + '</span>';
 
       var actionsDiv = document.createElement('div');
@@ -922,7 +922,7 @@
 
       var dlBtn = document.createElement('button');
       dlBtn.innerHTML = '⬇ Lưu ảnh';
-      dlBtn.style.cssText = 'background:rgba(0,104,255,0.92);color:#fff;border:none;border-radius:22px;padding:8px 16px;font-size:13.5px;font-family:sans-serif;font-weight:600;cursor:pointer;backdrop-filter:blur(6px);display:inline-flex;align-items:center;gap:6px;transition:all 0.2s;box-shadow:0 4px 14px rgba(0,104,255,0.4);';
+      dlBtn.style.cssText = 'background:rgba(0,104,255,0.92);color:#fff;border:none;border-radius:22px;padding:8px 16px;font-size:13.5px;font-family:Arimo,Arial,sans-serif;font-weight:600;cursor:pointer;backdrop-filter:blur(6px);display:inline-flex;align-items:center;gap:6px;transition:all 0.2s;box-shadow:0 4px 14px rgba(0,104,255,0.4);';
       dlBtn.onclick = function (e) {
         e.stopPropagation();
         var curUrl = list[currentIndex];

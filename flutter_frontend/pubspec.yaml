@@ -45,6 +45,22 @@ flutter:
     - assets/emojis/
     - assets/fonts/
   fonts:
+    - family: Arimo
+      fonts:
+        - asset: assets/fonts/Arimo-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Arimo-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Arimo-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Arimo-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Arimo-Italic.ttf
+          weight: 400
+          style: italic
+        - asset: assets/fonts/Arimo-BoldItalic.ttf
+          weight: 700
+          style: italic
     - family: Noto Color Emoji
       fonts:
         - asset: assets/fonts/NotoColorEmoji.ttf

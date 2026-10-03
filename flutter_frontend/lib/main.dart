@@ -144,8 +144,8 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
           surface: Colors.white,
           background: Color(0xFFF8FAFC),
         ),
-        fontFamily: 'Helvetica Neue',
-        fontFamilyFallback: const ['Arial', 'Roboto', 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji'],
+        fontFamily: 'Arimo',
+        fontFamilyFallback: const ['Noto Color Emoji'],
       ),
       darkTheme: ThemeData(
         brightness: Brightness.dark,
@@ -163,8 +163,8 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
           surface: Color(0xFF1E293B),
           background: Color(0xFF0F172A),
         ),
-        fontFamily: 'Helvetica Neue',
-        fontFamilyFallback: const ['Arial', 'Roboto', 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji'],
+        fontFamily: 'Arimo',
+        fontFamilyFallback: const ['Noto Color Emoji'],
       ),
       builder: (context, child) {
         final mediaQueryData = MediaQuery.of(context);

@@ -1,7 +1,7 @@
 name: flutter_frontend
 description: "Chat Tho-Fi Flutter Web Application"
 publish_to: "none"
-version: 1.0.0+1
+version: 1.0.0+2
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
@@ -14,15 +14,53 @@ dependencies:
   provider: ^6.1.1
   shared_preferences: ^2.2.2
   intl: ^0.19.0
-  google_fonts: ^6.1.0
+  google_fonts: ^6.2.1
   cupertino_icons: ^1.0.6
+  firebase_core: ^3.1.0
+  firebase_messaging: ^15.0.1
+  flutter_local_notifications: ^17.1.2
+  audioplayers: ^6.0.0
+  universal_html: ^2.2.4
+  emoji_picker_flutter: ^3.1.0
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^6.0.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: true
+  image_path: "web/icon_1024.png"
+  remove_alpha_ios: true
 
 flutter:
   uses-material-design: true
   assets:
     - assets/
+    - assets/sounds/
+    - assets/emojis/
+    - assets/fonts/
+  fonts:
+    - family: Arimo
+      fonts:
+        - asset: assets/fonts/Arimo-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Arimo-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Arimo-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Arimo-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Arimo-Italic.ttf
+          weight: 400
+          style: italic
+        - asset: assets/fonts/Arimo-BoldItalic.ttf
+          weight: 700
+          style: italic
+    - family: Noto Color Emoji
+      fonts:
+        - asset: assets/fonts/NotoColorEmoji.ttf

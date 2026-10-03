@@ -17,8 +17,8 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
   <!-- High Priority Preloads for Instant Native Startup -->
-  <link rel="preload" href="flutter_bootstrap.js?v=__APP_BUILD_VERSION__" as="script">
-  <link rel="preload" href="main.dart.js?v=__APP_BUILD_VERSION__" as="script">
+  <link rel="preload" href="flutter_bootstrap.js?v=c0364276f4d1c193" as="script">
+  <link rel="preload" href="main.dart.js?v=c0364276f4d1c193" as="script">
 
   <link rel="preload" href="/tho_fi_logo_transparent.png" as="image">
   <!-- Preload Reaction Emojis for Instant Zero-Lag Reaction & Chat Render -->
@@ -63,7 +63,7 @@
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       z-index: 9998; pointer-events: none;
       display: none; flex-direction: column;
-      font-family: 'Helvetica Neue', Helvetica, Arial, Roboto, sans-serif;
+      font-family: 'Arimo', Helvetica, Arial, Roboto, sans-serif;
       overflow: hidden;
     }
     #sk-overlay.active { display: flex; pointer-events: auto; }
@@ -370,12 +370,22 @@
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
 
-          const tick = () => {
+          let lastScanAt = 0;
+          const tick = (now) => {
             if (!this.isScanning) return;
+            // Decode at most eight frames per second, at a bounded resolution.
+            if (document.hidden || now - lastScanAt < 125) {
+              this.animationFrameId = requestAnimationFrame(tick);
+              return;
+            }
+            lastScanAt = now;
 
             if (video && video.readyState === video.HAVE_ENOUGH_DATA) {
-              canvas.width = video.videoWidth;
-              canvas.height = video.videoHeight;
+              const scale = Math.min(1, 640 / Math.max(video.videoWidth, video.videoHeight));
+              const scanWidth = Math.max(1, Math.round(video.videoWidth * scale));
+              const scanHeight = Math.max(1, Math.round(video.videoHeight * scale));
+              if (canvas.width !== scanWidth) canvas.width = scanWidth;
+              if (canvas.height !== scanHeight) canvas.height = scanHeight;
               ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
               const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
@@ -551,53 +561,8 @@
     };
   </script>
 
-  <!-- 🚀 GPU Hardware Acceleration & FPS Booster -->
-  <script>
-    (function () {
-      // 1. Tối ưu hóa WebGL Context cho CanvasKit (GPU rời, độ trễ thấp, tối đa FPS)
-      try {
-        const origGetContext = HTMLCanvasElement.prototype.getContext;
-        HTMLCanvasElement.prototype.getContext = function (type, attributes) {
-          if (type === 'webgl2' || type === 'webgl') {
-            attributes = Object.assign({
-              powerPreference: 'high-performance',
-              desynchronized: true,
-              antialias: true,
-              alpha: false,
-              preserveDrawingBuffer: false,
-              failIfMajorPerformanceCaveat: false
-            }, attributes || {});
-          }
-          return origGetContext.call(this, type, attributes);
-        };
-      } catch (e) {
-        console.warn('[FPS Booster] WebGL Context hook warning:', e);
-      }
-
-      // 2. Tối ưu Touch & Scroll Events (Passive Listeners loại bỏ jank)
-      try {
-        const passiveOpt = { passive: true, capture: false };
-        ['touchstart', 'touchmove', 'wheel'].forEach(function (evt) {
-          window.addEventListener(evt, function () {}, passiveOpt);
-        });
-      } catch (e) { }
-    })();
-  </script>
 
   <style>
-    /* Universal Frosted Glass & Backdrop Blur for iOS Safari & All Browsers */
-    flt-backdrop,
-    flt-backdrop-interior,
-    flt-backdrop-filter,
-    [style*="backdrop-filter"],
-    [style*="-webkit-backdrop-filter"] {
-      -webkit-backdrop-filter: blur(14px) !important;
-      backdrop-filter: blur(14px) !important;
-      background-color: rgba(0, 0, 0, 0.22) !important;
-      -webkit-transform: translateZ(0);
-      transform: translateZ(0);
-    }
-
     * {
       box-sizing: border-box;
     }
@@ -620,29 +585,7 @@
       -webkit-tap-highlight-color: transparent;
       user-select: none;
       -webkit-user-select: none;
-      font-family: "Helvetica Neue", Helvetica, Arial, Roboto, sans-serif;
-    }
-
-    /* Ép tăng tốc phần cứng GPU và tối ưu 60FPS - 120FPS cho CanvasKit */
-    flutter-view,
-    flt-glass-pane,
-    flt-scene-host,
-    canvas {
-      width: 100% !important;
-      height: 100% !important;
-      position: absolute !important;
-      top: 0 !important;
-      left: 0 !important;
-      outline: none !important;
-      transform: translate3d(0, 0, 0);
-      -webkit-transform: translate3d(0, 0, 0);
-      backface-visibility: hidden;
-      -webkit-backface-visibility: hidden;
-      perspective: 1000px;
-      -webkit-perspective: 1000px;
-      will-change: transform;
-      contain: strict;
-      image-rendering: -webkit-optimize-contrast;
+      font-family: "Arimo", Helvetica, Arial, Roboto, sans-serif;
     }
 
     #loading-screen {
@@ -852,7 +795,7 @@
     }
 
     .ai-welcome-title {
-      font-family: "Helvetica Neue", Helvetica, Arial, Roboto, sans-serif;
+      font-family: "Arimo", Helvetica, Arial, Roboto, sans-serif;
       font-size: 26px;
       font-weight: 600;
       color: #0f172a;
@@ -869,15 +812,6 @@
   </style>
 
   <script>
-    // iOS Safari Keyboard Scroll Lock: Ngăn Safari cuộn toàn trang khi bàn phím ảo bật lên
-    if (typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent)) {
-      window.addEventListener('scroll', function () {
-        if (window.scrollY !== 0) {
-          window.scrollTo(0, 0);
-        }
-      }, { passive: true });
-    }
-
     // Dismiss splash screen smoothly when Flutter first frame is rendered
     window.dismissSplashScreen = function () {
       var el = document.getElementById('loading-screen');
@@ -948,6 +882,7 @@
     };
   </script>
 
+  <link rel="stylesheet" href="app_fonts.css">
 </head>
 
 <body>
@@ -1070,7 +1005,7 @@
       flex-direction: column;
       transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
       border-right: 1px solid rgba(0, 0, 0, 0.08);
-      font-family: "Helvetica Neue", Helvetica, Arial, Roboto, sans-serif;
+      font-family: "Arimo", Helvetica, Arial, Roboto, sans-serif;
     }
 
     .ai-drawer-panel.dark {
@@ -1136,7 +1071,7 @@
       justify-content: center;
       padding: 20px;
       box-sizing: border-box;
-      font-family: "Helvetica Neue", Helvetica, Arial, Roboto, sans-serif;
+      font-family: "Arimo", Helvetica, Arial, Roboto, sans-serif;
     }
 
     .ai-confirm-backdrop.active {
@@ -1461,7 +1396,7 @@
       transform: scale(0.92);
       transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
       border: 1px solid rgba(0, 0, 0, 0.08);
-      font-family: "Helvetica Neue", Helvetica, Arial, Roboto, sans-serif;
+      font-family: "Arimo", Helvetica, Arial, Roboto, sans-serif;
       box-sizing: border-box;
     }
 
@@ -2173,7 +2108,7 @@
   <script>
     window.flutterWebRenderer = "canvaskit";
   </script>
-  <script src="flutter_bootstrap.js?v=__APP_BUILD_VERSION__" async></script>
+  <script src="flutter_bootstrap.js?v=c0364276f4d1c193" async></script>
 
   <script id="messenger-theme-picker-script">
     window._openMessengerThemePicker = function (convId, convName) {
@@ -2214,7 +2149,7 @@
       overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.6);backdrop-filter:blur(8px);z-index:9999999;display:flex;align-items:flex-end;justify-content:center;opacity:0;transition:opacity 0.25s ease;';
 
       var sheet = document.createElement('div');
-      sheet.style.cssText = 'background:#ffffff;width:100%;max-width:440px;border-top-left-radius:24px;border-top-right-radius:24px;padding:16px 20px 28px;box-shadow:0 -12px 35px rgba(0,0,0,0.25);transform:translateY(100%);transition:transform 0.25s cubic-bezier(0.16,1,0.3,1);font-family:"Helvetica Neue",Helvetica,Arial,Roboto,sans-serif;user-select:none;';
+      sheet.style.cssText = 'background:#ffffff;width:100%;max-width:440px;border-top-left-radius:24px;border-top-right-radius:24px;padding:16px 20px 28px;box-shadow:0 -12px 35px rgba(0,0,0,0.25);transform:translateY(100%);transition:transform 0.25s cubic-bezier(0.16,1,0.3,1);font-family:"Arimo",Helvetica,Arial,Roboto,sans-serif;user-select:none;';
 
       var html = '<div style="display:flex;justify-content:center;margin-bottom:12px;"><div style="width:40px;height:4px;background:#E2E8F0;border-radius:2px;"></div></div>';
       html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">';
@@ -2386,7 +2321,7 @@
       transform: translateY(100%);
       transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
       overflow: hidden;
-      font-family: "Helvetica Neue", Helvetica, Arial, Roboto, sans-serif;
+      font-family: "Arimo", Helvetica, Arial, Roboto, sans-serif;
     }
 
     #notif-modal-overlay.active #notif-modal-sheet {
@@ -3563,7 +3498,7 @@
 
     var sheet = document.createElement('div');
     sheet.id = 'reaction-detail-sheet';
-    sheet.style.cssText = 'background:#ffffff;width:100%;max-width:440px;max-height:78vh;border-top-left-radius:24px;border-top-right-radius:24px;padding:12px 0 24px;box-shadow:0 -12px 40px rgba(0,0,0,0.22);transform:translateY(100%);transition:transform 0.25s cubic-bezier(0.16,1,0.3,1);font-family:"Helvetica Neue",Helvetica,Arial,Roboto,sans-serif;user-select:none;display:flex;flex-direction:column;box-sizing:border-box;';
+    sheet.style.cssText = 'background:#ffffff;width:100%;max-width:440px;max-height:78vh;border-top-left-radius:24px;border-top-right-radius:24px;padding:12px 0 24px;box-shadow:0 -12px 40px rgba(0,0,0,0.22);transform:translateY(100%);transition:transform 0.25s cubic-bezier(0.16,1,0.3,1);font-family:"Arimo",Helvetica,Arial,Roboto,sans-serif;user-select:none;display:flex;flex-direction:column;box-sizing:border-box;';
 
     if (window.innerWidth > 600) {
       overlay.style.alignItems = 'center';

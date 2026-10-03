@@ -110,16 +110,18 @@ class ChatProvider extends ChangeNotifier {
   void _saveLocalCachedMessages(String convId, List<MessageModel> msgs) {
     if (msgs.isEmpty || _disposed) return;
     try {
-      final raw = <Map<String, dynamic>>[];
+      final raw = <String>[];
       var chars = 2;
       for (final message in msgs.reversed) {
         final encoded = _localMessageJson(message);
         if (encoded == null) continue;
-        final candidateChars = jsonEncode(encoded).length;
-        if (raw.isNotEmpty &&
-            chars + candidateChars > _maxLocalMessageCacheChars) break;
-        raw.insert(0, encoded);
-        chars += candidateChars;
+        final encodedMessage = jsonEncode(encoded);
+        final candidateChars = encodedMessage.length;
+        if (candidateChars + 2 > _maxLocalMessageCacheChars) continue;
+        final separatorChars = raw.isEmpty ? 0 : 1;
+        if (chars + candidateChars + separatorChars > _maxLocalMessageCacheChars) break;
+        raw.add(encodedMessage);
+        chars += candidateChars + separatorChars;
       }
       if (raw.isEmpty) {
         final prefs = _sharedPreferences;
@@ -134,7 +136,7 @@ class ChatProvider extends ChangeNotifier {
         }
         return;
       }
-      final jsonStr = jsonEncode(raw);
+      final jsonStr = '[${raw.reversed.join(',')}]';
       final prefs = _sharedPreferences;
       if (prefs != null) {
         unawaited(prefs.setString('cached_msgs_$convId', jsonStr));

@@ -39,21 +39,61 @@ void main() {
     for (var i = 0; i < 8; i++) { await tester.pump(const Duration(milliseconds: 100)); }
     final listFinder = find.byWidgetPredicate((widget) => widget is ListView && widget.controller != null);
     final controller = tester.widget<ListView>(listFinder).controller!;
-    expect(controller.position.extentAfter, lessThan(5), reason: 'Opening chat should show the latest messages.');
-    controller.jumpTo(0);
+    expect(controller.offset, lessThan(5), reason: 'Opening chat should show the latest messages.');
+    controller.jumpTo(800);
+    final readingOffset = controller.offset;
     await tester.pump();
     provider.setShowUnreadOnly(true);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));
-    expect(controller.offset, 0, reason: 'Updating the desktop sidebar must not reopen/scroll the active chat.');
+    expect(controller.offset, readingOffset, reason: 'Updating the desktop sidebar must not reopen/scroll the active chat.');
     provider.addRealtimeMessage(MessageModel(
       id: 'new', conversationId: 'room', senderId: 'partner', content: 'New incoming message',
       createdAt: DateTime.utc(2026, 1, 1, 2),
     ));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));
-    expect(controller.offset, 0, reason: 'Incoming messages must not pull the reader out of history.');
-    expect(controller.position.extentAfter, greaterThan(160));
+    expect(controller.offset, readingOffset, reason: 'Incoming messages must not pull the reader out of history.');
+    expect(controller.offset, greaterThan(160));
+    await tester.pumpWidget(const SizedBox.shrink());
+    provider.dispose();
+    await tester.pump();
+  });
+
+  testWidgets('mobile chat remains responsive through slide, typing and sidebar updates', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    SharedPreferences.setMockInitialValues({'authToken': 'test-token'});
+    ApiService.setClientForTesting(MockClient((_) async => http.Response(jsonEncode({'data': []}), 200)));
+    final provider = ChatProvider()..currentUser = UserModel(id: 'me', username: 'me', fullName: 'Me');
+    final conversation = ConversationModel(id: 'room', name: 'Conversation');
+    provider.conversations = [conversation];
+    provider.selectedConversation = conversation;
+    provider.selectedConversationId = conversation.id;
+    provider.messages = List.generate(40, (index) => MessageModel(
+      id: '$index', conversationId: 'room', senderId: 'partner',
+      content: 'Message $index', createdAt: DateTime.utc(2026, 1, 1, 0, index),
+    ));
+    await tester.pumpWidget(MultiProvider(
+      providers: [ChangeNotifierProvider.value(value: provider), ChangeNotifierProvider(create: (_) => ThemeProvider())],
+      child: MaterialApp(home: ChatScreen(onLogout: () {})),
+    ));
+    for (var i = 0; i < 8; i++) { await tester.pump(const Duration(milliseconds: 100)); }
+    final listFinder = find.byWidgetPredicate((widget) => widget is ListView && widget.controller != null);
+    final controller = tester.widget<ListView>(listFinder).controller!;
+    expect(controller.offset, lessThan(5));
+    controller.jumpTo(500);
+    await tester.pump();
+    await tester.enterText(find.byType(TextField).last, 'Typing a message');
+    await tester.pump();
+    expect(controller.offset, 500, reason: 'Typing should preserve history reading position.');
+    provider.setShowUnreadOnly(true);
+    await tester.pump();
+    expect(find.text('Chưa đọc'), findsWidgets, reason: 'Sidebar must react to provider changes without animating the whole screen again.');
+    expect(controller.offset, 500);
+    expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     provider.dispose();
     await tester.pump();
