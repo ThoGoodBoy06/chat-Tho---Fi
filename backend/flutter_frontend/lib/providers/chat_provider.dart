@@ -18,6 +18,60 @@ class ChatProvider extends ChangeNotifier {
   int _messageLoadRevision = 0;
   int _sessionRevision = 0;
   bool _disposed = false;
+  bool _chatVisible = true;
+  final Map<String, Set<String>> _readMessageIds = {};
+  final Map<String, DateTime> _readThrough = {};
+
+  MessageModel _withReadReceipt(MessageModel message, {MessageModel? previous}) {
+    final through = _readThrough[message.conversationId];
+    final confirmed = message.senderId == currentUser?.id &&
+        ((_readMessageIds[message.conversationId]?.contains(message.id) ?? false) ||
+          (through != null && message.status != 'sending' && !message.createdAt.isAfter(through)));
+    final read = message.isRead || previous?.isRead == true || confirmed;
+    return message.copyWith(isRead: read,
+        isDelivered: read || message.isDelivered || previous?.isDelivered == true);
+  }
+
+  void applyReadReceipt(Map<String, dynamic> data) {
+    final conversationId = data['conversationId']?.toString();
+    final reader = data['readBy']?.toString();
+    if (conversationId == null || reader == null || reader == currentUser?.id) return;
+    final lastId = data['lastReadMessageId']?.toString();
+    final through = DateTime.tryParse(data['lastReadCreatedAt']?.toString() ?? '');
+    if (through != null && (_readThrough[conversationId] == null || through.isAfter(_readThrough[conversationId]!))) {
+      _readThrough[conversationId] = through;
+    }
+    final ids = _readMessageIds.putIfAbsent(conversationId, () => <String>{});
+    if (lastId != null) ids.add(lastId);
+    final list = selectedConversation?.id == conversationId ? messages :
+        (_messagesCache[conversationId] ?? <MessageModel>[]);
+    final boundary = list.indexWhere((message) => message.id == lastId);
+    var changed = false;
+    for (var i = 0; i < list.length; i++) {
+      if (i <= boundary && list[i].senderId == currentUser?.id) ids.add(list[i].id);
+      final updated = _withReadReceipt(list[i]);
+      if (!_messagesEquivalent(list[i], updated)) { list[i] = updated; changed = true; }
+    }
+    while (ids.length > 100) { ids.remove(ids.first); }
+    while (_readMessageIds.length > 12) {
+      final oldest = _readMessageIds.keys.first;
+      _readMessageIds.remove(oldest); _readThrough.remove(oldest);
+    }
+    if (changed) { _cacheMessages(conversationId, list); notifyListeners(); }
+  }
+
+  void setChatVisible(bool visible) {
+    _chatVisible = visible;
+    if (visible) markSelectedConversationRead();
+  }
+
+  void markSelectedConversationRead() {
+    final id = selectedConversation?.id;
+    if (!_chatVisible || currentUser == null || id == null) return;
+    if (SocketService.isConnected) {
+      SocketService.markMessagesRead(id, currentUser!.id);
+    } else { ApiService.markAsRead(id).catchError((_) {}); }
+  }
   SharedPreferences? _sharedPreferences;
   final Map<String, Timer> _messageCacheTimers = {};
   static const int _maxLocalMessageCacheChars = 512 * 1024;
@@ -243,7 +297,7 @@ class ChatProvider extends ChangeNotifier {
         SocketService.playReceiveSound();
         SocketService.emitMarkAsDelivered(newMsg.id,
             conversationId: newMsg.conversationId);
-        if (selectedConversation != null &&
+        if (_chatVisible && selectedConversation != null &&
             selectedConversation!.id == newMsg.conversationId &&
             currentUser != null) {
           SocketService.emitMarkAsRead(newMsg.id,
@@ -320,22 +374,7 @@ class ChatProvider extends ChangeNotifier {
       }
     });
 
-    _readSubscription = SocketService.onMessagesRead.listen((data) {
-      final convId = data['conversationId']?.toString();
-      final readBy = data['readBy']?.toString();
-      if (selectedConversation != null &&
-          (convId == null || selectedConversation!.id == convId)) {
-        bool updated = false;
-        for (int i = 0; i < messages.length; i++) {
-          if (!messages[i].isRead &&
-              (readBy == null || messages[i].senderId != readBy)) {
-            messages[i] = messages[i].copyWith(isRead: true, isDelivered: true);
-            updated = true;
-          }
-        }
-        if (updated) notifyListeners();
-      }
-    });
+    _readSubscription = SocketService.onMessagesRead.listen(applyReadReceipt);
 
     _userStatusSubscription = SocketService.onUserStatusChanged.listen((data) {
       final userId = data['userId']?.toString() ?? data['id']?.toString();
@@ -591,6 +630,7 @@ class ChatProvider extends ChangeNotifier {
 
   /// Thêm tin nhắn real-time vào danh sách, tránh trùng lặp
   bool addRealtimeMessage(MessageModel msg, {bool notify = true}) {
+    msg = _withReadReceipt(msg);
     if (selectedConversation == null) return false;
     if (msg.conversationId != null &&
         msg.conversationId!.isNotEmpty &&
@@ -622,19 +662,24 @@ class ChatProvider extends ChangeNotifier {
     final existingIdx = messages.indexWhere((m) => m.id == msg.id);
     if (existingIdx != -1) {
       if (_messagesEquivalent(messages[existingIdx], msg)) return false;
-      messages[existingIdx] = msg;
+      messages[existingIdx] = _withReadReceipt(msg, previous: messages[existingIdx]);
     } else {
       final tempIdx = messages.indexWhere((m) =>
           ((msg.clientTempId != null &&
                   msg.clientTempId!.isNotEmpty &&
                   (m.id == msg.clientTempId ||
                       m.clientTempId == msg.clientTempId)) ||
-              ((m.id.startsWith('optimistic-') || m.id.startsWith('rt-')) &&
+              ((msg.clientTempId == null || msg.clientTempId!.isEmpty) &&
+                  (m.id.startsWith('optimistic-') || m.id.startsWith('rt-')) &&
                   m.senderId == msg.senderId &&
                   (m.content == msg.content ||
                       (m.type == msg.type && m.type != 'text')))));
       if (tempIdx != -1) {
-        messages[tempIdx] = msg;
+        final previous = messages[tempIdx];
+        final incomingTemporary = msg.id.startsWith('optimistic-') || msg.id.startsWith('rt-');
+        final previousTemporary = previous.id.startsWith('optimistic-') || previous.id.startsWith('rt-');
+        if (incomingTemporary && !previousTemporary) return false;
+        messages[tempIdx] = _withReadReceipt(msg, previous: messages[tempIdx]);
       } else {
         messages.add(msg);
       }
@@ -663,6 +708,8 @@ class ChatProvider extends ChangeNotifier {
     _sessionRevision++;
     _messageLoadRevision++;
     _messageRequests.clear();
+    _readMessageIds.clear();
+    _readThrough.clear();
     _preloadFuture = null;
     _messageCacheTimers.values.forEach((timer) => timer.cancel());
     _messageCacheTimers.clear();
@@ -988,13 +1035,7 @@ class ChatProvider extends ChangeNotifier {
     if (initialStateChanged) notifyListeners();
 
     // Chỉ gửi lệnh Đã đọc đến máy chủ KHI THỰC SỰ có tin nhắn chưa đọc (tránh spam lock DB)
-    if (currentUser != null && unreadChanged) {
-      if (SocketService.isConnected) {
-        SocketService.markMessagesRead(conv.id, currentUser!.id);
-      } else {
-        ApiService.markAsRead(conv.id).catchError((_) {});
-      }
-    }
+    if (selectionChanged || unreadChanged) markSelectedConversationRead();
 
     // Join vào room của conversation để nhận tin nhắn real-time
     SocketService.joinRoom(conv.id);
@@ -1035,7 +1076,8 @@ class ChatProvider extends ChangeNotifier {
           if (_hasNearbyTimestamp(callTimes, m.createdAt, 15)) continue;
           _insertTimestamp(callTimes, m.createdAt);
         }
-        cleanFetched.add(m);
+        cleanFetched.add(_withReadReceipt(m,
+            previous: messages.firstWhere((old) => old.id == m.id, orElse: () => m)));
       }
 
       final fetchedTimesBySenderAndContent =
@@ -1126,6 +1168,8 @@ class ChatProvider extends ChangeNotifier {
     final optId = 'optimistic-${DateTime.now().microsecondsSinceEpoch}';
     final optMsg = MessageModel(
       id: optId,
+      clientTempId: optId,
+      status: 'sending',
       conversationId: conversation.id,
       senderId: currentUser?.id,
       content: text,
@@ -1140,7 +1184,7 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
     onNewMessageReceived?.call();
 
-    // ⚡ Bắn tín hiệu tin nhắn tức thời qua Socket.IO (<20ms)
+    // Relay immediately over the established socket while REST persists it.
     if (SocketService.socket != null && SocketService.socket!.connected) {
       SocketService.socket!.emit('send_message', {
         'conversationId': conversation.id,
@@ -1161,15 +1205,18 @@ class ChatProvider extends ChangeNotifier {
         text,
         type: type,
         replyMessageId: replyId,
+        clientTempId: optId,
       );
       if (_disposed || session != _sessionRevision) return;
       final msgData = res['data'] ?? (res['success'] == true ? res : null);
       if (msgData is Map<String, dynamic>) {
-        final realMsg = MessageModel.fromJson(msgData);
+        final decoded = MessageModel.fromJson(msgData);
         final targetMessages = selectedConversation?.id == conversation.id
             ? messages
             : (_messagesCache[conversation.id] ?? <MessageModel>[]);
         final idx = targetMessages.indexWhere((m) => m.id == optId);
+        final realMsg = _withReadReceipt(decoded,
+            previous: targetMessages.firstWhere((m) => m.id == decoded.id || m.id == optId, orElse: () => decoded));
         final realIdx = targetMessages.indexWhere((m) => m.id == realMsg.id);
         if (realIdx != -1) {
           targetMessages[realIdx] = realMsg;
@@ -1185,6 +1232,15 @@ class ChatProvider extends ChangeNotifier {
       }
     } catch (e) {
       debugPrint('Error sending message: $e');
+      if (_disposed || session != _sessionRevision) return;
+      final targetMessages = selectedConversation?.id == conversation.id
+          ? messages : (_messagesCache[conversation.id] ?? <MessageModel>[]);
+      final index = targetMessages.indexWhere((message) => message.id == optId);
+      if (index != -1) {
+        targetMessages[index] = targetMessages[index].copyWith(status: 'error');
+        _cacheMessages(conversation.id, targetMessages);
+        notifyListeners();
+      }
     }
   }
 

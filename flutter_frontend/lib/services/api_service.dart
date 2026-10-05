@@ -206,11 +206,12 @@ class ApiService {
 
   // Send Message
   static Future<Map<String, dynamic>> sendMessage(
-      String conversationId, String content, {String type = 'text', String? replyMessageId}) async {
+      String conversationId, String content, {String type = 'text', String? replyMessageId, String? clientTempId}) async {
     final headers = await _getHeaders();
     final bodyMap = <String, dynamic>{
       'content': content,
       'type': type,
+      if (clientTempId != null) 'clientTempId': clientTempId,
     };
     if (replyMessageId != null && replyMessageId.isNotEmpty) {
       bodyMap['replyMessageId'] = replyMessageId;
@@ -220,7 +221,11 @@ class ApiService {
       headers: headers,
       body: jsonEncode(bodyMap),
     ).timeout(const Duration(seconds: 45));
-    return jsonDecode(response.body);
+    final result = jsonDecode(response.body);
+    if (response.statusCode < 200 || response.statusCode >= 300 || result is! Map<String, dynamic> || result['success'] == false) {
+      throw http.ClientException('Unable to send message (${response.statusCode})');
+    }
+    return result;
   }
 
   // Upload Media (Image, Video, Audio, File)
@@ -312,7 +317,9 @@ class ApiService {
         }),
       ).timeout(const Duration(seconds: 15));
       debugPrint('🔥 [ApiService] Response updateFcmToken status: ${response.statusCode}');
-      return response.statusCode == 200;
+      if (response.statusCode != 200) return false;
+      final data = jsonDecode(response.body);
+      return data is Map && data['success'] == true;
     } catch (e) {
       debugPrint('⚠️ Error in ApiService.updateFcmToken: $e');
       return false;
@@ -320,12 +327,13 @@ class ApiService {
   }
 
   // Gửi thông báo thử nghiệm đến thiết bị (Test Push)
-  static Future<Map<String, dynamic>> sendTestPushNotification() async {
+  static Future<Map<String, dynamic>> sendTestPushNotification({String? deviceId}) async {
     try {
       final headers = await _getHeaders();
       final response = await _client.post(
         Uri.parse('$baseUrl/users/test-push'),
         headers: headers,
+        body: jsonEncode({if (deviceId != null) 'deviceId': deviceId}),
       ).timeout(const Duration(seconds: 15));
       return jsonDecode(response.body);
     } catch (e) {

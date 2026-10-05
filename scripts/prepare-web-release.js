@@ -11,9 +11,10 @@ function files(dir) {
     entry.isDirectory() ? files(path.join(dir, entry.name)) : [path.join(dir, entry.name)]);
 }
 if (!fs.existsSync(path.join(web, 'main.dart.js'))) throw Error('Build Flutter Web before preparing the release.');
+require('./assert-production-bundle').assertProductionBundle(path.join(web, 'main.dart.js'));
 // Hash all build contents, including assets. Template files are always restored
 // before hashing so running this step twice is idempotent.
-for (const name of ['index.html', 'app_service_worker.js', '_headers']) {
+for (const name of ['index.html', 'app_service_worker.js', '_headers', 'firebase-messaging-sw.js', 'web_notifications.js', 'app_fonts.css', 'webrtc_audio_helper.js']) {
   fs.copyFileSync(path.join(source, name), path.join(web, name));
 }
 let bootstrap = fs.readFileSync(path.join(web, 'flutter_bootstrap.js'), 'utf8');

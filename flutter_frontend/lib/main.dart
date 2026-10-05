@@ -187,7 +187,7 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
           surface: Colors.white,
           background: Color(0xFFF8FAFC),
         ),
-        fontFamily: 'Arimo',
+        fontFamily: 'Inter',
         fontFamilyFallback: const ['Noto Color Emoji'],
       ),
       darkTheme: ThemeData(
@@ -206,7 +206,7 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
           surface: Color(0xFF1E293B),
           background: Color(0xFF0F172A),
         ),
-        fontFamily: 'Arimo',
+        fontFamily: 'Inter',
         fontFamilyFallback: const ['Noto Color Emoji'],
       ),
       builder: (context, child) {

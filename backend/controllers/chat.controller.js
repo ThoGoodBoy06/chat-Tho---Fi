@@ -11,6 +11,7 @@ const fs = require("fs");
 const path = require("path");
 
 const BASE_HOST_URL = (process.env.RENDER_EXTERNAL_URL || "https://chat-tho-fi-vn-9s8u.onrender.com").replace(/\/$/, "");
+const FRONTEND_URL = (process.env.FRONTEND_URL || "https://chat-tho-fi.pages.dev").replace(/\/$/, "");
 
 // Khởi tạo Firebase Admin (Chỉ chạy 1 lần khi server khởi động)
 if (!getApps().length) {
@@ -423,7 +424,7 @@ exports.sendMessage = async(req, res) => {
 
         const { conversationId } = req.params;
 
-        let { content, replyMessageId, type } = req.body;
+        let { content, replyMessageId, type, clientTempId } = req.body;
 
         if (!content) {
             return res
@@ -481,6 +482,10 @@ exports.sendMessage = async(req, res) => {
             }
         });
 
+        if (!conversation || !conversation.ConversationMembers.some(member => member.userId === senderId)) {
+            return res.status(403).json({success: false, message: 'Bạn không thuộc cuộc trò chuyện này.'});
+        }
+
         if (conversation && conversation.type === "private") {
             const otherMember = conversation.ConversationMembers.find(m => m.userId !== senderId);
             if (otherMember) {
@@ -501,14 +506,7 @@ exports.sendMessage = async(req, res) => {
 
         // 1. Lưu tin nhắn vào Database
         // Đánh dấu tất cả tin nhắn cũ trong cuộc trò chuyện này là đã đọc đối với sender
-        prisma.messages.updateMany({
-            where: {
-                conversationId,
-                NOT: { senderId },
-                isRead: false,
-            },
-            data: { isRead: true },
-        }).catch(() => {});
+
 
         let isImageContent = type === "image" || (typeof finalContent === "string" && (
             finalContent.startsWith("data:image") ||
@@ -524,6 +522,10 @@ exports.sendMessage = async(req, res) => {
         if (isImageContent) type = "image";
         else if (isVideoContent) type = "video";
 
+        const parentPromise = replyMessageId ? prisma.messages.findUnique({
+            where: {id: replyMessageId},
+            include: {Users: {select: {id: true, fullName: true}}}
+        }).catch(() => null) : Promise.resolve(null);
         const newMessage = await prisma.messages.create({
             data: {
                 id: uuidv4(),
@@ -551,12 +553,7 @@ exports.sendMessage = async(req, res) => {
         let parentMessageObj = null;
         if (replyMessageId) {
             try {
-                const parent = await prisma.messages.findUnique({
-                    where: { id: replyMessageId },
-                    include: {
-                        Users: { select: { id: true, fullName: true } }
-                    }
-                });
+                const parent = await parentPromise;
                 if (parent) {
                     parentMessageObj = {
                         id: parent.id,
@@ -575,6 +572,7 @@ exports.sendMessage = async(req, res) => {
         // Map avatar sang URL tĩnh
         const mappedMessage = {
             ...newMessage,
+            clientTempId: typeof clientTempId === 'string' ? clientTempId : null,
             imageUrl: isImageContent ? finalContent : (newMessage.imageUrl || null),
             videoUrl: isVideoContent ? finalContent : (newMessage.videoUrl || null),
             Users: newMessage.Users ? {
@@ -588,6 +586,27 @@ exports.sendMessage = async(req, res) => {
 
         // Trả response ngay sau khi lưu DB xong (không đợi socket/FCM)
         res.status(201).json({ success: true, data: mappedMessage });
+
+        // Recipients are already known from the permission check. Never wait for
+        // device-token queries or FCM before delivering the saved message.
+        const io = req.app.get("io");
+        if (io) {
+            let broadcast = io.to(conversationId);
+            for (const member of conversation.ConversationMembers) {
+                if (member.userId !== senderId) broadcast = broadcast.to(member.userId);
+            }
+            broadcast.emit("receive_message", mappedMessage);
+        }
+
+        // Read receipts run after realtime delivery, outside the write path.
+        prisma.messages.updateMany({
+            where: {
+                conversationId,
+                NOT: { senderId },
+                isRead: false,
+            },
+            data: { isRead: true },
+        }).catch(() => {});
 
         // 2. Lấy danh sách thành viên và phát tin nhắn real-time
         const members = await prisma.conversationMembers.findMany({
@@ -605,19 +624,6 @@ exports.sendMessage = async(req, res) => {
         });
 
         // 3. Lấy Socket.IO instance và phát tin nhắn Real-time đến phòng conversationId và từng thành viên
-        const io = req.app.get("io");
-
-        if (io) {
-            let broadcast = io.to(conversationId);
-            if (members && members.length > 0) {
-                members.forEach((member) => {
-                    if (member.userId !== senderId) {
-                        broadcast = broadcast.to(member.userId);
-                    }
-                });
-            }
-            broadcast.emit("receive_message", mappedMessage);
-        }
 
         // 4. Gửi Push Notification đến tất cả thiết bị của đối phương
         members.forEach((member) => {
@@ -640,7 +646,7 @@ exports.sendMessage = async(req, res) => {
                     return;
                 }
 
-                let snippet = mappedMessage.content;
+                let snippet = String(mappedMessage.content || '');
                 if (mappedMessage.type === "file") {
                     try {
                         const fileData = JSON.parse(mappedMessage.content);
@@ -654,6 +660,7 @@ exports.sendMessage = async(req, res) => {
                     snippet = "[ Hình ảnh ]";
                 }
 
+                snippet = Array.from(snippet).slice(0, 180).join('');
                 const senderAvatar = mappedMessage.Users ? mappedMessage.Users.avatar : null;
                 let avatarUrl = `${BASE_HOST_URL}/icon.png`;
                 if (senderAvatar) {
@@ -680,7 +687,6 @@ exports.sendMessage = async(req, res) => {
                         priority: "high",
                         notification: {
                             channelId: "chat_messages_v3",
-                            channel_id: "chat_messages_v3",
                             sound: "amthanhtinnhan",
                             defaultVibrateTimings: true,
                             tag: `conv-${conversationId}`,
@@ -717,11 +723,11 @@ exports.sendMessage = async(req, res) => {
                             badge: `${BASE_HOST_URL}/icon.png`,
                             vibrate: [500, 250, 500, 250, 500],
                             tag: `conv-${conversationId}`,
-                            renotify: false,
+                            renotify: true,
                             sound: "default",
                         },
                         fcmOptions: {
-                            link: `${BASE_HOST_URL}/?conversationId=${conversationId}`
+                            link: `${FRONTEND_URL}/?conversationId=${encodeURIComponent(conversationId)}`
                         }
                     },
                     data: {
@@ -783,9 +789,6 @@ exports.sendMessage = async(req, res) => {
             }
         });
 
-        if (io) {
-            io.to(conversationId).emit("receive_message", mappedMessage);
-        }
 
         console.log("✅ LƯU TIN NHẮN VÀO DATABASE THÀNH CÔNG!");
 
@@ -797,6 +800,7 @@ exports.sendMessage = async(req, res) => {
         console.log("❌ CÓ LỖI XẢY RA KHI LƯU DATABASE:");
 
         console.error("!!! LỖI GỬI TIN NHẮN:", error.message);
+        if (res.headersSent) return;
 
         // **NÂNG CẤP:** Gửi thẳng lỗi chi tiết về cho trình duyệt để hiện lên Alert!
 
@@ -1216,10 +1220,10 @@ exports.getMessageReactions = async (req, res) => {
  * @param {object} customData - Dữ liệu tùy chỉnh gửi kèm
  * @param {boolean} dataOnly - Chỉ gửi payload data (ví dụ cuộc gọi đến)
  */
-exports.sendPushNotification = async(targetUserIdOrToken, title, body, customData = null, dataOnly = false) => {
+exports.sendPushNotification = async(targetUserIdOrToken, title, body, customData = null, dataOnly = false, options = {}) => {
     if (getApps().length === 0) {
         console.warn("⚠️ Firebase Admin chưa được khởi tạo. Không thể gửi thông báo.");
-        return;
+        return { successCount: 0, reason: 'Dịch vụ Firebase trên máy chủ chưa được cấu hình.' };
     }
 
     if (!targetUserIdOrToken) return;
@@ -1232,7 +1236,7 @@ exports.sendPushNotification = async(targetUserIdOrToken, title, body, customDat
     } else {
         // Tra cứu tất cả thiết bị của userId từ bảng UserDevices và Users
         const devices = await prisma.userDevices.findMany({
-            where: { userId: targetUserIdOrToken },
+            where: { userId: targetUserIdOrToken, ...(options.deviceId ? {deviceId: options.deviceId} : {}) },
             select: { fcmToken: true }
         });
         devices.forEach(d => { if (d.fcmToken) recipientTokens.push(d.fcmToken); });
@@ -1241,14 +1245,14 @@ exports.sendPushNotification = async(targetUserIdOrToken, title, body, customDat
             where: { id: targetUserIdOrToken },
             select: { fcmToken: true }
         });
-        if (user && user.fcmToken && !recipientTokens.includes(user.fcmToken)) {
+        if (!options.deviceId && user && user.fcmToken && !recipientTokens.includes(user.fcmToken)) {
             recipientTokens.push(user.fcmToken);
         }
     }
 
     if (recipientTokens.length === 0) {
         console.warn(`⚠️ Không tìm thấy FCM Token nào cho target: ${targetUserIdOrToken}`);
-        return;
+        return { successCount: 0, reason: 'Thiết bị chưa đăng ký thông báo với máy chủ.' };
     }
 
     const conversationId = (customData && customData.conversationId) || "";
@@ -1294,13 +1298,13 @@ exports.sendPushNotification = async(targetUserIdOrToken, title, body, customDat
                 icon: `${BASE_HOST_URL}/icon.png`,
                 badge: `${BASE_HOST_URL}/icon.png`,
                 tag: collapseTag,
-                renotify: dataOnly ? true : false,
+                renotify: true,
                 vibrate: dataOnly ? [1000, 500, 1000, 500] : [500, 250, 500, 250, 500],
                 requireInteraction: dataOnly ? true : false,
                 sound: "default",
             },
             fcmOptions: {
-                link: conversationId ? `${BASE_HOST_URL}/?conversationId=${conversationId}` : BASE_HOST_URL,
+                link: conversationId ? `${FRONTEND_URL}/?conversationId=${encodeURIComponent(conversationId)}` : FRONTEND_URL,
             }
         },
         data: {
@@ -2302,14 +2306,36 @@ exports.markAsRead = async(req, res) => {
         const { conversationId } = req.params;
         const userId = req.user.id;
 
-        await prisma.messages.updateMany({
+        const members = await prisma.conversationMembers.findMany({
+            where: {conversationId}, select: {userId: true}
+        });
+        if (!members.some(member => member.userId === userId)) {
+            return res.status(403).json({success: false, message: 'Bạn không thuộc cuộc trò chuyện này.'});
+        }
+        const lastMessage = await prisma.messages.findFirst({
+            where: {conversationId, senderId: {not: userId}},
+            orderBy: {createdAt: 'desc'}, select: {id: true, createdAt: true}
+        });
+
+        if (lastMessage) await prisma.messages.updateMany({
             where: {
                 conversationId,
                 senderId: { not: userId },
                 isRead: false,
+                ...(lastMessage ? {createdAt: {lte: lastMessage.createdAt}} : {}),
             },
-            data: { isRead: true },
+            data: { isRead: true, isDelivered: true },
         });
+
+        const io = req.app.get('io');
+        if (io && lastMessage) {
+            let broadcast = io.to(conversationId);
+            for (const member of members) broadcast = broadcast.to(member.userId);
+            broadcast.emit('messages_read', {
+                conversationId, readBy: userId, lastReadMessageId: lastMessage.id,
+                lastReadCreatedAt: lastMessage.createdAt, readAt: new Date().toISOString()
+            });
+        }
 
         return res.json({ success: true, message: "Đã đánh dấu tin nhắn là đã đọc trong DB" });
     } catch (error) {
@@ -2807,4 +2833,3 @@ exports.getMediaThumbnail = async (req, res) => {
         return res.status(500).send("Lỗi xử lý ảnh thumbnail: " + err.message);
     }
 };
-

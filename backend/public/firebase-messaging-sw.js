@@ -1,5 +1,5 @@
 // Version tracking - giúp trình duyệt nhận diện bản cập nhật mới và hủy cache SW cũ
-const SW_VERSION = "2.2.1789540000000";
+const SW_VERSION = "push-3";
 console.log("[firebase-messaging-sw.js] SW Version Active:", SW_VERSION);
 
 self.addEventListener("install", (event) => {
@@ -9,6 +9,70 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
 });
+
+// Xử lý khi click vào banner thông báo chạy ngầm trên điện thoại / máy tính
+self.addEventListener("notificationclick", function(event) {
+  event.stopImmediatePropagation();
+  event.notification.close();
+  const action = event.action; // "accept" hoặc "decline" hoặc undefined
+  const rawData = event.notification.data || {};
+  const notificationData = rawData.FCM_MSG?.data || rawData;
+  const conversationId = notificationData.conversationId || "";
+
+  if (notificationData && (notificationData.type === "incoming_call" || notificationData.type === "INCOMING_CALL")) {
+    let url = `/?action=incoming_call&callerId=${notificationData.callerId}&callerName=${encodeURIComponent(notificationData.callerName || "")}&callType=${notificationData.callType || "voice"}&callerAvatar=${encodeURIComponent(notificationData.callerAvatar || "")}&t=${Date.now()}`;
+
+    if (action === "accept") {
+      url += "&autoAccept=true";
+    } else if (action === "decline") {
+      url += "&autoDecline=true";
+    }
+
+    event.waitUntil(
+      clients.matchAll({ type: "window", includeUncontrolled: true }).then(function(clientList) {
+        for (let i = 0; i < clientList.length; i++) {
+          let client = clientList[i];
+          if (client.url.includes(self.location.origin) && "navigate" in client) {
+            return client.navigate(url).then(() => client.focus());
+          }
+        }
+        if (clients.openWindow) {
+          return clients.openWindow(url);
+        }
+      })
+    );
+  } else {
+    // Xử lý click tin nhắn chat
+    const targetUrl = conversationId ? `/?conversationId=${encodeURIComponent(conversationId)}` : "/";
+
+    event.waitUntil(
+      clients.matchAll({ type: "window", includeUncontrolled: true }).then(function(clientList) {
+        for (let i = 0; i < clientList.length; i++) {
+          let client = clientList[i];
+          if (client.url.includes(self.location.origin)) {
+            // Bắn message tới Flutter PWA tab đang mở để trigger state navigation
+            if (client.postMessage) {
+              client.postMessage({
+                type: "NOTIFICATION_CLICKED",
+                conversationId: conversationId,
+              });
+            }
+            if ("navigate" in client) {
+              return client.navigate(targetUrl).then(() => client.focus());
+            }
+            if ("focus" in client) {
+              return client.focus();
+            }
+          }
+        }
+        if (clients.openWindow) {
+          return clients.openWindow(targetUrl);
+        }
+      })
+    );
+  }
+});
+
 
 importScripts(
   "https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js",
@@ -72,7 +136,7 @@ messaging.onBackgroundMessage((payload) => {
     data: payload.data,
     vibrate: isCall ? [1000, 500, 1000, 500, 1000, 500, 1000, 500] : [400, 100, 400, 100, 600],
     tag: isCall ? "incoming-call" : (payload.data?.conversationId ? `conv-${payload.data.conversationId}` : "tho-fi-chat-notification"),
-    renotify: false,
+    renotify: true,
     requireInteraction: isCall ? true : false,
   };
 
@@ -85,123 +149,3 @@ messaging.onBackgroundMessage((payload) => {
 
   return self.registration.showNotification(title, options);
 });
-
-// Bắt sự kiện Push thô (dành cho Data-Only Push Payload từ Firebase Admin)
-self.addEventListener("push", function (event) {
-  if (!event.data) return;
-  try {
-    const payload = event.data.json();
-    const data = payload.data || payload;
-    // [Auto-Dismiss Raw Push] Huỷ thông báo cuộc gọi đến khi đối phương tắt máy
-    if (data.type === "call_ended" || data.type === "CALL_ENDED") {
-      event.waitUntil(
-        Promise.all([
-          self.registration.getNotifications().then(function(notifications) {
-            notifications.forEach(function(n) {
-              if (n.tag === "incoming-call" || (n.title && n.title.includes("gọi"))) {
-                n.close();
-              }
-            });
-          }),
-          self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(function(clients) {
-            clients.forEach(function(client) {
-              client.postMessage({ type: "call_ended" });
-            });
-          })
-        ])
-      );
-      return;
-    }
-
-    const isCall = data.type === "INCOMING_CALL" || data.type === "incoming_call";
-    if (isCall) {
-      const callerName = data.callerName || data.title || "Cuộc gọi đến";
-      const callType = data.callType === "video" ? "Video" : "Thoại";
-      const title = `${callerName} đang gọi cho bạn...`;
-
-      const options = {
-        body: `Cuộc gọi ${callType} đến. Nhấn để trả lời.`,
-        icon: data.callerAvatar || "/icon.png",
-        badge: "/icon.png",
-        data: data,
-        vibrate: [1000, 500, 1000, 500, 1000, 500, 1000],
-        tag: "incoming-call",
-        renotify: true,
-        requireInteraction: true,
-        actions: [
-          { action: "accept", title: "Trả lời" },
-          { action: "decline", title: "Từ chối" }
-        ]
-      };
-
-      event.waitUntil(
-        self.registration.showNotification(title, options)
-      );
-    }
-  } catch (err) {
-    console.error("[firebase-messaging-sw.js] Lỗi parse push event:", err);
-  }
-});
-
-// Xử lý khi click vào banner thông báo chạy ngầm trên điện thoại / máy tính
-self.addEventListener("notificationclick", function(event) {
-  event.notification.close();
-  const action = event.action; // "accept" hoặc "decline" hoặc undefined
-  const notificationData = event.notification.data || {};
-  const conversationId = notificationData.conversationId || "";
-
-  if (notificationData && (notificationData.type === "incoming_call" || notificationData.type === "INCOMING_CALL")) {
-    let url = `/?action=incoming_call&callerId=${notificationData.callerId}&callerName=${encodeURIComponent(notificationData.callerName || "")}&callType=${notificationData.callType || "voice"}&callerAvatar=${encodeURIComponent(notificationData.callerAvatar || "")}&t=${Date.now()}`;
-    
-    if (action === "accept") {
-      url += "&autoAccept=true";
-    } else if (action === "decline") {
-      url += "&autoDecline=true";
-    }
-
-    event.waitUntil(
-      clients.matchAll({ type: "window", includeUncontrolled: true }).then(function(clientList) {
-        for (let i = 0; i < clientList.length; i++) {
-          let client = clientList[i];
-          if (client.url.includes(self.location.origin) && "navigate" in client) {
-            client.navigate(url);
-            return client.focus();
-          }
-        }
-        if (clients.openWindow) {
-          return clients.openWindow(url);
-        }
-      })
-    );
-  } else {
-    // Xử lý click tin nhắn chat
-    const targetUrl = conversationId ? `/?conversationId=${conversationId}` : "/";
-
-    event.waitUntil(
-      clients.matchAll({ type: "window", includeUncontrolled: true }).then(function(clientList) {
-        for (let i = 0; i < clientList.length; i++) {
-          let client = clientList[i];
-          if (client.url.includes(self.location.origin)) {
-            // Bắn message tới Flutter PWA tab đang mở để trigger state navigation
-            if (client.postMessage) {
-              client.postMessage({
-                type: "NOTIFICATION_CLICKED",
-                conversationId: conversationId,
-              });
-            }
-            if ("navigate" in client) {
-              client.navigate(targetUrl);
-            }
-            if ("focus" in client) {
-              return client.focus();
-            }
-          }
-        }
-        if (clients.openWindow) {
-          return clients.openWindow(targetUrl);
-        }
-      })
-    );
-  }
-});
-

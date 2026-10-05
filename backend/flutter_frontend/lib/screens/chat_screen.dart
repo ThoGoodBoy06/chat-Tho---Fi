@@ -27,6 +27,7 @@ import 'profile_tab.dart';
 import '../utils/web_helpers.dart';
 import '../utils/inline_image_cache.dart';
 import '../widgets/inline_message_image.dart';
+import '../widgets/message_context_menu_transition.dart';
 
 class _MessageRenderFlags {
   final MessageModel message;
@@ -60,6 +61,8 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, TickerProviderStateMixin {
   ChatProvider? _boundProvider;
+  bool _messageMenuOpen = false;
+  bool _reactionAssetsWarmed = false;
   int _currentTabIndex = 0; // 0: Tin nhắn, 1: Danh bạ, 2: Tin tức, 3: Trợ lý AI, 4: Cá nhân
   late AnimationController _mobileChatSlideController;
   late Animation<double> _mobileChatSlideAnimation;
@@ -167,8 +170,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     if (kIsWeb) {
       _visibilitySub = html.document.onVisibilityChange.listen((_) {
         if (html.document.hidden == true) {
+          _boundProvider?.setChatVisible(false);
           SocketService.emitGoOffline();
         } else {
+          _boundProvider?.setChatVisible(true);
           SocketService.emitGoOnline();
           _fetchPendingRequestsCount();
         }
@@ -185,6 +190,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = Provider.of<ChatProvider>(context, listen: false);
       _boundProvider = provider;
+      provider.setChatVisible(!kIsWeb || html.document.hidden != true);
       provider.fetchConversations();
       provider.onNewMessageReceived = _scrollToBottomIfNearBottom;
       provider.onConversationSelected = _jumpToBottom;
@@ -200,8 +206,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive || state == AppLifecycleState.detached) {
+      _boundProvider?.setChatVisible(false);
       SocketService.emitGoOffline();
     } else if (state == AppLifecycleState.resumed) {
+      _boundProvider?.setChatVisible(true);
       SocketService.emitGoOnline();
       _fetchPendingRequestsCount();
     }
@@ -438,6 +446,20 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     '👍': 'assets/emojis/1f44d.png',
   };
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_reactionAssetsWarmed) return;
+    _reactionAssetsWarmed = true;
+    // Decode the six small local reactions before the first long press.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      for (final asset in reactionEmojiAssets.values) {
+        if (!mounted) return;
+        await precacheImage(AssetImage(asset), context, onError: (_, __) {});
+      }
+    });
+  }
+
   static Widget buildEmojiImage(String emoji, {double size = 28, Key? key}) {
     final asset = reactionEmojiAssets[emoji];
     if (asset != null) {
@@ -672,6 +694,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   }
 
   void _showMessengerStyleContextMenu(BuildContext context, MessageModel msg, ChatProvider provider, bool isMe) {
+    if (_messageMenuOpen) return;
+    _messageMenuOpen = true;
     final menuContent = msg.content.toLowerCase();
     final isImg = msg.type == 'image' || menuContent.startsWith('data:image') ||
         (msg.imageUrl != null && msg.imageUrl!.isNotEmpty) ||
@@ -686,28 +710,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
-      barrierLabel: 'Dismiss',
-      barrierColor: Colors.transparent,
-      transitionDuration: const Duration(milliseconds: 200),
-      transitionBuilder: (dialogCtx, anim1, anim2, child) {
-        final curvedScale = CurvedAnimation(
-          parent: anim1,
-          curve: const Cubic(0.18, 1.0, 0.25, 1.0),
-          reverseCurve: Curves.easeInCubic,
-        );
-        final curvedFade = CurvedAnimation(
-          parent: anim1,
-          curve: Curves.easeOutCubic,
-          reverseCurve: Curves.easeInCubic,
-        );
-        return ScaleTransition(
-          scale: Tween<double>(begin: 0.91, end: 1.0).animate(curvedScale),
-          child: FadeTransition(
-            opacity: curvedFade,
-            child: child,
-          ),
-        );
-      },
+      barrierLabel: 'Đóng menu tin nhắn',
+      barrierColor: Colors.black.withOpacity(0.24),
+      transitionDuration: MediaQuery.of(context).disableAnimations
+          ? Duration.zero : const Duration(milliseconds: 180),
+      // The route barrier fades independently; only the menu is transformed.
+      transitionBuilder: (_, __, ___, child) => child,
       pageBuilder: (dialogContext, anim1, anim2) {
         void dismiss() {
           if (Navigator.of(dialogContext).canPop()) {
@@ -722,22 +730,26 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
             onTap: dismiss,
             child: Stack(
               children: [
-                // 1. Nền làm mờ thủy tinh (Frosted Glass)
+                // Keep the blur outside the animated menu and clip it to the
+                // viewport. A small fixed radius avoids animating a full-screen
+                // filter while the menu enters and leaves.
                 Positioned.fill(
                   child: IgnorePointer(
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                      child: Container(
-                        color: Colors.black.withOpacity(0.24),
+                    child: ClipRect(
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+                        child: const SizedBox.expand(),
                       ),
                     ),
                   ),
                 ),
-                // 2. Vùng hiển thị nội dung - Bấm vào bất kỳ khoảng trống nào cũng đóng
                 SafeArea(
                   child: Align(
                     alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                    child: Padding(
+                    child: MessageContextMenuTransition(
+                      animation: anim1,
+                      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                      child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 30),
                       child: SingleChildScrollView(
                         physics: const BouncingScrollPhysics(),
@@ -760,7 +772,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                     boxShadow: [
                                       BoxShadow(
                                         color: Colors.black.withOpacity(0.16),
-                                        blurRadius: 24,
+                                        blurRadius: 12,
                                         offset: const Offset(0, 6),
                                       ),
                                     ],
@@ -913,7 +925,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                     boxShadow: [
                                       BoxShadow(
                                         color: Colors.black.withOpacity(0.16),
-                                        blurRadius: 24,
+                                        blurRadius: 12,
                                         offset: const Offset(0, 6),
                                       ),
                                     ],
@@ -1005,13 +1017,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                       ),
                     ),
                   ),
+                  ),
                 ),
               ],
             ),
           ),
         );
       },
-    );
+    ).whenComplete(() => _messageMenuOpen = false);
   }
 
   void _showRecallOptionsSheet(BuildContext context, MessageModel msg, ChatProvider provider) {
@@ -2557,8 +2570,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         ),
         child: CircleAvatar(
           radius: 8,
-          backgroundImage: NetworkImage(fullUrl),
+          foregroundImage: ResizeImage(NetworkImage(fullUrl), width: 32, height: 32),
+          onForegroundImageError: (_, __) {},
           backgroundColor: const Color(0xFFE4E6EB),
+          child: Text(conv?.name.isNotEmpty == true ? conv!.name[0].toUpperCase() : 'U',
+              style: const TextStyle(fontSize: 8)),
         ),
       );
     } else {
@@ -2578,45 +2594,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
       );
     }
 
-    return Builder(
-      builder: (context) {
-        final screenSize = MediaQuery.of(context).size;
-        // Tính toán tọa độ trung tâm màn hình (Cả chiều X lẫn chiều Y):
-        // Indicator ở góc phải dưới tin nhắn. Cần lùi X về giữa (-35% chiều rộng) và đưa Y lên giữa (-42% chiều cao).
-        final double startYOffset = -(screenSize.height * 0.42) / 16.0;
-        final double startXOffset = -(screenSize.width * 0.35) / 16.0;
-
-        return AnimatedSwitcher(
-          duration: const Duration(milliseconds: 950),
-          reverseDuration: const Duration(milliseconds: 200),
-          switchInCurve: Curves.bounceOut,
-          switchOutCurve: Curves.easeIn,
-          transitionBuilder: (child, animation) {
-            final slideAnimation = Tween<Offset>(
-              begin: Offset(startXOffset, startYOffset),
-              end: Offset.zero,
-            ).animate(CurvedAnimation(
-              parent: animation,
-              curve: Curves.bounceOut,
-            ));
-
-            return SlideTransition(
-              position: slideAnimation,
-              child: ScaleTransition(
-                scale: animation,
-                child: FadeTransition(
-                  opacity: animation,
-                  child: child,
-                ),
-              ),
-            );
-          },
-          child: KeyedSubtree(
-            key: ValueKey('read_avatar_${msg.id}'),
-            child: avatarWidget,
-          ),
-        );
-      },
+    return Semantics(
+      key: ValueKey('read_avatar_' + msg.id),
+      label: 'Đã xem',
+      child: avatarWidget,
     );
   }
 
@@ -2867,6 +2848,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                           _lastSentMessageIndex < messageCount
                       ? allMessages[_lastSentMessageIndex].id
                       : null;
+                  String? lastReadSentMessageId;
+                  for (var i = messageCount - 1; i >= 0; i--) {
+                    if (allMessages[i].senderId == chatProv.currentUser?.id && allMessages[i].isRead) {
+                      lastReadSentMessageId = allMessages[i].id;
+                      break;
+                    }
+                  }
 
                       final maxBubbleWidth = MediaQuery.of(context).size.width * 0.72;
                       final rowIndices = <Key, int>{
@@ -3213,7 +3201,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                           ],
                                           if (isMe) ...[
                                             const SizedBox(height: 4),
-                                            _buildMessageStatusIndicator(msg, conv, isLastSentMessage),
+                                            _buildMessageStatusIndicator(msg, conv,
+                                                isLastSentMessage || msg.id == lastReadSentMessageId),
                                           ],
                                         ],
                                       ),

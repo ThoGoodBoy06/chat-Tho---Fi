@@ -6,6 +6,7 @@ import 'package:flutter_frontend/providers/theme_provider.dart';
 import 'package:flutter_frontend/screens/chat_screen.dart';
 import 'package:flutter_frontend/services/api_service.dart';
 import 'package:flutter_frontend/widgets/inline_message_image.dart';
+import 'package:flutter_frontend/widgets/message_context_menu_transition.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -13,6 +14,82 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  for (final width in [390.0, 1280.0]) {
+    testWidgets('message menu opens and dismisses without moving history at width $width', (tester) async {
+      tester.view.physicalSize = Size(width, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      SharedPreferences.setMockInitialValues({'authToken': 'test-token'});
+      ApiService.setClientForTesting(MockClient((_) async => http.Response(jsonEncode({'data': []}), 200)));
+      final provider = ChatProvider()..currentUser = UserModel(id: 'me', username: 'me', fullName: 'Me');
+      final conversation = ConversationModel(id: 'room', name: 'Partner');
+      provider.conversations = [conversation];
+      provider.selectedConversation = conversation;
+      provider.messages = [MessageModel(id: 'menu-message', conversationId: 'room', senderId: 'partner',
+        content: 'Hold this message', createdAt: DateTime.utc(2026, 1, 1))];
+      await tester.pumpWidget(MultiProvider(
+        providers: [ChangeNotifierProvider.value(value: provider), ChangeNotifierProvider(create: (_) => ThemeProvider())],
+        child: MaterialApp(home: ChatScreen(onLogout: () {})),
+      ));
+      for (var i = 0; i < 8; i++) { await tester.pump(const Duration(milliseconds: 100)); }
+      final list = find.byWidgetPredicate((w) => w is ListView && w.controller != null);
+      final controller = tester.widget<ListView>(list).controller!;
+      final offset = controller.offset;
+      await tester.longPress(find.text('Hold this message'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 90));
+      expect(find.byType(MessageContextMenuTransition), findsOneWidget);
+      expect(find.byType(BackdropFilter), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('Trả lời'), findsOneWidget);
+      expect(find.text('Sao chép'), findsOneWidget);
+      expect(find.text('Gỡ ở phía tôi'), findsOneWidget);
+      expect(controller.offset, offset);
+      await tester.tapAt(const Offset(5, 5));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(find.byType(MessageContextMenuTransition), findsNothing);
+      expect(find.byType(BackdropFilter), findsNothing);
+      expect(controller.offset, offset);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      provider.dispose();
+      await tester.pump();
+    });
+    testWidgets('read avatar follows the latest read message at width $width', (tester) async {
+      tester.view.physicalSize = Size(width, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      SharedPreferences.setMockInitialValues({'authToken': 'test-token'});
+      ApiService.setClientForTesting(MockClient((_) async => http.Response(jsonEncode({'data': []}), 200)));
+      final provider = ChatProvider()..currentUser = UserModel(id: 'me', username: 'me', fullName: 'Me');
+      final conversation = ConversationModel(id: 'room', name: 'Partner');
+      provider.conversations = [conversation];
+      provider.selectedConversation = conversation;
+      provider.messages = List.generate(3, (i) => MessageModel(id: 'm$i', conversationId: 'room',
+        senderId: 'me', content: 'Message $i', createdAt: DateTime.utc(2026, 1, 1, 0, i), isDelivered: true));
+      await tester.pumpWidget(MultiProvider(
+        providers: [ChangeNotifierProvider.value(value: provider), ChangeNotifierProvider(create: (_) => ThemeProvider())],
+        child: MaterialApp(home: ChatScreen(onLogout: () {})),
+      ));
+      for (var i = 0; i < 8; i++) { await tester.pump(const Duration(milliseconds: 100)); }
+      expect(find.byKey(const ValueKey('read_avatar_m2')), findsNothing);
+      provider.applyReadReceipt({'conversationId': 'room', 'readBy': 'partner', 'lastReadMessageId': 'm1'});
+      await tester.pump();
+      expect(find.byKey(const ValueKey('read_avatar_m1')), findsOneWidget,
+        reason: 'The avatar stays beneath the latest read message when a newer message is only delivered.');
+      expect(find.byKey(const ValueKey('read_avatar_m2')), findsNothing);
+      provider.applyReadReceipt({'conversationId': 'room', 'readBy': 'partner', 'lastReadMessageId': 'm2'});
+      await tester.pump();
+      expect(find.byKey(const ValueKey('read_avatar_m1')), findsNothing);
+      expect(find.byKey(const ValueKey('read_avatar_m2')), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+      provider.dispose();
+      await tester.pump();
+    });
+  }
   testWidgets('mobile image history keeps cell state and scrolls toward latest without looping', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;

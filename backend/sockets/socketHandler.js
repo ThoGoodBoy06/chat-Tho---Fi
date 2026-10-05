@@ -1,6 +1,6 @@
 const prisma = require("../prisma");
 const { v4: uuidv4 } = require("uuid");
-const { sendPushNotification } = require("../controllers/chat.controller");
+const { sendPushNotification, clearConversationMessagesCache } = require("../controllers/chat.controller");
 
 const jwt = require("jsonwebtoken");
 
@@ -569,6 +569,7 @@ module.exports = (io) => {
         if (!data || !data.conversationId) return;
         const { conversationId, content, type, tempId, senderId, senderName, replyMessageId, receiverId, memberIds } = data;
         const uid = senderId || socket.userId;
+        clearConversationMessagesCache(conversationId);
 
         // Tự động nhận diện nếu content là ảnh hoặc video
         const isImg = type === "image" || (typeof content === "string" && (
@@ -583,6 +584,8 @@ module.exports = (io) => {
         // Tạo payload tin nhắn tạm (optimistic) để phát cho đối phương ngay lập tức
         const realtimePayload = {
           id: tempId || `rt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          clientTempId: tempId || null,
+          status: 'sending',
           conversationId,
           senderId: uid,
           content,
@@ -752,7 +755,7 @@ module.exports = (io) => {
         if (messageId) {
           const msg = await prisma.messages.findUnique({
             where: { id: messageId },
-            select: { id: true, senderId: true, conversationId: true },
+            select: { id: true, senderId: true, conversationId: true, createdAt: true },
           });
           if (msg) {
             await prisma.messages.update({
@@ -770,6 +773,7 @@ module.exports = (io) => {
                 conversationId: targetConvId,
                 readBy: readerId,
                 lastReadMessageId: messageId,
+                lastReadCreatedAt: msg.createdAt,
               });
             }
           }
@@ -796,8 +800,9 @@ module.exports = (io) => {
             NOT: { senderId: readerId },
           },
           orderBy: { createdAt: "desc" },
-          select: { id: true, senderId: true },
+          select: { id: true, senderId: true, createdAt: true },
         });
+        if (!lastMsgFromOther) return;
 
         // 2. Cập nhật tất cả tin nhắn do người khác gửi sang isRead: true
         await prisma.messages.updateMany({
@@ -805,6 +810,7 @@ module.exports = (io) => {
             conversationId,
             senderId: { not: readerId },
             isRead: false,
+            createdAt: {lte: lastMsgFromOther.createdAt},
           },
           data: { isRead: true, isDelivered: true },
         });
@@ -817,6 +823,7 @@ module.exports = (io) => {
           conversationId,
           readBy: readerId,
           lastReadMessageId,
+          lastReadCreatedAt: lastMsgFromOther?.createdAt || null,
           readAt,
         };
 
@@ -1369,6 +1376,7 @@ module.exports = (io) => {
         });
 
         const targetConvId = conversationId || message.conversationId;
+        clearConversationMessagesCache(targetConvId);
 
         // Phát tín hiệu tới tất cả client trong phòng chat
         io.to(targetConvId).emit("message_reacted", {
@@ -1397,6 +1405,7 @@ module.exports = (io) => {
 
         const targetConvId = conversationId;
         if (targetConvId) {
+          clearConversationMessagesCache(targetConvId);
           io.to(targetConvId).emit("message_recalled", {
             messageId,
             conversationId: targetConvId,

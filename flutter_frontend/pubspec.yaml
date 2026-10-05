@@ -45,20 +45,24 @@ flutter:
     - assets/emojis/
     - assets/fonts/
   fonts:
-    - family: Arimo
+    - family: Inter
       fonts:
-        - asset: assets/fonts/Arimo-Regular.ttf
+        - asset: assets/fonts/Inter-Regular.ttf
           weight: 400
-        - asset: assets/fonts/Arimo-Medium.ttf
+        - asset: assets/fonts/Inter-Medium.ttf
           weight: 500
-        - asset: assets/fonts/Arimo-SemiBold.ttf
+        - asset: assets/fonts/Inter-SemiBold.ttf
           weight: 600
-        - asset: assets/fonts/Arimo-Bold.ttf
+        - asset: assets/fonts/Inter-Bold.ttf
           weight: 700
-        - asset: assets/fonts/Arimo-Italic.ttf
+        - asset: assets/fonts/Inter-ExtraBold.ttf
+          weight: 800
+        - asset: assets/fonts/Inter-Black.ttf
+          weight: 900
+        - asset: assets/fonts/Inter-Italic.ttf
           weight: 400
           style: italic
-        - asset: assets/fonts/Arimo-BoldItalic.ttf
+        - asset: assets/fonts/Inter-BoldItalic.ttf
           weight: 700
           style: italic
     - family: Noto Color Emoji

@@ -142,4 +142,15 @@ void vibrateWeb(Object pattern) {
   }
 }
 
+bool isWebPushRegistered() {
+  try {
+    return js_util.callMethod(html.window, 'isWebPushRegistered', []) == true;
+  } catch (_) { return false; }
+}
+
+void markWebPushRegistered(bool registered) {
+  try { js_util.callMethod(html.window, 'markWebPushRegistered', [registered]); }
+  catch (_) {}
+}
+
 dynamic callWebFunction(String name, List<dynamic> arguments) => js.context.callMethod(name, arguments);

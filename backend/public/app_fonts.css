@@ -1,6 +1,9 @@
-@font-face { font-family: Arimo; src: url('assets/assets/fonts/Arimo-Regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
-@font-face { font-family: Arimo; src: url('assets/assets/fonts/Arimo-Medium.ttf') format('truetype'); font-weight: 500; font-style: normal; font-display: swap; }
-@font-face { font-family: Arimo; src: url('assets/assets/fonts/Arimo-SemiBold.ttf') format('truetype'); font-weight: 600; font-style: normal; font-display: swap; }
-@font-face { font-family: Arimo; src: url('assets/assets/fonts/Arimo-Bold.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
-@font-face { font-family: Arimo; src: url('assets/assets/fonts/Arimo-Italic.ttf') format('truetype'); font-weight: 400; font-style: italic; font-display: swap; }
-@font-face { font-family: Arimo; src: url('assets/assets/fonts/Arimo-BoldItalic.ttf') format('truetype'); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: Inter; src: url('assets/assets/fonts/Inter-Regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: Inter; src: url('assets/assets/fonts/Inter-Medium.ttf') format('truetype'); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: Inter; src: url('assets/assets/fonts/Inter-SemiBold.ttf') format('truetype'); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: Inter; src: url('assets/assets/fonts/Inter-Bold.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: Inter; src: url('assets/assets/fonts/Inter-ExtraBold.ttf') format('truetype'); font-weight: 800; font-style: normal; font-display: swap; }
+@font-face { font-family: Inter; src: url('assets/assets/fonts/Inter-Black.ttf') format('truetype'); font-weight: 900; font-style: normal; font-display: swap; }
+@font-face { font-family: Inter; src: url('assets/assets/fonts/Inter-Italic.ttf') format('truetype'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: Inter; src: url('assets/assets/fonts/Inter-BoldItalic.ttf') format('truetype'); font-weight: 700; font-style: italic; font-display: swap; }
+body, button, input, textarea, select { font-family: Inter, Helvetica, Arial, sans-serif; }

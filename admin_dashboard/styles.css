@@ -28,7 +28,7 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: 'Arimo', Helvetica, Arial, Roboto, sans-serif;
+  font-family: 'Inter', Helvetica, Arial, Roboto, sans-serif;
 }
 
 body {
@@ -1327,7 +1327,7 @@ textarea.form-control {
   cursor: pointer;
   transition: all 0.25s ease;
   border: 1px solid transparent;
-  font-family: 'Arimo', Helvetica, Arial, Roboto, sans-serif;
+  font-family: 'Inter', Helvetica, Arial, Roboto, sans-serif;
   letter-spacing: 0.5px;
 }
 
@@ -1617,7 +1617,7 @@ textarea.form-control {
   cursor: pointer;
   transition: all 0.25s ease;
   user-select: none;
-  font-family: 'Arimo', Helvetica, Arial, Roboto, sans-serif;
+  font-family: 'Inter', Helvetica, Arial, Roboto, sans-serif;
 }
 
 .btn-system-mode:hover {

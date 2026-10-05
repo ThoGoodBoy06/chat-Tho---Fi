@@ -69,10 +69,11 @@ class SocketService {
 
   static Future<void> connect({required String userId}) async {
     final token = await ApiService.getToken();
-    if (socket != null && socket!.connected) {
-      if (_currentUserId != userId) {
-        _currentUserId = userId;
-        socket?.emit('user_connected', userId);
+    if (socket != null && _currentUserId == userId) {
+      if (!socket!.connected) {
+        socket!.auth = {'token': token};
+        socket!.connect();
+        return;
       }
       if (_currentRoomId != null) {
         socket?.emit('join_room', _currentRoomId);
@@ -80,6 +81,7 @@ class SocketService {
       }
       return;
     }
+    socket?.dispose();
     _currentUserId = userId;
 
     String serverUrl;
@@ -102,14 +104,13 @@ class SocketService {
       serverUrl,
       IO.OptionBuilder()
           .setTransports(['websocket', 'polling'])
+          .enableForceNew()
           .setAuth({'token': token})
           .setQuery({'token': token})
-          .enableAutoConnect()
+          .disableAutoConnect()
           .enableReconnection()
           .build(),
     );
-
-    socket?.connect();
 
     socket?.onConnect((_) {
       print('🔥 Socket connected to Flutter Web (server: $serverUrl)');
@@ -329,6 +330,8 @@ class SocketService {
     });
 
     socket?.onDisconnect((_) => print('🔴 Socket disconnected'));
+    // Attach all listeners before the first connection can receive events.
+    socket?.connect();
   }
 
   static void emitUpdateConversationTheme(String conversationId, String theme) {
@@ -399,14 +402,12 @@ class SocketService {
 
   static void emitMarkAsRead(String messageId, {String? conversationId}) {
     if (socket != null && socket!.connected) {
-      socket!.emit('mark_as_read', {
-        'messageId': messageId,
-        'conversationId': conversationId,
-      });
       if (conversationId != null) {
         socket!.emit('mark_messages_read', {
           'conversationId': conversationId,
         });
+      } else {
+        socket!.emit('mark_as_read', {'messageId': messageId});
       }
     }
   }

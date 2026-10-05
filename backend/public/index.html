@@ -17,8 +17,8 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
   <!-- High Priority Preloads for Instant Native Startup -->
-  <link rel="preload" href="flutter_bootstrap.js?v=54252ef3470dff8a" as="script">
-  <link rel="preload" href="main.dart.js?v=54252ef3470dff8a" as="script">
+  <link rel="preload" href="flutter_bootstrap.js?v=3268c014299f1c7c" as="script">
+  <link rel="preload" href="main.dart.js?v=3268c014299f1c7c" as="script">
 
   <link rel="preload" href="/tho_fi_logo_transparent.png" as="image">
   <!-- Preload Reaction Emojis for Instant Zero-Lag Reaction & Chat Render -->
@@ -63,7 +63,7 @@
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       z-index: 9998; pointer-events: none;
       display: none; flex-direction: column;
-      font-family: 'Arimo', Helvetica, Arial, Roboto, sans-serif;
+      font-family: 'Inter', Helvetica, Arial, Roboto, sans-serif;
       overflow: hidden;
     }
     #sk-overlay.active { display: flex; pointer-events: auto; }
@@ -476,90 +476,7 @@
       }
     };
   </script>
-  <script>
-    window.isNotificationSupported = function () {
-      return ('Notification' in window) && ('serviceWorker' in navigator);
-    };
-
-    window.registerFCMAndGetToken = async function (vapidKey) {
-      if (!('Notification' in window)) {
-        console.warn('[FCM Web] Notification API không được hỗ trợ trên trình duyệt này.');
-        return null;
-      }
-      try {
-        // 🌟 BƯỚC QUAN TRỌNG NHẤT TRÊN iOS SAFARI & PWA:
-        // Phải kích hoạt Notification.requestPermission() ngay khi người dùng nhấn nút (User Gesture)
-        let permission = Notification.permission;
-        if (permission !== 'granted') {
-          permission = await Notification.requestPermission();
-        }
-        if (permission !== 'granted') {
-          console.warn('[FCM Web] ⚠️ Quyền thông báo không được cấp (Status: ' + permission + ').');
-          return null;
-        }
-
-        if (!('serviceWorker' in navigator)) {
-          console.warn('[FCM Web] ServiceWorker không khả dụng.');
-          return null;
-        }
-
-        if (!firebase.apps.length) {
-          const firebaseConfig = {
-            apiKey: "AIzaSyDk6fayVDs0YbbhwldYxgHcN4nnjnPwmRc",
-            authDomain: "chat-tho-fi.firebaseapp.com",
-            projectId: "chat-tho-fi",
-            storageBucket: "chat-tho-fi.firebasestorage.app",
-            messagingSenderId: "513501588929",
-            appId: "1:513501588929:web:54fd6c5fab227868bfd340",
-          };
-          firebase.initializeApp(firebaseConfig);
-        }
-
-        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js?v=push-scope-2', {
-          scope: '/firebase-cloud-messaging-push-scope', updateViaCache: 'none'
-        });
-        // Wait for this push worker, not the root PWA worker's ready promise.
-        if (!registration.active) {
-          await new Promise((resolve, reject) => {
-            const worker = registration.installing || registration.waiting;
-            if (!worker) { reject(new Error('Push worker unavailable')); return; }
-            const timer = setTimeout(() => { cleanup(); reject(new Error('Push worker activation timed out')); }, 15000);
-            function cleanup() { clearTimeout(timer); worker.removeEventListener('statechange', changed); }
-            function changed() {
-              if (worker.state === 'activated') { cleanup(); resolve(); }
-              if (worker.state === 'redundant') { cleanup(); reject(new Error('Push worker failed')); }
-            }
-            worker.addEventListener('statechange', changed);
-            changed();
-          });
-        }
-
-        const effectiveVapidKey = vapidKey || 'BBtraQSvar7RExe_T8aVhoA3TebgLw0S-ucoMcuV-Oef-H7ULkJGWyBctnxfY5tLnawpWQ9Wn8Aihi-wJaLiGu0';
-
-        const messaging = firebase.messaging();
-        const token = await messaging.getToken({
-          vapidKey: effectiveVapidKey,
-          serviceWorkerRegistration: registration
-        });
-        if (token) {
-          console.log('[FCM Web] ✅ Lấy FCM Token thành công:', token.substring(0, 15) + '...');
-          return token;
-        }
-      } catch (err) {
-        console.error('[FCM Web] ❌ Lỗi đăng ký / lấy FCM Token:', err);
-      }
-      return null;
-    };
-
-    window.getWebDeviceId = function () {
-      let deviceId = localStorage.getItem('tho_fi_web_device_id');
-      if (!deviceId) {
-        deviceId = 'web_' + Math.random().toString(36).substring(2, 15) + '_' + Date.now();
-        localStorage.setItem('tho_fi_web_device_id', deviceId);
-      }
-      return deviceId;
-    };
-  </script>
+  <script src="web_notifications.js?v=3268c014299f1c7c"></script>
 
 
   <style>
@@ -585,7 +502,7 @@
       -webkit-tap-highlight-color: transparent;
       user-select: none;
       -webkit-user-select: none;
-      font-family: "Arimo", Helvetica, Arial, Roboto, sans-serif;
+      font-family: "Inter", Helvetica, Arial, Roboto, sans-serif;
     }
 
     #loading-screen {
@@ -795,7 +712,7 @@
     }
 
     .ai-welcome-title {
-      font-family: "Arimo", Helvetica, Arial, Roboto, sans-serif;
+      font-family: "Inter", Helvetica, Arial, Roboto, sans-serif;
       font-size: 26px;
       font-weight: 600;
       color: #0f172a;
@@ -1005,7 +922,7 @@
       flex-direction: column;
       transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
       border-right: 1px solid rgba(0, 0, 0, 0.08);
-      font-family: "Arimo", Helvetica, Arial, Roboto, sans-serif;
+      font-family: "Inter", Helvetica, Arial, Roboto, sans-serif;
     }
 
     .ai-drawer-panel.dark {
@@ -1071,7 +988,7 @@
       justify-content: center;
       padding: 20px;
       box-sizing: border-box;
-      font-family: "Arimo", Helvetica, Arial, Roboto, sans-serif;
+      font-family: "Inter", Helvetica, Arial, Roboto, sans-serif;
     }
 
     .ai-confirm-backdrop.active {
@@ -1396,7 +1313,7 @@
       transform: scale(0.92);
       transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
       border: 1px solid rgba(0, 0, 0, 0.08);
-      font-family: "Arimo", Helvetica, Arial, Roboto, sans-serif;
+      font-family: "Inter", Helvetica, Arial, Roboto, sans-serif;
       box-sizing: border-box;
     }
 
@@ -2108,7 +2025,7 @@
   <script>
     window.flutterWebRenderer = "canvaskit";
   </script>
-  <script src="flutter_bootstrap.js?v=54252ef3470dff8a" async></script>
+  <script src="flutter_bootstrap.js?v=3268c014299f1c7c" async></script>
 
   <script id="messenger-theme-picker-script">
     window._openMessengerThemePicker = function (convId, convName) {
@@ -2149,7 +2066,7 @@
       overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.6);backdrop-filter:blur(8px);z-index:9999999;display:flex;align-items:flex-end;justify-content:center;opacity:0;transition:opacity 0.25s ease;';
 
       var sheet = document.createElement('div');
-      sheet.style.cssText = 'background:#ffffff;width:100%;max-width:440px;border-top-left-radius:24px;border-top-right-radius:24px;padding:16px 20px 28px;box-shadow:0 -12px 35px rgba(0,0,0,0.25);transform:translateY(100%);transition:transform 0.25s cubic-bezier(0.16,1,0.3,1);font-family:"Arimo",Helvetica,Arial,Roboto,sans-serif;user-select:none;';
+      sheet.style.cssText = 'background:#ffffff;width:100%;max-width:440px;border-top-left-radius:24px;border-top-right-radius:24px;padding:16px 20px 28px;box-shadow:0 -12px 35px rgba(0,0,0,0.25);transform:translateY(100%);transition:transform 0.25s cubic-bezier(0.16,1,0.3,1);font-family:"Inter",Helvetica,Arial,Roboto,sans-serif;user-select:none;';
 
       var html = '<div style="display:flex;justify-content:center;margin-bottom:12px;"><div style="width:40px;height:4px;background:#E2E8F0;border-radius:2px;"></div></div>';
       html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">';
@@ -2321,7 +2238,7 @@
       transform: translateY(100%);
       transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
       overflow: hidden;
-      font-family: "Arimo", Helvetica, Arial, Roboto, sans-serif;
+      font-family: "Inter", Helvetica, Arial, Roboto, sans-serif;
     }
 
     #notif-modal-overlay.active #notif-modal-sheet {
@@ -2582,7 +2499,7 @@
           </div>
           <div class="notif-guide-step">
             <div class="notif-step-badge">1</div>
-            <div>Mở bằng <b>Safari</b> trên iPhone (chỉ Safari hỗ trợ Web Push).</div>
+            <div>Dùng <b>iOS 16.4 trở lên</b>. Mở web bằng Safari để thêm app vào Màn hình chính.</div>
           </div>
           <div class="notif-guide-step">
             <div class="notif-step-badge">2</div>
@@ -2627,7 +2544,7 @@
     });
 
     window.updateNotificationModalState = function () {
-      const isGranted = ('Notification' in window) && (Notification.permission === 'granted');
+      const isGranted = window.isWebPushRegistered && window.isWebPushRegistered();
       const statusBox = document.getElementById('notif-status-box');
       const statusIcon = document.getElementById('notif-status-icon');
       const statusTitle = document.getElementById('notif-status-title');
@@ -2647,7 +2564,7 @@
           statusBox.className = 'notif-status-box inactive';
           statusIcon.textContent = '⚠️';
           statusTitle.textContent = 'Thông báo CHƯA BẬT';
-          statusDesc.textContent = 'Vui lòng bấm nút bên dưới để cấp quyền nhận cuộc gọi và tin nhắn khi thoát app.';
+          statusDesc.textContent = 'Bấm nút bên dưới để cấp quyền và đăng ký thiết bị. Đã cho phép thông báo vẫn cần đăng ký với máy chủ.';
         }
         if (btnText) btnText.textContent = 'Bật thông báo trên thiết bị này';
       }
@@ -2668,27 +2585,14 @@
         }
 
         // Kích hoạt ngay trong User Gesture context của click này
-        const token = await window.registerFCMAndGetToken();
+        const token = await window.registerFCMAndGetToken(undefined, {requestPermission: true});
 
         if (token) {
-          // Lưu token lên server
-          const authToken = localStorage.getItem('flutter.authToken') || localStorage.getItem('authToken');
-          const deviceId = window.getWebDeviceId ? window.getWebDeviceId() : 'web_device';
-
-          if (authToken) {
-            await fetch('/api/users/fcm-token', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + authToken.replace(/"/g, '')
-              },
-              body: JSON.stringify({
-                fcmToken: token,
-                platform: 'web',
-                deviceId: deviceId
-              })
-            }).catch(e => console.warn('Lưu fcm-token lỗi:', e));
-          }
+          window.markWebPushRegistered(false);
+          await window.postUserPushApi('fcm-token', {
+            fcmToken: token, platform: 'web', deviceId: window.getWebDeviceId()
+          });
+          window.markWebPushRegistered(true);
 
           window.updateNotificationModalState();
           alert('🎉 Đã bật thông báo thành công! Bây giờ bạn có thể thử khóa màn hình hoặc thoát ra ngoài màn hình chính để kiểm tra.');
@@ -2697,6 +2601,7 @@
           alert('⚠️ Chưa thể kích hoạt thông báo. Nếu bạn đang dùng iPhone, hãy chắc chắn rằng bạn đã "Thêm vào MH chính" bằng Safari và mở ứng dụng từ màn hình chính!');
         }
       } catch (err) {
+        window.markWebPushRegistered(false);
         console.error('Lỗi kích hoạt:', err);
         alert('Lỗi kích hoạt thông báo: ' + err.message);
       } finally {
@@ -2720,14 +2625,7 @@
           return;
         }
 
-        const res = await fetch('/api/users/test-push', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + authToken.replace(/"/g, '')
-          }
-        });
-        const data = await res.json();
+        const data = await window.postUserPushApi('test-push', {deviceId: window.getWebDeviceId()});
 
         if (data.success) {
           alert('🔔 Đã bắn thông báo thử nghiệm! Bạn hãy thử khóa màn hình điện thoại hoặc thoát ra ngoài màn hình chính để kiểm tra.');
@@ -3498,7 +3396,7 @@
 
     var sheet = document.createElement('div');
     sheet.id = 'reaction-detail-sheet';
-    sheet.style.cssText = 'background:#ffffff;width:100%;max-width:440px;max-height:78vh;border-top-left-radius:24px;border-top-right-radius:24px;padding:12px 0 24px;box-shadow:0 -12px 40px rgba(0,0,0,0.22);transform:translateY(100%);transition:transform 0.25s cubic-bezier(0.16,1,0.3,1);font-family:"Arimo",Helvetica,Arial,Roboto,sans-serif;user-select:none;display:flex;flex-direction:column;box-sizing:border-box;';
+    sheet.style.cssText = 'background:#ffffff;width:100%;max-width:440px;max-height:78vh;border-top-left-radius:24px;border-top-right-radius:24px;padding:12px 0 24px;box-shadow:0 -12px 40px rgba(0,0,0,0.22);transform:translateY(100%);transition:transform 0.25s cubic-bezier(0.16,1,0.3,1);font-family:"Inter",Helvetica,Arial,Roboto,sans-serif;user-select:none;display:flex;flex-direction:column;box-sizing:border-box;';
 
     if (window.innerWidth > 600) {
       overlay.style.alignItems = 'center';

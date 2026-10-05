@@ -88,6 +88,69 @@ void main() {
         reason: 'All test HTTP traffic must be mocked.');
   });
 
+  test('receipt arriving before send acknowledgement survives the unread acknowledgement', () async {
+    provider.selectedConversation = _conversation('a');
+    final response = Completer<http.Response>();
+    ApiService.setClientForTesting(MockClient((_) => response.future));
+    final sending = provider.sendMessage('Hello');
+    final tempId = provider.messages.single.id;
+    provider.applyReadReceipt({'conversationId': 'a', 'readBy': 'partner', 'lastReadMessageId': 'saved'});
+    response.complete(http.Response(jsonEncode({'success': true, 'data': {
+      ..._message('saved', 'a'), 'senderId': 'alice', 'clientTempId': tempId,
+      'content': 'Hello', 'isRead': false, 'isDelivered': false,
+    }}), 201));
+    await sending;
+    expect(provider.messages.single.isRead, true);
+    expect(provider.messages.single.isDelivered, true);
+    provider.addRealtimeMessage(provider.messages.single.copyWith(isRead: false, isDelivered: false));
+    expect(provider.messages.single.isRead, true);
+  });
+
+  test('read watermark does not mark newer messages or the reader own receipts', () {
+    provider.selectedConversation = _conversation('a');
+    provider.messages = List.generate(3, (i) => MessageModel.fromJson({
+      ..._message('m$i', 'a', second: i), 'senderId': 'alice'}));
+    provider.applyReadReceipt({'conversationId': 'a', 'readBy': 'partner',
+      'lastReadMessageId': 'm1', 'lastReadCreatedAt': DateTime.utc(2026, 1, 1, 0, 0, 1).toIso8601String()});
+    expect(provider.messages.map((m) => m.isRead), [true, true, false]);
+    provider.applyReadReceipt({'conversationId': 'a', 'readBy': 'alice', 'lastReadMessageId': 'm2'});
+    expect(provider.messages.last.isRead, false);
+  });
+
+  test('identical rapid messages reconcile by client ID and late relays cannot replace saved messages', () {
+    provider.selectedConversation = _conversation('a');
+    MessageModel message(String id, String temp) => MessageModel(
+      id: id, clientTempId: temp, conversationId: 'a', senderId: 'partner',
+      content: 'Same text', createdAt: DateTime.utc(2026, 1, 1),
+    );
+    provider.addRealtimeMessage(message('optimistic-1', 'optimistic-1'));
+    provider.addRealtimeMessage(message('optimistic-2', 'optimistic-2'));
+    expect(provider.messages.length, 2);
+    provider.addRealtimeMessage(message('saved-2', 'optimistic-2'));
+    provider.addRealtimeMessage(message('saved-1', 'optimistic-1'));
+    expect(_messageIds(provider), ['saved-1', 'saved-2']);
+    expect(provider.addRealtimeMessage(message('optimistic-1', 'optimistic-1')), false);
+    expect(_messageIds(provider), ['saved-1', 'saved-2']);
+  });
+
+  test('sending appears immediately, carries correlation ID and reports HTTP failure', () async {
+    provider.selectedConversation = _conversation('a');
+    final response = Completer<http.Response>();
+    late Map<String, dynamic> sentBody;
+    ApiService.setClientForTesting(MockClient((request) async {
+      sentBody = jsonDecode(request.body) as Map<String, dynamic>;
+      return response.future;
+    }));
+    final pending = provider.sendMessage('Instant');
+    expect(provider.messages.single.content, 'Instant');
+    expect(provider.messages.single.status, 'sending');
+    await Future<void>.delayed(Duration.zero);
+    expect(sentBody['clientTempId'], provider.messages.single.id);
+    response.complete(http.Response('{"success":false}', 503));
+    await pending;
+    expect(provider.messages.single.status, 'error');
+  });
+
   test('startup prepares recent messages and selection reuses the in-flight request', () async {
     final list = api.enqueue('/api/chat/conversations');
     final history = api.enqueue('/api/chat/a/messages');

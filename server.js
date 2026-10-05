@@ -813,61 +813,8 @@ app.post("/api/users/fcm-token", async(req, res) => {
             return res.status(400).json({ success: false, message: "Thiếu fcmToken" });
         }
 
-        // 1. Cập nhật bảng Users (giữ tương thích ngược)
-        await prisma.users.update({
-            where: { id: decoded.id },
-            data: { fcmToken: fcmToken },
-        }).catch(() => {});
-
-        // Tự động nhận diện thiết bị Mobile vs Desktop qua User-Agent
-        const userAgent = (req.headers['user-agent'] || '').toLowerCase();
-        const isMobile = /mobile|android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
-        const detectedPlatform = isMobile ? 'web_mobile' : (platform === 'ios' || platform === 'android' ? platform : 'web_desktop');
-
-        // 2. Dọn dẹp token cũ nếu cùng thiết bị (deviceId) hoặc cùng nền tảng thiết bị (web_mobile / web_desktop)
-        // Đảm bảo 1 người dùng trên 1 điện thoại chỉ giữ duy nhất 1 token mới nhất (chống PWA + Tab sinh 2 token)
-        if (deviceId) {
-            await prisma.userDevices.deleteMany({
-                where: {
-                    userId: decoded.id,
-                    deviceId: deviceId,
-                    fcmToken: { not: fcmToken }
-                }
-            }).catch(() => {});
-        }
-
-        await prisma.userDevices.deleteMany({
-            where: {
-                userId: decoded.id,
-                platform: detectedPlatform,
-                fcmToken: { not: fcmToken }
-            }
-        }).catch(() => {});
-
-        // Nếu token này từng được liên kết với user khác, xóa khỏi user cũ
-        await prisma.userDevices.deleteMany({
-            where: {
-                fcmToken: fcmToken,
-                userId: { not: decoded.id }
-            }
-        }).catch(() => {});
-
-        // 3. Upsert vào bảng UserDevices hỗ trợ nhận push chính xác
-        await prisma.userDevices.upsert({
-            where: { fcmToken: fcmToken },
-            update: {
-                userId: decoded.id,
-                platform: detectedPlatform,
-                deviceId: deviceId || null,
-                updatedAt: new Date(),
-            },
-            create: {
-                userId: decoded.id,
-                fcmToken: fcmToken,
-                platform: detectedPlatform,
-                deviceId: deviceId || null,
-            },
-        });
+        const {registerPushDevice} = require('./services/push_devices.service');
+        await registerPushDevice(prisma, decoded.id, {fcmToken, platform, deviceId}, req.headers['user-agent'] || '');
 
         res.json({ success: true, message: "Lưu mã thiết bị thành công" });
     } catch (error) {
@@ -885,14 +832,17 @@ app.post("/api/users/test-push", async (req, res) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const { sendPushNotification } = require("./controllers/chat.controller");
 
-        await sendPushNotification(
+        const result = await sendPushNotification(
             decoded.id,
             "🔔 Chat Tho-Fi - Thông báo thử nghiệm",
-            "Chúc mừng! Hệ thống thông báo đẩy trên iPhone của bạn đang hoạt động 100% hoàn hảo.",
-            { type: "test_notification" }
+            "Đây là thông báo thử trên thiết bị của bạn.",
+            { type: "test_notification" }, false, {deviceId: req.body.deviceId}
         );
 
-        res.json({ success: true, message: "Đã gửi thông báo thử nghiệm thành công" });
+        if (!result || result.successCount === 0) {
+            return res.status(503).json({success: false, message: result?.reason || 'Firebase chưa gửi được thông báo đến thiết bị. Hãy đăng ký lại rồi thử.'});
+        }
+        res.json({ success: true, successCount: result.successCount, message: "Firebase đã nhận yêu cầu gửi thông báo thử nghiệm." });
     } catch (error) {
         console.error("Lỗi gửi test-push:", error);
         res.status(500).json({ success: false, message: error.message });

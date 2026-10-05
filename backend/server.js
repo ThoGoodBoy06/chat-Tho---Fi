@@ -29,7 +29,8 @@ const path = require("path");
 const fs = require("fs");
 const jwt = require("jsonwebtoken");
 const authMiddleware = require("./middlewares/auth.middleware");
-const { clearUserImageCache } = require("./controllers/user.controller");
+const userController = require("./controllers/user.controller");
+const { clearUserImageCache } = userController;
 
 const app = express();
 const prisma = require("./prisma");
@@ -51,14 +52,12 @@ app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-// Proxy đa phương tiện hỗ trợ CORS và Range Requests cho video/audio từ Cloudflare R2
-app.options("/api/chat/media-proxy", (req, res) => {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "*");
-    res.sendStatus(204);
+app.post("/api/client-error", (req, res) => {
+    console.error("🚨 [CLIENT ERROR TELEMETRY]:", JSON.stringify(req.body));
+    res.json({ ok: true });
 });
 
+// Proxy đa phương tiện hỗ trợ CORS và Range Requests cho video/audio từ Cloudflare R2
 app.get("/api/chat/media-proxy", (req, res) => {
     const targetUrl = req.query.url;
     if (!targetUrl) return res.status(400).send("Missing url parameter");
@@ -95,20 +94,216 @@ app.get("/api/chat/media-proxy", (req, res) => {
 });
 
 
-// Chặn cache triệt để cho Safari iPhone
-app.use((req, res, next) => {
-    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+// Bộ nhớ đệm cấu hình hệ thống thời gian thực (In-memory System Config)
+global.systemConfig = {
+    maintenanceMode: false,
+    maintenanceMessage: "Hệ thống đang bảo trì định kỳ. Vui lòng quay lại sau ít phút!",
+    allowRegistration: true,
+    allowVoiceCalls: true,
+    allowVideoCalls: true,
+    allowFileUploads: true,
+};
+
+async function syncSystemConfigFromDB() {
+    try {
+        const configs = await prisma.systemConfig.findMany();
+        configs.forEach((c) => {
+            global.systemConfig[c.key] = c.value;
+        });
+        console.log("⚙️ [SystemConfig] Trạng thái bảo trì:", global.systemConfig.maintenanceMode ? "🔴 ĐANG BẬT" : "🟢 ĐANG TẮT");
+    } catch (e) {
+        console.warn("⚠️ [SystemConfig] Lỗi nạp cấu hình:", e.message);
+    }
+}
+syncSystemConfigFromDB();
+// Tự động đồng bộ mỗi 30s để đảm bảo mọi instance Render luôn bám sát cấu hình trong DB
+setInterval(syncSystemConfigFromDB, 30000);
+
+function getMaintenanceHtml(msg) {
+    const customMsg = msg || "Hệ thống đang bảo trì định kỳ. Vui lòng quay lại sau ít phút!";
+    return `<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bảo trì hệ thống | Chat Tho - Fi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #020617;
+      color: #f8fafc;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background-image: radial-gradient(circle at 50% 30%, rgba(244, 63, 94, 0.15) 0%, transparent 65%);
+    }
+    .card {
+      max-width: 480px;
+      width: 100%;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(244, 63, 94, 0.35);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 35px rgba(244, 63, 94, 0.25);
+      backdrop-filter: blur(20px);
+      border-radius: 24px;
+      padding: 40px 32px;
+      text-align: center;
+    }
+    .icon-box {
+      width: 80px;
+      height: 80px;
+      background: rgba(244, 63, 94, 0.12);
+      border: 2px solid rgba(244, 63, 94, 0.4);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 38px;
+      margin: 0 auto 24px auto;
+    }
+    h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      background: rgba(244, 63, 94, 0.2);
+      color: #fb7185;
+      border: 1px solid rgba(244, 63, 94, 0.4);
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 18px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .msg-box {
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px dashed rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 16px 18px;
+      font-size: 14px;
+      color: #e2e8f0;
+      line-height: 1.6;
+      margin-bottom: 24px;
+      word-break: break-word;
+    }
+    .btn-reload {
+      background: linear-gradient(135deg, #f43f5e, #e11d48);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 28px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(244, 63, 94, 0.4);
+      transition: all 0.2s;
+    }
+    .btn-reload:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(244, 63, 94, 0.6);
+    }
+    .footer {
+      font-size: 11px;
+      color: #64748b;
+      margin-top: 24px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon-box">🛠️</div>
+    <h1>HỆ THỐNG ĐANG BẢO TRÌ</h1>
+    <div class="badge">Tạm ngừng phục vụ</div>
+    <div class="msg-box">${customMsg}</div>
+    <button class="btn-reload" onclick="location.reload()">🔄 Thử tải lại trang</button>
+    <div class="footer">Chat Tho - Fi • Quản trị hệ thống</div>
+  </div>
+</body>
+</html>`;
+}
+
+// Cấu hình Cache-Control linh hoạt:
+// Chặn cache đối với các API endpoints để luôn có dữ liệu mới nhất
+// NGOẠI TRỪ avatar và cover photo (ảnh tĩnh nên để browser cache)
+app.use("/api", (req, res, next) => {
+    const url = req.originalUrl || req.url;
+    // Cho phép browser cache ảnh avatar và cover photo (giảm tải rất nhiều)
+    if (url.match(/\/api\/users\/[^/]+\/(avatar|cover)/)) {
+        return next();
+    }
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0");
     res.setHeader("Pragma", "no-cache");
     res.setHeader("Expires", "0");
-    res.setHeader("Surrogate-Control", "no-store");
+
+    // 1. Luôn cho phép các API quản trị Admin và Health check
+    if (url.startsWith("/api/admin") || url.startsWith("/api/health") || url.startsWith("/api/auth/login")) {
+        return next();
+    }
+
+    // 2. Chế độ bảo trì hệ thống (Chặn toàn bộ người dùng thường)
+    if (global.systemConfig?.maintenanceMode) {
+        return res.status(503).json({
+            success: false,
+            maintenance: true,
+            message: global.systemConfig.maintenanceMessage || "Hệ thống đang bảo trì định kỳ. Vui lòng quay lại sau ít phút!"
+        });
+    }
+
+    // 3. Chặn đăng ký tài khoản mới nếu allowRegistration = false
+    if (global.systemConfig?.allowRegistration === false && req.path === "/auth/register") {
+        return res.status(403).json({
+            success: false,
+            message: "Tính năng đăng ký tài khoản mới hiện đang tạm đóng bởi Quản trị viên."
+        });
+    }
+
+    // 4. Chặn tải tệp nếu allowFileUploads = false
+    if (global.systemConfig?.allowFileUploads === false) {
+        const isUpload = req.path.includes("/upload") || req.path.includes("/avatar") || (req.method === "POST" && req.path.includes("/media"));
+        if (isUpload) {
+            return res.status(403).json({
+                success: false,
+                message: "Tính năng tải tệp & hình ảnh hiện đang tạm khóa bởi Quản trị viên."
+            });
+        }
+    }
+
     next();
 });
 
-// Mở thư mục Flutter Web static 100% mới
+// Chặn truy cập web app chính khi hệ thống đang bật chế độ bảo trì
+app.use((req, res, next) => {
+    if (global.systemConfig?.maintenanceMode) {
+        const url = req.path;
+        if (url.startsWith("/admin") || url.startsWith("/api/admin") || url.startsWith("/api/health") || url.startsWith("/health")) {
+            return next();
+        }
+        if (req.method === "GET" && (url === "/" || url === "/index.html")) {
+            res.setHeader("Content-Type", "text/html; charset=utf-8");
+            res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+            return res.status(503).send(getMaintenanceHtml(global.systemConfig.maintenanceMessage));
+        }
+    }
+    next();
+});
+
+// Mở thư mục Flutter Web static
 const flutterWebPath = path.join(__dirname, "flutter_frontend", "build", "web");
 const staticPath = fs.existsSync(flutterWebPath) ? flutterWebPath : path.join(__dirname, "public");
 console.log(`📂 Đang serve giao diện từ: ${staticPath}`);
 
+// Phục vụ static file tối ưu với ETag, Last-Modified và Cache thông minh
 app.use(express.static(staticPath, {
     etag: true,
     lastModified: true,
@@ -136,18 +331,58 @@ app.use(express.static(staticPath, {
     }
 }));
 
+// Mở thư mục chứa file upload cục bộ
+const uploadsPath = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadsPath)) {
+    fs.mkdirSync(uploadsPath, { recursive: true });
+}
+app.use("/uploads", express.static(uploadsPath));
+
+// Phục vụ giao diện Admin Control Center
+const adminDashboardPath = path.join(__dirname, "admin_dashboard");
+app.use("/admin", express.static(adminDashboardPath, {
+    etag: true,
+    lastModified: true,
+    maxAge: "1h",
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith(".html")) {
+            res.setHeader("Cache-Control", "no-cache, must-revalidate");
+        }
+    }
+}));
+app.get(/^\/admin(\/.*)?$/, (req, res, next) => {
+    if (req.method === "GET") {
+        const indexPath = path.join(adminDashboardPath, "index.html");
+        if (fs.existsSync(indexPath)) {
+            res.setHeader("Cache-Control", "no-cache, must-revalidate");
+            return res.sendFile(indexPath);
+        }
+    }
+    next();
+});
+
+app.get("/firebase-messaging-sw.js", (req, res) => {
+    const swPath = fs.existsSync(path.join(flutterWebPath, "firebase-messaging-sw.js"))
+        ? path.join(flutterWebPath, "firebase-messaging-sw.js")
+        : path.join(__dirname, "public", "firebase-messaging-sw.js");
+    res.sendFile(swPath);
+});
+
 // Import Routes
 const authRoutes = require("./routes/auth.routes");
 const chatRoutes = require("./routes/chat.routes");
 const userRoutes = require("./routes/user.routes");
 const aiRoutes = require("./routes/ai.routes");
 const newsRoutes = require("./routes/news.routes");
+const adminRoutes = require("./routes/admin.routes");
+const adminAuth = require("./middlewares/adminAuth");
 
 // API Health check cho kiểm tra trạng thái & Render keep-alive ping
 app.get("/api/health", (req, res) => {
     res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
+// Nhận telemetry log từ Flutter Web client
 // Endpoint HTTP Fallback: Kết thúc cuộc gọi chắc chắn 100%
 // [Call Status API] Kiểm tra trạng thái cuộc gọi theo thời gian thực (Polling Fallback)
 app.get("/api/call/status", (req, res) => {
@@ -155,6 +390,7 @@ app.get("/api/call/status", (req, res) => {
         const { callerId, calleeId, room } = req.query;
         let isActive = false;
         let isAccepted = false;
+        const mapSize = global.activeCalls ? global.activeCalls.size : -1;
         if (global.activeCalls) {
             const callCaller = callerId ? global.activeCalls.get(callerId) : null;
             const callCallee = calleeId ? global.activeCalls.get(calleeId) : null;
@@ -188,7 +424,6 @@ app.post("/api/call/end", async (req, res) => {
     }
 });
 
-// Nhận telemetry log từ Flutter Web client
 app.post("/api/client_debug", (req, res) => {
     console.log("📱 [CLIENT TELEMETRY]", JSON.stringify(req.body));
     res.status(200).json({ status: "ok" });
@@ -207,31 +442,20 @@ if (RENDER_PING_URL) {
     }, 10 * 60 * 1000); // 10 phút / lần
 }
 
-// Tạo một API test thử xem server chạy chưa (nếu từ trình duyệt thì trả về file index.html giao diện)
-app.get("/", async(req, res) => {
-    if (req.headers.accept && req.headers.accept.includes("text/html")) {
-        return res.sendFile(path.join(__dirname, "public", "index.html"));
+// Serve index.html cho trang chủ /
+app.get("/", (req, res) => {
+    const indexPath = path.join(staticPath, "index.html");
+    if (fs.existsSync(indexPath)) {
+        res.setHeader("Cache-Control", "no-cache, must-revalidate");
+        return res.sendFile(indexPath);
     }
-
-    try {
-        // Thử đếm số lượng người dùng trong Database
-        const userCount = await prisma.users.count();
-        res.json({
-            message: "🚀 Backend Chat App đang hoạt động tuyệt vời!",
-            database: "Đã kết nối PostgreSQL", // Cập nhật cho đúng loại DB
-            totalUsers: userCount,
-        });
-    } catch (error) {
-        res
-            .status(500)
-            .json({ error: "Lỗi kết nối Database", details: error.message });
-    }
+    res.status(404).send("File index.html not found");
 });
 
 // API phụ trợ (Danh bạ) để xem danh sách tất cả người dùng và lấy ID dễ dàng
 app.get("/api/users", authMiddleware, async(req, res) => {
     const users = await prisma.users.findMany({
-        select: { id: true, username: true, fullName: true },
+        select: { id: true, username: true, fullName: true, isOnline: true },
     });
     res.json({ success: true, data: users });
 });
@@ -390,138 +614,16 @@ app.get("/api/gifs/search", async (req, res) => {
     }
 });
 
-// API Tìm kiếm người dùng bằng Tên (Tính năng kết bạn)
-app.get("/api/users/search", authMiddleware, async(req, res) => {
-    const { q } = req.query;
-    if (!q) return res.json({ success: true, data: [] });
-
-    const users = await prisma.users.findMany({
-        where: {
-            fullName: { contains: q }, // Tìm kiếm tương đối theo Họ và tên
-        },
-        select: { id: true, fullName: true, username: true },
-    });
-    res.json({ success: true, data: users });
-});
+// API Tìm kiếm người dùng bằng Tên, Username, SĐT, Email (Tính năng kết bạn)
+app.get("/api/users/search", authMiddleware, userController.searchUsers);
 
 // API Lấy danh sách bạn bè đã kết bạn
-app.get("/api/users/friends", async(req, res) => {
-    try {
-        const authHeader = req.headers.authorization;
-        const token = authHeader ? authHeader.split(" ")[1] : null;
-        if (!token)
-            return res.status(401).json({ success: false, message: "Unauthorized" });
-
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const userId = decoded.id;
-
-        const friendships = await prisma.friendRequests.findMany({
-            where: {
-                status: "ACCEPTED",
-                OR: [{ requesterId: userId }, { receiverId: userId }],
-            },
-            include: {
-                requester: {
-                    select: { id: true, fullName: true, username: true, isOnline: true, avatar: true },
-                },
-                receiver: {
-                    select: { id: true, fullName: true, username: true, isOnline: true, avatar: true },
-                },
-            },
-        });
-
-        const friends = friendships.map((f) => {
-            const u = f.requesterId === userId ? f.receiver : f.requester;
-            const hasCustomAvatar = Boolean(u.avatar && u.avatar.trim());
-            return {
-                ...u,
-                avatar: hasCustomAvatar ? `/api/users/${u.id}/avatar` : null,
-                avatarUrl: hasCustomAvatar ? `/api/users/${u.id}/avatar` : null,
-                avatar_url: hasCustomAvatar ? `/api/users/${u.id}/avatar` : null,
-                hasAvatar: hasCustomAvatar,
-            };
-        });
-        res.json({ success: true, data: friends });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
+app.get("/api/users/friends", authMiddleware, userController.getFriends);
 
 // API Xóa bạn bè
-app.delete("/api/users/friends/:friendId", async(req, res) => {
-    try {
-        const authHeader = req.headers.authorization;
-        const token = authHeader ? authHeader.split(" ")[1] : null;
-        if (!token)
-            return res.status(401).json({ success: false, message: "Unauthorized" });
-
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const userId = decoded.id;
-        const friendId = req.params.friendId;
-
-        const friendship = await prisma.friendRequests.findFirst({
-            where: {
-                status: "ACCEPTED",
-                OR: [
-                    { requesterId: userId, receiverId: friendId },
-                    { requesterId: friendId, receiverId: userId },
-                ],
-            },
-        });
-
-        if (friendship) {
-            // NÂNG CẤP: Tìm và xóa luôn cuộc trò chuyện 1-1 nếu có
-            const conversations = await prisma.conversations.findMany({
-                where: {
-                    AND: [
-                        { ConversationMembers: { some: { userId: userId } } },
-                        { ConversationMembers: { some: { userId: friendId } } },
-                    ],
-                },
-                include: {
-                    _count: {
-                        select: { ConversationMembers: true },
-                    },
-                },
-            });
-
-            // Lọc ra đúng cuộc trò chuyện chỉ có 2 người
-            const privateConversation = conversations.find(
-                (c) => c._count.ConversationMembers === 2,
-            );
-
-            if (privateConversation) {
-                // Xóa các bảng liên quan trước khi xóa phòng chat
-                await prisma.messages.deleteMany({
-                    where: { conversationId: privateConversation.id },
-                });
-                await prisma.conversationMembers.deleteMany({
-                    where: { conversationId: privateConversation.id },
-                });
-                await prisma.conversations.delete({
-                    where: { id: privateConversation.id },
-                });
-            }
-
-            // Xóa bản ghi bạn bè
-            await prisma.friendRequests.delete({
-                where: { id: friendship.id },
-            });
-
-            // Báo cho người bị xóa biết để cập nhật UI real-time (qua room)
-            const io = req.app.get("io");
-            io.to(friendId).emit("unfriended", { unfriendedBy: userId });
-
-            res.json({ success: true, message: "Đã xóa bạn bè và cuộc trò chuyện." });
-        } else {
-            res
-                .status(404)
-                .json({ success: false, message: "Không tìm thấy bạn bè." });
-        }
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
+app.delete("/api/users/friends/:friendId", authMiddleware, userController.deleteFriend);
+app.post("/api/users/friends/:friendId/delete", authMiddleware, userController.deleteFriend);
+app.post("/api/users/friends/delete", authMiddleware, userController.deleteFriend);
 
 // API Lấy danh sách thông báo
 app.get("/api/users/notifications", async(req, res) => {
@@ -611,6 +713,8 @@ app.get("/api/auth/me", async(req, res) => {
                 email: true,
                 phone: true,
                 bio: true,
+                role: true,
+                isBlocked: true,
                 isOnline: true,
                 lastActive: true,
                 createdAt: true,
@@ -622,6 +726,11 @@ app.get("/api/auth/me", async(req, res) => {
             return res
                 .status(404)
                 .json({ success: false, message: "User không tồn tại." });
+        if (user.isBlocked) {
+            return res
+                .status(403)
+                .json({ success: false, message: "Tài khoản của bạn đã bị khóa." });
+        }
         // Map avatar & coverPhoto sang URL tĩnh để trả về client
         const mappedUser = {
             ...user,
@@ -642,6 +751,7 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/users", userRoutes); // Mount các API user (profile, cover) vào đây
 app.use("/api/ai", aiRoutes);
 app.use("/api/news", newsRoutes);
+app.use("/api/admin", adminAuth, adminRoutes);
 
 // --- TÍNH NĂNG UPLOAD AVATAR ---
 // Đảm bảo thư mục lưu trữ tồn tại
@@ -669,14 +779,17 @@ app.post("/api/users/avatar", async(req, res) => {
         if (!avatar)
             return res.status(400).json({ message: "Vui lòng chọn ảnh đại diện" });
 
-        // Lưu thẳng Base64 string vào DB Neon
+        // Tải avatar lên Supabase Storage và lưu URL sạch vào Database
+        const storageService = require("./services/storage.service");
+        const publicAvatarUrl = await storageService.processUpload(avatar, "avatar", "avatar.jpg", decoded.id);
+
         clearUserImageCache(decoded.id);
         await prisma.users.update({
             where: { id: decoded.id },
-            data: { avatar: avatar },
+            data: { avatar: publicAvatarUrl },
         });
 
-        res.json({ success: true, avatarUrl: `/api/users/${decoded.id}/avatar?v=${Date.now()}` });
+        res.json({ success: true, avatarUrl: publicAvatarUrl });
     } catch (error) {
         console.error("Lỗi upload avatar:", error);
         res
@@ -700,61 +813,8 @@ app.post("/api/users/fcm-token", async(req, res) => {
             return res.status(400).json({ success: false, message: "Thiếu fcmToken" });
         }
 
-        // 1. Cập nhật bảng Users (giữ tương thích ngược)
-        await prisma.users.update({
-            where: { id: decoded.id },
-            data: { fcmToken: fcmToken },
-        }).catch(() => {});
-
-        // Tự động nhận diện thiết bị Mobile vs Desktop qua User-Agent
-        const userAgent = (req.headers['user-agent'] || '').toLowerCase();
-        const isMobile = /mobile|android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
-        const detectedPlatform = isMobile ? 'web_mobile' : (platform === 'ios' || platform === 'android' ? platform : 'web_desktop');
-
-        // 2. Dọn dẹp token cũ nếu cùng thiết bị (deviceId) hoặc cùng nền tảng thiết bị (web_mobile / web_desktop)
-        // Đảm bảo 1 người dùng trên 1 điện thoại chỉ giữ duy nhất 1 token mới nhất (chống PWA + Tab sinh 2 token)
-        if (deviceId) {
-            await prisma.userDevices.deleteMany({
-                where: {
-                    userId: decoded.id,
-                    deviceId: deviceId,
-                    fcmToken: { not: fcmToken }
-                }
-            }).catch(() => {});
-        }
-
-        await prisma.userDevices.deleteMany({
-            where: {
-                userId: decoded.id,
-                platform: detectedPlatform,
-                fcmToken: { not: fcmToken }
-            }
-        }).catch(() => {});
-
-        // Nếu token này từng được liên kết với user khác, xóa khỏi user cũ
-        await prisma.userDevices.deleteMany({
-            where: {
-                fcmToken: fcmToken,
-                userId: { not: decoded.id }
-            }
-        }).catch(() => {});
-
-        // 3. Upsert vào bảng UserDevices hỗ trợ nhận push chính xác
-        await prisma.userDevices.upsert({
-            where: { fcmToken: fcmToken },
-            update: {
-                userId: decoded.id,
-                platform: detectedPlatform,
-                deviceId: deviceId || null,
-                updatedAt: new Date(),
-            },
-            create: {
-                userId: decoded.id,
-                fcmToken: fcmToken,
-                platform: detectedPlatform,
-                deviceId: deviceId || null,
-            },
-        });
+        const {registerPushDevice} = require('./services/push_devices.service');
+        await registerPushDevice(prisma, decoded.id, {fcmToken, platform, deviceId}, req.headers['user-agent'] || '');
 
         res.json({ success: true, message: "Lưu mã thiết bị thành công" });
     } catch (error) {
@@ -772,14 +832,17 @@ app.post("/api/users/test-push", async (req, res) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const { sendPushNotification } = require("./controllers/chat.controller");
 
-        await sendPushNotification(
+        const result = await sendPushNotification(
             decoded.id,
             "🔔 Chat Tho-Fi - Thông báo thử nghiệm",
-            "Chúc mừng! Hệ thống thông báo đẩy trên iPhone của bạn đang hoạt động 100% hoàn hảo.",
-            { type: "test_notification" }
+            "Đây là thông báo thử trên thiết bị của bạn.",
+            { type: "test_notification" }, false, {deviceId: req.body.deviceId}
         );
 
-        res.json({ success: true, message: "Đã gửi thông báo thử nghiệm thành công" });
+        if (!result || result.successCount === 0) {
+            return res.status(503).json({success: false, message: result?.reason || 'Firebase chưa gửi được thông báo đến thiết bị. Hãy đăng ký lại rồi thử.'});
+        }
+        res.json({ success: true, successCount: result.successCount, message: "Firebase đã nhận yêu cầu gửi thông báo thử nghiệm." });
     } catch (error) {
         console.error("Lỗi gửi test-push:", error);
         res.status(500).json({ success: false, message: error.message });
@@ -794,6 +857,23 @@ app.use((err, req, res, next) => {
         message: "Đã xảy ra lỗi hệ thống ở phía server.",
         error: err.message
     });
+});
+
+// SPA Fallback cho Flutter Web (Tương thích 100% với Express 5.x)
+app.use((req, res, next) => {
+    if (req.method === "GET" && !req.path.startsWith("/api") && !req.path.startsWith("/socket.io") && !req.path.startsWith("/uploads") && !req.path.startsWith("/admin")) {
+        // Nếu đang bật chế độ bảo trì, phục vụ trang thông báo bảo trì trực tiếp
+        if (global.systemConfig?.maintenanceMode) {
+            res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+            return res.status(503).send(getMaintenanceHtml(global.systemConfig.maintenanceMessage));
+        }
+
+        const indexPath = path.join(staticPath, "index.html");
+        if (fs.existsSync(indexPath)) {
+            return res.sendFile(indexPath);
+        }
+    }
+    next();
 });
 
 // Tích hợp Socket Handler
@@ -844,18 +924,11 @@ server.listen(PORT, () => {
     }
 
     // ============================================
-    // MEDIA CLEANUP: Tự động giải phóng dung lượng ảnh/video đã thu hồi
-    // Chu kỳ: mỗi 24 giờ, thời gian giữ (retention): 7 ngày
-    // ============================================
-    const { startPeriodicCleanup } = require("./services/mediaCleanup.service");
-    startPeriodicCleanup(24, 7);
-
-    // ============================================
     // REAL-TIME NEWS SCRAPER (VIETNAMESE + SPECIALIZED TECH/AI RSS FEEDS)
     // ===================================================================
 
-    // Dọn dẹp database khi server khởi động
-    (async () => {
+    // Dọn dẹp database (chạy sau khi server đã khởi động và ổn định 2 phút)
+    setTimeout(async () => {
         try {
             // Xóa tin tiếng Anh cũ
             const result1 = await prisma.news.deleteMany({
@@ -890,7 +963,7 @@ server.listen(PORT, () => {
         } catch (err) {
             console.error("⚠️ Lỗi khi dọn dẹp database:", err.message);
         }
-    })();
+    }, 120000);
 
     const FEEDS = [
         // === TIN THẾ GIỚI ===
@@ -1045,15 +1118,9 @@ server.listen(PORT, () => {
         }
     }
 
-    // Tải tin tức sau khi khởi động server 15 giây để tránh nghẽn Database Pool khi user load trang lần đầu
-    setTimeout(() => {
-        updateRealNews(null);
-    }, 15000);
-
-    // Định kỳ quét RSS sau mỗi 5 phút (300.000 ms) để tìm tin mới
-    setInterval(() => {
-        updateRealNews(io);
-    }, 5 * 60 * 1000);
+    // Tạm dừng cào tin ngầm tự động để không chiếm dụng Connection Pool của Database
+    // setTimeout(() => { updateRealNews(null); }, 120000);
+    // setInterval(() => { updateRealNews(io); }, 5 * 60 * 1000);
 });
 
 // Health check endpoint (dùng bởi self-ping)

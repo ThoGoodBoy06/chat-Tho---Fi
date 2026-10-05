@@ -13,10 +13,11 @@ function files(dir) {
 if (!fs.existsSync(path.join(web, 'main.dart.js'))) throw Error('Build Flutter Web before preparing the release.');
 // Hash all build contents, including assets. Template files are always restored
 // before hashing so running this step twice is idempotent.
-for (const name of ['index.html', 'app_service_worker.js', '_headers']) {
+for (const name of ['index.html', 'app_service_worker.js', '_headers', 'firebase-messaging-sw.js', 'web_notifications.js']) {
   fs.copyFileSync(path.join(source, name), path.join(web, name));
 }
 let bootstrap = fs.readFileSync(path.join(web, 'flutter_bootstrap.js'), 'utf8');
+bootstrap = bootstrap.replaceAll('"renderer":"auto"', '"renderer":"canvaskit"');
 bootstrap = bootstrap.replace(/\?v=[a-f0-9]{16}/g, '?v=__APP_BUILD_VERSION__');
 fs.writeFileSync(path.join(web, 'flutter_bootstrap.js'), bootstrap);
 for (const file of files(web).sort()) {
