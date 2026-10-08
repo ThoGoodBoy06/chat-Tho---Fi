@@ -15,17 +15,22 @@ exports.clearUserImageCache = clearUserImageCache;
 
 // Endpoint lấy ảnh đại diện của User dưới dạng file ảnh binary thực tế
 exports.getUserAvatar = async (req, res) => {
+  // Cho phép trình duyệt cache redirect avatar 1 giờ thay vì hỏi lại server mỗi lần render
+  const cachedRedirect = (url) => {
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    return res.redirect(url);
+  };
   try {
     const { id } = req.params;
     if (!id || id === "null" || id === "undefined") {
-      return res.redirect(`https://ui-avatars.com/api/?name=User&background=random`);
+      return cachedRedirect(`https://ui-avatars.com/api/?name=User&background=random`);
     }
 
     // 1. Kiểm tra RAM cache
     const cached = avatarCache.get(id);
     if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
       if (cached.isRedirect) {
-        return res.redirect(cached.redirectUrl);
+        return cachedRedirect(cached.redirectUrl);
       }
       res.writeHead(200, {
         "Content-Type": cached.contentType,
@@ -45,13 +50,13 @@ exports.getUserAvatar = async (req, res) => {
       const name = encodeURIComponent(user ? user.fullName || "User" : "User");
       const redirectUrl = `https://ui-avatars.com/api/?name=${name}&background=random`;
       avatarCache.set(id, { isRedirect: true, redirectUrl, timestamp: Date.now() });
-      return res.redirect(redirectUrl);
+      return cachedRedirect(redirectUrl);
     }
 
     // Nếu là đường dẫn URL http hoặc file tĩnh
     if (user.avatar.startsWith("http") || user.avatar.startsWith("/")) {
       avatarCache.set(id, { isRedirect: true, redirectUrl: user.avatar, timestamp: Date.now() });
-      return res.redirect(user.avatar);
+      return cachedRedirect(user.avatar);
     }
 
     // Nếu là chuỗi Data URL Base64 (VD: data:image/png;base64,...)
@@ -84,7 +89,7 @@ exports.getUserAvatar = async (req, res) => {
       const name = encodeURIComponent(user.fullName || "User");
       const redirectUrl = `https://ui-avatars.com/api/?name=${name}&background=random`;
       avatarCache.set(id, { isRedirect: true, redirectUrl, timestamp: Date.now() });
-      return res.redirect(redirectUrl);
+      return cachedRedirect(redirectUrl);
     }
   } catch (error) {
     console.error("Lỗi khi tải avatar:", error.message);

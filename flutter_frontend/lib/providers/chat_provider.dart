@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
+import '../services/network_status.dart';
 import '../services/socket_service.dart';
 
 class ChatProvider extends ChangeNotifier {
@@ -66,6 +67,7 @@ class ChatProvider extends ChangeNotifier {
   }
 
   void markSelectedConversationRead() {
+    if (!NetworkStatus.online.value) return;
     final id = selectedConversation?.id;
     if (!_chatVisible || currentUser == null || id == null) return;
     if (SocketService.isConnected) {
@@ -279,7 +281,14 @@ class ChatProvider extends ChangeNotifier {
     SharedPreferences.getInstance().then<void>((p) {
       if (!_disposed) _sharedPreferences = p;
     }).catchError((Object _) {});
+    NetworkStatus.initialize();
+    NetworkStatus.online.addListener(_onNetworkChanged);
     _initSocket();
+  }
+
+  void _onNetworkChanged() {
+    if (NetworkStatus.online.value) _lastFetchTime = null;
+    if (!_disposed) notifyListeners();
   }
 
   void _initSocket() {
@@ -694,11 +703,14 @@ class ChatProvider extends ChangeNotifier {
   }
 
   Future<void> setCurrentUser(Map<String, dynamic> userJson) async {
+    final token = await ApiService.getToken();
     if (currentUser?.id != userJson['id']?.toString()) {
       clearCurrentUser();
     }
+    await ApiService.cacheSessionUser(userJson);
+    if (_disposed || token != await ApiService.getToken()) return;
     currentUser = UserModel.fromJson(userJson);
-    if (currentUser != null && currentUser!.id.isNotEmpty) {
+    if (NetworkStatus.online.value && currentUser != null && currentUser!.id.isNotEmpty) {
       SocketService.connect(userId: currentUser!.id);
     }
     notifyListeners();
@@ -803,6 +815,7 @@ class ChatProvider extends ChangeNotifier {
     }
 
     if (_disposed || session != _sessionRevision) return;
+    if (!NetworkStatus.online.value) { _isFetchingConversations = false; return; }
     if (showLoading && conversations.isEmpty) {
       isLoadingConversations = true;
       notifyListeners();
@@ -879,7 +892,7 @@ class ChatProvider extends ChangeNotifier {
   }
 
   Future<void> _preloadTopConversationsSilently({bool immediate = false}) async {
-    if (_disposed || conversations.isEmpty) return;
+    if (_disposed || conversations.isEmpty || !NetworkStatus.online.value) return;
     final existing = _preloadFuture;
     if (existing != null) return existing;
     final future = _preloadRecentMessages(immediate);
@@ -900,7 +913,10 @@ class ChatProvider extends ChangeNotifier {
     for (final conv in topList) {
       if (_disposed || session != _sessionRevision) return;
       final cached = _messagesCache[conv.id];
-      if (cached != null && cached.isNotEmpty) continue;
+      if (cached != null && cached.isNotEmpty) {
+        _warmMessageImages(cached);
+        continue;
+      }
       try {
         final res = await _loadMessages(conv.id);
         if (_disposed || session != _sessionRevision) return;
@@ -916,6 +932,7 @@ class ChatProvider extends ChangeNotifier {
           ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
         if (fetched.isNotEmpty) {
           _cacheMessages(conv.id, fetched);
+          _warmMessageImages(fetched);
           if (selectedConversation?.id == conv.id && messages.isEmpty) {
             messages = List.from(fetched);
             isLoadingMessages = false;
@@ -925,6 +942,42 @@ class ChatProvider extends ChangeNotifier {
         }
       } catch (_) {}
     }
+  }
+
+  final Set<String> _warmedImageUrls = <String>{};
+
+  /// Tải trước ảnh thumbnail của các tin nhắn ảnh gần nhất vào ImageCache.
+  /// Key phải khớp với Image.network(thumbUrl, cacheWidth: 450) trong chat_screen
+  /// (tức ResizeImage(NetworkImage(url), width: 450)) để khi mở chat ảnh hiện ngay.
+  void _warmMessageImages(List<MessageModel> list, {int maxImages = 6}) {
+    var started = 0;
+    for (var i = list.length - 1; i >= 0 && started < maxImages; i--) {
+      final msg = list[i];
+      if (msg.isRecalled) continue;
+      final content = msg.content.trim();
+      if (content.startsWith('data:')) continue;
+      String? url = msg.imageUrl;
+      if (url != null && url.startsWith('data:')) continue;
+      if (msg.type != 'image' && (url == null || url.isEmpty)) continue;
+      if (content.startsWith('http') || content.startsWith('/')) url = content;
+      if (url == null || url.isEmpty) continue;
+      final thumbUrl =
+          ApiService.formatThumbnailUrl(ApiService.formatImageUrl(url), width: 450);
+      if (thumbUrl.isEmpty || !_warmedImageUrls.add(thumbUrl)) continue;
+      started++;
+      final stream = ResizeImage(NetworkImage(thumbUrl), width: 450)
+          .resolve(ImageConfiguration.empty);
+      late final ImageStreamListener listener;
+      listener = ImageStreamListener(
+        (_, __) => stream.removeListener(listener),
+        onError: (_, __) {
+          stream.removeListener(listener);
+          _warmedImageUrls.remove(thumbUrl);
+        },
+      );
+      stream.addListener(listener);
+    }
+    if (_warmedImageUrls.length > 500) _warmedImageUrls.clear();
   }
 
   String? selectedConversationId;
@@ -1038,6 +1091,9 @@ class ChatProvider extends ChangeNotifier {
     if (selectionChanged || unreadChanged) markSelectedConversationRead();
 
     // Join vào room của conversation để nhận tin nhắn real-time
+    if (!NetworkStatus.online.value) {
+      isLoadingMessages = false; notifyListeners(); return;
+    }
     SocketService.joinRoom(conv.id);
 
     final messagesAtStart = {
@@ -1064,6 +1120,10 @@ class ChatProvider extends ChangeNotifier {
       final List<MessageModel> cleanFetched = [];
       final systemTimesByContent = <String, List<DateTime>>{};
       final callTimes = <DateTime>[];
+      final currentById = <String, MessageModel>{};
+      for (final old in messages) {
+        currentById.putIfAbsent(old.id, () => old);
+      }
       for (final m in fetched) {
         if (m.type == 'system') {
           final times = systemTimesByContent.putIfAbsent(m.content, () => []);
@@ -1076,8 +1136,7 @@ class ChatProvider extends ChangeNotifier {
           if (_hasNearbyTimestamp(callTimes, m.createdAt, 15)) continue;
           _insertTimestamp(callTimes, m.createdAt);
         }
-        cleanFetched.add(_withReadReceipt(m,
-            previous: messages.firstWhere((old) => old.id == m.id, orElse: () => m)));
+        cleanFetched.add(_withReadReceipt(m, previous: currentById[m.id] ?? m));
       }
 
       final fetchedTimesBySenderAndContent =
@@ -1154,6 +1213,7 @@ class ChatProvider extends ChangeNotifier {
   }
 
   Future<void> sendMessage(String text, {String type = 'text'}) async {
+    if (!NetworkStatus.online.value) return;
     if (selectedConversation == null || text.trim().isEmpty) return;
     final conversation = selectedConversation!;
     final session = _sessionRevision;
@@ -1431,6 +1491,7 @@ class ChatProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    NetworkStatus.online.removeListener(_onNetworkChanged);
     _disposed = true;
     _sessionRevision++;
     _messageLoadRevision++;

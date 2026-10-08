@@ -17,6 +17,7 @@ import '../providers/chat_provider.dart';
 import '../providers/theme_provider.dart';
 import '../services/socket_service.dart';
 import '../services/api_service.dart';
+import '../services/network_status.dart';
 import '../services/sound_service.dart';
 import 'friend_requests_screen.dart';
 import 'my_groups_screen.dart';
@@ -681,6 +682,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   }
 
   void _handleSend(ChatProvider provider) {
+    if (!NetworkStatus.online.value) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Không có mạng. Tin nhắn chưa được gửi.')));
+      return;
+    }
     final text = _textController.text.trim();
     final sendText = text.isEmpty ? '👍' : text;
     _textController.clear();
@@ -3453,7 +3458,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                               color: primaryColor,
                               size: 26,
                             ),
-                            onPressed: () => _handleSend(provider),
+                            onPressed: NetworkStatus.online.value ? () => _handleSend(provider) : null,
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(minWidth: 36),
                           ),

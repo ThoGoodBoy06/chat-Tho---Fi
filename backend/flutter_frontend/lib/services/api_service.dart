@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
+import 'network_status.dart';
 
 class ApiService {
   // Reuse connections across requests, particularly on Android and iOS.
@@ -56,12 +57,18 @@ class ApiService {
 
   static Future<void> saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
+    if (prefs.getString('authToken') != token) {
+      await prefs.remove('cached_session_user');
+      await prefs.remove('cached_session_token');
+    }
     await prefs.setString('authToken', token);
   }
 
   static Future<void> clearToken() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('authToken');
+    await prefs.remove('cached_session_user');
+    await prefs.remove('cached_session_token');
   }
 
   static Future<Map<String, String>> _getHeaders() async {
@@ -102,7 +109,28 @@ class ApiService {
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     }
-    return {};
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      await clearToken(); return {};
+    }
+    throw http.ClientException('Không thể kết nối máy chủ');
+  }
+
+  static Future<Map<String, dynamic>?> getOfflineUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('authToken');
+    if (token == null || token.isEmpty || token != prefs.getString('cached_session_token')) return null;
+    try {
+      final user = jsonDecode(prefs.getString('cached_session_user') ?? 'null');
+      return user is Map && user['id'] != null ? Map<String, dynamic>.from(user) : null;
+    } catch (_) { return null; }
+  }
+
+  static Future<void> cacheSessionUser(Map<String, dynamic> user) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('authToken');
+    if (token == null || token.isEmpty) return;
+    await prefs.setString('cached_session_user', jsonEncode(user));
+    await prefs.setString('cached_session_token', token);
   }
 
   // Fetch Conversations
@@ -207,6 +235,7 @@ class ApiService {
   // Send Message
   static Future<Map<String, dynamic>> sendMessage(
       String conversationId, String content, {String type = 'text', String? replyMessageId, String? clientTempId}) async {
+    if (!NetworkStatus.online.value) throw StateError('Không có mạng. Tin nhắn chưa được gửi.');
     final headers = await _getHeaders();
     final bodyMap = <String, dynamic>{
       'content': content,

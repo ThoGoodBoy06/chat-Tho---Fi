@@ -12,6 +12,10 @@ function files(dir) {
 }
 if (!fs.existsSync(path.join(web, 'main.dart.js'))) throw Error('Build Flutter Web before preparing the release.');
 require('./assert-production-bundle').assertProductionBundle(path.join(web, 'main.dart.js'));
+const offlineAssets = files(web).map(file => '/' + path.relative(web, file).replaceAll('\\', '/'))
+  .filter(url => url.startsWith('/assets/') || url.startsWith('/canvaskit/') ||
+    ['/webrtc_audio_helper.js', '/web_notifications.js'].includes(url));
+fs.writeFileSync(path.join(web, 'offline-assets.json'), JSON.stringify(offlineAssets));
 // Hash all build contents, including assets. Template files are always restored
 // before hashing so running this step twice is idempotent.
 for (const name of ['index.html', 'app_service_worker.js', '_headers', 'firebase-messaging-sw.js', 'web_notifications.js', 'app_fonts.css', 'webrtc_audio_helper.js']) {

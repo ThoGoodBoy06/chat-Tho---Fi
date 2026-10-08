@@ -2272,6 +2272,9 @@ exports.uploadMedia = async (req, res) => {
 
         res.status(201).json({ success: true, data: mappedMessage });
 
+        // Tạo sẵn thumbnail từ buffer đang có trong RAM (không cần tải lại ảnh từ R2)
+        if (type === "image") warmThumbnail(publicUrl, buffer);
+
         const io = req.app.get("io");
         if (io) {
             io.to(conversationId).emit("receive_message", mappedMessage);
@@ -2706,10 +2709,121 @@ if (!fs.existsSync(THUMBNAIL_DIR)) {
 
 const thumbnailMemoryCache = new Map();
 const MAX_THUMBNAIL_MEMORY_ITEMS = 300;
+// Các thumbnail đang được tạo: nhiều request cùng 1 ảnh chỉ tải + nén đúng 1 lần
+const thumbnailInFlight = new Map();
+
+function rememberThumbnail(hash, entry) {
+    // LRU đơn giản: xóa rồi set lại để key mới nhất nằm cuối Map
+    thumbnailMemoryCache.delete(hash);
+    if (thumbnailMemoryCache.size >= MAX_THUMBNAIL_MEMORY_ITEMS) {
+        thumbnailMemoryCache.delete(thumbnailMemoryCache.keys().next().value);
+    }
+    thumbnailMemoryCache.set(hash, entry);
+}
+
+function thumbnailHash(url, width, quality) {
+    return crypto.createHash("md5").update(`${url}_w${width}_q${quality}`).digest("hex");
+}
+
+class ThumbnailSourceError extends Error {
+    constructor(status, message) {
+        super(message);
+        this.status = status;
+    }
+}
+
+async function produceThumbnail(url, width, quality, hash, sourceBuffer) {
+    const cacheFilePath = path.join(THUMBNAIL_DIR, `${hash}.webp`);
+
+    // Disk cache
+    try {
+        const diskBuffer = await fs.promises.readFile(cacheFilePath);
+        const entry = { buffer: diskBuffer, contentType: "image/webp" };
+        rememberThumbnail(hash, entry);
+        return entry;
+    } catch (_) {}
+
+    // Đọc ảnh gốc (buffer có sẵn khi vừa upload, file local, hoặc remote)
+    let inputBuffer = sourceBuffer || null;
+    let originalContentType = "image/jpeg";
+
+    if (!inputBuffer && (url.startsWith("/uploads/") || url.startsWith("uploads/"))) {
+        const relPath = url.startsWith("/") ? url.slice(1) : url;
+        try {
+            inputBuffer = await fs.promises.readFile(path.join(__dirname, "..", relPath));
+        } catch (_) {}
+    }
+
+    if (!inputBuffer) {
+        let targetUrl = url;
+        if (!targetUrl.startsWith("http://") && !targetUrl.startsWith("https://")) {
+            const port = process.env.PORT || 3000;
+            targetUrl = "http://localhost:" + port + (targetUrl.startsWith("/") ? "" : "/") + targetUrl;
+        }
+        const response = await fetch(targetUrl);
+        if (!response.ok) {
+            throw new ThumbnailSourceError(response.status, "Không thể tải ảnh từ nguồn: HTTP " + response.status);
+        }
+        originalContentType = response.headers.get("content-type") || "image/jpeg";
+        inputBuffer = Buffer.from(await response.arrayBuffer());
+    }
+
+    if (!inputBuffer || inputBuffer.length === 0) {
+        throw new ThumbnailSourceError(404, "Không tìm thấy ảnh");
+    }
+
+    // Nén & tối ưu sang WebP siêu nhẹ
+    let outputBuffer = inputBuffer;
+    let outputContentType = originalContentType;
+    if (inputBuffer.length >= 100 && sharp) {
+        try {
+            outputBuffer = await sharp(inputBuffer, { failOnError: false })
+                .rotate()
+                .resize({ width, withoutEnlargement: true, fit: "inside" })
+                .webp({ quality, effort: 3 })
+                .toBuffer();
+            outputContentType = "image/webp";
+        } catch (_) {
+            outputBuffer = inputBuffer;
+            outputContentType = originalContentType;
+        }
+    }
+
+    // Chỉ ghi đĩa khi đúng là WebP (file cache có đuôi .webp và được đọc lại là image/webp)
+    if (outputContentType === "image/webp") {
+        fs.promises.writeFile(cacheFilePath, outputBuffer).catch(() => {});
+    }
+    const entry = { buffer: outputBuffer, contentType: outputContentType };
+    rememberThumbnail(hash, entry);
+    return entry;
+}
+
+function getOrCreateThumbnail(url, width, quality, sourceBuffer) {
+    const hash = thumbnailHash(url, width, quality);
+    const memCached = thumbnailMemoryCache.get(hash);
+    if (memCached) {
+        rememberThumbnail(hash, memCached);
+        return Promise.resolve(memCached);
+    }
+    const pending = thumbnailInFlight.get(hash);
+    if (pending) return pending;
+    const job = produceThumbnail(url, width, quality, hash, sourceBuffer)
+        .finally(() => thumbnailInFlight.delete(hash));
+    thumbnailInFlight.set(hash, job);
+    return job;
+}
+
+// Tạo sẵn thumbnail ngay khi upload xong để lần xem đầu tiên không phải chờ tải + nén ảnh.
+// Width/quality phải khớp với ApiService.formatThumbnailUrl ở Flutter (w=450, q mặc định 80).
+function warmThumbnail(url, sourceBuffer) {
+    if (!url || typeof url !== "string") return;
+    getOrCreateThumbnail(url, 450, 80, sourceBuffer).catch(() => {});
+}
+exports.warmThumbnail = warmThumbnail;
 
 exports.getMediaThumbnail = async (req, res) => {
     try {
-        let { url, w, q } = req.query;
+        const { url, w, q } = req.query;
         if (!url) {
             return res.status(400).send("Thiếu tham số URL");
         }
@@ -2717,118 +2831,16 @@ exports.getMediaThumbnail = async (req, res) => {
         const targetWidth = Math.min(Math.max(parseInt(w) || 450, 60), 1200);
         const targetQuality = Math.min(Math.max(parseInt(q) || 80, 40), 95);
 
-        // Tạo hash duy nhất cho thumbnail dựa trên URL + kích thước + chất lượng
-        const hash = crypto.createHash("md5").update(`${url}_w${targetWidth}_q${targetQuality}`).digest("hex");
-        const cacheFilename = `${hash}.webp`;
-        const cacheFilePath = path.join(THUMBNAIL_DIR, cacheFilename);
-
-        // 1. Kiểm tra RAM cache (0ms)
-        const memCached = thumbnailMemoryCache.get(hash);
-        if (memCached) {
-            const buffer = Buffer.isBuffer(memCached) ? memCached : memCached.buffer;
-            const cType = (memCached && memCached.contentType) ? memCached.contentType : "image/webp";
-            res.setHeader("Content-Type", cType);
-            res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-            res.setHeader("Access-Control-Allow-Origin", "*");
-            res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
-            return res.send(buffer);
-        }
-
-        // 2. Kiểm tra Disk cache (1ms)
-        if (fs.existsSync(cacheFilePath)) {
-            try {
-                const diskBuffer = await fs.promises.readFile(cacheFilePath);
-                if (thumbnailMemoryCache.size >= MAX_THUMBNAIL_MEMORY_ITEMS) {
-                    const firstKey = thumbnailMemoryCache.keys().next().value;
-                    thumbnailMemoryCache.delete(firstKey);
-                }
-                thumbnailMemoryCache.set(hash, { buffer: diskBuffer, contentType: "image/webp" });
-
-                res.setHeader("Content-Type", "image/webp");
-                res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-                res.setHeader("Access-Control-Allow-Origin", "*");
-                res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
-                return res.send(diskBuffer);
-            } catch (_) {}
-        }
-
-        // 3. Đọc dữ liệu ảnh gốc (Local hoặc Remote)
-        let inputBuffer = null;
-        let originalContentType = "image/jpeg";
-
-        if (url.startsWith("/uploads/") || url.startsWith("uploads/")) {
-            const relPath = url.startsWith("/") ? url.slice(1) : url;
-            const localPath = path.join(__dirname, "..", relPath);
-            if (fs.existsSync(localPath)) {
-                inputBuffer = await fs.promises.readFile(localPath);
-            }
-        }
-
-        if (!inputBuffer) {
-            let targetUrl = url;
-            if (!targetUrl.startsWith("http://") && !targetUrl.startsWith("https://")) {
-                const port = process.env.PORT || 3000;
-                targetUrl = "http://localhost:" + port + (targetUrl.startsWith("/") ? "" : "/") + targetUrl;
-            }
-
-            const response = await fetch(targetUrl);
-            if (!response.ok) {
-                return res.status(response.status).send("Không thể tải ảnh từ nguồn: HTTP " + response.status);
-            }
-            originalContentType = response.headers.get("content-type") || "image/jpeg";
-            const ab = await response.arrayBuffer();
-            inputBuffer = Buffer.from(ab);
-        }
-
-        if (!inputBuffer || inputBuffer.length === 0) {
-            return res.status(404).send("Không tìm thấy ảnh");
-        }
-
-        // 4. Dùng Sharp nén & tối ưu sang WebP siêu nhẹ
-        let outputBuffer = null;
-        let outputContentType = "image/webp";
-
-        if (inputBuffer.length < 100) {
-            // File quá nhỏ để là ảnh hợp lệ (file rỗng hoặc placeholder test), trả về trực tiếp
-            outputBuffer = inputBuffer;
-            outputContentType = originalContentType;
-        } else if (sharp) {
-            try {
-                outputBuffer = await sharp(inputBuffer, { failOnError: false })
-                    .rotate()
-                    .resize({
-                        width: targetWidth,
-                        withoutEnlargement: true,
-                        fit: "inside"
-                    })
-                    .webp({
-                        quality: targetQuality,
-                        effort: 3
-                    })
-                    .toBuffer();
-            } catch (sharpErr) {
-                outputBuffer = inputBuffer;
-                outputContentType = originalContentType;
-            }
-        } else {
-            outputBuffer = inputBuffer;
-            outputContentType = originalContentType;
-        }
-
-        // 5. Lưu vào Disk & RAM cache (lưu cả fallback để không bao giờ phải xử lý lại)
-        fs.promises.writeFile(cacheFilePath, outputBuffer).catch(() => {});
-        if (thumbnailMemoryCache.size >= MAX_THUMBNAIL_MEMORY_ITEMS) {
-            const firstKey = thumbnailMemoryCache.keys().next().value;
-            thumbnailMemoryCache.delete(firstKey);
-        }
-        thumbnailMemoryCache.set(hash, { buffer: outputBuffer, contentType: outputContentType });
-
-        res.setHeader("Content-Type", outputContentType);
+        const { buffer, contentType } = await getOrCreateThumbnail(url, targetWidth, targetQuality);
+        res.setHeader("Content-Type", contentType || "image/webp");
         res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
         res.setHeader("Access-Control-Allow-Origin", "*");
         res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
-        return res.send(outputBuffer);
+        return res.send(buffer);
     } catch (err) {
+        if (err instanceof ThumbnailSourceError) {
+            return res.status(err.status).send(err.message);
+        }
         console.error("❌ Lỗi getMediaThumbnail:", err);
         return res.status(500).send("Lỗi xử lý ảnh thumbnail: " + err.message);
     }

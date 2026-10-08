@@ -24,7 +24,7 @@ function harness(version = 'release-a', stores = new Map()) {
   vm.runInNewContext(workerSource.replaceAll('__APP_BUILD_VERSION__', version), {
     self: {location: {origin: 'https://app.test'}, clients: {claim: async () => {}}, skipWaiting: async () => {}, addEventListener: (name, handler) => handlers[name] = handler},
     caches, URL, Response,
-    fetch: async request => { calls.push(key(request)); if (offline) throw Error('offline'); return new Response('asset ' + version, {status}); },
+    fetch: async request => { calls.push(key(request)); if (offline) throw Error('offline'); return new Response(key(request).endsWith('/offline-assets.json') ? JSON.stringify(['/canvaskit/canvaskit.wasm', '/assets/FontManifest.json', '/assets/assets/fonts/Inter-Regular.ttf']) : 'asset ' + version, {status}); },
   });
   return {
     calls, stores,
@@ -48,7 +48,7 @@ test('warm assets are reused without repeat background downloads', async () => {
   }
   assert.equal(app.calls.length, 3);
   await app.request('/main.dart.js?v=two');
-  assert.equal(app.calls.length, 4);
+  assert.equal(app.calls.length, 3);
 });
 
 test('private traffic, external resources and media ranges bypass app cache', async () => {
@@ -91,4 +91,23 @@ test('failed asset responses do not poison the cache', async () => {
   app.status(200);
   assert.equal((await app.request('/main.dart.js?v=one')).status, 200);
   assert.equal(app.calls.length, 2);
+});
+
+test('first installation caches startup scripts, fonts and engine for offline launch', async () => {
+  const app = harness();
+  await app.lifecycle('install');
+  app.offline(true);
+  for (const url of ['/flutter_bootstrap.js?v=release-a', '/main.dart.js?v=release-a', '/app_fonts.css', '/canvaskit/canvaskit.wasm', '/assets/FontManifest.json', '/assets/assets/fonts/Inter-Regular.ttf']) {
+    assert.equal(await (await app.request(url)).text(), 'asset release-a');
+  }
+});
+
+test('incomplete offline install fails and leaves the working version intact', async () => {
+  const stores = new Map();
+  const old = harness('old', stores);
+  await old.lifecycle('install');
+  const next = harness('new', stores);
+  next.offline(true);
+  await assert.rejects(next.lifecycle('install'));
+  assert.equal(stores.has('chat-thofi-assets-old'), true);
 });
