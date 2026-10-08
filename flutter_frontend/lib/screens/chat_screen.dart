@@ -26,6 +26,8 @@ import 'qr_scanner_screen.dart';
 import 'other_user_profile_screen.dart';
 import 'profile_tab.dart';
 import '../utils/web_helpers.dart';
+import '../utils/call_media.dart';
+import '../utils/call_signal_queue.dart';
 import '../utils/web_file_picker.dart';
 import '../utils/inline_image_cache.dart';
 import '../widgets/inline_message_image.dart';
@@ -6458,14 +6460,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                     canDismiss = true;
                                     SoundService.stopAllCallSounds();
                                     try {
-                                      final jsWin = html.window as dynamic;
-                                      if (jsWin.unlockAudio != null) {
-                                        jsWin.unlockAudio();
-                                      }
-                                      final engine = jsWin._callAudioEngine;
-                                      if (engine != null && engine.unlockCallAudio != null) {
-                                        engine.unlockCallAudio();
-                                      }
+                                      callWebFunction('unlockAudio', []);
                                     } catch (_) {}
                                     final audioPlayer = html.document.getElementById('remoteAudioPlayer') as html.AudioElement?;
                                     audioPlayer?.muted = false;
@@ -6513,6 +6508,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   }
 
   void _startCall(BuildContext context, ChatProvider provider, {required bool isVideo}) {
+    if (!NetworkStatus.online.value || !SocketService.isConnected) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Chưa kết nối mạng. Kết nối lại để gọi điện.')));
+      return;
+    }
     if (_isStartingCall) return;
     _isStartingCall = true;
     Future.delayed(const Duration(seconds: 3), () {
@@ -6546,14 +6545,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     }
 
     try {
-      final jsWin = html.window as dynamic;
-      if (jsWin.unlockAudio != null) {
-        jsWin.unlockAudio();
-      }
-      final engine = jsWin._callAudioEngine;
-      if (engine != null && engine.unlockCallAudio != null) {
-        engine.unlockCallAudio();
-      }
+      callWebFunction('unlockAudio', []);
     } catch (_) {}
     final audioPlayer = html.document.getElementById('remoteAudioPlayer') as html.AudioElement?;
     audioPlayer?.muted = false;
@@ -6588,7 +6580,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     bool isMuted = false;
     bool isSpeakerOn = true;
     bool isCameraOff = false;
-    String callStatus = isCaller ? 'Đang gọi...' : 'Đang đàm thoại';
+    String callStatus = isCaller ? 'Đang gọi...' : 'Đang kết nối...';
+    final videoViewId = DateTime.now().microsecondsSinceEpoch;
+    final remoteViewType = 'call-remote-$videoViewId';
+    final localViewType = 'call-local-$videoViewId';
+    if (isVideo && kIsWeb) {
+      registerCallVideoView(remoteViewType, 'remoteVideoPlayer');
+      registerCallVideoView(localViewType, 'localVideoPlayer');
+    }
 
     // Phát âm thanh tương ứng
     if (isCaller) {
@@ -6604,6 +6603,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     Timer? callerStatusPollTimer;
     html.RtcPeerConnection? pc;
     html.MediaStream? localStream;
+    html.MediaStream? incomingStream;
+    bool initializing = false;
+    bool callClosed = false;
+    final signalQueue = CallSignalQueue();
     html.AudioElement? remoteAudio;
     final List<Map<String, dynamic>> pendingSignals = [];
     final List<Map<String, dynamic>> iceCandidateQueue = [];
@@ -6619,46 +6622,28 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
       }
       el.autoplay = true;
       el.setAttribute('playsinline', 'true');
-      if (isLocal) {
-        el.muted = true;
-        el.style
-          ..position = 'fixed'
-          ..top = '24px'
-          ..right = '24px'
-          ..width = '130px'
-          ..height = '175px'
-          ..objectFit = 'cover'
-          ..zIndex = '2147483647'
-          ..borderRadius = '16px'
-          ..border = '2px solid rgba(255, 255, 255, 0.8)'
-          ..boxShadow = '0 10px 30px rgba(0, 0, 0, 0.6)'
-          ..transform = 'scaleX(-1)';
-      } else {
-        el.style
-          ..position = 'fixed'
-          ..top = '0'
-          ..left = '0'
-          ..width = '100vw'
-          ..height = '100vh'
-          ..objectFit = 'cover'
-          ..zIndex = '2147483646'
-          ..background = '#090D1A';
-      }
+      el.muted = true;
+      el.style
+        ..position = 'relative'
+        ..top = '0'
+        ..right = 'auto'
+        ..left = '0'
+        ..width = '100%'
+        ..height = '100%'
+        ..objectFit = 'cover'
+        ..zIndex = 'auto'
+        ..pointerEvents = 'none';
+      if (isLocal) el.style.transform = 'scaleX(-1)';
       return el;
     }
 
     void cleanupCall() {
+      callClosed = true;
+      signalQueue.close();
       try {
         SoundService.stopAllCallSounds();
         try {
-          final jsWin = html.window as dynamic;
-          if (jsWin.stopCallAudio != null) {
-            jsWin.stopCallAudio();
-          }
-          final engine = jsWin._callAudioEngine;
-          if (engine != null && engine.destroyCallAudio != null) {
-            engine.destroyCallAudio();
-          }
+          callWebFunction('stopCallAudio', []);
         } catch (_) {}
         acceptSub?.cancel();
         rejectSub?.cancel();
@@ -6712,7 +6697,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         return StatefulBuilder(
           builder: (context, setDialogState) {
             Future<void> processIceQueue() async {
-              for (var candidateMap in iceCandidateQueue) {
+              final queued = List<Map<String, dynamic>>.of(iceCandidateQueue);
+              iceCandidateQueue.clear();
+              for (var candidateMap in queued) {
+                if (callClosed) return;
                 try {
                   await pc?.addIceCandidate(html.RtcIceCandidate(candidateMap));
                   print('✅ Queued ICE Candidate added successfully!');
@@ -6720,36 +6708,41 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                   print('⚠️ Error adding queued ICE candidate: $e');
                 }
               }
-              iceCandidateQueue.clear();
             }
 
             Future<void> processSignal(Map<String, dynamic> data) async {
+              if (callClosed || (data['senderId'] != null && data['senderId'].toString() != targetUserId)) return;
               final signal = data['signal'];
               if (signal == null) return;
-              if (pc == null || (!isCaller && localStream == null && signal['type'] == 'offer')) {
+              if (initializing || pc == null) {
                 pendingSignals.add(data);
                 return;
               }
+              final connection = pc!;
               try {
                 final type = signal['type']?.toString();
                 if (type == 'offer') {
-                  if (pc!.signalingState != 'stable') {
-                    print('⚠️ Bỏ qua offer trùng lặp vì signalingState là: ' + pc!.signalingState.toString());
+                  if (connection.signalingState != 'stable') {
+                    print('⚠️ Bỏ qua offer trùng lặp vì signalingState là: ' + connection.signalingState.toString());
                     return;
                   }
-                  await pc!.setRemoteDescription({
+                  await connection.setRemoteDescription({
                     'type': 'offer',
                     'sdp': signal['sdp'],
                   });
+                  if (callClosed) return;
                   await processIceQueue();
-                  final answer = await pc!.createAnswer({
+                  if (callClosed) return;
+                  final answer = await connection.createAnswer({
                     'offerToReceiveAudio': true,
                     'offerToReceiveVideo': isVideo,
                   });
-                  await pc!.setLocalDescription({
+                  if (callClosed) return;
+                  await connection.setLocalDescription({
                     'type': answer.type,
                     'sdp': answer.sdp,
                   });
+                  if (callClosed) return;
                   SocketService.socket?.emit('webrtc_signal', {
                     'connectedUserId': targetUserId,
                     'signal': {
@@ -6758,11 +6751,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                     }
                   });
                 } else if (type == 'answer') {
-                  if (pc!.signalingState != 'have-local-offer') {
-                    print('⚠️ Bỏ qua answer trùng lặp vì signalingState là: ' + pc!.signalingState.toString());
+                  if (connection.signalingState != 'have-local-offer') {
+                    print('⚠️ Bỏ qua answer trùng lặp vì signalingState là: ' + connection.signalingState.toString());
                     return;
                   }
-                  await pc!.setRemoteDescription({
+                  await connection.setRemoteDescription({
                     'type': 'answer',
                     'sdp': signal['sdp'],
                   });
@@ -6777,7 +6770,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                     };
                     if (pc?.remoteDescription != null) {
                       try {
-                        await pc!.addIceCandidate(html.RtcIceCandidate(candidateMap));
+                        await connection.addIceCandidate(html.RtcIceCandidate(candidateMap));
                       } catch (e) {
                         print('⚠️ Error adding direct ICE candidate: $e');
                       }
@@ -6792,19 +6785,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
             }
 
             Future<void> initWebRTC() async {
-              if (!kIsWeb || pc != null) return;
+              if (!kIsWeb || pc != null || initializing || callClosed) return;
+              initializing = true;
               try {
-                final config = {
-                  'iceServers': [
-                    {'urls': 'stun:stun.l.google.com:19302'},
-                    {'urls': 'stun:stun1.l.google.com:19302'},
-                    {'urls': 'stun:stun2.l.google.com:19302'},
-                    {'urls': 'stun:stun.cloudflare.com:3478'},
-                    
-                  ],
-                  'iceCandidatePoolSize': 0
-                };
-                pc = await html.RtcPeerConnection(config);
+                final config = await ApiService.getCallIceConfig();
+                if (callClosed) return;
+                pc = html.RtcPeerConnection(config);
 
                 var existingAudio = html.document.getElementById('remoteAudioPlayer') as html.AudioElement?;
                 if (existingAudio != null) {
@@ -6839,14 +6825,22 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                 } catch (camErr) {
                   print('⚠️ Flexible audio/camera request failed: $camErr, trying fallback...');
                   try {
+                    if (callClosed) return;
                     localStream = await html.window.navigator.mediaDevices?.getUserMedia({
                       'audio': true,
                       'video': isVideo,
                     });
                   } catch (rawErr) {
-                    print('❌ Final getUserMedia error: $rawErr');
+                    rethrow;
                   }
                 }
+
+                if (callClosed) {
+                  for (final track in localStream?.getTracks() ?? <html.MediaStreamTrack>[]) { (track as dynamic).stop(); }
+                  localStream = null;
+                  return;
+                }
+                requireCallTracks(localStream, video: isVideo);
 
                 if (isVideo && localStream != null) {
                   final localVideo = getOrCreateVideo('localVideoPlayer', isLocal: true);
@@ -6859,60 +6853,35 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                   });
                 }
 
-                if (localStream != null && pc != null) {
-                  for (var track in localStream!.getTracks()) {
-                    try {
-                      (track as dynamic).enabled = true;
-                      pc!.addTrack(track, localStream!);
-                    } catch (_) {}
-                  }
-                  // Đảm bảo Transceiver audio được gán với direction: sendrecv
-                  try {
-                    final audioTracks = localStream!.getAudioTracks();
-                    if (audioTracks.isNotEmpty) {
-                      final dynamic pcDynamic = pc;
-                      if (pcDynamic.addTransceiver != null) {
-                        pcDynamic.addTransceiver(audioTracks.first, {'direction': 'sendrecv'});
-                      }
-                    }
-                  } catch (_) {}
+                for (final track in localStream!.getTracks()) {
+                  track.enabled = track.kind == 'audio' ? !isMuted : !isCameraOff;
+                  // addTrack already creates its transceiver. Do not send the mic twice.
+                  pc!.addTrack(track, localStream!);
                 }
 
                 void handleRemoteStream(html.MediaStream? stream) {
-                  if (stream == null) return;
-                  try {
-                    for (var track in stream.getAudioTracks()) {
-                      (track as dynamic).enabled = true;
+                  if (stream == null || callClosed) return;
+                  incomingStream ??= html.MediaStream();
+                  for (final track in stream.getTracks()) {
+                    if (!incomingStream!.getTracks().any((t) => t.id == track.id)) {
+                      incomingStream!.addTrack(track);
                     }
-                  } catch (_) {}
-                  // Gắn vào Native Audio Helper
-                  try {
-                    final jsWin = html.window as dynamic;
-                    if (jsWin.attachRemoteStream != null) {
-                      jsWin.attachRemoteStream(stream);
-                    }
-                  } catch (_) {}
-                  if (remoteAudio != null) {
-                    remoteAudio!.srcObject = stream;
-                    remoteAudio!.muted = false;
-                    remoteAudio!.volume = 1.0;
-                    remoteAudio!.play().catchError((e) => print('⚠️ Audio Play Error: $e'));
                   }
-                  try {
-                    final engine = (html.window as dynamic)._callAudioEngine;
-                    if (engine != null) {
-                      engine.playRemoteStream(stream);
+                  if (incomingStream!.getAudioTracks().isNotEmpty) {
+                    try {
+                      callWebFunction('attachRemoteStream', [incomingStream]);
+                    } catch (error) {
+                      remoteAudio?.srcObject = incomingStream;
+                      remoteAudio?.play().catchError((_) {});
                     }
-                  } catch (_) {}
-                  if (isVideo) {
-                    final remoteVideo = getOrCreateVideo('remoteVideoPlayer', isLocal: false);
-                    remoteVideo.srcObject = stream;
-                    remoteVideo.style.display = 'block';
-                    remoteVideo.play().catchError((e) {
-                      Future.delayed(const Duration(milliseconds: 300), () {
-                        remoteVideo.play().catchError((_) {});
-                      });
-                    });
+                    remoteAudio?.muted = !isSpeakerOn;
+                  }
+                  if (isVideo && incomingStream!.getVideoTracks().isNotEmpty) {
+                    final video = getOrCreateVideo('remoteVideoPlayer', isLocal: false);
+                    video.muted = true; // Voice plays only through remoteAudioPlayer.
+                    video.srcObject = incomingStream;
+                    video.style.display = 'block';
+                    video.play().catchError((_) {});
                   }
                 }
 
@@ -6933,6 +6902,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                 });
 
                 pc?.onIceCandidate.listen((event) {
+                  if (callClosed) return;
                   if (event.candidate != null && event.candidate!.candidate != null) {
                     SocketService.socket?.emit('webrtc_signal', {
                       'connectedUserId': targetUserId,
@@ -6949,22 +6919,35 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                 pc?.onIceConnectionStateChange.listen((_) {
                   final state = pc?.iceConnectionState ?? '';
                   print('⚡ WebRTC ICE Connection State: $state');
+                  if (state == 'connected' || state == 'completed') {
+                    if (!callClosed && dialogContext.mounted) setDialogState(() { callStatus = 'Đang đàm thoại'; });
+                  }
                   if (state == 'failed') {
-                    print('⚠️ WebRTC ICE failed -> attempting restartIce()...');
-                    try {
-                      final dynamic pcDynamic = pc;
-                      if (pcDynamic.restartIce != null) {
-                        pcDynamic.restartIce();
-                      }
-                    } catch (_) {}
+                    if (!callClosed && dialogContext.mounted) setDialogState(() { callStatus = 'Không kết nối được. Kiểm tra mạng rồi gọi lại.'; });
+                    // Only the caller restarts ICE, avoiding simultaneous offers.
+                    if (isCaller) {
+                      signalQueue.run(() async {
+                        final connection = pc;
+                        if (callClosed || connection == null || connection.signalingState != 'stable') return;
+                        final offer = await connection.createOffer({'iceRestart': true});
+                        if (callClosed) return;
+                        await connection.setLocalDescription({'type': offer.type, 'sdp': offer.sdp});
+                        if (callClosed) return;
+                        SocketService.socket?.emit('webrtc_signal', {
+                          'connectedUserId': targetUserId,
+                          'signal': {'type': 'offer', 'sdp': offer.sdp},
+                        });
+                      }).catchError((Object error) { debugPrint('ICE restart failed: $error'); });
+                    }
                   }
                 });
 
+                initializing = false;
                 if (pendingSignals.isNotEmpty) {
                   final signalsToProcess = List<Map<String, dynamic>>.from(pendingSignals);
                   pendingSignals.clear();
                   for (var sig in signalsToProcess) {
-                    await processSignal(sig);
+                    await signalQueue.run(() => processSignal(sig));
                   }
                 }
 
@@ -6986,22 +6969,31 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                   });
                 }
               } catch (e) {
-                print('⚠️ WebRTC Init Error: $e');
+                initializing = false;
+                if (callClosed) return;
+                final message = callMediaError(e);
+                SocketService.socket?.emit('end_call', {'connectedUserId': targetUserId});
+                cleanupCall();
+                if (dialogContext.mounted) {
+                  setDialogState(() { callStatus = message; });
+                }
+                debugPrint('WebRTC init failed: $e');
               }
             }
 
             acceptSub ??= SocketService.onCallAccepted.listen((_) {
+              if (callClosed || !dialogContext.mounted) return;
               callerStatusPollTimer?.cancel();
               SoundService.stopAllCallSounds();
               setDialogState(() {
-                callStatus = 'Đang đàm thoại';
+                callStatus = 'Đang kết nối...';
               });
               initWebRTC();
             });
 
             if (isCaller) {
               callerStatusPollTimer ??= Timer.periodic(const Duration(milliseconds: 1000), (t) async {
-                if (callStatus == 'Đang đàm thoại' || pc != null) {
+                if (callClosed || initializing || callStatus == 'Đang đàm thoại' || pc != null) {
                   t.cancel();
                   return;
                 }
@@ -7012,13 +7004,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                       ? 'https://chat-tho-fi-vn-9s8u.onrender.com'
                       : '';
                   final res = await html.HttpRequest.getString('$bUrl/api/call/status?callerId=$callerId&calleeId=$targetUserId&t=${DateTime.now().millisecondsSinceEpoch}');
+                  if (callClosed || !dialogContext.mounted) return;
                   final data = jsonDecode(res);
                   if (data['isAccepted'] == true && callStatus != 'Đang đàm thoại') {
                     print('🔄 [Caller Fallback] Callee đã bắt máy -> Chuyển sang đàm thoại!');
                     t.cancel();
                     SoundService.stopAllCallSounds();
                     setDialogState(() {
-                      callStatus = 'Đang đàm thoại';
+                      callStatus = 'Đang kết nối...';
                     });
                     initWebRTC();
                   }
@@ -7027,10 +7020,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
             }
 
             rejectSub ??= SocketService.onCallRejected.listen((data) {
+              if (callClosed || !dialogContext.mounted) return;
               setDialogState(() {
                 callStatus = 'Người dùng bận / Từ chối';
               });
               Future.delayed(const Duration(milliseconds: 1200), () {
+                if (callClosed || !dialogContext.mounted) return;
                 cleanupCall();
                 if (Navigator.of(dialogContext).canPop()) {
                   Navigator.of(dialogContext).pop();
@@ -7065,10 +7060,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
             });
 
             signalSub ??= SocketService.onWebrtcSignal.listen((data) async {
-              await processSignal(data);
+              await signalQueue.run(() => processSignal(data));
             });
 
-            if (!isCaller && pc == null) {
+            if (!isCaller && pc == null && !initializing && !callClosed) {
               initWebRTC();
             }
 
@@ -7076,7 +7071,15 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
               onWillPop: () async => false,
               child: Material(
                 color: isVideo ? Colors.transparent : const Color(0xFF090D1A),
-                child: SafeArea(
+                child: Stack(
+                  children: [
+                    if (isVideo && kIsWeb)
+                      Positioned.fill(child: IgnorePointer(child: HtmlElementView(viewType: remoteViewType))),
+                    if (isVideo && kIsWeb)
+                      Positioned(top: 60, right: 16, width: 110, height: 150,
+                        child: ClipRRect(borderRadius: BorderRadius.circular(16),
+                          child: IgnorePointer(child: HtmlElementView(viewType: localViewType)))),
+                    SafeArea(
                   child: SizedBox.expand(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
@@ -7239,6 +7242,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                     onPressed: () {
                                       setDialogState(() {
                                         isSpeakerOn = !isSpeakerOn;
+                                        try { callWebFunction('setCallSpeakerEnabled', [isSpeakerOn]); } catch (_) {}
                                         if (remoteAudio != null) {
                                           remoteAudio!.muted = !isSpeakerOn;
                                         }
@@ -7253,6 +7257,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                       ),
                     ),
                   ),
+                ),
+                  ],
                 ),
               ),
             );

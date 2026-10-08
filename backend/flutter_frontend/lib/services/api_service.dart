@@ -7,6 +7,29 @@ import '../models/models.dart';
 import 'network_status.dart';
 
 class ApiService {
+  static Future<Map<String, dynamic>> getCallIceConfig() async {
+    final fallback = <String, dynamic>{
+      'iceServers': [
+        {'urls': 'stun:stun.l.google.com:19302'},
+        {'urls': 'stun:stun.cloudflare.com:3478'},
+      ],
+      'iceCandidatePoolSize': 0,
+    };
+    try {
+      final response = await _client.get(Uri.parse('$baseUrl/call/ice-config'), headers: await _getHeaders())
+          .timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body)['data'];
+        if (data is Map && data['iceServers'] is List) {
+          return {'iceServers': data['iceServers'], 'iceCandidatePoolSize': 0};
+        }
+      }
+    } catch (error) {
+      debugPrint('Không tải được cấu hình ICE, dùng STUN dự phòng: $error');
+    }
+    return fallback;
+  }
+
   // Reuse connections across requests, particularly on Android and iOS.
   static http.Client _client = http.Client();
 

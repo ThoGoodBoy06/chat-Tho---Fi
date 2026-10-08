@@ -32,3 +32,5 @@ void registerVideoPlayerView(String viewId, String videoUrl) {}
 void vibrateWeb(Object pattern) {}
 
 dynamic callWebFunction(String name, List<dynamic> arguments) => null;
+
+void registerCallVideoView(String viewType, String elementId) {}

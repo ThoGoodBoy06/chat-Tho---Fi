@@ -1,0 +1,41 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert/strict'),path=require('path');
+const source=fs.readFileSync(path.join(__dirname,'../flutter_frontend/web/webrtc_audio_helper.js'),'utf8');
+const start=source.indexOf('(function () {',source.indexOf('// webrtc_audio_helper.js'));
+const subsystem=source.slice(start,source.indexOf('  // 8.',start))+'})();';
+const elements=new Map();let blocked=true;
+function element(tag){return {tag,src:'',srcObject:null,style:{},events:{},setAttribute(){},removeAttribute(n){if(n==='src')this.src='';},addEventListener(n,f){this.events[n]=f;},remove(){elements.delete(this.id);},pause(){},play(){return blocked?Promise.reject(Error('NotAllowedError')):Promise.resolve();}};}
+const document={readyState:'complete',getElementById:id=>elements.get(id),createElement:element,body:{appendChild:e=>elements.set(e.id,e)}};
+const gum=()=>Promise.resolve();
+const window={addEventListener(){}};
+vm.runInNewContext(subsystem,{window,document,navigator:{mediaDevices:{getUserMedia:gum}},console:{log(){},warn(){}}});
+const index=fs.readFileSync(path.join(__dirname,'../flutter_frontend/web/index.html'),'utf8');
+vm.runInNewContext(index.match(/<script id="call-audio-engine-script">([\s\S]*?)<\/script>/)[1],{window,document});
+const flush=()=>new Promise(r=>setImmediate(r));
+(async()=>{
+ const track={enabled:true,addEventListener(n,f){this[n]=f;}};
+ const stream={id:'voice',getAudioTracks:()=>[track]};
+ const audio=elements.get('remoteAudioPlayer');
+ assert.equal(window._callAudioEngine.playRemoteStream,window.attachRemoteStream);
+ window.attachRemoteStream(stream);await flush();
+ assert(elements.has('callAudioUnmuteBanner'));
+ window.attachRemoteStream({id:'video',getAudioTracks:()=>[]});
+ assert.equal(audio.srcObject,stream);
+ track.unmute();await flush();assert(elements.has('callAudioUnmuteBanner'));
+ blocked=false;window.unlockAudio();await flush();assert(!elements.has('callAudioUnmuteBanner'));
+ window.setCallSpeakerEnabled(false);window.unlockAudio();await flush();assert.equal(audio.muted,true);
+ window.stopCallAudio();assert.equal(audio.srcObject,null);
+ blocked=true;window.attachRemoteStream(stream);window.stopCallAudio();await flush();assert(!elements.has('callAudioUnmuteBanner'));
+ // A delayed rejection from the previous call must not display a banner in a new call.
+ let rejectOld;
+ const originalPlay=audio.play;
+ audio.play=()=>new Promise((_,reject)=>{rejectOld=reject;});
+ window.attachRemoteStream(stream);
+ window.stopCallAudio();
+ audio.play=originalPlay;
+ blocked=false;
+ window.attachRemoteStream({id:'next-call',getAudioTracks:()=>[track]});await flush();
+ rejectOld(Error('old autoplay rejection'));await flush();
+ assert(!elements.has('callAudioUnmuteBanner'));
+ window.stopCallAudio();
+ console.log('Audio engine: video preserves voice; autoplay retry/banner; speaker mute; cleanup; single engine: passed.');
+})().catch(e=>{console.error(e);process.exitCode=1;});

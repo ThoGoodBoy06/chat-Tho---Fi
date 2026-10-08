@@ -354,6 +354,15 @@
   console.log('🚀 [WebRTC Audio Subsystem] Khởi tạo hệ thống âm thanh & Guard chống lỗi tín hiệu...');
 
   let activeRemoteStream = null;
+  let speakerEnabled = true;
+  let playbackGeneration = 0;
+  const observedTracks = new WeakSet();
+
+  window.setCallSpeakerEnabled = function (enabled) {
+    speakerEnabled = !!enabled;
+    getOrCreateAudioElement().muted = !speakerEnabled;
+    if (!speakerEnabled) hideUnmuteBanner();
+  };
 
   // 1. DOM Audio Player duy nhất, bất khả xâm phạm
   function getOrCreateAudioElement() {
@@ -393,10 +402,10 @@
       }
 
       const el = getOrCreateAudioElement();
-      el.muted = false;
+      el.muted = !speakerEnabled;
       el.volume = 1.0;
-      if (el.src && !el.srcObject) {
-        el.removeAttribute('src');
+      if (!el.srcObject && !el.src) {
+        el.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
       }
 
       const p = el.play();
@@ -416,6 +425,7 @@
 
   // 3. Banner bật âm thanh dự phòng cho thiết bị mobile nghiêm ngặt
   function showUnmuteBanner() {
+    if (!activeRemoteStream || !speakerEnabled) return;
     let btn = document.getElementById('callAudioUnmuteBanner');
     if (!btn) {
       btn = document.createElement('div');
@@ -440,6 +450,19 @@
     if (btn) btn.remove();
   }
 
+  function playCallStream(el, stream) {
+    const generation = playbackGeneration;
+    const current = () => generation === playbackGeneration && activeRemoteStream === stream;
+    const promise = el.play();
+    if (promise && promise.then) {
+      promise.then(function () {
+        if (current()) hideUnmuteBanner();
+      }).catch(function () {
+        if (current()) showUnmuteBanner();
+      });
+    }
+  }
+
   // 4. Gắn luồng âm thanh đối phương vào thẻ Audio
   window.attachRemoteStream = function (mediaStream) {
     if (!mediaStream) {
@@ -447,6 +470,8 @@
       return;
     }
 
+    if (!mediaStream.getAudioTracks || !mediaStream.getAudioTracks().length) return;
+    if (activeRemoteStream !== mediaStream) playbackGeneration++;
     activeRemoteStream = mediaStream;
     const el = getOrCreateAudioElement();
 
@@ -455,12 +480,14 @@
 
     audioTracks.forEach(function (track, idx) {
       track.enabled = true;
+      if (observedTracks.has(track)) return;
+      observedTracks.add(track);
       track.addEventListener('unmute', function () {
+        if (activeRemoteStream !== mediaStream) return;
         console.log('🔊 [WebRTC Audio Engine] Remote track UNMUTED (Voice packets arriving live!):', track.id);
-        el.muted = false;
+        el.muted = !speakerEnabled;
         el.volume = 1.0;
-        el.play().catch(function (_) {});
-        hideUnmuteBanner();
+        playCallStream(el, mediaStream);
       });
     });
 
@@ -468,18 +495,10 @@
       if (el.src) el.removeAttribute('src');
       el.srcObject = mediaStream;
     }
-    el.muted = false;
+    el.muted = !speakerEnabled;
     el.volume = 1.0;
 
-    const playPromise = el.play();
-    if (playPromise && playPromise.catch) {
-      playPromise.catch(function (err) {
-        console.warn('⚠️ [WebRTC Audio Engine] Autoplay cần tương tác:', err);
-        showUnmuteBanner();
-      });
-    } else {
-      hideUnmuteBanner();
-    }
+    playCallStream(el, mediaStream);
   };
 
   if (!window._callAudioEngine) window._callAudioEngine = {};
@@ -490,6 +509,8 @@
   window.stopCallAudio = function () {
     console.log('🛑 [WebRTC Audio Engine] stopCallAudio() called');
     activeRemoteStream = null;
+    playbackGeneration++;
+    speakerEnabled = true;
     hideUnmuteBanner();
 
     const el = document.getElementById('remoteAudioPlayer');
@@ -503,37 +524,8 @@
   };
   window._callAudioEngine.destroyCallAudio = window.stopCallAudio;
 
-  // 6. Đánh chặn getUserMedia: Giữ track mic luôn bật & tự động inject vào PC
-  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-    const _origGUM = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
-    navigator.mediaDevices.getUserMedia = async function (constraints) {
-      console.log('🎤 [Native Media] getUserMedia called with constraints:', JSON.stringify(constraints));
-      try {
-        const stream = await _origGUM(constraints);
-        window._nativeLocalStream = stream;
-        const tracks = stream.getAudioTracks ? stream.getAudioTracks() : [];
-        tracks.forEach(function (t) { t.enabled = true; });
-
-        if (window._activePeerConnection && tracks.length > 0) {
-          try {
-            const pc = window._activePeerConnection;
-            const senders = pc.getSenders ? pc.getSenders() : [];
-            const hasAudio = senders.some(s => s.track && s.track.kind === 'audio');
-            if (!hasAudio) {
-              console.log('🚀 [Auto-Inject] Thêm track mic vào PeerConnection active!');
-              pc.addTrack(tracks[0], stream);
-            }
-          } catch (e) {}
-        }
-        return stream;
-      } catch (err) {
-        console.warn('⚠️ Primary getUserMedia failed, retrying fallback audio:', err);
-        const fb = await _origGUM({ audio: true, video: !!(constraints && constraints.video) });
-        window._nativeLocalStream = fb;
-        return fb;
-      }
-    };
-  }
+  // Local media belongs to each call. Never inject a cached microphone from a
+  // voice recording/QR scanner into a new call, or reset the user's mute state.
 
   // 7. WEBRTC GUARD: KHẮC PHỤC TRIỆT ĐỂ LỖI JSEP STATE MACHINE & TRÙNG TÍN HIỆU
   if (window.RTCPeerConnection) {
@@ -604,37 +596,6 @@
       return _origAddTrack.apply(this, arguments);
     };
 
-    const _origCreateOffer = window.RTCPeerConnection.prototype.createOffer;
-    window.RTCPeerConnection.prototype.createOffer = function () {
-      try {
-        const senders = this.getSenders ? this.getSenders() : [];
-        const hasAudio = senders.some(s => s.track && s.track.kind === 'audio');
-        if (!hasAudio && window._nativeLocalStream) {
-          const audioTrack = window._nativeLocalStream.getAudioTracks()[0];
-          if (audioTrack) {
-            audioTrack.enabled = true;
-            this.addTrack(audioTrack, window._nativeLocalStream);
-          }
-        }
-      } catch (_) {}
-      return _origCreateOffer.apply(this, arguments);
-    };
-
-    const _origCreateAnswer = window.RTCPeerConnection.prototype.createAnswer;
-    window.RTCPeerConnection.prototype.createAnswer = function () {
-      try {
-        const senders = this.getSenders ? this.getSenders() : [];
-        const hasAudio = senders.some(s => s.track && s.track.kind === 'audio');
-        if (!hasAudio && window._nativeLocalStream) {
-          const audioTrack = window._nativeLocalStream.getAudioTracks()[0];
-          if (audioTrack) {
-            audioTrack.enabled = true;
-            this.addTrack(audioTrack, window._nativeLocalStream);
-          }
-        }
-      } catch (_) {}
-      return _origCreateAnswer.apply(this, arguments);
-    };
   }
 
   if (document.readyState === 'loading') {

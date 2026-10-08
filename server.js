@@ -34,6 +34,7 @@ const { clearUserImageCache } = userController;
 
 const app = express();
 const prisma = require("./prisma");
+const { buildIceConfig } = require('./services/webrtc-config');
 
 // Nén dữ liệu truyền tải (Gzip compression)
 app.use(compression());
@@ -51,6 +52,11 @@ app.set("io", io);
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+app.get('/api/call/ice-config', authMiddleware, (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ success: true, data: buildIceConfig(process.env, req.user.id) });
+});
 
 app.post("/api/client-error", (req, res) => {
     console.error("🚨 [CLIENT ERROR TELEMETRY]:", JSON.stringify(req.body));
