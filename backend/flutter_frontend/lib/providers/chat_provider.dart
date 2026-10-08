@@ -454,11 +454,14 @@ class ChatProvider extends ChangeNotifier {
       final theme = data['theme']?.toString();
       if (convId != null && theme != null) {
         _updateConversationThemeLocally(convId, theme);
+        unawaited(_persistConversationThemes());
       }
     });
   }
 
+  int _themeRevision = 0;
   void _updateConversationThemeLocally(String convId, String theme) {
+    _themeRevision++;
     final idx = conversations.indexWhere((c) => c.id == convId);
     if (idx != -1) {
       conversations[idx] = conversations[idx].copyWith(theme: theme);
@@ -469,20 +472,45 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> updateConversationTheme(
-      String conversationId, String theme) async {
-    // 1. Phản hồi tức thời trên giao diện (Optimistic UI)
+  final Set<String> _themeUpdates = {};
+  Future<bool> updateConversationTheme(String conversationId, String theme) async {
+    if (!NetworkStatus.online.value || !_themeUpdates.add(conversationId)) return false;
+    final session = _sessionRevision;
+    final conv = selectedConversation?.id == conversationId ? selectedConversation :
+        conversations.where((c) => c.id == conversationId).firstOrNull;
+    final previous = conv?.theme ?? 'classic';
     _updateConversationThemeLocally(conversationId, theme);
-
-    // 2. Phát socket event cho đối phương
-    SocketService.emitUpdateConversationTheme(conversationId, theme);
-
-    // 3. Ghi vào database qua REST API
     try {
-      await ApiService.updateConversationTheme(conversationId, theme);
-    } catch (e) {
-      debugPrint('⚠️ Error updating theme via API: $e');
-    }
+      final response = await ApiService.updateConversationTheme(conversationId, theme);
+      if (response['success'] != true) throw StateError('Không lưu được chủ đề');
+      if (_disposed || session != _sessionRevision) return false;
+      await _persistConversationThemes();
+      return true;
+    } catch (_) {
+      if (!_disposed && session == _sessionRevision) {
+        final current = selectedConversation?.id == conversationId ? selectedConversation :
+            conversations.where((c) => c.id == conversationId).firstOrNull;
+        if (current?.theme == theme) _updateConversationThemeLocally(conversationId, previous);
+      }
+      return false;
+    } finally { _themeUpdates.remove(conversationId); }
+  }
+
+  Future<void> _persistConversationThemes() async {
+    final userId = currentUser?.id;
+    if (userId == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    if (_disposed || currentUser?.id != userId) return;
+    final raw = prefs.getString('cached_conversations_$userId');
+    if (raw == null) return;
+    try {
+      final list = jsonDecode(raw) as List;
+      for (final entry in list.whereType<Map>()) {
+        final matches = conversations.where((c) => c.id == entry['id']);
+        if (matches.isNotEmpty) entry['theme'] = matches.first.theme;
+      }
+      await prefs.setString('cached_conversations_$userId', jsonEncode(list));
+    } catch (_) {}
   }
 
   void deleteMessage(String messageId) {
@@ -806,6 +834,7 @@ class ChatProvider extends ChangeNotifier {
       return;
     }
     final session = _sessionRevision;
+    final themeRevision = _themeRevision;
     _lastFetchTime = DateTime.now();
     _isFetchingConversations = true;
 
@@ -836,8 +865,13 @@ class ChatProvider extends ChangeNotifier {
         final parsed = rawList
             .map((c) {
               try {
-                return ConversationModel.fromJson(c,
-                    currentUserId: currentUser?.id);
+                final parsed = ConversationModel.fromJson(c, currentUserId: currentUser?.id);
+                if (themeRevision != _themeRevision || _themeUpdates.contains(parsed.id)) {
+                  final current = selectedConversation?.id == parsed.id ? selectedConversation :
+                    conversations.where((item) => item.id == parsed.id).firstOrNull;
+                  if (current != null) return parsed.copyWith(theme: current.theme);
+                }
+                return parsed;
               } catch (err) {
                 debugPrint('Lỗi parse 1 conversation: $err');
                 return null;
@@ -859,6 +893,7 @@ class ChatProvider extends ChangeNotifier {
                 currentUser != null) {
               await prefs.setString('cached_conversations_${currentUser!.id}',
                   jsonEncode(rawList));
+              await _persistConversationThemes();
             }
             for (final c in conversations.take(8)) {
               final msgs = _loadLocalCachedMessages(c.id);
@@ -1100,12 +1135,18 @@ class ChatProvider extends ChangeNotifier {
       for (final message in messages) message.id: message
     };
     var messagesUpdated = false;
+    final themeRevision = _themeRevision;
     try {
       final res = await _loadMessages(conv.id);
       if (_disposed ||
           session != _sessionRevision ||
           revision != _messageLoadRevision ||
           selectedConversation?.id != conv.id) return;
+      final serverTheme = res['theme'];
+      if (serverTheme is String && themeRevision == _themeRevision && !_themeUpdates.contains(conv.id)) {
+        _updateConversationThemeLocally(conv.id, serverTheme);
+        unawaited(_persistConversationThemes());
+      }
       final rawData = res['data'] as List? ?? [];
       final fetched = rawData
           .map((m) {

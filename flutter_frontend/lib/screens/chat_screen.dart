@@ -26,6 +26,7 @@ import 'qr_scanner_screen.dart';
 import 'other_user_profile_screen.dart';
 import 'profile_tab.dart';
 import '../utils/web_helpers.dart';
+import '../utils/web_file_picker.dart';
 import '../utils/inline_image_cache.dart';
 import '../widgets/inline_message_image.dart';
 import '../widgets/message_context_menu_transition.dart';
@@ -4728,48 +4729,17 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   void _openWebFilePicker({
     required String accept,
     bool capture = false,
+    bool multiple = false,
     required Future<void> Function(html.File file) onFileSelected,
     Function(String error)? onError,
   }) {
-    final uploadInput = html.FileUploadInputElement();
-    uploadInput.accept = accept;
-    if (capture) {
-      uploadInput.setAttribute('capture', 'environment');
-    }
-    uploadInput.style.display = 'none';
-    uploadInput.style.position = 'fixed';
-    uploadInput.style.left = '-9999px';
-    uploadInput.style.top = '-9999px';
-
-    html.document.body?.children.add(uploadInput);
-
-    void cleanup() {
-      try {
-        uploadInput.remove();
-      } catch (_) {}
-    }
-
-    uploadInput.onChange.listen((e) async {
-      try {
-        final files = uploadInput.files;
-        if (files != null && files.isNotEmpty) {
-          final file = files[0];
-          await onFileSelected(file);
-        }
-      } catch (err) {
-        debugPrint('Lỗi khi chọn file: $err');
-        onError?.call('Lỗi khi chọn file: $err');
-      } finally {
-        cleanup();
-      }
-    });
-
-    void onWindowFocus(html.Event e) {
-      Future.delayed(const Duration(seconds: 3), cleanup);
-    }
-    html.window.addEventListener('focus', onWindowFocus, true);
-
-    uploadInput.click();
+    WebFilePicker.open(
+      accept: accept,
+      capture: capture,
+      multiple: multiple,
+      onFileSelected: onFileSelected,
+      onError: onError,
+    );
   }
 
   Future<Uint8List?> _readFileBytes(html.File file) {
@@ -4827,16 +4797,27 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
 
   void _pickAndUploadImage(ChatProvider provider) {
     final conv = provider.selectedConversation;
-    if (conv == null) return;
+    final senderId = provider.currentUser?.id;
+    if (conv == null || senderId == null) return;
+    if (!NetworkStatus.online.value) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Bạn đang ngoại tuyến. Kết nối mạng để gửi ảnh.')),
+      );
+      return;
+    }
+    bool canSend() => mounted && provider.currentUser?.id == senderId && NetworkStatus.online.value;
 
     _openWebFilePicker(
       accept: 'image/*',
+      multiple: true,
       onError: (err) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(err), backgroundColor: const Color(0xFFEF4444)),
         );
       },
       onFileSelected: (file) async {
+        if (!canSend()) return;
         final bytes = await _readFileBytes(file);
         if (bytes == null || bytes.isEmpty) {
           if (mounted) {
@@ -4850,22 +4831,25 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
           return;
         }
 
+        if (!canSend()) return;
         String mimeType = file.type;
         if (mimeType.isEmpty) {
           final ext = file.name.split('.').last.toLowerCase();
           if (ext == 'png') mimeType = 'image/png';
           else if (ext == 'webp') mimeType = 'image/webp';
           else if (ext == 'gif') mimeType = 'image/gif';
+          else if (ext == 'heic') mimeType = 'image/heic';
+          else if (ext == 'heif') mimeType = 'image/heif';
           else mimeType = 'image/jpeg';
         }
 
         // Tạo ngay tin nhắn ảnh tạm thời với hiệu ứng đang gửi (Optimistic UI)
-        final optId = 'optimistic-${DateTime.now().millisecondsSinceEpoch}';
+        final optId = 'optimistic-image-${DateTime.now().microsecondsSinceEpoch}-${Random().nextInt(1 << 32)}';
         final base64Url = 'data:$mimeType;base64,${base64Encode(bytes)}';
         final tempMsg = MessageModel(
           id: optId,
           conversationId: conv.id,
-          senderId: provider.currentUser?.id,
+          senderId: senderId,
           type: 'image',
           content: base64Url,
           imageUrl: base64Url,
@@ -4876,20 +4860,17 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
 
         try {
           final res = await ApiService.uploadMedia(conv.id, bytes, file.name, mimeType, clientTempId: optId);
+          if (!mounted || provider.currentUser?.id != senderId) return;
           if (res['success'] == true && res['data'] != null) {
             try {
               final realMsg = MessageModel.fromJson(res['data']);
-              final idx = provider.messages.indexWhere((m) => m.id == optId || m.clientTempId == optId);
-              if (idx != -1) {
-                provider.messages[idx] = realMsg;
-              } else if (!provider.messages.any((m) => m.id == realMsg.id)) {
-                provider.messages.add(realMsg);
-              }
-              provider.notifyListeners();
+              provider.addRealtimeMessage(realMsg);
             } catch (_) {}
           } else {
-            provider.messages.removeWhere((m) => m.id == optId);
-            provider.notifyListeners();
+            if (provider.selectedConversation?.id == conv.id) {
+              provider.messages.removeWhere((m) => m.id == optId);
+              provider.notifyListeners();
+            }
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -4900,8 +4881,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
             }
           }
         } catch (err) {
-          provider.messages.removeWhere((m) => m.id == optId);
-          provider.notifyListeners();
+          if (!mounted || provider.currentUser?.id != senderId) return;
+          if (provider.selectedConversation?.id == conv.id) {
+            provider.messages.removeWhere((m) => m.id == optId);
+            provider.notifyListeners();
+          }
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Lỗi kết nối khi gửi ảnh: $err'), backgroundColor: const Color(0xFFEF4444)),
@@ -5543,7 +5527,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (modalCtx) {
-        final currentThemeId = conv.theme;
+        final currentThemeId = provider.selectedConversation?.id == conv.id
+            ? provider.selectedConversation!.theme
+            : (provider.conversations.where((c) => c.id == conv.id).firstOrNull?.theme ?? conv.theme);
 
         return SafeArea(
           child: Padding(
@@ -5626,9 +5612,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                 child: const Icon(Icons.check, color: Colors.white, size: 16),
                               )
                             : null,
-                        onTap: () {
+                        onTap: () async {
                           Navigator.pop(modalCtx);
-                          provider.updateConversationTheme(conv.id, themeItem.id);
+                          final saved = await provider.updateConversationTheme(conv.id, themeItem.id);
+                          if (!saved && mounted) ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Chưa đổi được chủ đề. Kiểm tra kết nối và thử lại.')));
                         },
                       );
                     },

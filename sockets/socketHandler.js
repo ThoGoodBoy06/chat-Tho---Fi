@@ -494,7 +494,8 @@ module.exports = (io) => {
       if (!conversationId || !theme) return;
 
       const validThemes = ['classic', 'sunset', 'ocean', 'berry', 'emerald', 'love', 'default'];
-      const themeToSet = validThemes.includes(theme) ? theme : 'classic';
+      if (!validThemes.includes(theme)) return;
+      const themeToSet = theme;
 
       try {
         await prisma.conversations.update({
@@ -508,7 +509,7 @@ module.exports = (io) => {
           if (chatCtrl.conversationsCache) chatCtrl.conversationsCache.clear();
         } catch (e) {}
 
-        io.to(conversationId).emit("conversation_theme_updated", {
+        io.to(rooms).emit("conversation_theme_updated", {
           conversationId,
           theme: themeToSet,
         });
@@ -552,7 +553,7 @@ module.exports = (io) => {
             ...sysMsg,
             Users: sysMsg.Users ? { ...sysMsg.Users, avatar: `/api/users/${sysMsg.Users.id}/avatar` } : null,
           };
-          io.to(conversationId).emit("receive_message", mappedSysMsg);
+          io.to(rooms).emit("receive_message", mappedSysMsg);
         } catch (sysErr) {
           console.error("Lỗi tạo systemMessage cho theme:", sysErr.message);
         }
