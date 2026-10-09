@@ -498,6 +498,12 @@ module.exports = (io) => {
       const themeToSet = theme;
 
       try {
+        const conversation = await prisma.conversations.findUnique({
+          where: { id: conversationId }, include: { ConversationMembers: true },
+        });
+        if (!conversation || !conversation.ConversationMembers.some(m => m.userId === socket.userId)) return;
+        if (conversation.theme === themeToSet) return;
+        const rooms = [conversationId, ...conversation.ConversationMembers.map(m => m.userId)];
         await prisma.conversations.update({
           where: { id: conversationId },
           data: { theme: themeToSet },

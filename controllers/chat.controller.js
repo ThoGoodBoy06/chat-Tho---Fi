@@ -2453,11 +2453,11 @@ exports.changeConversationTheme = async (req, res) => {
         const validThemes = ['classic', 'sunset', 'ocean', 'berry', 'emerald', 'love', 'default'];
         if (!validThemes.includes(theme)) return res.status(400).json({success:false,message:'Chủ đề không hợp lệ'});
         const themeToSet = theme;
-        const conversation = await prisma.conversations.findUnique({where:{id:conversationId},include:{conversation_members:true}});
+        const conversation = await prisma.conversations.findUnique({where:{id:conversationId},include:{ConversationMembers:true}});
         if (!conversation) return res.status(404).json({success:false,message:'Không tìm thấy cuộc trò chuyện'});
-        if (!conversation.conversation_members.some(m => m.userId === req.user?.id)) return res.status(403).json({success:false,message:'Bạn không có quyền đổi chủ đề'});
+        if (!conversation.ConversationMembers.some(m => m.userId === req.user?.id)) return res.status(403).json({success:false,message:'Bạn không có quyền đổi chủ đề'});
         if (conversation.theme === themeToSet) return res.json({success:true,data:{conversationId,theme:themeToSet}});
-        const rooms = [conversationId, ...conversation.conversation_members.map(m=>m.userId)];
+        const rooms = [conversationId, ...conversation.ConversationMembers.map(m=>m.userId)];
 
         await prisma.conversations.update({
             where: { id: conversationId },
