@@ -217,7 +217,7 @@ class FCMService {
     final notification = message.notification;
     final data = message.data;
 
-    bool isCall = data['type'] == 'INCOMING_CALL' || data['type'] == 'call';
+    bool isCall = data['type'] == 'INCOMING_CALL' || data['type'] == 'call' || data['type'] == 'incoming_call';
     if (isCall) {
       SoundService.playRingtone();
     } else {

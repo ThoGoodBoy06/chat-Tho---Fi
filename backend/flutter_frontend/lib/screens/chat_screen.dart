@@ -6273,6 +6273,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
       return;
     }
 
+    // 🔔 Kích hoạt chuông cuộc gọi đến & rung ngay lập tức
+    SoundService.playRingtone();
+
     Timer? autoRejectTimer;
     StreamSubscription? incomingEndSub;
     // Flag để bypass WillPopScope khi caller tắt máy hoặc đóng an toàn
@@ -6583,6 +6586,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     bool isSpeakerOn = true;
     bool isCameraOff = false;
     String callStatus = isCaller ? 'Đang gọi...' : 'Đang kết nối...';
+    int callDurationSeconds = 0;
+    Timer? callDurationTimer;
     final videoViewId = DateTime.now().microsecondsSinceEpoch;
     final remoteViewType = 'call-remote-$videoViewId';
     final localViewType = 'call-local-$videoViewId';
@@ -6642,6 +6647,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
 
     void cleanupCall() {
       callClosed = true;
+      callDurationTimer?.cancel();
+      callDurationTimer = null;
       signalQueue.close();
       SocketService.clearCallSignals();
       try {
@@ -6824,7 +6831,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                       'noiseSuppression': true,
                       'autoGainControl': true,
                     },
-                    'video': isVideo ? {'facingMode': 'user'} : false,
+                    'video': isVideo ? {
+                      'facingMode': {'ideal': 'user'},
+                      'width': {'ideal': 1280},
+                      'height': {'ideal': 720},
+                    } : false,
                   });
                 } catch (camErr) {
                   print('⚠️ Flexible audio/camera request failed: $camErr, trying fallback...');
@@ -6847,7 +6858,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                 requireCallTracks(localStream, video: isVideo);
 
                 if (isVideo && localStream != null) {
+                  for (var track in localStream!.getVideoTracks()) {
+                    track.enabled = !isCameraOff;
+                  }
                   final localVideo = getOrCreateVideo('localVideoPlayer', isLocal: true);
+                  localVideo.muted = true;
                   localVideo.srcObject = localStream;
                   localVideo.style.display = 'block';
                   localVideo.play().catchError((e) {
@@ -6871,21 +6886,47 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                       incomingStream!.addTrack(track);
                     }
                   }
-                  if (incomingStream!.getAudioTracks().isNotEmpty) {
-                    try {
-                      callWebFunction('attachRemoteStream', [incomingStream]);
-                    } catch (error) {
-                      remoteAudio?.srcObject = incomingStream;
-                      remoteAudio?.play().catchError((_) {});
+
+                  // 1. Gán âm thanh: Ưu tiên stream gốc trực tiếp từ WebRTC để âm thanh luôn thông suốt
+                  final audioTarget = (stream.getAudioTracks().isNotEmpty) ? stream : incomingStream;
+                  if (audioTarget != null && audioTarget.getAudioTracks().isNotEmpty) {
+                    for (var track in audioTarget.getAudioTracks()) {
+                      track.enabled = true;
                     }
-                    remoteAudio?.muted = !isSpeakerOn;
+                    try {
+                      callWebFunction('attachRemoteStream', [audioTarget]);
+                    } catch (_) {}
+                    try {
+                      if (remoteAudio != null) {
+                        remoteAudio!.src = '';
+                        remoteAudio!.srcObject = audioTarget;
+                        remoteAudio!.muted = !isSpeakerOn;
+                        remoteAudio!.volume = 1.0;
+                        remoteAudio!.play().catchError((_) {});
+                      }
+                    } catch (_) {}
                   }
-                  if (isVideo && incomingStream!.getVideoTracks().isNotEmpty) {
-                    final video = getOrCreateVideo('remoteVideoPlayer', isLocal: false);
-                    video.muted = true; // Voice plays only through remoteAudioPlayer.
-                    video.srcObject = incomingStream;
-                    video.style.display = 'block';
-                    video.play().catchError((_) {});
+
+                  // 2. Gán video: Gán native stream có video track trực tiếp vào video element
+                  if (isVideo) {
+                    final videoTarget = (stream.getVideoTracks().isNotEmpty) ? stream : incomingStream;
+                    if (videoTarget != null && videoTarget.getVideoTracks().isNotEmpty) {
+                      for (var track in videoTarget.getVideoTracks()) {
+                        track.enabled = true;
+                      }
+                      final video = getOrCreateVideo('remoteVideoPlayer', isLocal: false);
+                      video.muted = true; // Voice phát qua remoteAudioPlayer để không lặp tiếng
+                      video.srcObject = videoTarget;
+                      video.style.display = 'block';
+                      video.play().catchError((e) {
+                        Future.delayed(const Duration(milliseconds: 300), () {
+                          video.play().catchError((_) {});
+                        });
+                      });
+                      if (dialogContext.mounted) {
+                        setDialogState(() {});
+                      }
+                    }
                   }
                 }
 
@@ -6924,7 +6965,20 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                   final state = pc?.iceConnectionState ?? '';
                   print('⚡ WebRTC ICE Connection State: $state');
                   if (state == 'connected' || state == 'completed') {
-                    if (!callClosed && dialogContext.mounted) setDialogState(() { callStatus = 'Đang đàm thoại'; });
+                    if (!callClosed && dialogContext.mounted) {
+                      setDialogState(() {
+                        callStatus = 'Đang đàm thoại';
+                        callDurationTimer ??= Timer.periodic(const Duration(seconds: 1), (tm) {
+                          if (callClosed || !dialogContext.mounted) {
+                            tm.cancel();
+                            return;
+                          }
+                          setDialogState(() {
+                            callDurationSeconds++;
+                          });
+                        });
+                      });
+                    }
                   }
                   if (state == 'failed') {
                     if (!callClosed && dialogContext.mounted) setDialogState(() { callStatus = 'Không kết nối được. Kiểm tra mạng rồi gọi lại.'; });
@@ -7031,6 +7085,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
 
             rejectSub ??= SocketService.onCallRejected.listen((data) {
               if (callClosed || !dialogContext.mounted) return;
+              SoundService.stopAllCallSounds();
               setDialogState(() {
                 callStatus = 'Người dùng bận / Từ chối';
               });
@@ -7115,7 +7170,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
-                                      callStatus,
+                                      callDurationSeconds > 0
+                                          ? '${(callDurationSeconds ~/ 60).toString().padLeft(2, '0')}:${(callDurationSeconds % 60).toString().padLeft(2, '0')}'
+                                          : callStatus,
                                       style: TextStyle(
                                         color: isVideo ? const Color(0xFF10B981) : const Color(0xFF0068FF),
                                         fontSize: 15,

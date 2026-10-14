@@ -361,6 +361,11 @@
   window.setCallSpeakerEnabled = function (enabled) {
     speakerEnabled = !!enabled;
     getOrCreateAudioElement().muted = !speakerEnabled;
+    try {
+      if (window._callGainNode) {
+        window._callGainNode.gain.value = speakerEnabled ? 1.0 : 0.0;
+      }
+    } catch (_) {}
     if (!speakerEnabled) hideUnmuteBanner();
   };
 
@@ -492,11 +497,39 @@
     });
 
     if (el.srcObject !== mediaStream) {
-      if (el.src) el.removeAttribute('src');
+      try { el.src = ''; } catch (_) {}
+      el.removeAttribute('src');
       el.srcObject = mediaStream;
     }
     el.muted = !speakerEnabled;
     el.volume = 1.0;
+
+    // Web Audio API AudioContext: định tuyến song song để đảm bảo âm thanh luôn được xuất ra loa
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        if (!window._callAudioCtx || window._callAudioCtx.state === 'closed') {
+          window._callAudioCtx = new AudioCtx();
+        }
+        if (window._callAudioCtx.state === 'suspended') {
+          window._callAudioCtx.resume().catch(function () {});
+        }
+        if (!window._callSourceNode || window._callSourceStream !== mediaStream) {
+          if (window._callSourceNode) {
+            try { window._callSourceNode.disconnect(); } catch (_) {}
+          }
+          window._callSourceStream = mediaStream;
+          window._callSourceNode = window._callAudioCtx.createMediaStreamSource(mediaStream);
+          window._callGainNode = window._callAudioCtx.createGain();
+          window._callGainNode.gain.value = speakerEnabled ? 1.0 : 0.0;
+          window._callSourceNode.connect(window._callGainNode);
+          window._callGainNode.connect(window._callAudioCtx.destination);
+          console.log('🎧 [WebRTC Audio Engine] Đã kết nối Web Audio AudioContext tới remote stream');
+        }
+      }
+    } catch (e) {
+      console.warn('⚠️ [WebRTC Audio Engine] AudioContext routing notice:', e);
+    }
 
     playCallStream(el, mediaStream);
   };
@@ -513,11 +546,24 @@
     speakerEnabled = true;
     hideUnmuteBanner();
 
+    try {
+      if (window._callSourceNode) {
+        window._callSourceNode.disconnect();
+        window._callSourceNode = null;
+      }
+      if (window._callGainNode) {
+        window._callGainNode.disconnect();
+        window._callGainNode = null;
+      }
+      window._callSourceStream = null;
+    } catch (_) {}
+
     const el = document.getElementById('remoteAudioPlayer');
     if (el) {
       try {
         el.pause();
         el.srcObject = null;
+        el.src = '';
         el.removeAttribute('src');
       } catch (_) {}
     }

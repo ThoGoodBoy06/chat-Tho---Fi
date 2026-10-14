@@ -157,20 +157,24 @@ dynamic callWebFunction(String name, List<dynamic> arguments) => js.context.call
 
 html.VideoElement registerCallVideoView(String viewType, String elementId) {
   final video = html.VideoElement()..id = elementId;
+  video.autoplay = true;
+  video.muted = true;
+  video.setAttribute('playsinline', 'true');
+  video.setAttribute('webkit-playsinline', 'true');
+  video.style
+    ..position = 'relative'
+    ..top = '0'
+    ..left = '0'
+    ..right = 'auto'
+    ..width = '100%'
+    ..height = '100%'
+    ..objectFit = 'cover'
+    ..backgroundColor = '#000000'
+    ..display = 'block'
+    ..zIndex = 'auto'
+    ..pointerEvents = 'none';
+
   ui_web.platformViewRegistry.registerViewFactory(viewType, (int id) {
-    video.autoplay = true;
-    video.muted = true;
-    video.setAttribute('playsinline', 'true');
-    video.style
-      ..position = 'relative'
-      ..top = '0'
-      ..left = '0'
-      ..right = 'auto'
-      ..width = '100%'
-      ..height = '100%'
-      ..objectFit = 'cover'
-      ..zIndex = 'auto'
-      ..pointerEvents = 'none';
     return video;
   });
   return video;
