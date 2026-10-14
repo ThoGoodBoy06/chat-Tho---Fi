@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'api_service.dart';
 import 'sound_service.dart';
+import '../utils/call_signal_inbox.dart';
 
 class SocketService {
   static IO.Socket? socket;
@@ -14,7 +15,7 @@ class SocketService {
   static final _callAcceptedController = StreamController<Map<String, dynamic>>.broadcast();
   static final _callRejectedController = StreamController<Map<String, dynamic>>.broadcast();
   static final _callEndedController = StreamController<Map<String, dynamic>>.broadcast();
-  static final _webrtcSignalController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _webrtcSignalController = CallSignalInbox();
   static final _typingController = StreamController<Map<String, dynamic>>.broadcast();
   static final _stopTypingController = StreamController<Map<String, dynamic>>.broadcast();
   static DateTime? _lastTypingEmitTime;
@@ -166,6 +167,7 @@ class SocketService {
     });
 
     socket?.on('call_ended', (data) {
+      _webrtcSignalController.clear();
       print('🔴 Socket call_ended');
       if (data is Map) {
         _callEndedController.add(Map<String, dynamic>.from(data));
@@ -488,7 +490,10 @@ class SocketService {
     }
   }
 
+  static void clearCallSignals() => _webrtcSignalController.clear();
+
   static void disconnect() {
+    _webrtcSignalController.clear();
     _currentRoomId = null;
     _currentUserId = null;
     socket?.disconnect();

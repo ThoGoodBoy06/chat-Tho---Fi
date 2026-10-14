@@ -66,6 +66,39 @@ if (fs.existsSync(backendLib)) {
     syncDir(backendLib, rootLib);
 }
 
+// Tự động kiểm tra và cập nhật đường dẫn môi trường trong .dart_tool/package_config.json
+const pkgConfigPath = path.join(frontendDir, '.dart_tool', 'package_config.json');
+if (fs.existsSync(pkgConfigPath)) {
+    let pkgConfig = fs.readFileSync(pkgConfigPath, 'utf8');
+    const flutterRootDir = path.resolve(path.dirname(flutterCmd), '..').replace(/\\/g, '/');
+    const pubCacheDir = (env.PUB_CACHE || '').replace(/\\/g, '/');
+    let modified = false;
+
+    if (flutterRootDir && !pkgConfig.includes(flutterRootDir)) {
+        pkgConfig = pkgConfig.replace(/"flutterRoot":\s*"[^"]+"/g, `"flutterRoot": "file:///${flutterRootDir}"`);
+        pkgConfig = pkgConfig.replace(/file:\/\/\/[^"]+\/packages\/flutter/g, `file:///${flutterRootDir}/packages/flutter`);
+        pkgConfig = pkgConfig.replace(/file:\/\/\/[^"]+\/bin\/cache\/pkg\/sky_engine/g, `file:///${flutterRootDir}/bin/cache/pkg/sky_engine`);
+        modified = true;
+    }
+    if (pubCacheDir && !pkgConfig.includes(pubCacheDir)) {
+        pkgConfig = pkgConfig.replace(/"pubCache":\s*"[^"]+"/g, `"pubCache": "file:///${pubCacheDir}"`);
+        pkgConfig = pkgConfig.replace(/file:\/\/\/[^"]+\/hosted\/pub\.dev/g, `file:///${pubCacheDir}/hosted/pub.dev`);
+        modified = true;
+    }
+    if (modified) {
+        fs.writeFileSync(pkgConfigPath, pkgConfig, 'utf8');
+        console.log('🔧 Đã tự động cập nhật đường dẫn SDK trong .dart_tool/package_config.json');
+    }
+}
+
+// Dọn dẹp cache kernel flutter_build bị hỏng nếu có
+const flutterBuildDir = path.join(frontendDir, '.dart_tool', 'flutter_build');
+if (fs.existsSync(flutterBuildDir)) {
+    try {
+        fs.rmSync(flutterBuildDir, { recursive: true, force: true });
+    } catch (_) {}
+}
+
 // 2. Chạy flutter build web
 console.log('⚡ Đang biên dịch Flutter Web (CanvasKit Release)... Vui lòng đợi khoảng 1 phút.');
 const buildCmd = `"${flutterCmd}" --no-version-check build web --release --no-pub --web-renderer canvaskit --pwa-strategy none --no-tree-shake-icons`;

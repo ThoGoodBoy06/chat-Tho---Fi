@@ -155,9 +155,9 @@ void markWebPushRegistered(bool registered) {
 
 dynamic callWebFunction(String name, List<dynamic> arguments) => js.context.callMethod(name, arguments);
 
-void registerCallVideoView(String viewType, String elementId) {
+html.VideoElement registerCallVideoView(String viewType, String elementId) {
+  final video = html.VideoElement()..id = elementId;
   ui_web.platformViewRegistry.registerViewFactory(viewType, (int id) {
-    final video = (html.document.getElementById(elementId) as html.VideoElement?) ?? html.VideoElement()..id = elementId;
     video.autoplay = true;
     video.muted = true;
     video.setAttribute('playsinline', 'true');
@@ -173,4 +173,5 @@ void registerCallVideoView(String viewType, String elementId) {
       ..pointerEvents = 'none';
     return video;
   });
+  return video;
 }

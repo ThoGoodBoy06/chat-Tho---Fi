@@ -33,4 +33,4 @@ void vibrateWeb(Object pattern) {}
 
 dynamic callWebFunction(String name, List<dynamic> arguments) => null;
 
-void registerCallVideoView(String viewType, String elementId) {}
+dynamic registerCallVideoView(String viewType, String elementId) => null;

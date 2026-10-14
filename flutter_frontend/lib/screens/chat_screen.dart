@@ -6465,6 +6465,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                     final audioPlayer = html.document.getElementById('remoteAudioPlayer') as html.AudioElement?;
                                     audioPlayer?.muted = false;
                                     audioPlayer?.volume = 1.0;
+                                    SocketService.clearCallSignals();
                                     SocketService.socket?.emit('accept_call', {'callerId': callerId});
                                     if (dialogContext.mounted) {
                                       final nav = Navigator.of(dialogContext, rootNavigator: true);
@@ -6551,6 +6552,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     audioPlayer?.muted = false;
     audioPlayer?.volume = 1.0;
 
+    SocketService.clearCallSignals();
     SocketService.socket?.emit('request_call', {
       'callerId': callerId,
       'callerName': callerName,
@@ -6584,9 +6586,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     final videoViewId = DateTime.now().microsecondsSinceEpoch;
     final remoteViewType = 'call-remote-$videoViewId';
     final localViewType = 'call-local-$videoViewId';
+    html.VideoElement? remoteCallVideo, localCallVideo;
     if (isVideo && kIsWeb) {
-      registerCallVideoView(remoteViewType, 'remoteVideoPlayer');
-      registerCallVideoView(localViewType, 'localVideoPlayer');
+      remoteCallVideo = registerCallVideoView(remoteViewType, 'remoteVideoPlayer');
+      localCallVideo = registerCallVideoView(localViewType, 'localVideoPlayer');
     }
 
     // Phát âm thanh tương ứng
@@ -6612,7 +6615,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     final List<Map<String, dynamic>> iceCandidateQueue = [];
 
     html.VideoElement getOrCreateVideo(String id, {required bool isLocal}) {
-      var el = html.document.getElementById(id) as html.VideoElement?;
+      var el = isLocal ? localCallVideo : remoteCallVideo;
       if (el == null) {
         el = html.VideoElement()
           ..id = id
@@ -6640,6 +6643,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     void cleanupCall() {
       callClosed = true;
       signalQueue.close();
+      SocketService.clearCallSignals();
       try {
         SoundService.stopAllCallSounds();
         try {
@@ -6651,8 +6655,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         signalSub?.cancel();
         callerStatusPollTimer?.cancel();
 
-        final localVideo = html.document.getElementById('localVideoPlayer') as html.VideoElement?;
-        final remoteVideo = html.document.getElementById('remoteVideoPlayer') as html.VideoElement?;
+        final localVideo = localCallVideo;
+        final remoteVideo = remoteCallVideo;
         if (localVideo != null) {
           localVideo.pause();
           localVideo.srcObject = null;
@@ -6951,21 +6955,27 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                   }
                 }
 
-                if (isCaller) {
-                  final offer = await pc!.createOffer({
-                    'offerToReceiveAudio': true,
-                    'offerToReceiveVideo': isVideo,
-                  });
-                  await pc!.setLocalDescription({
-                    'type': offer.type,
-                    'sdp': offer.sdp,
-                  });
-                  SocketService.socket?.emit('webrtc_signal', {
-                    'connectedUserId': targetUserId,
-                    'signal': {
-                      'type': 'offer',
+                if (isCaller && !callClosed) {
+                  await signalQueue.run(() async {
+                    final connection = pc;
+                    if (callClosed || connection == null) return;
+                    final offer = await connection.createOffer({
+                      'offerToReceiveAudio': true,
+                      'offerToReceiveVideo': isVideo,
+                    });
+                    if (callClosed) return;
+                    await connection.setLocalDescription({
+                      'type': offer.type,
                       'sdp': offer.sdp,
-                    }
+                    });
+                    if (callClosed) return;
+                    SocketService.socket?.emit('webrtc_signal', {
+                      'connectedUserId': targetUserId,
+                      'signal': {
+                        'type': 'offer',
+                        'sdp': offer.sdp,
+                      }
+                    });
                   });
                 }
               } catch (e) {
