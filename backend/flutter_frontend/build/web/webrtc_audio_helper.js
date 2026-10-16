@@ -361,6 +361,11 @@
   window.setCallSpeakerEnabled = function (enabled) {
     speakerEnabled = !!enabled;
     getOrCreateAudioElement().muted = !speakerEnabled;
+    const remoteVid = document.getElementById('remoteVideoPlayer');
+    if (remoteVid) {
+      remoteVid.muted = !speakerEnabled;
+      remoteVid.volume = 1.0;
+    }
     try {
       if (window._callGainNode) {
         window._callGainNode.gain.value = speakerEnabled ? 1.0 : 0.0;
@@ -497,12 +502,17 @@
     });
 
     if (el.srcObject !== mediaStream) {
-      try { el.src = ''; } catch (_) {}
       el.removeAttribute('src');
       el.srcObject = mediaStream;
     }
     el.muted = !speakerEnabled;
     el.volume = 1.0;
+
+    const remoteVid = document.getElementById('remoteVideoPlayer');
+    if (remoteVid) {
+      remoteVid.muted = !speakerEnabled;
+      remoteVid.volume = 1.0;
+    }
 
     // Web Audio API AudioContext: định tuyến song song để đảm bảo âm thanh luôn được xuất ra loa
     try {

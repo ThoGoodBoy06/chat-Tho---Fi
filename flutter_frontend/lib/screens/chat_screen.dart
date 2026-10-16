@@ -6630,7 +6630,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
       }
       el.autoplay = true;
       el.setAttribute('playsinline', 'true');
-      el.muted = true;
+      el.muted = isLocal ? true : !isSpeakerOn;
       el.style
         ..position = 'relative'
         ..top = '0'
@@ -6887,8 +6887,30 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                     }
                   }
 
-                  // 1. Gán âm thanh: Ưu tiên stream gốc trực tiếp từ WebRTC để âm thanh luôn thông suốt
-                  final audioTarget = (stream.getAudioTracks().isNotEmpty) ? stream : incomingStream;
+                  for (final track in incomingStream!.getTracks()) {
+                    track.enabled = true;
+                  }
+
+                  // 1. Nếu là Cuộc gọi Video: Cho chính thẻ <video id="remoteVideoPlayer"> phát đồng thời cả hình ảnh và âm thanh
+                  if (isVideo) {
+                    final videoTarget = (incomingStream!.getVideoTracks().isNotEmpty) ? incomingStream : stream;
+                    final video = getOrCreateVideo('remoteVideoPlayer', isLocal: false);
+                    video.srcObject = videoTarget;
+                    video.muted = !isSpeakerOn;
+                    video.volume = 1.0;
+                    video.style.display = 'block';
+                    video.play().catchError((e) {
+                      Future.delayed(const Duration(milliseconds: 300), () {
+                        video.play().catchError((_) {});
+                      });
+                    });
+                    if (dialogContext.mounted) {
+                      setDialogState(() {});
+                    }
+                  }
+
+                  // 2. Kích hoạt âm thanh qua Audio Player (cho Audio Call hoặc làm kênh phát dự phòng)
+                  final audioTarget = (incomingStream!.getAudioTracks().isNotEmpty) ? incomingStream : stream;
                   if (audioTarget != null && audioTarget.getAudioTracks().isNotEmpty) {
                     for (var track in audioTarget.getAudioTracks()) {
                       track.enabled = true;
@@ -6898,35 +6920,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                     } catch (_) {}
                     try {
                       if (remoteAudio != null) {
-                        remoteAudio!.src = '';
+                        remoteAudio!.removeAttribute('src');
                         remoteAudio!.srcObject = audioTarget;
-                        remoteAudio!.muted = !isSpeakerOn;
+                        // Trong video call, remoteVideoPlayer đã phát tiếng nên mute remoteAudio để chống lặp tiếng; trong voice call, remoteAudio phát chính
+                        remoteAudio!.muted = isVideo ? true : !isSpeakerOn;
                         remoteAudio!.volume = 1.0;
                         remoteAudio!.play().catchError((_) {});
                       }
                     } catch (_) {}
-                  }
-
-                  // 2. Gán video: Gán native stream có video track trực tiếp vào video element
-                  if (isVideo) {
-                    final videoTarget = (stream.getVideoTracks().isNotEmpty) ? stream : incomingStream;
-                    if (videoTarget != null && videoTarget.getVideoTracks().isNotEmpty) {
-                      for (var track in videoTarget.getVideoTracks()) {
-                        track.enabled = true;
-                      }
-                      final video = getOrCreateVideo('remoteVideoPlayer', isLocal: false);
-                      video.muted = true; // Voice phát qua remoteAudioPlayer để không lặp tiếng
-                      video.srcObject = videoTarget;
-                      video.style.display = 'block';
-                      video.play().catchError((e) {
-                        Future.delayed(const Duration(milliseconds: 300), () {
-                          video.play().catchError((_) {});
-                        });
-                      });
-                      if (dialogContext.mounted) {
-                        setDialogState(() {});
-                      }
-                    }
                   }
                 }
 
@@ -7311,7 +7312,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                         isSpeakerOn = !isSpeakerOn;
                                         try { callWebFunction('setCallSpeakerEnabled', [isSpeakerOn]); } catch (_) {}
                                         if (remoteAudio != null) {
-                                          remoteAudio!.muted = !isSpeakerOn;
+                                          remoteAudio!.muted = isVideo ? true : !isSpeakerOn;
+                                        }
+                                        final remoteVid = html.document.getElementById('remoteVideoPlayer') as html.VideoElement?;
+                                        if (remoteVid != null) {
+                                          remoteVid.muted = !isSpeakerOn;
+                                          remoteVid.volume = 1.0;
                                         }
                                       });
                                     },
