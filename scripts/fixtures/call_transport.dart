@@ -34,9 +34,9 @@ Future<void> main() async {
     phase("callWebFunction('unlockAudio', []);");
     callWebFunction('unlockAudio', []);
     phase("first = await");
-    first = await html.window.navigator.mediaDevices!.getUserMedia({'audio': true, 'video': video});
+    first = await requestCallMedia(video: video);
     phase("second = await");
-    second = await html.window.navigator.mediaDevices!.getUserMedia({'audio': true, 'video': video});
+    second = await requestCallMedia(video: video);
     phase("requireCallTracks(first");
     for (final stream in [first, second]) {
       for (final track in stream.getAudioTracks()) { stream.removeTrack(track); track.stop(); }

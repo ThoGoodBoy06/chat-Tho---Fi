@@ -27,6 +27,7 @@ import 'other_user_profile_screen.dart';
 import 'profile_tab.dart';
 import '../utils/web_helpers.dart';
 import '../utils/call_media.dart';
+import '../utils/call_navigation.dart';
 import '../utils/call_signal_queue.dart';
 import '../utils/web_file_picker.dart';
 import '../utils/inline_image_cache.dart';
@@ -94,6 +95,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   bool _isDialogClosed = false;
   StreamSubscription? _incomingEndSub;
   bool _isStartingCall = false;
+  bool _isCallRoomShowing = false;
 
   // AI Assistant Chat state
   final List<Map<String, String>> _aiMessages = [
@@ -6260,7 +6262,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   }
 
   void _handleIncomingCall(Map<String, dynamic> data) {
-    if (_isIncomingCallShowing) return;
+    // A repeated incoming event must never reject the call already being answered.
+    if (_isIncomingCallShowing || _isCallRoomShowing || _isStartingCall) return;
     _isIncomingCallShowing = true;
 
     final callerId = data['callerId']?.toString();
@@ -6281,6 +6284,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     // Flag để bypass WillPopScope khi caller tắt máy hoặc đóng an toàn
     bool isDialogClosed = false;
     bool canDismiss = false;
+    bool isAnswering = false;
+    String? incomingMediaError;
 
     void safeDismissCallDialog(BuildContext dialogCtx) {
       if (isDialogClosed) return;
@@ -6291,37 +6296,26 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
       SoundService.stopAllCallSounds();
       canDismiss = true;
 
-      try {
-        if (dialogCtx.mounted) {
-          try {
-            Navigator.of(dialogCtx, rootNavigator: true).pop();
-          } catch (_) {
-            try {
-              Navigator.of(dialogCtx).pop();
-            } catch (_) {}
-          }
-        }
-      } catch (e) {
-        debugPrint('⚠️ [safeDismissCallDialog] Lỗi pop dialog: $e');
-      }
-
-      if (kIsWeb) {
-        forceDismissWebCallDialog();
-      }
+      if (dialogCtx.mounted) dismissCallRoute(dialogCtx);
     }
 
     showGeneralDialog(
       context: context,
       barrierDismissible: false,
       barrierLabel: 'IncomingCall',
-      pageBuilder: (dialogContext, anim1, anim2) {
+      pageBuilder: (routeContext, anim1, anim2) => StatefulBuilder(
+        builder: (dialogContext, setIncomingState) {
         // Đăng ký listener 1 lần duy nhất khi pageBuilder chạy lần đầu
-        incomingEndSub ??= SocketService.onCallEnded.listen((_) {
+        incomingEndSub ??= SocketService.onCallEnded.listen((data) {
+          final peer = data['callerId']?.toString();
+          final target = data['targetId']?.toString();
+          if (peer != callerId && target != callerId) return;
           print('🔴 Người gọi đã tắt máy -> Đóng màn hình cuộc gọi đến & tắt chuông!');
           safeDismissCallDialog(dialogContext);
         });
 
-        autoRejectTimer ??= Timer(const Duration(seconds: 30), () {
+        if (!isAnswering) autoRejectTimer ??= Timer(const Duration(seconds: 30), () {
+          if (isDialogClosed || isAnswering) return;
           SocketService.socket?.emit('reject_call', {
             'callerId': callerId,
             'callType': callType,
@@ -6400,9 +6394,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                             ),
                           ),
                           const SizedBox(height: 10),
-                          const Text(
-                            'Đang đổ chuông...',
-                            style: TextStyle(
+                          Text(
+                            incomingMediaError ?? (isAnswering ? 'Đang mở micro/camera...' : 'Đang đổ chuông...'),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
                               color: Color(0xFF94A3B8),
                               fontSize: 15,
                               fontWeight: FontWeight.w500,
@@ -6454,8 +6449,28 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                     elevation: 6,
                                   ),
                                   icon: const Icon(Icons.call_rounded, color: Colors.white),
-                                  onPressed: () {
+                                  onPressed: isAnswering ? null : () async {
                                     if (isDialogClosed) return;
+                                    setIncomingState(() { isAnswering = true; incomingMediaError = null; });
+                                    autoRejectTimer?.cancel(); autoRejectTimer = null;
+                                    try { callWebFunction('unlockAudio', []); } catch (_) {}
+                                    html.MediaStream captured;
+                                    try {
+                                      captured = await requestCallMedia(video: isVideo);
+                                    } catch (error) {
+                                      if (!isDialogClosed && dialogContext.mounted) setIncomingState(() {
+                                        isAnswering = false;
+                                        incomingMediaError = callMediaError(error, video: isVideo);
+                                      });
+                                      return;
+                                    }
+                                    if (isDialogClosed || !mounted || !dialogContext.mounted || !SocketService.isConnected) {
+                                      stopCallMedia(captured);
+                                      if (!isDialogClosed && dialogContext.mounted) setIncomingState(() {
+                                        isAnswering = false; incomingMediaError = 'Mất kết nối. Kết nối lại rồi thử nhận cuộc gọi.';
+                                      });
+                                      return;
+                                    }
                                     isDialogClosed = true;
                                     _isIncomingCallShowing = false;
                                     autoRejectTimer?.cancel();
@@ -6470,18 +6485,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                     audioPlayer?.volume = 1.0;
                                     SocketService.clearCallSignals();
                                     SocketService.socket?.emit('accept_call', {'callerId': callerId});
-                                    if (dialogContext.mounted) {
-                                      final nav = Navigator.of(dialogContext, rootNavigator: true);
-                                      if (nav.canPop()) {
-                                        nav.pop();
-                                      }
-                                    }
+                                    dismissCallRoute(dialogContext);
                                     _showCallDialog(
                                       context: context,
                                       partnerName: callerName,
                                       isVideo: isVideo,
                                       targetUserId: callerId,
                                       isCaller: false,
+                                      media: captured,
                                     );
                                   },
                                 ),
@@ -6502,7 +6513,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
             ),
           ),
         );
-      },
+      }),
     ).then((_) {
       autoRejectTimer?.cancel();
       incomingEndSub?.cancel();
@@ -6511,16 +6522,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     });
   }
 
-  void _startCall(BuildContext context, ChatProvider provider, {required bool isVideo}) {
+  Future<void> _startCall(BuildContext context, ChatProvider provider, {required bool isVideo}) async {
     if (!NetworkStatus.online.value || !SocketService.isConnected) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Chưa kết nối mạng. Kết nối lại để gọi điện.')));
       return;
     }
-    if (_isStartingCall) return;
-    _isStartingCall = true;
-    Future.delayed(const Duration(seconds: 3), () {
-      _isStartingCall = false;
-    });
+    if (_isStartingCall || _isCallRoomShowing || _isIncomingCallShowing) return;
 
     final conv = provider.selectedConversation;
     if (conv == null) return;
@@ -6555,6 +6562,19 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     audioPlayer?.muted = false;
     audioPlayer?.volume = 1.0;
 
+    _isStartingCall = true;
+    html.MediaStream media;
+    try {
+      media = await requestCallMedia(video: isVideo);
+    } catch (error) {
+      if (mounted && context.mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(callMediaError(error, video: isVideo))));
+      return;
+    } finally { _isStartingCall = false; }
+    if (!mounted || !context.mounted || !SocketService.isConnected || provider.currentUser?.id != callerId) {
+      stopCallMedia(media);
+      return;
+    }
     SocketService.clearCallSignals();
     SocketService.socket?.emit('request_call', {
       'callerId': callerId,
@@ -6571,6 +6591,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
       isVideo: isVideo,
       targetUserId: targetUserId,
       isCaller: true,
+      media: media,
     );
   }
 
@@ -6580,7 +6601,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     required bool isVideo,
     required String targetUserId,
     required bool isCaller,
+    required html.MediaStream media,
   }) {
+    _isCallRoomShowing = true;
     final callerId = context.read<ChatProvider>().currentUser?.id;
     bool isMuted = false;
     bool isSpeakerOn = true;
@@ -6610,7 +6633,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     StreamSubscription? signalSub;
     Timer? callerStatusPollTimer;
     html.RtcPeerConnection? pc;
-    html.MediaStream? localStream;
+    html.MediaStream? localStream = media;
     html.MediaStream? incomingStream;
     bool initializing = false;
     bool callClosed = false;
@@ -6821,37 +6844,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                 remoteAudio!.muted = false;
                 remoteAudio!.volume = 1.0;
 
-                try {
-                  localStream = await html.window.navigator.mediaDevices?.getUserMedia({
-                    'audio': {
-                      'echoCancellation': true,
-                      'noiseSuppression': true,
-                      'autoGainControl': true,
-                    },
-                    'video': isVideo ? {
-                      'facingMode': {'ideal': 'user'},
-                      'width': {'ideal': 1280},
-                      'height': {'ideal': 720},
-                    } : false,
-                  });
-                } catch (camErr) {
-                  print('⚠️ Flexible audio/camera request failed: $camErr, trying fallback...');
-                  try {
-                    if (callClosed) return;
-                    localStream = await html.window.navigator.mediaDevices?.getUserMedia({
-                      'audio': true,
-                      'video': isVideo,
-                    });
-                  } catch (rawErr) {
-                    rethrow;
-                  }
-                }
-
-                if (callClosed) {
-                  for (final track in localStream?.getTracks() ?? <html.MediaStreamTrack>[]) { (track as dynamic).stop(); }
-                  localStream = null;
-                  return;
-                }
                 requireCallTracks(localStream, video: isVideo);
 
                 if (isVideo && localStream != null) {
@@ -7006,7 +6998,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
               } catch (e) {
                 initializing = false;
                 if (callClosed) return;
-                final message = callMediaError(e);
+                final message = callMediaError(e, video: isVideo);
                 SocketService.socket?.emit('end_call', {'connectedUserId': targetUserId});
                 cleanupCall();
                 if (dialogContext.mounted) {
@@ -7016,7 +7008,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
               }
             }
 
-            acceptSub ??= SocketService.onCallAccepted.listen((_) {
+            acceptSub ??= SocketService.onCallAccepted.listen((data) {
+              if (!isCaller || (data['calleeId'] != null && data['calleeId'].toString() != targetUserId)) return;
               if (callClosed || !dialogContext.mounted) return;
               callerStatusPollTimer?.cancel();
               SoundService.stopAllCallSounds();
@@ -7063,13 +7056,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
               Future.delayed(const Duration(milliseconds: 1200), () {
                 if (callClosed || !dialogContext.mounted) return;
                 cleanupCall();
-                if (Navigator.of(dialogContext).canPop()) {
-                  Navigator.of(dialogContext).pop();
-                }
+                if (dialogContext.mounted) dismissCallRoute(dialogContext);
               });
             });
 
             endSub ??= SocketService.onCallEnded.listen((data) {
+              if (callClosed) return;
               if (data is Map) {
                 final endedCallerId = data['callerId']?.toString();
                 final endedTargetId = data['targetId']?.toString();
@@ -7080,19 +7072,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                   }
                 }
               }
-              print('🔴 Đối phương đã tắt máy -> Tự động đóng màn hình gọi!');
               cleanupCall();
-              try {
-                if (dialogContext.mounted) {
-                  try {
-                    Navigator.of(dialogContext, rootNavigator: true).pop();
-                  } catch (_) {
-                    try {
-                      Navigator.of(dialogContext).pop();
-                    } catch (_) {}
-                  }
-                }
-              } catch (_) {}
+              if (dialogContext.mounted) dismissCallRoute(dialogContext);
             });
 
             signalSub ??= SocketService.onWebrtcSignal.listen((data) async {
@@ -7143,7 +7124,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                     Text(
                                       callDurationSeconds > 0
                                           ? '${(callDurationSeconds ~/ 60).toString().padLeft(2, '0')}:${(callDurationSeconds % 60).toString().padLeft(2, '0')}'
-                                          : callStatus,
+                                          : (callClosed ? 'Không thể bắt đầu cuộc gọi' : callStatus),
                                       style: TextStyle(
                                         color: isVideo ? const Color(0xFF10B981) : const Color(0xFF0068FF),
                                         fontSize: 15,
@@ -7192,7 +7173,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                 ),
                                 const SizedBox(height: 10),
                                 Text(
-                                  callStatus == 'Đang đàm thoại' ? 'Đã kết nối âm thanh P2P' : 'Đang kết nối...',
+                                  callStatus == 'Đang đàm thoại' ? 'Cuộc gọi đã kết nối' : callStatus,
                                   style: const TextStyle(
                                     color: Color(0xFF94A3B8),
                                     fontSize: 14,
@@ -7263,13 +7244,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                         'conversationId': curConv?.id ?? '',
                                       });
                                       cleanupCall();
-                                      try {
-                                        Navigator.of(dialogContext, rootNavigator: true).pop();
-                                      } catch (_) {
-                                        try {
-                                          Navigator.of(context, rootNavigator: true).pop();
-                                        } catch (_) {}
-                                      }
+                                      if (dialogContext.mounted) dismissCallRoute(dialogContext);
                                     },
                                   ),
                                   const SizedBox(width: 16),
@@ -7309,6 +7284,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         );
       },
     ).then((_) {
+      _isCallRoomShowing = false;
       cleanupCall();
     });
   }

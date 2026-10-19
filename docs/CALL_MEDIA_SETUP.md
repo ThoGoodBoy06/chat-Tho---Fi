@@ -127,3 +127,13 @@ node scripts/test-call-media.js
 Không xem username/password OpenRelay công cộng cũ là cấu hình TURN hợp lệ. Probe relay tại thời điểm kiểm tra không cấp được relay candidate. Backend chỉ báo `relayConfigured: true` khi có cấu hình riêng; cờ này vẫn chưa chứng minh server truy cập được. Tài liệu Metered hiện yêu cầu tài khoản/API key để lấy thông tin TURN: https://www.metered.ca/tools/openrelay/
 
 Trên Render, đặt `TURN_URLS`, `TURN_USERNAME`, `TURN_CREDENTIAL` từ dịch vụ TURN của bạn, hoặc `TURN_URLS` và `TURN_SHARED_SECRET` cho coturn. Chưa có TURN thì gọi trực tiếp vẫn có thể chạy ở mạng cho phép P2P, nhưng không bảo đảm qua 4G/NAT. Không lưu credentials vào Git.
+
+## Nhận cuộc gọi trên điện thoại (19/10/2026)
+
+- Gọi đi: xin micro/camera từ thao tác bấm nút, xác nhận track còn live rồi mới gửi `request_call`. Máy không có micro sẽ báo lỗi tại chỗ, không làm máy đối phương đổ chuông rồi tự đóng khi bấm nhận.
+- Nhận cuộc gọi: giữ nguyên màn hình đến khi quyền/thiết bị sẵn sàng, rồi mới gửi `accept_call`. Lỗi quyền/thiết bị hiện ngay trên màn hình đến và có thể thử nhận lại; track trả về sau khi caller đã cúp được dừng.
+- Bỏ việc đóng route trên cùng theo `Navigator.pop` trong callback cũ. `dismissCallRoute` chỉ xóa route sở hữu callback; callback lặp và context hết hiệu lực không đóng route đang gọi.
+- Server chờ 15 giây sau khi socket của thiết bị gọi bị mất. Kết nối lại hủy timer và cập nhật socket sở hữu cuộc gọi. Timer từ cuộc gọi cũ không kết thúc cuộc gọi mới; mất kết nối thật quá thời gian chờ vẫn kết thúc bình thường.
+- Kiểm thử: 14 Flutter tests (media, navigation, SDP/ICE queue/inbox), 7 tests server cho disconnect/reconnect, yêu cầu trùng và gọi đồng thời, và browser test Dart tối ưu `-O4` đo RTP/RMS hai chiều ở cả voice/video. Đây chưa phải xác nhận trực tiếp trên hai điện thoại thật.
+
+Lệnh kiểm thử server mới: `node scripts/test-call-disconnect.js`.

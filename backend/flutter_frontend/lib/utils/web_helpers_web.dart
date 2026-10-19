@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'call_media.dart';
 import 'dart:js' as js;
 import 'dart:js_util' as js_util;
 import 'dart:ui_web' as ui_web;
@@ -192,4 +193,12 @@ Future<Map<String, dynamic>> createCallDescription(html.RtcPeerConnection connec
   final native = await js_util.promiseToFuture<Object>(js_util.callMethod(
       connection, answer ? 'createAnswer' : 'createOffer', [js_util.jsify(options)]));
   return {'type': js_util.getProperty(native, 'type'), 'sdp': js_util.getProperty(native, 'sdp')};
+}
+
+Future<html.MediaStream> requestCallMedia({required bool video}) {
+  final devices = html.window.navigator.mediaDevices;
+  if (devices == null) {
+    return Future.error(StateError('Không truy cập được micro. Mở app bằng HTTPS trong Safari hoặc Chrome.'));
+  }
+  return acquireCallMedia(video: video, request: (constraints) => devices.getUserMedia(constraints));
 }

@@ -38,3 +38,6 @@ dynamic registerCallVideoView(String viewType, String elementId) => null;
 Future<Map<String, dynamic>> createCallDescription(dynamic connection,
     {bool answer = false, bool video = false, bool iceRestart = false}) =>
     Future.error(UnsupportedError('WebRTC browser bridge requires the web platform'));
+
+Future<dynamic> requestCallMedia({required bool video}) =>
+    Future.error(UnsupportedError('Browser media capture requires the web platform'));

@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require("uuid");
 const { sendPushNotification, clearConversationMessagesCache } = require("../controllers/chat.controller");
 
 const jwt = require("jsonwebtoken");
+const {createCallDisconnectGrace} = require("../services/call-disconnect-grace");
 
 module.exports = (io) => {
   // Biến này để lưu trữ id người dùng và socket id của họ (để biết gửi tin nhắn cho ai)
@@ -15,6 +16,7 @@ module.exports = (io) => {
   // Lưu các cặp cuộc gọi đang diễn ra để tự động tắt cả 2 bên nếu 1 bên cúp máy hoặc mất mạng
   const activeCalls = new Map();
   global.activeCalls = activeCalls;
+  const callDisconnectGrace = createCallDisconnectGrace({setTimer: setTimeout, clearTimer: clearTimeout});
   // Debounce end_call để chống emit trùng lặp dồn dập
   const lastEndCallMap = new Map();
 
@@ -153,6 +155,10 @@ module.exports = (io) => {
 
   async function handleUserConnect(socket, userId) {
     if (!userId) return;
+    const resumedCall = callDisconnectGrace.cancel(userId);
+    if (resumedCall && activeCalls.has(userId)) {
+      activeCalls.set(userId, {...activeCalls.get(userId), socketId: socket.id});
+    }
     // Nếu socket này đã được thiết lập cho user này rồi thì không chạy lại để tránh loop
     if (socket.userId === userId && userSockets.get(userId) === socket.id) {
       return;
@@ -275,28 +281,32 @@ module.exports = (io) => {
           } else if (activeInfo?.socketId && activeInfo.socketId !== socket.id) {
             console.log(`ℹ️ [disconnect] Socket ${socket.id} không phải socket thực hiện cuộc gọi -> Bỏ qua!`);
           } else {
-            const partnerId = activeInfo?.partnerId;
-            const convId = activeInfo?.conversationId;
-            console.log(`🔴 [disconnect] User ${socket.userId} ngắt toàn bộ kết nối -> Tự động kết thúc cuộc gọi cho partner ${partnerId}`);
-            if (partnerId) {
-              io.to(partnerId).emit("call_ended", { callerId: socket.userId, targetId: partnerId, conversationId: convId });
-              activeCalls.delete(partnerId);
-              try {
-                prisma.users.findUnique({
-                  where: { id: partnerId },
-                  select: { fcmToken: true }
-                }).then(u => {
-                  if (u && u.fcmToken) {
-                    sendPushNotification(u.fcmToken, "Cuộc gọi đã kết thúc", "", {
-                      type: "call_ended",
-                      callerId: String(socket.userId || ""),
-                      t: String(Date.now())
-                    }, true).catch(() => {});
-                  }
-                }).catch(() => {});
-              } catch (_) {}
-            }
-            activeCalls.delete(socket.userId);
+            callDisconnectGrace.schedule(socket.userId, () => {
+              const room = io.sockets.adapter.rooms.get(socket.userId);
+              if (room?.size || activeCalls.get(socket.userId) !== activeInfo) return;
+              const partnerId = activeInfo?.partnerId;
+              const convId = activeInfo?.conversationId;
+              console.log(`🔴 [disconnect] User ${socket.userId} hết thời gian chờ kết nối lại -> Kết thúc cuộc gọi cho partner ${partnerId}`);
+              if (partnerId) {
+                io.to(partnerId).emit("call_ended", { callerId: socket.userId, targetId: partnerId, conversationId: convId });
+                activeCalls.delete(partnerId);
+                try {
+                  prisma.users.findUnique({
+                    where: { id: partnerId },
+                    select: { fcmToken: true }
+                  }).then(u => {
+                    if (u && u.fcmToken) {
+                      sendPushNotification(u.fcmToken, "Cuộc gọi đã kết thúc", "", {
+                        type: "call_ended",
+                        callerId: String(socket.userId || ""),
+                        t: String(Date.now())
+                      }, true).catch(() => {});
+                    }
+                  }).catch(() => {});
+                } catch (_) {}
+              }
+              activeCalls.delete(socket.userId);
+            });
           }
         }
 
@@ -893,6 +903,18 @@ module.exports = (io) => {
     socket.on("request_call", async (payload = {}) => {
         const { callerId, callerName, calleeId, callType, callerAvatar, conversationId } = payload;
         const convId = conversationId || payload.convId || "";
+        // Do not replace an active pair or reject it because of a duplicate request.
+        const rejectIfBusy = () => {
+          const callerActive = activeCalls.get(callerId);
+          const calleeActive = activeCalls.get(calleeId);
+          if (!callerActive && !calleeActive) return false;
+          if (callerActive?.partnerId !== calleeId || calleeActive?.partnerId !== callerId) {
+            socket.emit("call_rejected", {reason: "busy", calleeId});
+          }
+          return true;
+        };
+        if (rejectIfBusy()) return;
+
         // Kiểm tra chặn trước khi kết nối cuộc gọi
         const isBlocked = await prisma.block.findFirst({
             where: {
@@ -957,6 +979,7 @@ module.exports = (io) => {
           console.error("Lỗi truy vấn FCM Token khi gọi điện:", dbErr.message);
         }
 
+        if (rejectIfBusy()) return;
         if (isCalleeOnline) {
           console.log(`📞 ${callerName} đang gọi cho ${calleeId} (room: ${convId || 'none'})`);
           activeCalls.set(callerId, { partnerId: calleeId, conversationId: convId, isAccepted: false, callType, socketId: socket.id });
