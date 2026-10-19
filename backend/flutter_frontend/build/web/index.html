@@ -17,8 +17,6 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
   <!-- High Priority Preloads for Instant Native Startup -->
-  <link rel="preload" href="flutter_bootstrap.js?v=a44c1a3a6aa35451" as="script">
-  <link rel="preload" href="main.dart.js?v=a44c1a3a6aa35451" as="script">
 
   <link rel="preload" href="/tho_fi_logo_transparent.png" as="image">
   <!-- Preload Reaction Emojis for Instant Zero-Lag Reaction & Chat Render -->
@@ -308,7 +306,6 @@
   </script>
 
   <link rel="manifest" href="/manifest.json">
-  <script src="/webrtc_audio_helper.js?v=1789906672768_directsave_1789655278711"></script>
 
   <!-- Firebase Web SDK (v10 compat) -->
   <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -476,7 +473,7 @@
       }
     };
   </script>
-  <script src="web_notifications.js?v=a44c1a3a6aa35451"></script>
+  <script src="web_notifications.js?v=cf6b19a836c26d7c"></script>
 
 
   <style>
@@ -2025,7 +2022,6 @@
   <script>
     window.flutterWebRenderer = "canvaskit";
   </script>
-  <script src="flutter_bootstrap.js?v=a44c1a3a6aa35451" async></script>
 
   <script id="messenger-theme-picker-script">
     window._openMessengerThemePicker = function (convId, convName) {
@@ -3402,6 +3398,46 @@
   };
 })();
 </script>
+
+  <script id="app-code-loader">
+    // An older PWA worker ignores ?v= when matching code in its cache. Remove
+    // only stale public code after verifying this release is reachable online.
+    (async function () {
+      const version = 'cf6b19a836c26d7c';
+      const corePaths = new Set(['/main.dart.js', '/flutter_bootstrap.js', '/webrtc_audio_helper.js']);
+      if ('caches' in window && navigator.onLine !== false) {
+        const controller = new AbortController();
+        const timer = setTimeout(function () { controller.abort(); }, 2500);
+        try {
+          const response = await fetch('/release.json?startup=' + version, {cache: 'no-store', signal: controller.signal});
+          const release = response.ok ? await response.json() : null;
+          if (release && release.version === version) {
+            const names = await caches.keys();
+            for (const name of names) {
+              if ((!name.startsWith('chat-thofi-assets-') && name !== 'flutter-app-cache') || name === 'chat-thofi-assets-' + version) continue;
+              const cache = await caches.open(name);
+              for (const request of await cache.keys()) {
+                if (corePaths.has(new URL(request.url).pathname)) await cache.delete(request);
+              }
+            }
+          }
+        } catch (_) { /* Offline startup retains its last complete cached code. */ }
+        finally { clearTimeout(timer); }
+      }
+      function loadScript(src) {
+        return new Promise(function (resolve, reject) {
+          const script = document.createElement('script');
+          script.src = src;
+          script.onload = resolve;
+          script.onerror = reject;
+          document.body.appendChild(script);
+        });
+      }
+      await loadScript('/webrtc_audio_helper.js?v=' + version);
+      await loadScript('/flutter_bootstrap.js?v=' + version);
+    })().catch(function (error) { console.error('[App startup]', error); });
+  </script>
+
 </body>
 
 </html>

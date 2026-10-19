@@ -9,9 +9,10 @@ function element(tag){return {tag,src:'',srcObject:null,style:{},events:{},setAt
 const document={readyState:'complete',getElementById:id=>elements.get(id),createElement:element,body:{appendChild:e=>elements.set(e.id,e)}};
 const gum=()=>Promise.resolve();
 const window={addEventListener(){}};
-vm.runInNewContext(subsystem,{window,document,navigator:{mediaDevices:{getUserMedia:gum}},console:{log(){},warn(){}}});
+
 const index=fs.readFileSync(path.join(__dirname,'../flutter_frontend/web/index.html'),'utf8');
 vm.runInNewContext(index.match(/<script id="call-audio-engine-script">([\s\S]*?)<\/script>/)[1],{window,document});
+vm.runInNewContext(subsystem,{window,document,navigator:{mediaDevices:{getUserMedia:gum}},console:{log(){},warn(){}}});
 const flush=()=>new Promise(r=>setImmediate(r));
 (async()=>{
  const track={enabled:true,addEventListener(n,f){this[n]=f;}};

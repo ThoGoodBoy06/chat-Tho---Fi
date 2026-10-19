@@ -28,6 +28,7 @@ import 'profile_tab.dart';
 import '../utils/web_helpers.dart';
 import '../utils/call_media.dart';
 import '../utils/call_navigation.dart';
+import '../utils/call_session.dart';
 import '../utils/call_signal_queue.dart';
 import '../utils/web_file_picker.dart';
 import '../utils/inline_image_cache.dart';
@@ -6267,6 +6268,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     _isIncomingCallShowing = true;
 
     final callerId = data['callerId']?.toString();
+    final callId = data['callId']?.toString();
     final callerName = data['callerName']?.toString() ?? 'Người dùng';
     final callType = data['callType']?.toString() ?? 'audio';
     final isVideo = callType == 'video';
@@ -6307,6 +6309,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         builder: (dialogContext, setIncomingState) {
         // Đăng ký listener 1 lần duy nhất khi pageBuilder chạy lần đầu
         incomingEndSub ??= SocketService.onCallEnded.listen((data) {
+          if (!matchesCallSession(data, callId)) return;
           final peer = data['callerId']?.toString();
           final target = data['targetId']?.toString();
           if (peer != callerId && target != callerId) return;
@@ -6318,6 +6321,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
           if (isDialogClosed || isAnswering) return;
           SocketService.socket?.emit('reject_call', {
             'callerId': callerId,
+                                      'callId': callId,
             'callType': callType,
           });
           safeDismissCallDialog(dialogContext);
@@ -6422,9 +6426,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                     elevation: 6,
                                   ),
                                   icon: const Icon(Icons.call_end_rounded, color: Colors.white),
+                                  tooltip: 'Từ chối',
                                   onPressed: () {
                                     SocketService.socket?.emit('reject_call', {
                                       'callerId': callerId,
+                                      'callId': callId,
                                       'callType': callType,
                                     });
                                     safeDismissCallDialog(dialogContext);
@@ -6449,6 +6455,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                     elevation: 6,
                                   ),
                                   icon: const Icon(Icons.call_rounded, color: Colors.white),
+                                  tooltip: 'Trả lời',
                                   onPressed: isAnswering ? null : () async {
                                     if (isDialogClosed) return;
                                     setIncomingState(() { isAnswering = true; incomingMediaError = null; });
@@ -6484,8 +6491,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                     audioPlayer?.muted = false;
                                     audioPlayer?.volume = 1.0;
                                     SocketService.clearCallSignals();
-                                    SocketService.socket?.emit('accept_call', {'callerId': callerId});
-                                    dismissCallRoute(dialogContext);
+                                    SocketService.socket?.emit('accept_call', {'callerId': callerId, 'callId': callId});
                                     _showCallDialog(
                                       context: context,
                                       partnerName: callerName,
@@ -6493,6 +6499,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                       targetUserId: callerId,
                                       isCaller: false,
                                       media: captured,
+                                      callId: callId,
+                                      onShown: () {
+                                        if (dialogContext.mounted) dismissCallRoute(dialogContext);
+                                      },
                                     );
                                   },
                                 ),
@@ -6575,9 +6585,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
       stopCallMedia(media);
       return;
     }
+    final callId = '${callerId}_${DateTime.now().microsecondsSinceEpoch}';
     SocketService.clearCallSignals();
     SocketService.socket?.emit('request_call', {
       'callerId': callerId,
+      'callId': callId,
       'callerName': callerName,
       'callerAvatar': callerAvatar,
       'calleeId': targetUserId,
@@ -6592,6 +6604,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
       targetUserId: targetUserId,
       isCaller: true,
       media: media,
+      callId: callId,
     );
   }
 
@@ -6602,6 +6615,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     required String targetUserId,
     required bool isCaller,
     required html.MediaStream media,
+    String? callId,
+    VoidCallback? onShown,
   }) {
     _isCallRoomShowing = true;
     final callerId = context.read<ChatProvider>().currentUser?.id;
@@ -6637,6 +6652,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     html.MediaStream? incomingStream;
     bool initializing = false;
     bool callClosed = false;
+    bool didShowCall = false;
     final signalQueue = CallSignalQueue();
     html.AudioElement? remoteAudio;
     final List<Map<String, dynamic>> pendingSignals = [];
@@ -6728,6 +6744,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
       barrierLabel: 'CallRoom',
       barrierColor: isVideo ? Colors.transparent : Colors.black.withOpacity(0.9),
       pageBuilder: (dialogContext, anim1, anim2) {
+        if (!didShowCall) {
+          didShowCall = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (dialogContext.mounted) onShown?.call();
+          });
+        }
         return StatefulBuilder(
           builder: (context, setDialogState) {
             Future<void> processIceQueue() async {
@@ -6746,6 +6768,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
 
             Future<void> processSignal(Map<String, dynamic> data) async {
               if (callClosed || (data['senderId'] != null && data['senderId'].toString() != targetUserId)) return;
+              if (!matchesCallSession(data, callId)) return;
               final signal = data['signal'];
               if (signal == null) return;
               if (initializing || pc == null) {
@@ -6776,6 +6799,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                   if (callClosed) return;
                   SocketService.socket?.emit('webrtc_signal', {
                     'connectedUserId': targetUserId,
+                    'callId': callId,
                     'signal': {
                       'type': 'answer',
                       'sdp': answer['sdp'],
@@ -6917,6 +6941,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                   if (event.candidate != null && event.candidate!.candidate != null) {
                     SocketService.socket?.emit('webrtc_signal', {
                       'connectedUserId': targetUserId,
+                    'callId': callId,
                       'signal': {
                         'type': 'candidate',
                         'candidate': event.candidate!.candidate,
@@ -6959,6 +6984,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                         if (callClosed) return;
                         SocketService.socket?.emit('webrtc_signal', {
                           'connectedUserId': targetUserId,
+                    'callId': callId,
                           'signal': {'type': 'offer', 'sdp': offer['sdp']},
                         });
                       }).catchError((Object error) { debugPrint('ICE restart failed: $error'); });
@@ -6988,6 +7014,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                     if (callClosed) return;
                     SocketService.socket?.emit('webrtc_signal', {
                       'connectedUserId': targetUserId,
+                    'callId': callId,
                       'signal': {
                         'type': 'offer',
                         'sdp': offer['sdp'],
@@ -6999,7 +7026,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                 initializing = false;
                 if (callClosed) return;
                 final message = callMediaError(e, video: isVideo);
-                SocketService.socket?.emit('end_call', {'connectedUserId': targetUserId});
+                SocketService.socket?.emit('end_call', {'connectedUserId': targetUserId, 'callId': callId});
                 cleanupCall();
                 if (dialogContext.mounted) {
                   setDialogState(() { callStatus = message; });
@@ -7009,6 +7036,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
             }
 
             acceptSub ??= SocketService.onCallAccepted.listen((data) {
+              if (!matchesCallSession(data, callId)) return;
               if (!isCaller || (data['calleeId'] != null && data['calleeId'].toString() != targetUserId)) return;
               if (callClosed || !dialogContext.mounted) return;
               callerStatusPollTimer?.cancel();
@@ -7034,6 +7062,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                   final res = await html.HttpRequest.getString('$bUrl/api/call/status?callerId=$callerId&calleeId=$targetUserId&t=${DateTime.now().millisecondsSinceEpoch}');
                   if (callClosed || !dialogContext.mounted) return;
                   final data = jsonDecode(res);
+                  if (!matchesCallSession(data, callId)) return;
                   if (data['isAccepted'] == true && callStatus != 'Đang đàm thoại') {
                     print('🔄 [Caller Fallback] Callee đã bắt máy -> Chuyển sang đàm thoại!');
                     t.cancel();
@@ -7048,6 +7077,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
             }
 
             rejectSub ??= SocketService.onCallRejected.listen((data) {
+              if (!matchesCallSession(data, callId)) return;
               if (callClosed || !dialogContext.mounted) return;
               SoundService.stopAllCallSounds();
               setDialogState(() {
@@ -7061,6 +7091,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
             });
 
             endSub ??= SocketService.onCallEnded.listen((data) {
+              if (!matchesCallSession(data, callId)) return;
               if (callClosed) return;
               if (data is Map) {
                 final endedCallerId = data['callerId']?.toString();
@@ -7237,10 +7268,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                       padding: const EdgeInsets.all(16),
                                     ),
                                     icon: const Icon(Icons.call_end_rounded, color: Colors.white),
+                                    tooltip: 'Kết thúc cuộc gọi',
                                     onPressed: () {
                                       final curConv = Provider.of<ChatProvider>(context, listen: false).selectedConversation;
                                       SocketService.socket?.emit('end_call', {
                                         'connectedUserId': targetUserId,
+                    'callId': callId,
                                         'conversationId': curConv?.id ?? '',
                                       });
                                       cleanupCall();

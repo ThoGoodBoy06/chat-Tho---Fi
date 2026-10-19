@@ -167,7 +167,6 @@ class SocketService {
     });
 
     socket?.on('call_ended', (data) {
-      _webrtcSignalController.clear();
       print('🔴 Socket call_ended');
       if (data is Map) {
         _callEndedController.add(Map<String, dynamic>.from(data));

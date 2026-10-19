@@ -396,21 +396,24 @@ app.get("/api/call/status", (req, res) => {
         const { callerId, calleeId, room } = req.query;
         let isActive = false;
         let isAccepted = false;
+        let callId = null;
         const mapSize = global.activeCalls ? global.activeCalls.size : -1;
         if (global.activeCalls) {
             const callCaller = callerId ? global.activeCalls.get(callerId) : null;
             const callCallee = calleeId ? global.activeCalls.get(calleeId) : null;
             if (callCaller && (!calleeId || callCaller.partnerId === calleeId)) {
               isActive = true;
+              callId = callCaller.callId;
               if (callCaller.isAccepted) isAccepted = true;
             }
             if (callCallee && (!callerId || callCallee.partnerId === callerId)) {
               isActive = true;
+              callId = callCallee.callId;
               if (callCallee.isAccepted) isAccepted = true;
             }
         }
         res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
-        res.status(200).json({ active: isActive, isAccepted: isAccepted, t: Date.now() });
+        res.status(200).json({ active: isActive, isAccepted: isAccepted, callId, t: Date.now() });
     } catch (e) {
         res.status(200).json({ active: false });
     }
@@ -418,10 +421,10 @@ app.get("/api/call/status", (req, res) => {
 
 app.post("/api/call/end", async (req, res) => {
     try {
-        const { callerId, connectedUserId, conversationId, callType } = req.body || {};
+        const { callerId, connectedUserId, conversationId, callType, callId } = req.body || {};
         console.log(`🔴 [HTTP API /api/call/end] Nhận lệnh kết thúc: caller=${callerId}, partner=${connectedUserId}, room=${conversationId}`);
         if (global.endCallCore) {
-            await global.endCallCore({ callerId, targetId: connectedUserId, conversationId, callType });
+            await global.endCallCore({ callerId, targetId: connectedUserId, conversationId, callType, callId });
         }
         res.status(200).json({ status: "ok" });
     } catch (e) {

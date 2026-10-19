@@ -55,3 +55,15 @@ test('simultaneous callers cannot overwrite the pair reserved after async checks
  assert.equal(f.events.filter(e=>e.name==='incoming_call').length,1);
  assert.equal(f.events.filter(e=>e.name==='call_rejected').length,1);
 });
+test('stale end, reject and accept events cannot alter the current call',async()=>{
+ const f=fixture(),a=await f.socket('a1','a'),b=await f.socket('b1','b');f.seed();f.calls.get('a').callId='current';f.calls.get('b').callId='current';
+ await a.handlers.end_call({connectedUserId:'b',callId:'old'});
+ await b.handlers.reject_call({callerId:'a',callId:'old'});
+ await b.handlers.accept_call({callerId:'a',callId:'old'});
+ assert.equal(f.calls.size,2);assert.equal(f.calls.get('a').callId,'current');assert.equal(f.events.length,0);
+});
+test('a current SDP is tagged and stale SDP is not relayed',async()=>{
+ const f=fixture(),a=await f.socket('a1','a');f.seed();f.calls.get('a').callId='current';
+ a.handlers.webrtc_signal({connectedUserId:'b',callId:'old',signal:{type:'offer'}});assert.equal(f.events.length,0);
+ a.handlers.webrtc_signal({connectedUserId:'b',callId:'current',signal:{type:'offer'}});assert.equal(f.events[0].data.callId,'current');
+});

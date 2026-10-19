@@ -137,3 +137,22 @@ Trên Render, đặt `TURN_URLS`, `TURN_USERNAME`, `TURN_CREDENTIAL` từ dịch
 - Kiểm thử: 14 Flutter tests (media, navigation, SDP/ICE queue/inbox), 7 tests server cho disconnect/reconnect, yêu cầu trùng và gọi đồng thời, và browser test Dart tối ưu `-O4` đo RTP/RMS hai chiều ở cả voice/video. Đây chưa phải xác nhận trực tiếp trên hai điện thoại thật.
 
 Lệnh kiểm thử server mới: `node scripts/test-call-disconnect.js`.
+
+## PWA iPhone: chuyển màn hình nhận và cập nhật mã (19/10/2026)
+
+- Mở màn hình đang gọi trước, đợi frame đầu rồi mới xóa màn hình cuộc gọi đến. Không tạo khoảng trống giữa hai route khi màn hình/quyền thiết bị thay đổi.
+- Gắn callId cho yêu cầu, SDP/ICE, nhận/từ chối/kết thúc và status. Client/server bỏ sự kiện trễ của phiên cũ. Không xóa hàng đợi SDP chỉ vì nhận bất kỳ call_ended nào.
+- Worker cũ dùng pathname nên bỏ qua ?v= của JavaScript. Loader xác nhận release online rồi xóa ba file code cũ trong cache công khai; giữ font/tài nguyên/dữ liệu khác. Nếu không lấy được release, giữ code offline hiện có.
+- 16 Flutter tests và 9 server tests qua. Test ChatScreen thực ở viewport mobile: nhận thoại/video, thu nhỏ viewport trong khi xin media, bỏ tín hiệu kết thúc cũ, kiểm tra RTP/âm thanh giải mã hai chiều, gác máy. Micro/camera của test là thiết bị giả trên Chromium.
+- Kiểm thử cập nhật PWA với worker cũ và fallback khi release không truy cập được đều qua trên Chromium và WebKit Windows. WebKit Windows không cung cấp RTCPeerConnection, nên không dùng nó để kết luận cuộc gọi iPhone đã hoạt động. Chưa kiểm thử trên iPhone/PWA vật lý.
+
+Tạo bundle kiểm thử riêng (không xuất bản):
+
+```powershell
+node scripts/prepare-mobile-call-test.cjs "$FlutterSdk"
+node scripts/test-mobile-call-ui.cjs
+node scripts/test-pwa-code-update.cjs
+# Có thể đặt TEST_WEBKIT=1 và PLAYWRIGHT_BROWSERS_PATH cho test cache WebKit.
+```
+
+Các browser tests cần Playwright trong node_modules hoặc NODE_PATH. Build production từ lib/main.dart; build script từ chối dependency scripts/fixtures để tránh phát hành app test tự đăng nhập.

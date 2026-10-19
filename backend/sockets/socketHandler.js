@@ -106,18 +106,19 @@ module.exports = (io) => {
   }
 
   // 🌟 Hàm toàn cục hỗ trợ HTTP Fallback khi client cúp máy
-  global.endCallCore = async ({ callerId, targetId, conversationId, callType }) => {
+  global.endCallCore = async ({ callerId, targetId, conversationId, callType, callId }) => {
     console.log(`🔴 [global.endCallCore] Phát call_ended: target=${targetId}, caller=${callerId}, room=${conversationId}`);
     const activeInfo = activeCalls.get(callerId) || (targetId ? activeCalls.get(targetId) : null);
+    if (callId && (!activeInfo || activeInfo.callId !== callId)) return;
     const isAccepted = activeInfo?.isAccepted || false;
     const finalCallType = callType || activeInfo?.callType || "audio";
     const finalConvId = conversationId || activeInfo?.conversationId;
 
     if (targetId) {
-      io.to(targetId).emit("call_ended", { callerId, targetId, conversationId: finalConvId });
+      io.to(targetId).emit("call_ended", { callerId, targetId, conversationId: finalConvId, callId: activeInfo?.callId });
       const targetSocketId = userSockets.get(targetId);
       if (targetSocketId && targetSocketId !== targetId) {
-        io.to(targetSocketId).emit("call_ended", { callerId, targetId, conversationId: finalConvId });
+        io.to(targetSocketId).emit("call_ended", { callerId, targetId, conversationId: finalConvId, callId: activeInfo?.callId });
       }
       activeCalls.delete(targetId);
       if (callerId) activeCalls.delete(callerId);
@@ -146,7 +147,7 @@ module.exports = (io) => {
       }
     }
     if (finalConvId) {
-      io.to(finalConvId).emit("call_ended", { callerId, targetId, conversationId: finalConvId });
+      io.to(finalConvId).emit("call_ended", { callerId, targetId, conversationId: finalConvId, callId: activeInfo?.callId });
     }
     if (callerId) {
       activeCalls.delete(callerId);
@@ -288,7 +289,7 @@ module.exports = (io) => {
               const convId = activeInfo?.conversationId;
               console.log(`🔴 [disconnect] User ${socket.userId} hết thời gian chờ kết nối lại -> Kết thúc cuộc gọi cho partner ${partnerId}`);
               if (partnerId) {
-                io.to(partnerId).emit("call_ended", { callerId: socket.userId, targetId: partnerId, conversationId: convId });
+                io.to(partnerId).emit("call_ended", { callerId: socket.userId, targetId: partnerId, conversationId: convId, callId: activeInfo?.callId });
                 activeCalls.delete(partnerId);
                 try {
                   prisma.users.findUnique({
@@ -903,13 +904,14 @@ module.exports = (io) => {
     socket.on("request_call", async (payload = {}) => {
         const { callerId, callerName, calleeId, callType, callerAvatar, conversationId } = payload;
         const convId = conversationId || payload.convId || "";
+        const callId = payload.callId || uuidv4();
         // Do not replace an active pair or reject it because of a duplicate request.
         const rejectIfBusy = () => {
           const callerActive = activeCalls.get(callerId);
           const calleeActive = activeCalls.get(calleeId);
           if (!callerActive && !calleeActive) return false;
-          if (callerActive?.partnerId !== calleeId || calleeActive?.partnerId !== callerId) {
-            socket.emit("call_rejected", {reason: "busy", calleeId});
+          if (callerActive?.partnerId !== calleeId || calleeActive?.partnerId !== callerId || (payload.callId && callerActive?.callId !== callId)) {
+            socket.emit("call_rejected", {reason: "busy", calleeId, callId});
           }
           return true;
         };
@@ -926,7 +928,7 @@ module.exports = (io) => {
         });
 
         if (isBlocked) {
-            socket.emit("call_rejected", { reason: "blocked" });
+            socket.emit("call_rejected", { reason: "blocked", calleeId, callId });
             console.log(`🚫 Cuộc gọi bị chặn giữa ${callerId} và ${calleeId} do chặn nhau`);
             return;
         }
@@ -982,11 +984,12 @@ module.exports = (io) => {
         if (rejectIfBusy()) return;
         if (isCalleeOnline) {
           console.log(`📞 ${callerName} đang gọi cho ${calleeId} (room: ${convId || 'none'})`);
-          activeCalls.set(callerId, { partnerId: calleeId, conversationId: convId, isAccepted: false, callType, socketId: socket.id });
-          activeCalls.set(calleeId, { partnerId: callerId, conversationId: convId, isAccepted: false, callType });
+          activeCalls.set(callerId, { partnerId: calleeId, conversationId: convId, callId, isAccepted: false, callType, socketId: socket.id });
+          activeCalls.set(calleeId, { partnerId: callerId, conversationId: convId, callId, isAccepted: false, callType });
           // Chuyển tiếp cuộc gọi đến (incoming_call) cho User B (qua room)
           io.to(calleeId).emit("incoming_call", {
             callerId,
+            callId,
             callerName,
             callerAvatar,
             callType,
@@ -994,20 +997,22 @@ module.exports = (io) => {
           });
         } else if (hasFcmToken) {
           console.log(`📞 ${callerName} đang gọi qua Push cho ${calleeId} (tạm thời offline socket)`);
-          activeCalls.set(callerId, { partnerId: calleeId, conversationId: convId, isAccepted: false, callType, socketId: socket.id });
-          activeCalls.set(calleeId, { partnerId: callerId, conversationId: convId, isAccepted: false, callType });
+          activeCalls.set(callerId, { partnerId: calleeId, conversationId: convId, callId, isAccepted: false, callType, socketId: socket.id });
+          activeCalls.set(calleeId, { partnerId: callerId, conversationId: convId, callId, isAccepted: false, callType });
         } else {
           // Trả trực tiếp phản hồi từ chối do offline về cho caller (do không kết nối socket và không có FCM token/FCM hỏng)
-          socket.emit("call_rejected", { reason: "offline" });
+          socket.emit("call_rejected", { reason: "offline", calleeId, callId });
         }
       },
     );
 
     // 6. User B từ chối cuộc gọi
-    socket.on("reject_call", async ({ callerId, callType }) => {
+    socket.on("reject_call", async ({ callerId, callType, callId }) => {
+      const activeInfo = activeCalls.get(socket.userId);
+      if (!activeInfo || activeInfo.partnerId !== callerId || (callId && activeInfo.callId !== callId)) return;
       activeCalls.delete(callerId);
       activeCalls.delete(socket.userId);
-      io.to(callerId).emit("call_rejected", { reason: "rejected" });
+      io.to(callerId).emit("call_rejected", { reason: "rejected", calleeId: socket.userId, callId: activeInfo.callId });
 
       // Xử lý tạo tin nhắn "Cuộc gọi nhỡ" hệ thống
       await createMissedCallMessage({ callerId, targetId: socket.userId, callType });
@@ -1022,6 +1027,8 @@ module.exports = (io) => {
       d = d || {};
       const callerId = d.callerId || d.targetUserId || d.connectedUserId || (activeCalls.get(socket.userId) && activeCalls.get(socket.userId).partnerId);
 
+      const pending = activeCalls.get(socket.userId);
+      if (!pending || pending.partnerId !== callerId || (d.callId && pending.callId !== d.callId)) return;
       const activeCaller = (callerId ? activeCalls.get(callerId) : null) || {};
       const activeCallee = activeCalls.get(socket.userId) || {};
       if (socket.userId) activeCalls.set(socket.userId, { ...activeCallee, partnerId: callerId, isAccepted: true, socketId: socket.id });
@@ -1037,6 +1044,7 @@ module.exports = (io) => {
         calleeId: socket.userId,
         calleeInfo: null,
         isAccepted: true,
+        callId: pending.callId,
         conversationId: convId,
       };
 
@@ -1059,11 +1067,14 @@ module.exports = (io) => {
         return;
       }
 
+      const active = activeCalls.get(socket.userId);
+      if (d.callId && (!active || active.callId !== d.callId || active.partnerId !== connectedUserId)) return;
       const signalType = signal.type || (signal.candidate ? 'candidate' : 'unknown');
       console.log(`⚡ [webrtc_signal] ${signalType} từ ${socket.userId} -> ${connectedUserId}`);
 
       const signalPayload = {
         signal,
+        callId: active?.callId,
         senderId: socket.userId,
       };
 
@@ -1079,6 +1090,7 @@ module.exports = (io) => {
       }
       d = d || {};
       const activeInfo = activeCalls.get(socket.userId);
+      if (d.callId && (!activeInfo || activeInfo.callId !== d.callId)) return;
       const targetId = d.connectedUserId || d.to || d.targetUserId || d.userId || d.calleeId || d.callerId || activeInfo?.partnerId;
       const conversationId = d.conversationId || d.convId || activeInfo?.conversationId;
       const callType = d.callType || activeInfo?.callType || "audio";
@@ -1096,13 +1108,13 @@ module.exports = (io) => {
       lastEndCallMap.set(socket.userId, now);
 
       if (targetId) {
-        io.to(targetId).emit("call_ended", { callerId: socket.userId, targetId, conversationId });
+        io.to(targetId).emit("call_ended", { callerId: socket.userId, targetId, conversationId, callId: activeInfo?.callId });
         const targetSocketId = userSockets.get(targetId);
         if (targetSocketId && targetSocketId !== targetId) {
-          io.to(targetSocketId).emit("call_ended", { callerId: socket.userId, targetId, conversationId });
+          io.to(targetSocketId).emit("call_ended", { callerId: socket.userId, targetId, conversationId, callId: activeInfo?.callId });
         }
         if (conversationId) {
-          socket.to(conversationId).emit("call_ended", { callerId: socket.userId, targetId, conversationId });
+          socket.to(conversationId).emit("call_ended", { callerId: socket.userId, targetId, conversationId, callId: activeInfo?.callId });
         }
         activeCalls.delete(targetId);
         if (socket.userId) activeCalls.delete(socket.userId);
@@ -1132,7 +1144,7 @@ module.exports = (io) => {
           await createMissedCallMessage({ callerId: socket.userId, targetId, conversationId, callType });
         }
       } else if (conversationId) {
-        io.to(conversationId).emit("call_ended", { callerId: socket.userId, conversationId });
+        io.to(conversationId).emit("call_ended", { callerId: socket.userId, conversationId, callId: activeInfo?.callId });
       }
 
       activeCalls.delete(socket.userId);
