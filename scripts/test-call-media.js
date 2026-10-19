@@ -12,3 +12,5 @@ assert.equal(buildIceConfig({TURN_URLS:'turn:relay.example'}).relayConfigured, f
 assert.equal(buildIceConfig({TURN_URLS:'https://invalid',TURN_USERNAME:'u',TURN_CREDENTIAL:'p'}).relayConfigured, false);
 assert.equal(buildIceConfig({TURN_URLS:'turn:relay.example',TURN_USERNAME:'u',TURN_CREDENTIAL:'p'}).relayConfigured, true);
 console.log('TURN credentials, expiry, secret isolation and invalid configuration: passed.');
+
+assert.equal(buildIceConfig({}).relayConfigured, false, 'Missing credentials must not claim that TURN is configured');

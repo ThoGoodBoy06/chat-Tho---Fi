@@ -361,11 +361,7 @@
   window.setCallSpeakerEnabled = function (enabled) {
     speakerEnabled = !!enabled;
     getOrCreateAudioElement().muted = !speakerEnabled;
-    const remoteVid = document.getElementById('remoteVideoPlayer');
-    if (remoteVid) {
-      remoteVid.muted = !speakerEnabled;
-      remoteVid.volume = 1.0;
-    }
+
     try {
       if (window._callGainNode) {
         window._callGainNode.gain.value = speakerEnabled ? 1.0 : 0.0;
@@ -508,39 +504,9 @@
     el.muted = !speakerEnabled;
     el.volume = 1.0;
 
-    const remoteVid = document.getElementById('remoteVideoPlayer');
-    if (remoteVid) {
-      remoteVid.muted = !speakerEnabled;
-      remoteVid.volume = 1.0;
-    }
 
-    // Web Audio API AudioContext: định tuyến song song để đảm bảo âm thanh luôn được xuất ra loa
-    try {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (AudioCtx) {
-        if (!window._callAudioCtx || window._callAudioCtx.state === 'closed') {
-          window._callAudioCtx = new AudioCtx();
-        }
-        if (window._callAudioCtx.state === 'suspended') {
-          window._callAudioCtx.resume().catch(function () {});
-        }
-        if (!window._callSourceNode || window._callSourceStream !== mediaStream) {
-          if (window._callSourceNode) {
-            try { window._callSourceNode.disconnect(); } catch (_) {}
-          }
-          window._callSourceStream = mediaStream;
-          window._callSourceNode = window._callAudioCtx.createMediaStreamSource(mediaStream);
-          window._callGainNode = window._callAudioCtx.createGain();
-          window._callGainNode.gain.value = speakerEnabled ? 1.0 : 0.0;
-          window._callSourceNode.connect(window._callGainNode);
-          window._callGainNode.connect(window._callAudioCtx.destination);
-          console.log('🎧 [WebRTC Audio Engine] Đã kết nối Web Audio AudioContext tới remote stream');
-        }
-      }
-    } catch (e) {
-      console.warn('⚠️ [WebRTC Audio Engine] AudioContext routing notice:', e);
-    }
 
+    // A single audio sink preserves iOS autoplay permission and avoids echo.
     playCallStream(el, mediaStream);
   };
 

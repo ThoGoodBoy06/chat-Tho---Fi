@@ -13,18 +13,6 @@ function buildIceConfig(env = process.env, userId = '', now = Date.now()) {
         iceServers.push({ urls, username, credential });
     } else if (urls.length && env.TURN_USERNAME && env.TURN_CREDENTIAL) {
         iceServers.push({ urls, username: env.TURN_USERNAME, credential: env.TURN_CREDENTIAL });
-    } else if (!urls.length && !env.TURN_USERNAME) {
-        // Fallback TURN Relay công cộng (OpenRelay) giúp cuộc gọi 4G/NAT kết nối ngay lập tức
-        iceServers.push({
-            urls: [
-                'turn:openrelay.metered.ca:80',
-                'turn:openrelay.metered.ca:443',
-                'turn:openrelay.metered.ca:443?transport=tcp',
-                'turns:openrelay.metered.ca:443?transport=tcp',
-            ],
-            username: 'openrelayproject',
-            credential: 'openrelayproject',
-        });
     }
     return { iceServers, iceCandidatePoolSize: 0, relayConfigured: iceServers.some(s => s.credential) };
 }

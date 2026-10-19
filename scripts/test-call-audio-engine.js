@@ -3,6 +3,8 @@ const source=fs.readFileSync(path.join(__dirname,'../flutter_frontend/web/webrtc
 const start=source.indexOf('(function () {',source.indexOf('// webrtc_audio_helper.js'));
 const subsystem=source.slice(start,source.indexOf('  // 8.',start))+'})();';
 const elements=new Map();let blocked=true;
+// A muted video must stay muted: the gesture-unlocked audio element owns voice.
+const video={muted:true,volume:1};elements.set('remoteVideoPlayer',video);
 function element(tag){return {tag,src:'',srcObject:null,style:{},events:{},setAttribute(){},removeAttribute(n){if(n==='src')this.src='';},addEventListener(n,f){this.events[n]=f;},remove(){elements.delete(this.id);},pause(){},play(){return blocked?Promise.reject(Error('NotAllowedError')):Promise.resolve();}};}
 const document={readyState:'complete',getElementById:id=>elements.get(id),createElement:element,body:{appendChild:e=>elements.set(e.id,e)}};
 const gum=()=>Promise.resolve();
@@ -16,13 +18,13 @@ const flush=()=>new Promise(r=>setImmediate(r));
  const stream={id:'voice',getAudioTracks:()=>[track]};
  const audio=elements.get('remoteAudioPlayer');
  assert.equal(window._callAudioEngine.playRemoteStream,window.attachRemoteStream);
- window.attachRemoteStream(stream);await flush();
+ window.attachRemoteStream(stream);await flush();assert.equal(video.muted,true);
  assert(elements.has('callAudioUnmuteBanner'));
  window.attachRemoteStream({id:'video',getAudioTracks:()=>[]});
  assert.equal(audio.srcObject,stream);
  track.unmute();await flush();assert(elements.has('callAudioUnmuteBanner'));
  blocked=false;window.unlockAudio();await flush();assert(!elements.has('callAudioUnmuteBanner'));
- window.setCallSpeakerEnabled(false);window.unlockAudio();await flush();assert.equal(audio.muted,true);
+ window.setCallSpeakerEnabled(false);window.unlockAudio();await flush();assert.equal(audio.muted,true);assert.equal(video.muted,true);
  window.stopCallAudio();assert.equal(audio.srcObject,null);
  blocked=true;window.attachRemoteStream(stream);window.stopCallAudio();await flush();assert(!elements.has('callAudioUnmuteBanner'));
  // A delayed rejection from the previous call must not display a banner in a new call.

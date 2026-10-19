@@ -103,3 +103,27 @@ giữa mọi mạng 4G/5G.
 
 Kiểm thử với thiết bị giả trong Chrome không chứng minh micro vật lý hoặc
 định tuyến loa trên iOS/Android hoạt động; vẫn cần bước kiểm tra trên.
+
+## Chẩn đoán mất tiếng và kiểm thử hồi quy (19/10/2026)
+
+Đã tái hiện lỗi bằng Dart biên dịch chạy trong Chrome, thay vì chỉ dùng mock:
+
+- `MediaStream.getAudioTracks()` trả danh sách JS có kiểu phần tử động; `.any()` với callback kiểu `MediaStreamTrack` có thể ném lỗi kiểu. Duyệt track bằng vòng lặp để tránh lỗi này.
+- Binding `dart:html` của SDK hiện tại ép kết quả Promise từ `createOffer`/`createAnswer` sang `RTCSessionDescription`, trong khi trình duyệt trả SDP dictionary. `createCallDescription` nhận dictionary qua `dart:js_util` và trả về map.
+- `dart:js` bọc đối tượng stream khi gọi helper: kiểm thử nhận RTP nhưng `remoteAudioPlayer.srcObject` vẫn null. Bridge dùng `dart:js_util.callMethod` để giữ nguyên đối tượng `MediaStream` gốc.
+- Chỉ `remoteAudioPlayer` phát tiếng. Video luôn mute; không phát thêm cùng stream qua AudioContext. Bỏ các video tĩnh trùng ID với video do Flutter quản lý.
+
+Kiểm thử browser: `scripts/fixtures/call_transport.dart` dùng đúng helper production, xin micro/camera giả lập, gửi một tone đã biết qua hai peer, kiểm tra RTP cả hai chiều, RMS của âm thanh sau giải mã và trạng thái thẻ audio. Đây là kiểm thử loopback trên máy, chưa thay thế kiểm tra hai điện thoại trên hai mạng thực tế.
+
+Chạy từ thư mục gốc, thay `$FlutterSdk` bằng SDK cục bộ và cài Playwright hoặc đặt `NODE_PATH` tới nơi đã cài Playwright:
+
+```powershell
+& "$FlutterSdk/bin/cache/dart-sdk/bin/dart.exe" --disable-dart-dev "$FlutterSdk/bin/cache/dart-sdk/bin/snapshots/dart2js.dart.snapshot" "--platform-binaries=$FlutterSdk/bin/cache/flutter_web_sdk/kernel" --invoker=flutter_tool --packages=flutter_frontend/.dart_tool/package_config.json -O4 -o scratch/call-transport.js scripts/fixtures/call_transport.dart
+node scripts/test-call-browser.cjs
+node scripts/test-call-audio-engine.js
+node scripts/test-call-media.js
+```
+
+Không xem username/password OpenRelay công cộng cũ là cấu hình TURN hợp lệ. Probe relay tại thời điểm kiểm tra không cấp được relay candidate. Backend chỉ báo `relayConfigured: true` khi có cấu hình riêng; cờ này vẫn chưa chứng minh server truy cập được. Tài liệu Metered hiện yêu cầu tài khoản/API key để lấy thông tin TURN: https://www.metered.ca/tools/openrelay/
+
+Trên Render, đặt `TURN_URLS`, `TURN_USERNAME`, `TURN_CREDENTIAL` từ dịch vụ TURN của bạn, hoặc `TURN_URLS` và `TURN_SHARED_SECRET` cho coturn. Chưa có TURN thì gọi trực tiếp vẫn có thể chạy ở mạng cho phép P2P, nhưng không bảo đảm qua 4G/NAT. Không lưu credentials vào Git.

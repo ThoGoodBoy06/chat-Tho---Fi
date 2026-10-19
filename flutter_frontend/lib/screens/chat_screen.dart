@@ -6630,7 +6630,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
       }
       el.autoplay = true;
       el.setAttribute('playsinline', 'true');
-      el.muted = isLocal ? true : !isSpeakerOn;
+      el.muted = true; // Audio always uses the gesture-unlocked audio element.
       el.style
         ..position = 'relative'
         ..top = '0'
@@ -6744,21 +6744,18 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                   if (callClosed) return;
                   await processIceQueue();
                   if (callClosed) return;
-                  final answer = await connection.createAnswer({
-                    'offerToReceiveAudio': true,
-                    'offerToReceiveVideo': isVideo,
-                  });
+                  final answer = await createCallDescription(connection, answer: true, video: isVideo);
                   if (callClosed) return;
                   await connection.setLocalDescription({
-                    'type': answer.type,
-                    'sdp': answer.sdp,
+                    'type': answer['type'],
+                    'sdp': answer['sdp'],
                   });
                   if (callClosed) return;
                   SocketService.socket?.emit('webrtc_signal', {
                     'connectedUserId': targetUserId,
                     'signal': {
                       'type': 'answer',
-                      'sdp': answer.sdp,
+                      'sdp': answer['sdp'],
                     }
                   });
                 } else if (type == 'answer') {
@@ -6881,53 +6878,29 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                 void handleRemoteStream(html.MediaStream? stream) {
                   if (stream == null || callClosed) return;
                   incomingStream ??= html.MediaStream();
+                  final existingTrackIds = <Object?>{};
+                  for (final track in incomingStream!.getTracks()) { existingTrackIds.add(track.id); }
                   for (final track in stream.getTracks()) {
-                    if (!incomingStream!.getTracks().any((t) => t.id == track.id)) {
-                      incomingStream!.addTrack(track);
+                    if (existingTrackIds.add(track.id)) incomingStream!.addTrack(track);
+                  }
+
+                  if (incomingStream!.getAudioTracks().isNotEmpty) {
+                    try {
+                      callWebFunction('attachRemoteStream', [incomingStream]);
+                    } catch (error) {
+                      // Keep the same audio element unlocked by the call/answer tap.
+                      remoteAudio?.removeAttribute('src');
+                      remoteAudio?.srcObject = incomingStream;
+                      remoteAudio?.muted = !isSpeakerOn;
+                      remoteAudio?.play().catchError((_) {});
                     }
                   }
-
-                  for (final track in incomingStream!.getTracks()) {
-                    track.enabled = true;
-                  }
-
-                  // 1. Nếu là Cuộc gọi Video: Cho chính thẻ <video id="remoteVideoPlayer"> phát đồng thời cả hình ảnh và âm thanh
-                  if (isVideo) {
-                    final videoTarget = (incomingStream!.getVideoTracks().isNotEmpty) ? incomingStream : stream;
+                  if (isVideo && incomingStream!.getVideoTracks().isNotEmpty) {
                     final video = getOrCreateVideo('remoteVideoPlayer', isLocal: false);
-                    video.srcObject = videoTarget;
-                    video.muted = !isSpeakerOn;
-                    video.volume = 1.0;
+                    video.muted = true;
+                    video.srcObject = incomingStream;
                     video.style.display = 'block';
-                    video.play().catchError((e) {
-                      Future.delayed(const Duration(milliseconds: 300), () {
-                        video.play().catchError((_) {});
-                      });
-                    });
-                    if (dialogContext.mounted) {
-                      setDialogState(() {});
-                    }
-                  }
-
-                  // 2. Kích hoạt âm thanh qua Audio Player (cho Audio Call hoặc làm kênh phát dự phòng)
-                  final audioTarget = (incomingStream!.getAudioTracks().isNotEmpty) ? incomingStream : stream;
-                  if (audioTarget != null && audioTarget.getAudioTracks().isNotEmpty) {
-                    for (var track in audioTarget.getAudioTracks()) {
-                      track.enabled = true;
-                    }
-                    try {
-                      callWebFunction('attachRemoteStream', [audioTarget]);
-                    } catch (_) {}
-                    try {
-                      if (remoteAudio != null) {
-                        remoteAudio!.removeAttribute('src');
-                        remoteAudio!.srcObject = audioTarget;
-                        // Trong video call, remoteVideoPlayer đã phát tiếng nên mute remoteAudio để chống lặp tiếng; trong voice call, remoteAudio phát chính
-                        remoteAudio!.muted = isVideo ? true : !isSpeakerOn;
-                        remoteAudio!.volume = 1.0;
-                        remoteAudio!.play().catchError((_) {});
-                      }
-                    } catch (_) {}
+                    video.play().catchError((_) {});
                   }
                 }
 
@@ -6988,13 +6961,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                       signalQueue.run(() async {
                         final connection = pc;
                         if (callClosed || connection == null || connection.signalingState != 'stable') return;
-                        final offer = await connection.createOffer({'iceRestart': true});
+                        final offer = await createCallDescription(connection, video: isVideo, iceRestart: true);
                         if (callClosed) return;
-                        await connection.setLocalDescription({'type': offer.type, 'sdp': offer.sdp});
+                        await connection.setLocalDescription({'type': offer['type'], 'sdp': offer['sdp']});
                         if (callClosed) return;
                         SocketService.socket?.emit('webrtc_signal', {
                           'connectedUserId': targetUserId,
-                          'signal': {'type': 'offer', 'sdp': offer.sdp},
+                          'signal': {'type': 'offer', 'sdp': offer['sdp']},
                         });
                       }).catchError((Object error) { debugPrint('ICE restart failed: $error'); });
                     }
@@ -7014,21 +6987,18 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                   await signalQueue.run(() async {
                     final connection = pc;
                     if (callClosed || connection == null) return;
-                    final offer = await connection.createOffer({
-                      'offerToReceiveAudio': true,
-                      'offerToReceiveVideo': isVideo,
-                    });
+                    final offer = await createCallDescription(connection, video: isVideo);
                     if (callClosed) return;
                     await connection.setLocalDescription({
-                      'type': offer.type,
-                      'sdp': offer.sdp,
+                      'type': offer['type'],
+                      'sdp': offer['sdp'],
                     });
                     if (callClosed) return;
                     SocketService.socket?.emit('webrtc_signal', {
                       'connectedUserId': targetUserId,
                       'signal': {
                         'type': 'offer',
-                        'sdp': offer.sdp,
+                        'sdp': offer['sdp'],
                       }
                     });
                   });
@@ -7312,11 +7282,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                         isSpeakerOn = !isSpeakerOn;
                                         try { callWebFunction('setCallSpeakerEnabled', [isSpeakerOn]); } catch (_) {}
                                         if (remoteAudio != null) {
-                                          remoteAudio!.muted = isVideo ? true : !isSpeakerOn;
+                                          remoteAudio!.muted = !isSpeakerOn;
                                         }
-                                        final remoteVid = html.document.getElementById('remoteVideoPlayer') as html.VideoElement?;
+                                        final remoteVid = remoteCallVideo;
                                         if (remoteVid != null) {
-                                          remoteVid.muted = !isSpeakerOn;
+                                          remoteVid.muted = true;
                                           remoteVid.volume = 1.0;
                                         }
                                       });

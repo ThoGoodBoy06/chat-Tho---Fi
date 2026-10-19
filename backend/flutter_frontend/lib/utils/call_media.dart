@@ -1,10 +1,19 @@
 import 'package:universal_html/html.dart' as html;
 
+// Browser MediaStream methods can return JS-backed lists with a dynamic element
+// type. A typed predicate passed to .any() then fails at runtime in dart2js.
+bool hasLiveCallTrack(Iterable<dynamic> tracks) {
+  for (final track in tracks) {
+    if ((track as html.MediaStreamTrack).readyState == 'live') return true;
+  }
+  return false;
+}
+
 void requireCallTracks(html.MediaStream? stream, {required bool video}) {
-  if (stream == null || !stream.getAudioTracks().any((t) => t.readyState == 'live')) {
+  if (stream == null || !hasLiveCallTrack(stream.getAudioTracks())) {
     throw StateError('Không lấy được micro. Hãy cho phép micro trong cài đặt trang web.');
   }
-  if (video && !stream.getVideoTracks().any((t) => t.readyState == 'live')) {
+  if (video && !hasLiveCallTrack(stream.getVideoTracks())) {
     throw StateError('Không lấy được camera. Hãy cho phép camera trong cài đặt trang web.');
   }
 }

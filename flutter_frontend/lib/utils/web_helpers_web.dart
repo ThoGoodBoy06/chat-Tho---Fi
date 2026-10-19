@@ -153,7 +153,7 @@ void markWebPushRegistered(bool registered) {
   catch (_) {}
 }
 
-dynamic callWebFunction(String name, List<dynamic> arguments) => js.context.callMethod(name, arguments);
+dynamic callWebFunction(String name, List<dynamic> arguments) => js_util.callMethod(html.window, name, arguments);
 
 html.VideoElement registerCallVideoView(String viewType, String elementId) {
   final video = html.VideoElement()..id = elementId;
@@ -178,4 +178,18 @@ html.VideoElement registerCallVideoView(String viewType, String elementId) {
     return video;
   });
   return video;
+}
+
+// Modern browsers resolve createOffer/createAnswer with a plain SDP dictionary.
+// Dart 3.4 dart:html incorrectly expects an RTCSessionDescription instance.
+Future<Map<String, dynamic>> createCallDescription(html.RtcPeerConnection connection,
+    {bool answer = false, bool video = false, bool iceRestart = false}) async {
+  final options = <String, dynamic>{
+    'offerToReceiveAudio': true,
+    'offerToReceiveVideo': video,
+    if (iceRestart) 'iceRestart': true,
+  };
+  final native = await js_util.promiseToFuture<Object>(js_util.callMethod(
+      connection, answer ? 'createAnswer' : 'createOffer', [js_util.jsify(options)]));
+  return {'type': js_util.getProperty(native, 'type'), 'sdp': js_util.getProperty(native, 'sdp')};
 }

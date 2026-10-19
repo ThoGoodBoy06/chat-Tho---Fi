@@ -34,3 +34,7 @@ void vibrateWeb(Object pattern) {}
 dynamic callWebFunction(String name, List<dynamic> arguments) => null;
 
 dynamic registerCallVideoView(String viewType, String elementId) => null;
+
+Future<Map<String, dynamic>> createCallDescription(dynamic connection,
+    {bool answer = false, bool video = false, bool iceRestart = false}) =>
+    Future.error(UnsupportedError('WebRTC browser bridge requires the web platform'));
