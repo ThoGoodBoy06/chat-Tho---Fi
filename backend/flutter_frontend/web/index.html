@@ -2553,7 +2553,7 @@
           statusTitle.textContent = 'Thông báo đang BẬT';
           statusDesc.textContent = 'Thiết bị này đã sẵn sàng nhận chuông cuộc gọi & tin nhắn khi bạn khóa màn hình hoặc ra ngoài.';
         }
-        if (btnText) btnText.textContent = 'Cập nhật lại quyền thông báo';
+        if (btnText) btnText.textContent = 'Làm mới đăng ký thông báo';
       } else {
         if (statusBox) {
           statusBox.className = 'notif-status-box inactive';
@@ -2580,7 +2580,7 @@
         }
 
         // Kích hoạt ngay trong User Gesture context của click này
-        const token = await window.registerFCMAndGetToken(undefined, {requestPermission: true});
+        const token = await window.registerFCMAndGetToken(undefined, {requestPermission: true, renewSubscription: true});
 
         if (token) {
           window.markWebPushRegistered(false);
@@ -2623,7 +2623,7 @@
         const data = await window.postUserPushApi('test-push', {deviceId: window.getWebDeviceId()});
 
         if (data.success) {
-          alert('🔔 Đã bắn thông báo thử nghiệm! Bạn hãy thử khóa màn hình điện thoại hoặc thoát ra ngoài màn hình chính để kiểm tra.');
+          alert('Firebase đã nhận yêu cầu gửi đến thiết bị này. Nếu không thấy banner, việc giao thông báo chưa được xác nhận. Hãy bấm Cập nhật lại quyền thông báo rồi thử lại.');
         } else {
           alert('⚠️ Gửi thông báo test thất bại: ' + (data.message || 'Chưa đăng ký thiết bị'));
         }

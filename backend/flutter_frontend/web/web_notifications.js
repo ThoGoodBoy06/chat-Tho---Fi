@@ -3,6 +3,7 @@
   const backend = 'https://chat-tho-fi-vn-9s8u.onrender.com';
   let registered = false;
   let foregroundListening = false;
+  let tokenRegistration = null;
   window.isNotificationSupported = () => window.isSecureContext &&
     'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
   window.isWebPushRegistered = () => registered && Notification.permission === 'granted';
@@ -37,7 +38,7 @@
     }
     return result;
   };
-  window.registerFCMAndGetToken = async function (vapidKey, options) {
+  async function registerToken(vapidKey, options) {
     if (!window.isNotificationSupported()) return null;
     // A permission prompt must originate directly from an explicit tap on iOS.
     let permission = Notification.permission;
@@ -69,6 +70,9 @@
         changed();
       });
       const messaging = firebase.messaging();
+      // A cached FCM token can outlive an iOS push subscription. Only an
+      // explicit repair tap may replace it; normal startup must preserve it.
+      if (options?.renewSubscription) await messaging.deleteToken();
       if (!foregroundListening) {
         messaging.onMessage(payload => {
           const data = payload.data || {};
@@ -86,14 +90,32 @@
         });
         foregroundListening = true;
       }
-      return await messaging.getToken({
+      const token = await messaging.getToken({
         vapidKey: vapidKey || 'BBtraQSvar7RExe_T8aVhoA3TebgLw0S-ucoMcuV-Oef-H7ULkJGWyBctnxfY5tLnawpWQ9Wn8Aihi-wJaLiGu0',
         serviceWorkerRegistration: registration
       });
+      const subscription = await registration.pushManager.getSubscription();
+      const json = subscription?.toJSON();
+      if (!token || !json?.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
+        throw new Error('Đăng ký thông báo của thiết bị chưa hoàn tất. Hãy mở PWA từ màn hình chính và bấm bật lại.');
+      }
+      return token;
     } catch (error) {
       console.warn('[Push] Đăng ký thất bại:', error.message);
       throw error;
     }
+  }
+  window.registerFCMAndGetToken = function (vapidKey, options) {
+    // Serialize token requests so repair never unsubscribes halfway through
+    // another getToken call. Startup never silently replaces a subscription.
+    if (tokenRegistration) {
+      if (options?.renewSubscription || options?.requestPermission) {
+        return tokenRegistration.catch(() => {}).then(() => window.registerFCMAndGetToken(vapidKey, options));
+      }
+      return tokenRegistration;
+    }
+    tokenRegistration = registerToken(vapidKey, options).finally(() => {tokenRegistration=null;});
+    return tokenRegistration;
   };
   let pendingIntent = null;
   function dispatchIntent(data) {

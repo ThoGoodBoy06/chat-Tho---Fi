@@ -199,3 +199,10 @@ Nguồn: https://webkit.org/blog/13878/ và https://firebase.google.com/docs/clo
 - Cả video đối phương lẫn preview camera dùng object-fit:contain, căn giữa, nền tối; giữ nguyên tỉ lệ và toàn bộ khung camera, không cắt thành khung dọc gây cảm giác zoom. Preview chỉ lật ngang, không phóng hình.
 - scripts/test-push-cold-worker.cjs khởi chạy Chrome thật, đăng ký đúng worker/scope, đóng trang app, dừng worker rồi bơm envelope FCM qua CDP. Tin nhắn và cuộc gọi đều hiển thị đúng một thông báo sau cold start. Đây là kiểm thử vòng đời worker; không phải gửi qua APNs hay xác nhận trên màn hình khóa iPhone thật.
 - scripts/test-mobile-call-ui.cjs kiểm tra framesDecoded cùng computed object-fit của cả hai video trên khung mobile. Chưa có thiết bị iOS thật để xác nhận hành vi hệ điều hành; không coi kiểm thử Chrome hoặc Firebase dry-run là bằng chứng giao nhận trên iPhone.
+
+## Khôi phục đăng ký push iOS (25/10/2026)
+
+- Kiểm tra lại dữ liệu đăng ký: có 2 web_mobile và 1 web_desktop, Firebase dry-run chấp nhận cả 3. Payload thực trong sendMessage (khác helper dùng cho cuộc gọi/test) cũng được Firebase chấp nhận. Chưa đủ bằng chứng xác định nguyên nhân iPhone không nhận.
+- Nút làm mới trước đây chỉ lấy lại token từ cache. Nay thao tác chủ động này xóa token/subscription cũ qua Firebase rồi đăng ký lại; khởi động/resume bình thường vẫn giữ nguyên subscription. Tuần tự hóa yêu cầu lấy token với thao tác làm mới.
+- Chỉ trả token để lưu sau khi xác nhận PushSubscription có endpoint, p256dh và auth; đăng ký rỗng của WebKit hiện lỗi thay vì báo bật thành công. Không ghi endpoint/key/token ra log.
+- 15 tests thông báo qua, gồm làm mới thủ công, giữ subscription khi tự khởi động, đăng ký rỗng và yêu cầu đồng thời. Cold-worker Chrome và cập nhật cache online/offline qua. Chưa kiểm chứng giao nhận APNs trên iPhone thật; cần kết quả “Thử gửi” của chính thiết bị để phân biệt đăng ký với giao nhận.

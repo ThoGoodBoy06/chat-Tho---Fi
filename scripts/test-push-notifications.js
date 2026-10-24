@@ -10,8 +10,8 @@ function client(permission = 'granted', installed = true) {
   const calls = [], notices = [], alerts = [], events = [], listeners = {};
   const storage = new Map([['flutter.authToken', '"test-auth"']]);
   let prompts = 0, onMessage;
-  const registration = {active: {}, showNotification: async (...args) => notices.push(args)};
-  const messaging = {getToken: async options => {calls.push(options); return 'test-fcm';}, onMessage: fn => {onMessage = fn;}};
+  const registration = {active: {}, pushManager:{getSubscription:async()=>({toJSON:()=>({endpoint:'https://push.test/subscription',keys:{p256dh:'public',auth:'auth'}})})}, showNotification: async (...args) => notices.push(args)};
+  const messaging = {deleteToken:async()=>{calls.push('deleteToken');},getToken: async options => {calls.push(options); return 'test-fcm';}, onMessage: fn => {onMessage = fn;}};
   const context = {console, setTimeout, clearTimeout, location: {hostname: 'chat-tho-fi.pages.dev'},
     navigator: {serviceWorker: {register: async (...args) => {calls.push(args); return registration;},addEventListener:(name,fn)=>{listeners[name]=fn;}}},
     localStorage: {getItem: key => storage.get(key), setItem: (key, value) => storage.set(key, value)},
@@ -28,7 +28,7 @@ function client(permission = 'granted', installed = true) {
   const start = html.indexOf('    window.handleActivateNotificationClick');
   const end = html.indexOf('    window.handleTestPushClick', start);
   vm.runInContext(html.slice(start, end), context);
-  return {context, calls, notices, alerts, events, listeners, prompts: () => prompts, foreground: payload => onMessage(payload)};
+  return {context, registration, messaging, calls, notices, alerts, events, listeners, prompts: () => prompts, foreground: payload => onMessage(payload)};
 }
 test('iOS Home Screen: no automatic permission prompt, tap grants and saves to Render', async () => {
   const c = client('default');
@@ -124,6 +124,34 @@ test('resume refreshes granted subscriptions without prompting and queues cold-s
  c.listeners.message({data:{type:'PUSH_OPEN',data:{type:'incoming_call',callId:'pending'}}});
  assert.equal(JSON.parse(c.context.consumePushIntent()).callId,'pending');assert.equal(c.context.consumePushIntent(),null);
  assert.equal(c.events[0].type,'tho-fi-push');
+});
+
+test('explicit repair replaces the subscription; automatic startup preserves it',async()=>{
+ const c=client();await c.context.registerFCMAndGetToken();
+ assert(!c.calls.includes('deleteToken'));
+ await c.context.handleActivateNotificationClick();
+ assert.equal(c.calls.filter(x=>x==='deleteToken').length,1);
+ assert(c.context.isWebPushRegistered());
+ assert(c.calls.indexOf('deleteToken')<c.calls.findLastIndex(x=>x?.serviceWorkerRegistration));
+});
+
+test('empty WebKit push subscriptions are never saved as enabled',async()=>{
+ const c=client();c.registration.pushManager.getSubscription=async()=>({toJSON:()=>({endpoint:'',keys:{}})});
+ await c.context.handleActivateNotificationClick();
+ assert(!c.context.isWebPushRegistered());assert(!c.calls.some(x=>x.url));
+ assert(c.alerts.at(-1).includes('chưa hoàn tất'));
+});
+
+test('manual repair waits for in-flight registration before deleting its token',async()=>{
+ const c=client();let release;
+ c.messaging.getToken=()=>new Promise(resolve=>{release=resolve;});
+ const startup=c.context.registerFCMAndGetToken();
+ await new Promise(resolve=>setImmediate(resolve));
+ const repair=c.context.registerFCMAndGetToken(undefined,{renewSubscription:true});
+ assert(!c.calls.includes('deleteToken'));
+ c.messaging.getToken=async()=> 'new-token';release('old-token');
+ assert.equal(await startup,'old-token');assert.equal(await repair,'new-token');
+ assert.equal(c.calls.filter(x=>x==='deleteToken').length,1);
 });
 test('registering a phone preserves other phones and keeps native platform identity', async () => {
   const calls = [];
