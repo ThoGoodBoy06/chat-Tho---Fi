@@ -268,6 +268,22 @@ async function callOpenAiStream(userId, prompt, res, conversationId = null) {
 exports.getSessions = async (req, res) => {
     try {
         const userId = resolveUserId(req);
+
+        // Tự động dọn các phiên rỗng cũ (0 tin nhắn) để danh sách lịch sử luôn gọn gàng và chuẩn xác
+        try {
+            const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000);
+            await prisma.conversations.deleteMany({
+                where: {
+                    type: "ai",
+                    createdBy: userId,
+                    createdAt: { lt: fiveMinsAgo },
+                    Messages: { none: {} },
+                },
+            });
+        } catch (cleanupErr) {
+            // Không chặn tiến trình nếu lỗi dọn dẹp
+        }
+
         const conversations = await prisma.conversations.findMany({
             where: { type: "ai", createdBy: userId },
             include: {
@@ -282,8 +298,14 @@ exports.getSessions = async (req, res) => {
             },
         });
 
-        // Sắp xếp các phiên hội thoại: phiên nào có tin nhắn mới nhất sẽ lên đầu tiên
+        // Sắp xếp các phiên hội thoại: phiên nào có tin nhắn và hoạt động gần nhất sẽ lên đầu tiên
         conversations.sort((a, b) => {
+            const countA = a._count?.Messages || 0;
+            const countB = b._count?.Messages || 0;
+            // Phiên có tin nhắn luôn được ưu tiên hơn phiên rỗng
+            if (countA > 0 && countB === 0) return -1;
+            if (countA === 0 && countB > 0) return 1;
+
             const timeA = a.Messages?.[0]?.createdAt ? new Date(a.Messages[0].createdAt).getTime() : new Date(a.createdAt).getTime();
             const timeB = b.Messages?.[0]?.createdAt ? new Date(b.Messages[0].createdAt).getTime() : new Date(b.createdAt).getTime();
             return timeB - timeA;
@@ -313,6 +335,16 @@ exports.getSessions = async (req, res) => {
 exports.createSession = async (req, res) => {
     try {
         const userId = resolveUserId(req);
+
+        // Dọn các phiên rỗng cũ chưa có tin nhắn của user
+        await prisma.conversations.deleteMany({
+            where: {
+                type: "ai",
+                createdBy: userId,
+                Messages: { none: {} },
+            },
+        }).catch(() => {});
+
         const conversation = await prisma.conversations.create({
             data: {
                 type: "ai",
@@ -326,6 +358,8 @@ exports.createSession = async (req, res) => {
                 id: conversation.id,
                 name: conversation.name,
                 createdAt: conversation.createdAt,
+                lastActive: conversation.createdAt,
+                lastMessage: "",
                 messageCount: 0,
             },
         });

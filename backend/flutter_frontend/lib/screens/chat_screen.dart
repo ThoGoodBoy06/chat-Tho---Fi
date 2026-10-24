@@ -1195,12 +1195,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
 
   Future<void> _loadAiHistory({String? conversationId, bool forceReload = false}) async {
     if (conversationId == null && _hasLoadedAiHistory && !forceReload) return;
-    if (conversationId == null) _hasLoadedAiHistory = true;
 
     if (mounted) setState(() => _isAiHistoryLoading = true);
     try {
       final res = await ApiService.getAiHistory(conversationId: conversationId);
       if (mounted && res['success'] == true) {
+        _hasLoadedAiHistory = true;
         setState(() {
           _aiCurrentConversationId = res['conversationId']?.toString();
           if (res['conversationName'] != null && res['conversationName'].toString().trim().isNotEmpty) {
@@ -1656,6 +1656,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                       setState(() => _currentTabIndex = index);
                       if (index == 3) {
                         _loadAiHistory(forceReload: true);
+                        _loadAiSessions();
                       }
                     },
                     child: AnimatedContainer(
@@ -4242,7 +4243,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   // TAB 3: Trợ lý AI
   Widget _buildAiAssistantTab() {
     if (!_hasLoadedAiHistory) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _loadAiHistory());
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadAiHistory();
+        _loadAiSessions();
+      });
     }
     final isDark = Provider.of<ThemeProvider>(context).isDarkMode;
     final bgColor = isDark ? const Color(0xFF0F172A) : const Color(0xFFF0F2F5);
@@ -4660,13 +4664,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
 
   // Drawer Lịch sử trò chuyện AI (mở ra khi bấm nút 3 gạch)
   void _showAiHistoryDrawer(BuildContext context) {
-    final isDark = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
-    final bgColor = isDark ? const Color(0xFF0F172A) : Colors.white;
-    final cardBgColor = isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC);
-    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final subTextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
-    final borderColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
-
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -4682,210 +4679,26 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         );
       },
       pageBuilder: (dialogCtx, _, __) {
-        return StatefulBuilder(
-          builder: (builderContext, setDrawerState) {
-            return Align(
-              alignment: Alignment.centerLeft,
-              child: Material(
-                color: bgColor,
-                child: Container(
-                  width: min(340.0, MediaQuery.of(dialogCtx).size.width * 0.85),
-                  height: double.infinity,
-                  decoration: BoxDecoration(
-                    color: bgColor,
-                    border: Border(right: BorderSide(color: borderColor, width: 1)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.25),
-                        blurRadius: 20,
-                        offset: const Offset(4, 0),
-                      ),
-                    ],
-                  ),
-                  child: SafeArea(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Header
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 16, 12, 12),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF0068FF).withOpacity(0.12),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Icon(Icons.history_rounded, color: Color(0xFF0068FF), size: 22),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  'Lịch sử chat AI',
-                                  style: TextStyle(color: textColor, fontSize: 17, fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                              IconButton(
-                                icon: Icon(Icons.close_rounded, color: subTextColor, size: 22),
-                                onPressed: () => Navigator.pop(dialogCtx),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // Nút Tạo đoạn chat mới
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                          child: InkWell(
-                            onTap: () {
-                              Navigator.pop(dialogCtx);
-                              _createNewAiSession();
-                            },
-                            borderRadius: BorderRadius.circular(14),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [Color(0xFF0068FF), Color(0xFF0091FF)],
-                                ),
-                                borderRadius: BorderRadius.circular(14),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(0xFF0068FF).withOpacity(0.3),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.add_rounded, color: Colors.white, size: 20),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'Cuộc trò chuyện mới',
-                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 8),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                          child: Text(
-                            'GẦN ĐÂY',
-                            style: TextStyle(color: subTextColor, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.8),
-                          ),
-                        ),
-
-                        // Danh sách phiên chat
-                        Expanded(
-                          child: _isLoadingAiSessions
-                              ? const Center(
-                                  child: SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0068FF)),
-                                  ),
-                                )
-                              : _aiSessions.isEmpty
-                                  ? Center(
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(24),
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(Icons.chat_bubble_outline_rounded, color: subTextColor.withOpacity(0.5), size: 40),
-                                            const SizedBox(height: 10),
-                                            Text(
-                                              'Chưa có lịch sử trò chuyện',
-                                              style: TextStyle(color: subTextColor, fontSize: 13),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    )
-                                  : ListView.builder(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                      itemCount: _aiSessions.length,
-                                      itemBuilder: (ctx, idx) {
-                                        final session = _aiSessions[idx];
-                                        final sId = session['id']?.toString() ?? '';
-                                        final sName = session['name']?.toString() ?? 'Cuộc trò chuyện mới';
-                                        final isSelected = _aiCurrentConversationId == sId;
-
-                                        return Container(
-                                          margin: const EdgeInsets.only(bottom: 6),
-                                          decoration: BoxDecoration(
-                                            color: isSelected ? const Color(0xFF0068FF).withOpacity(0.12) : cardBgColor,
-                                            borderRadius: BorderRadius.circular(12),
-                                            border: Border.all(
-                                              color: isSelected ? const Color(0xFF0068FF).withOpacity(0.4) : borderColor.withOpacity(0.5),
-                                              width: 1,
-                                            ),
-                                          ),
-                                          child: ListTile(
-                                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                                            leading: Icon(
-                                              isSelected ? Icons.chat_rounded : Icons.chat_outlined,
-                                              color: isSelected ? const Color(0xFF0068FF) : subTextColor,
-                                              size: 19,
-                                            ),
-                                            title: Text(
-                                              sName,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
-                                                color: isSelected ? const Color(0xFF0068FF) : textColor,
-                                                fontSize: 13.5,
-                                                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                              ),
-                                            ),
-                                            trailing: IconButton(
-                                              icon: Icon(Icons.delete_outline_rounded, color: subTextColor.withOpacity(0.7), size: 18),
-                                              tooltip: 'Xóa',
-                                              onPressed: () async {
-                                                final confirm = await showDialog<bool>(
-                                                  context: context,
-                                                  builder: (c) => AlertDialog(
-                                                    backgroundColor: cardBgColor,
-                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                                    title: Text('Xóa cuộc trò chuyện này?', style: TextStyle(color: textColor, fontSize: 16)),
-                                                    content: Text('Đoạn chat "$sName" sẽ bị xoá vĩnh viễn.', style: TextStyle(color: subTextColor, fontSize: 13)),
-                                                    actions: [
-                                                      TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Hủy')),
-                                                      TextButton(
-                                                        onPressed: () => Navigator.pop(c, true),
-                                                        child: const Text('Xóa', style: TextStyle(color: Color(0xFFEF4444))),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                );
-                                                if (confirm == true) {
-                                                  await _deleteAiSession(sId);
-                                                  setDrawerState(() {});
-                                                }
-                                              },
-                                            ),
-                                            onTap: () {
-                                              Navigator.pop(dialogCtx);
-                                              _selectAiSession(sId, sName);
-                                            },
-                                          ),
-                                        );
-                                      },
-                                    ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
+        return _AiHistoryDrawerWidget(
+          currentConversationId: _aiCurrentConversationId,
+          initialSessions: _aiSessions,
+          onSelectSession: (id, name) {
+            Navigator.pop(dialogCtx);
+            _selectAiSession(id, name);
+          },
+          onCreateNewSession: () {
+            Navigator.pop(dialogCtx);
+            _createNewAiSession();
+          },
+          onDeleteSession: (id) async {
+            await _deleteAiSession(id);
+          },
+          onSessionsUpdated: (sessions) {
+            if (mounted) {
+              setState(() {
+                _aiSessions = sessions;
+              });
+            }
           },
         );
       },
@@ -7522,6 +7335,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                   _fetchPendingRequestsCount();
                 } else if (index == 3) {
                   _loadAiHistory(forceReload: true);
+                  _loadAiSessions();
                 }
               },
               behavior: HitTestBehavior.opaque,
@@ -8981,6 +8795,348 @@ class _ShaderWarmupWidget extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+class _AiHistoryDrawerWidget extends StatefulWidget {
+  final String? currentConversationId;
+  final List<Map<String, dynamic>> initialSessions;
+  final Function(String id, String name) onSelectSession;
+  final VoidCallback onCreateNewSession;
+  final Future<void> Function(String id) onDeleteSession;
+  final Function(List<Map<String, dynamic>>) onSessionsUpdated;
+
+  const _AiHistoryDrawerWidget({
+    Key? key,
+    required this.currentConversationId,
+    required this.initialSessions,
+    required this.onSelectSession,
+    required this.onCreateNewSession,
+    required this.onDeleteSession,
+    required this.onSessionsUpdated,
+  }) : super(key: key);
+
+  @override
+  State<_AiHistoryDrawerWidget> createState() => _AiHistoryDrawerWidgetState();
+}
+
+class _AiHistoryDrawerWidgetState extends State<_AiHistoryDrawerWidget> {
+  late List<Map<String, dynamic>> _sessions;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _sessions = List<Map<String, dynamic>>.from(widget.initialSessions);
+    _isLoading = _sessions.isEmpty;
+    _fetchSessions();
+  }
+
+  Future<void> _fetchSessions() async {
+    try {
+      final sessions = await ApiService.getAiSessions();
+      if (mounted) {
+        setState(() {
+          _sessions = sessions;
+          _isLoading = false;
+        });
+        widget.onSessionsUpdated(sessions);
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  String _formatSessionTime(dynamic dtRaw) {
+    if (dtRaw == null) return '';
+    DateTime? dt;
+    if (dtRaw is DateTime) {
+      dt = dtRaw;
+    } else {
+      dt = DateTime.tryParse(dtRaw.toString());
+    }
+    if (dt == null) return '';
+    final local = dt.toLocal();
+    final now = DateTime.now();
+    if (local.year == now.year && local.month == now.month && local.day == now.day) {
+      return '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+    }
+    return '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Provider.of<ThemeProvider>(context).isDarkMode;
+    final bgColor = isDark ? const Color(0xFF0F172A) : Colors.white;
+    final cardBgColor = isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC);
+    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final subTextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final borderColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Material(
+        color: bgColor,
+        child: Container(
+          width: min(340.0, MediaQuery.of(context).size.width * 0.85),
+          height: double.infinity,
+          decoration: BoxDecoration(
+            color: bgColor,
+            border: Border(right: BorderSide(color: borderColor, width: 1)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.25),
+                blurRadius: 20,
+                offset: const Offset(4, 0),
+              ),
+            ],
+          ),
+          child: SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 12, 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0068FF).withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.history_rounded, color: Color(0xFF0068FF), size: 22),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Lịch sử chat AI',
+                          style: TextStyle(color: textColor, fontSize: 17, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.close_rounded, color: subTextColor, size: 22),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Nút Tạo đoạn chat mới
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  child: InkWell(
+                    onTap: widget.onCreateNewSession,
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF0068FF), Color(0xFF0091FF)],
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF0068FF).withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add_rounded, color: Colors.white, size: 20),
+                          SizedBox(width: 8),
+                          Text(
+                            'Cuộc trò chuyện mới',
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'GẦN ĐÂY',
+                        style: TextStyle(color: subTextColor, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.8),
+                      ),
+                      if (_isLoading)
+                        const SizedBox(
+                          width: 12,
+                          height: 12,
+                          child: CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFF0068FF)),
+                        ),
+                    ],
+                  ),
+                ),
+
+                // Danh sách phiên chat
+                Expanded(
+                  child: _isLoading && _sessions.isEmpty
+                      ? const Center(
+                          child: SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0068FF)),
+                          ),
+                        )
+                      : _sessions.isEmpty
+                          ? Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(24),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.chat_bubble_outline_rounded, color: subTextColor.withOpacity(0.5), size: 40),
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      'Chưa có lịch sử trò chuyện',
+                                      style: TextStyle(color: subTextColor, fontSize: 13),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              itemCount: _sessions.length,
+                              itemBuilder: (ctx, idx) {
+                                final session = _sessions[idx];
+                                final sId = session['id']?.toString() ?? '';
+                                final sName = session['name']?.toString() ?? 'Cuộc trò chuyện mới';
+                                final lastMsg = session['lastMessage']?.toString() ?? '';
+                                final msgCount = session['messageCount'] as int? ?? 0;
+                                final timeStr = _formatSessionTime(session['lastActive']);
+                                final isSelected = widget.currentConversationId == sId;
+
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 6),
+                                  decoration: BoxDecoration(
+                                    color: isSelected ? const Color(0xFF0068FF).withOpacity(0.12) : cardBgColor,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: isSelected ? const Color(0xFF0068FF).withOpacity(0.4) : borderColor.withOpacity(0.5),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: ListTile(
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                    leading: Container(
+                                      padding: const EdgeInsets.all(7),
+                                      decoration: BoxDecoration(
+                                        color: isSelected ? const Color(0xFF0068FF).withOpacity(0.15) : (isDark ? Colors.black26 : Colors.black.withOpacity(0.04)),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        isSelected ? Icons.chat_rounded : Icons.chat_outlined,
+                                        color: isSelected ? const Color(0xFF0068FF) : subTextColor,
+                                        size: 18,
+                                      ),
+                                    ),
+                                    title: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            sName,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: isSelected ? const Color(0xFF0068FF) : textColor,
+                                              fontSize: 13.5,
+                                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                        if (timeStr.isNotEmpty) ...[
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            timeStr,
+                                            style: TextStyle(color: subTextColor, fontSize: 10),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                    subtitle: Padding(
+                                      padding: const EdgeInsets.only(top: 3),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              lastMsg.isNotEmpty ? lastMsg : (msgCount > 0 ? '$msgCount tin nhắn' : 'Đoạn chat mới'),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(color: subTextColor, fontSize: 11.5),
+                                            ),
+                                          ),
+                                          if (msgCount > 0)
+                                            Container(
+                                              margin: const EdgeInsets.only(left: 6),
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFF0068FF).withOpacity(0.12),
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: Text(
+                                                '$msgCount',
+                                                style: const TextStyle(color: Color(0xFF0068FF), fontSize: 10, fontWeight: FontWeight.bold),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                    trailing: IconButton(
+                                      icon: Icon(Icons.delete_outline_rounded, color: subTextColor.withOpacity(0.7), size: 18),
+                                      tooltip: 'Xóa',
+                                      onPressed: () async {
+                                        final confirm = await showDialog<bool>(
+                                          context: context,
+                                          builder: (c) => AlertDialog(
+                                            backgroundColor: cardBgColor,
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                            title: Text('Xóa cuộc trò chuyện này?', style: TextStyle(color: textColor, fontSize: 16)),
+                                            content: Text('Đoạn chat "$sName" sẽ bị xoá vĩnh viễn.', style: TextStyle(color: subTextColor, fontSize: 13)),
+                                            actions: [
+                                              TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Hủy')),
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(c, true),
+                                                child: const Text('Xóa', style: TextStyle(color: Color(0xFFEF4444))),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                        if (confirm == true) {
+                                          setState(() {
+                                            _sessions.removeWhere((s) => s['id']?.toString() == sId);
+                                          });
+                                          await widget.onDeleteSession(sId);
+                                          _fetchSessions();
+                                        }
+                                      },
+                                    ),
+                                    onTap: () {
+                                      widget.onSelectSession(sId, sName);
+                                    },
+                                  ),
+                                );
+                              },
+                            ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
