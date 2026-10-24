@@ -116,3 +116,12 @@ test('mobile reconnect while the block check is pending preserves the reserved c
  assert(f.events.some(e=>e.name==='incoming_call'));assert.equal(f.calls.get('a').socketId,'a2');
  assert.equal(f.calls.get('b').ready,true);
 });
+test('an accepted video upgrade keeps the same session and updates both participants',async()=>{
+ const f=fixture(),a=await f.socket('a1','a');await f.socket('b1','b');f.seed();
+ for(const user of ['a','b']){f.calls.get(user).callId='current';f.calls.get(user).callType='audio';}
+ a.handlers.webrtc_signal({connectedUserId:'b',callId:'old',signal:{type:'offer',video:true}});
+ assert.equal(f.calls.get('a').callType,'audio');
+ a.handlers.webrtc_signal({connectedUserId:'b',callId:'current',signal:{type:'offer',video:true}});
+ for(const user of ['a','b']){assert.equal(f.calls.get(user).callId,'current');assert.equal(f.calls.get(user).callType,'video');}
+ assert.equal(f.events.at(-1).data.signal.video,true);
+});

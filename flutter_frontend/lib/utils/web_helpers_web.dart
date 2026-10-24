@@ -217,3 +217,14 @@ Future<void> replaceCallMicrophone(html.RtcPeerConnection? connection, html.Medi
     throw StateError('Không tìm thấy đường truyền micro.');
   } catch (_) { stopCallMedia(stream); rethrow; }
 }
+
+Future<html.MediaStream> requestCallCamera() async {
+  final devices = html.window.navigator.mediaDevices;
+  if (devices == null) throw StateError('Không truy cập được camera. Mở app bằng HTTPS.');
+  final stream = await devices.getUserMedia({'audio':false,'video':{'facingMode':{'ideal':'user'}}});
+  if (!hasLiveCallTrack(stream.getVideoTracks())) {
+    stopCallMedia(stream);
+    throw StateError('Không mở được camera. Kiểm tra quyền camera rồi thử lại.');
+  }
+  return stream;
+}

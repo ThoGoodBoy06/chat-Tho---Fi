@@ -32,21 +32,11 @@ class CallSurface extends StatelessWidget {
           return Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 520),
             child: Padding(padding: EdgeInsets.fromLTRB(24, compact ? 12 : 24, 24, compact ? 12 : 28),
               child: Column(children: [
-                Row(children: [
-                  Container(width: 30, height: 30,
-                    decoration: BoxDecoration(color: const Color(0xFF2C3B4A), borderRadius: BorderRadius.circular(10)),
-                    child: const Icon(Icons.chat_bubble_rounded, size: 15, color: Color(0xFFCCD9E5))),
-                  const SizedBox(width: 9),
-                  const Text('Tho-Fi', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
-                  const Spacer(),
-                  Text(ended ? 'Đã kết thúc' : video ? 'Cuộc gọi video' : 'Cuộc gọi thoại',
-                    style: const TextStyle(color: Color(0xFFADBDCC), fontSize: 12)),
-                ]),
-                Expanded(child: Align(alignment: video && connected && !ended ? Alignment.topCenter : Alignment.center,
+                Expanded(child: Align(alignment: videoView != null && connected && !ended ? Alignment.topCenter : Alignment.center,
                   child: SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    if (!(video && connected && !ended)) ...[
+                    if (!(videoView != null && connected && !ended)) ...[
                       TweenAnimationBuilder<double>(
                         tween: Tween(begin: .93, end: 1),
                         duration: Duration(milliseconds: reduceMotion ? 0 : 260),

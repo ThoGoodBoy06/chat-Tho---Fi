@@ -44,3 +44,5 @@ Future<dynamic> requestCallMedia({required bool video}) =>
 
 Future<void> replaceCallMicrophone(dynamic connection, dynamic stream) =>
     Future.error(UnsupportedError('Browser media capture requires the web platform'));
+
+Future<dynamic> requestCallCamera() => Future.error(UnsupportedError('Browser camera requires the web platform'));

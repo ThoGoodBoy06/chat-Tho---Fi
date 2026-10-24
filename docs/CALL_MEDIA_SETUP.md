@@ -169,3 +169,12 @@ Các browser tests cần Playwright trong node_modules hoặc NODE_PATH. Build p
 - Full-system script truy cập được DB, Supabase/R2, dispatcher và cấu hình Firebase. Kiểm tra HTTP localhost không đạt vì không chạy server local; dòng kết luận chung của script không chứng minh cuộc gọi trên thiết bị thật.
 
 Kiểm tra hosting ngày 24/10: Cloudflare Workers & Pages chỉ có hai dự án Pages (chat-tho-fi và hotrosinhvien-dnc); chưa có Worker backend của app. TURN Server chuyển tới trang Get Started, chưa kích hoạt. Render vẫn trả release.json và frontend vẫn nối API/Socket.IO tới Render. Chưa di chuyển backend sang Cloudflare và chưa xác thực TURN thật. Không bảo đảm gọi qua hai mạng khác nhau khi chưa có relay. Cần kiểm tra hai điện thoại thật trước khi kết luận lỗi mobile đã hết hoàn toàn.
+
+## Gọi lại và nâng cuộc gọi thoại lên video (24/10/2026)
+
+- Đã tái hiện trên cùng ChatScreen: gác máy, đóng màn hình kết thúc, bấm Gọi Video nhưng không có request_call mới. Cờ _isCallRoomShowing chỉ được gỡ trong Future của showGeneralDialog; SDK Flutter hiện dùng removeRoute mà không hoàn tất popped Future. Gỡ cờ ngay khi đóng route và gắn owner riêng để callback cũ không thay đổi cờ của phiên mới.
+- Bỏ header Tho-Fi / Cuộc gọi thoại-video theo yêu cầu. Giữ tên đối phương, trạng thái, thời gian và nút điều khiển.
+- Nút Bật video trong cuộc gọi thoại chỉ xin camera, giữ microphone và thời gian. Thêm track vào peer hiện có, thương lượng lại SDP. Bên nhận nhìn thấy video và tự bấm Bật video nếu muốn mở camera của mình. Từ chối quyền camera giữ nguyên cuộc gọi thoại.
+- Xử lý offer va chạm khi hai bên cùng nâng video: một phía rollback, trả lời offer của bên kia rồi gửi lại thay đổi local đang chờ. Server cập nhật callType cho cả cặp đang gọi, giữ cùng callId.
+- Browser test kiểm tra framesDecoded, videoWidth và readyState của video hiển thị ở hai phía; âm thanh vẫn nhận sau khi chuyển video. Gọi trực tiếp video và gọi lại liên tiếp theo cả hai hướng trên cùng hai trang; bài test giữ hai offer rồi phát cùng lúc để kiểm tra va chạm thật.
+- 17 Flutter tests và 16 tests server qua. Voice/video browser scenarios qua, gồm gọi lại, camera bị từ chối, nâng video và nâng video đồng thời. Thiết bị camera/micro là giả lập của Chrome; chưa thay thế xác nhận trên hai điện thoại thật.

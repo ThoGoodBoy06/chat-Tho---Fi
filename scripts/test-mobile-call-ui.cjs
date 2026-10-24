@@ -20,6 +20,20 @@ const server=http.createServer((req,res)=>{
  res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.wasm')?'application/wasm':file.endsWith('.json')?'application/json':file.endsWith('.css')?'text/css':'application/octet-stream');res.end(fs.readFileSync(file));
 });
 const io=new Server(server,{cors:{origin:true}});
+let holdUpgradeOffers=false, heldUpgradeOffers=[], releaseHeldOffers;
+const originalTo=io.to.bind(io);
+io.to=room=>{
+ const operator=originalTo(room),emit=operator.emit.bind(operator);
+ operator.emit=(event,data)=>{
+  if(holdUpgradeOffers&&event==='webrtc_signal'&&data?.signal?.type==='offer'&&data.signal.video===true){
+   heldUpgradeOffers.push(()=>emit(event,data));
+   if(heldUpgradeOffers.length===2){holdUpgradeOffers=false;for(const deliver of heldUpgradeOffers.splice(0))deliver();releaseHeldOffers?.();}
+   return operator;
+  }
+  return emit(event,data);
+ };
+ return operator;
+};
 const prisma={conversationMembers:{findMany:async()=>[{conversationId:'room'}]},friendRequests:{findMany:async()=>[]},block:{findFirst:async()=>null},users:{findUnique:async()=>null},messages:{create:async({data})=>data}};
 const sandbox={module:{exports:{}},global:globals,process:{env:{}},console:{log(...v){if(/call|WebRTC/.test(v.join(' ')))trace.push(v.join(' '));},warn(){},error(...v){errors.push(v.join(' '));}},setTimeout,clearTimeout,require(n){if(n==='../prisma')return prisma;if(n==='uuid')return {v4:()=> 'test-id'};if(n==='jsonwebtoken')return {verify:token=>({id:token.replace('test-','')})};if(n==='../controllers/chat.controller')return {sendPushNotification:async()=>{},clearConversationMessagesCache(){}};if(n==='../services/call-disconnect-grace')return require('../services/call-disconnect-grace');throw Error(n);}};
 vm.runInNewContext(fs.readFileSync(path.join(root,'sockets/socketHandler.js'),'utf8'),sandbox);sandbox.module.exports(io);
@@ -42,6 +56,7 @@ io.on('connection',socket=>socket.onAny((event,data)=>{if(/call|webrtc/.test(eve
         window.RTCPeerConnection=new Proxy(NativePeer,{construct(Target,args){if(fail)throw Error('NotReadableError: interrupted mobile device');const pc=new Target(...args);window.testPeers.push(pc);return pc;}});
         const gum=navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
         navigator.mediaDevices.getUserMedia=async constraints=>{
+          if(window.testDenyCamera && constraints.video && !constraints.audio) throw new DOMException('Camera permission denied','NotAllowedError');
           const stream=await gum(constraints);
           if(constraints.audio && window._callAudioCtx){
             const ctx=window._callAudioCtx,osc=ctx.createOscillator(),out=ctx.createMediaStreamDestination();
@@ -86,6 +101,28 @@ io.on('connection',socket=>socket.onAny((event,data)=>{if(/call|webrtc/.test(eve
     await pages[1].setViewportSize({width:390,height:844});
     await pages[1].screenshot({path:path.join(root,'scratch/mobile-after-answer-'+(video?'video':'voice')+'.png')});
     assert(audio.every(a=>a.energy>0&&a.playing&&a.hasStream));
+    if(!video){
+      const micBefore=await pages[1].evaluate(()=>window.testPeers.at(-1).getSenders().find(s=>s.track?.kind==='audio').track.id);
+      await pages[1].evaluate(()=>{window.testDenyCamera=true;});
+      await pages[1].getByRole('button',{name:'Bật video',exact:true}).click();
+      await pages[1].getByText(/Chưa được phép dùng micro\/camera/).waitFor();
+      assert(await pages[1].getByRole('button',{name:'Kết thúc cuộc gọi',exact:true}).isVisible());
+      await pages[1].evaluate(()=>{window.testDenyCamera=false;});
+      await pages[1].getByRole('button',{name:'Bật video',exact:true}).click();
+      await pages[0].waitForFunction(()=>{const v=document.getElementById('remoteVideoPlayer');return v?.videoWidth>0&&v.readyState>=2;});
+      assert.equal(await pages[0].evaluate(()=>window.testPeers.at(-1).getSenders().filter(s=>s.track?.kind==='video').length),0,'Receiving video must not start the other camera');
+      await pages[0].getByRole('button',{name:'Bật video',exact:true}).click();
+      assert.equal(await pages[1].evaluate(()=>window.testPeers.at(-1).getSenders().find(s=>s.track?.kind==='audio').track.id),micBefore,'Upgrade replaced the live microphone');
+    }
+    for(const page of pages) {
+      await page.waitForFunction(async()=>{for(const r of(await window.testPeers.at(-1).getStats()).values())if(r.type==='inbound-rtp'&&r.kind==='video'&&r.framesDecoded>0)return true;return false;},{},{timeout:15000});
+      await page.waitForFunction(()=>{const v=document.getElementById('remoteVideoPlayer');return v?.videoWidth>0&&v.readyState>=2;},{},{timeout:10000});
+    }
+    for(const [i,page] of pages.entries())await page.waitForFunction(async previous=>{
+      for(const r of(await window.testPeers.at(-1).getStats()).values())
+        if(r.type==='inbound-rtp'&&r.kind==='audio'&&r.packetsReceived>previous+5&&r.totalAudioEnergy>0)return true;
+      return false;
+    },audio[i].received,{timeout:10000});
     await pages[1].getByRole('button',{name:'Tắt micro',exact:true}).click();
     await pages[1].waitForFunction(()=>window.testPeers.some(pc=>pc.getSenders().some(s=>s.track?.kind==='audio'&&!s.track.enabled)));
     await pages[1].getByRole('button',{name:'Bật micro',exact:true}).click();
@@ -99,7 +136,29 @@ io.on('connection',socket=>socket.onAny((event,data)=>{if(/call|webrtc/.test(eve
     await pages[0].getByRole('button',{name:'Đóng',exact:true}).click();
     await pages[0].getByRole('button',{name:'Gọi thoại',exact:true}).waitFor({timeout:30000});
     assert.equal(globals.activeCalls.size,0);
-    console.log('Mobile '+(video?'video':'voice')+' UI: permission resize, answer, stale-end protection, two-way audio and hangup passed',JSON.stringify(audio));
+    // Reuse the same mounted ChatScreen: a fresh page hides stale call guards.
+    for(const [caller,callee,withVideo] of [[0,1,true],[1,0,false]]) {
+      const peerCounts=await Promise.all(pages.map(page=>page.evaluate(()=>window.testPeers.length)));
+      await pages[caller].getByRole('button',{name:withVideo?'Gọi Video':'Gọi thoại',exact:true}).click();
+      await pages[callee].getByRole('button',{name:'Trả lời',exact:true}).waitFor({timeout:10000});
+      await pages[callee].getByRole('button',{name:'Trả lời',exact:true}).click();
+      for(const [i,page] of pages.entries())await page.waitForFunction(count=>window.testPeers.length>count&&['connected','completed'].includes(window.testPeers.at(-1)?.iceConnectionState),peerCounts[i],{timeout:15000});
+      for(const page of pages)await page.getByText('Đang đàm thoại',{exact:true}).waitFor();
+      if(withVideo)for(const page of pages)await page.waitForFunction(async()=>{for(const r of(await window.testPeers.at(-1).getStats()).values())if(r.type==='inbound-rtp'&&r.kind==='video'&&r.framesDecoded>0)return true;return false;});
+      if(!withVideo){
+        holdUpgradeOffers=true;
+        const delivered=new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Both mobile camera offers did not arrive')),10000);releaseHeldOffers=()=>{clearTimeout(timer);resolve();};});
+        await Promise.all(pages.map(page=>page.getByRole('button',{name:'Bật video',exact:true}).click()));
+        await delivered;
+        for(const page of pages)await page.waitForFunction(async()=>{for(const r of(await window.testPeers.at(-1).getStats()).values())if(r.type==='inbound-rtp'&&r.kind==='video'&&r.framesDecoded>0)return true;return false;},{},{timeout:15000});
+        assert.equal(heldUpgradeOffers.length,0,'Simultaneous camera offers were not delivered');
+      }
+      await pages[caller].getByRole('button',{name:'Kết thúc cuộc gọi',exact:true}).click();
+      await pages[callee].getByRole('button',{name:'Đóng',exact:true}).click();
+      for(const page of pages)await page.getByRole('button',{name:'Gọi thoại',exact:true}).waitFor();
+      assert.equal(globals.activeCalls.size,0);
+    }
+    console.log('Mobile '+(video?'video':'voice')+' UI: answer, two-way audio/video frames, camera denial/upgrade, repeated calls both directions and simultaneous upgrade passed',JSON.stringify(audio));
     for(const context of contexts)await context.close();
   }
   assert.equal(errors.length,0,errors.join('\n'));

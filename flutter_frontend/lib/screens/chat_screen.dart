@@ -99,6 +99,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   StreamSubscription? _incomingEndSub;
   bool _isStartingCall = false;
   bool _isCallRoomShowing = false;
+  Object? _callRoomOwner;
 
   // AI Assistant Chat state
   final List<Map<String, String>> _aiMessages = [
@@ -6504,7 +6505,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     String? callId,
     VoidCallback? onShown,
   }) {
+    bool videoMode = isVideo;
+    bool enablingVideo = false;
+    bool ignoreOffer = false;
+    bool videoOfferPending = false;
     _isCallRoomShowing = true;
+    final callRoomOwner = Object();
+    _callRoomOwner = callRoomOwner;
     final callerId = context.read<ChatProvider>().currentUser?.id;
     bool isMuted = false;
     bool isSpeakerOn = true;
@@ -6523,7 +6530,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     final remoteViewType = 'call-remote-$videoViewId';
     final localViewType = 'call-local-$videoViewId';
     html.VideoElement? remoteCallVideo, localCallVideo;
-    if (isVideo && kIsWeb) {
+    if (kIsWeb) {
       remoteCallVideo = registerCallVideoView(remoteViewType, 'remoteVideoPlayer');
       localCallVideo = registerCallVideoView(localViewType, 'localVideoPlayer');
     }
@@ -6651,6 +6658,20 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         }
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            Future<void> sendVideoOffer() async {
+              final connection = pc;
+              if (callClosed || connection == null || connection.signalingState != 'stable') return;
+              final offer = await createCallDescription(connection, video:true);
+              if (callClosed) return;
+              await connection.setLocalDescription({'type':offer['type'],'sdp':offer['sdp']});
+              if (callClosed) return;
+              videoOfferPending = false;
+              SocketService.socket?.emit('webrtc_signal', {
+                'connectedUserId':targetUserId,'callId':callId,
+                'signal':{'type':'offer','sdp':offer['sdp'],'video':true},
+              });
+            }
+
             Future<void> processIceQueue() async {
               final queued = List<Map<String, dynamic>>.of(iceCandidateQueue);
               iceCandidateQueue.clear();
@@ -6678,10 +6699,15 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
               try {
                 final type = signal['type']?.toString();
                 if (type == 'offer') {
-                  if (connection.signalingState != 'stable') {
-                    print('⚠️ Bỏ qua offer trùng lặp vì signalingState là: ' + connection.signalingState.toString());
-                    return;
+                  final collision = connection.signalingState != 'stable';
+                  final polite = (callerId ?? '').compareTo(targetUserId) > 0;
+                  ignoreOffer = collision && !polite;
+                  if (ignoreOffer) return;
+                  if (collision) {
+                    if (localStream?.getVideoTracks().isNotEmpty == true) videoOfferPending = true;
+                    await connection.setLocalDescription({'type':'rollback'});
                   }
+                  if (signal['video'] == true && !videoMode && dialogContext.mounted) setDialogState(() {videoMode = true; isCameraOff = localStream?.getVideoTracks().isEmpty ?? true;});
                   await connection.setRemoteDescription({
                     'type': 'offer',
                     'sdp': signal['sdp'],
@@ -6689,7 +6715,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                   if (callClosed) return;
                   await processIceQueue();
                   if (callClosed) return;
-                  final answer = await createCallDescription(connection, answer: true, video: isVideo);
+                  final answer = await createCallDescription(connection, answer: true, video: videoMode);
                   if (callClosed) return;
                   await connection.setLocalDescription({
                     'type': answer['type'],
@@ -6704,7 +6730,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                       'sdp': answer['sdp'],
                     }
                   });
+                  if (videoOfferPending) {
+                    signalQueue.run(sendVideoOffer).catchError((Object e) {debugPrint('Video renegotiation failed: $e');});
+                  }
                 } else if (type == 'answer') {
+                  ignoreOffer = false;
                   if (connection.signalingState != 'have-local-offer') {
                     print('⚠️ Bỏ qua answer trùng lặp vì signalingState là: ' + connection.signalingState.toString());
                     return;
@@ -6714,7 +6744,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                     'sdp': signal['sdp'],
                   });
                   await processIceQueue();
+                  if (videoOfferPending) {
+                    signalQueue.run(sendVideoOffer).catchError((Object e) {debugPrint('Video renegotiation failed: $e');});
+                  }
                 } else if (type == 'candidate') {
+                  if (ignoreOffer) return;
                   final candidateStr = signal['candidate']?.toString();
                   if (candidateStr != null && candidateStr.isNotEmpty) {
                     final candidateMap = {
@@ -6757,6 +6791,45 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                 if (dialogContext.mounted) setDialogState(() {callNotice = null;});
               } catch (error) {showConnectionIssue(callMediaError(error, video:false));}
               finally {repairingAudio = false;}
+            }
+
+            Future<void> enableVideo() async {
+              if (callClosed || enablingVideo) return;
+              if (pc == null || connectedAt == null) {showConnectionIssue('Chờ cuộc gọi kết nối rồi bật video.'); return;}
+              enablingVideo = true;
+              setDialogState(() {});
+              html.MediaStream? camera;
+              final addedSenders = <dynamic>[];
+              try {
+                // Capture only the camera, directly from the button gesture. Keep the microphone.
+                camera = await requestCallCamera();
+                if (callClosed) {stopCallMedia(camera);return;}
+                await signalQueue.run(() async {
+                  final connection = pc;
+                  if (callClosed || connection == null) {stopCallMedia(camera);return;}
+                  if (connection.signalingState != 'stable') throw StateError('Đang cập nhật kết nối. Thử bật video lại sau giây lát.');
+                  for (final track in camera!.getVideoTracks()) {
+                    localStream!.addTrack(track);
+                    addedSenders.add(connection.addTrack(track, localStream!));
+                  }
+                  setDialogState(() {videoMode = true; isCameraOff = false;callNotice = null;});
+                  final preview = getOrCreateVideo('localVideoPlayer', isLocal:true);
+                  preview.srcObject = localStream;
+                  preview.style.display = 'block';
+                  preview.play().catchError((_) {});
+                  videoOfferPending = true;
+                  await sendVideoOffer();
+                });
+              } catch (error) {
+                for (final sender in addedSenders) { try {pc?.removeTrack(sender);} catch (_) {} }
+                for (final track in camera?.getVideoTracks() ?? <html.MediaStreamTrack>[]) {
+                  localStream?.removeTrack(track);track.stop();
+                }
+                showConnectionIssue(callMediaError(error, video:true));
+              } finally {
+                enablingVideo = false;
+                if (!callClosed && dialogContext.mounted) setDialogState(() {});
+              }
             }
 
             Future<void> initWebRTC() async {
@@ -6802,7 +6875,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                   }
                 });
 
-                if (isVideo && localStream != null) {
+                if (localStream != null && localStream!.getVideoTracks().isNotEmpty) {
                   for (var track in localStream!.getVideoTracks()) {
                     track.enabled = !isCameraOff;
                   }
@@ -6843,7 +6916,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                       remoteAudio?.play().catchError((_) {});
                     }
                   }
-                  if (isVideo && incomingStream!.getVideoTracks().isNotEmpty) {
+                  if (incomingStream!.getVideoTracks().isNotEmpty) {
+                    if (dialogContext.mounted) setDialogState(() {videoMode = true; isCameraOff = localStream?.getVideoTracks().isEmpty ?? true;});
                     final video = getOrCreateVideo('remoteVideoPlayer', isLocal: false);
                     video.muted = true;
                     video.srcObject = incomingStream;
@@ -6915,7 +6989,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                       signalQueue.run(() async {
                         final connection = pc;
                         if (callClosed || connection == null || connection.signalingState != 'stable') return;
-                        final offer = await createCallDescription(connection, video: isVideo, iceRestart: true);
+                        final offer = await createCallDescription(connection, video: videoMode, iceRestart: true);
                         if (callClosed) return;
                         await connection.setLocalDescription({'type': offer['type'], 'sdp': offer['sdp']});
                         if (callClosed) return;
@@ -6942,7 +7016,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                   await signalQueue.run(() async {
                     final connection = pc;
                     if (callClosed || connection == null) return;
-                    final offer = await createCallDescription(connection, video: isVideo);
+                    final offer = await createCallDescription(connection, video: videoMode);
                     if (callClosed) return;
                     await connection.setLocalDescription({
                       'type': offer['type'],
@@ -6962,7 +7036,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
               } catch (e) {
                 initializing = false;
                 if (callClosed) return;
-                final message = callMediaError(e, video: isVideo);
+                final message = callMediaError(e, video: videoMode);
                 SocketService.socket?.emit('end_call', {'connectedUserId': targetUserId, 'callId': callId, 'reason': 'media_error'});
                 cleanupCall();
                 if (dialogContext.mounted) {
@@ -7034,20 +7108,25 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
             }
 
             return WillPopScope(onWillPop: () async => false,
-              child: CallSurface(name: partnerName, avatar: partnerAvatar, video: isVideo,
+              child: CallSurface(name: partnerName, avatar: partnerAvatar, video: videoMode,
                 status: callStatus, connected: callStatus == 'Đang đàm thoại', ended: callClosed,
                 notice: callNotice,
                 duration: connectedAt != null ? formatCallDuration(callDurationSeconds) : null,
-                videoView: isVideo && kIsWeb ? IgnorePointer(child: HtmlElementView(viewType:remoteViewType)) : null,
-                localVideoView: isVideo && kIsWeb && !isCameraOff ? IgnorePointer(child:HtmlElementView(viewType:localViewType)) : null,
+                videoView: videoMode && kIsWeb && incomingStream?.getVideoTracks().isNotEmpty == true ? IgnorePointer(child: HtmlElementView(viewType:remoteViewType)) : null,
+                localVideoView: videoMode && kIsWeb && !isCameraOff ? IgnorePointer(child:HtmlElementView(viewType:localViewType)) : null,
                 onRepairAudio: !callClosed && pc != null && callNotice != null ? repairAudio : null,
                 actions: [
                   if (!callClosed) CallControl(icon:isMuted ? Icons.mic_off_rounded : Icons.mic_rounded,
                     label: isMuted ? 'Bật micro' : 'Tắt micro', active:isMuted,
                     onPressed: () {setDialogState(() {isMuted = !isMuted;for(final track in localStream?.getAudioTracks() ?? <html.MediaStreamTrack>[]) {track.enabled = !isMuted;}});}),
-                  if (!callClosed && isVideo) CallControl(icon:isCameraOff ? Icons.videocam_off_rounded : Icons.videocam_rounded,
-                    label:isCameraOff ? 'Bật camera' : 'Tắt camera', active:isCameraOff,
-                    onPressed: () {setDialogState(() {isCameraOff = !isCameraOff;for(final track in localStream?.getVideoTracks() ?? <html.MediaStreamTrack>[]) {track.enabled = !isCameraOff;}});}),
+                  if (!callClosed) CallControl(
+                    icon:localStream?.getVideoTracks().isNotEmpty == true && !isCameraOff ? Icons.videocam_rounded : Icons.videocam_off_rounded,
+                    label:localStream?.getVideoTracks().isNotEmpty == true && !isCameraOff ? 'Tắt camera' : 'Bật video',
+                    active:videoMode && isCameraOff, busy:enablingVideo,
+                    onPressed: () {
+                      if (localStream?.getVideoTracks().isEmpty ?? true) {enableVideo(); return;}
+                      setDialogState(() {isCameraOff = !isCameraOff;for(final track in localStream!.getVideoTracks()) {track.enabled = !isCameraOff;}});
+                    }),
                   if (!callClosed) CallControl(icon:isSpeakerOn ? Icons.volume_up_rounded : Icons.volume_off_rounded,
                     label:isSpeakerOn ? 'Tắt âm thanh' : 'Bật âm thanh', active:!isSpeakerOn,
                     onPressed: () {setDialogState(() {isSpeakerOn = !isSpeakerOn;try {callWebFunction('setCallSpeakerEnabled',[isSpeakerOn]);if(isSpeakerOn) callWebFunction('unlockAudio',[]);} catch (_) {} remoteAudio?.muted = !isSpeakerOn;});}),
@@ -7056,6 +7135,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                     onPressed: () {
                       if (!callClosed) SocketService.socket?.emit('end_call', {'connectedUserId':targetUserId,'callId':callId,'conversationId':context.read<ChatProvider>().selectedConversation?.id ?? ''});
                       cleanupCall();
+                      if (identical(_callRoomOwner, callRoomOwner)) {
+                        _callRoomOwner = null;
+                        _isCallRoomShowing = false;
+                      }
                       if (dialogContext.mounted) dismissCallRoute(dialogContext);
                     }),
                 ]),
@@ -7064,7 +7147,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         );
       },
     ).then((_) {
-      _isCallRoomShowing = false;
+      if (identical(_callRoomOwner, callRoomOwner)) {
+        _callRoomOwner = null;
+        _isCallRoomShowing = false;
+      }
       cleanupCall();
     });
   }

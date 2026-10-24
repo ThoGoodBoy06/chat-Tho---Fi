@@ -1030,6 +1030,11 @@ module.exports = (io) => {
       const active = activeCalls.get(socket.userId);
       if (!active || active.partnerId !== connectedUserId || (d.callId && active.callId !== d.callId)) return;
       const signalType = signal.type || (signal.candidate ? 'candidate' : 'unknown');
+      if (active.isAccepted && signalType === 'offer' && signal.video === true) {
+        active.callType = 'video';
+        const partner = activeCalls.get(connectedUserId);
+        if (partner?.callId === active.callId) partner.callType = 'video';
+      }
       console.log(`⚡ [webrtc_signal] ${signalType} từ ${socket.userId} -> ${connectedUserId}`);
 
       const signalPayload = {
