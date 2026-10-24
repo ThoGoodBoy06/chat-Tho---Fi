@@ -29,10 +29,12 @@ import '../utils/web_helpers.dart';
 import '../utils/call_media.dart';
 import '../utils/call_navigation.dart';
 import '../utils/call_session.dart';
+import '../utils/call_duration.dart';
 import '../utils/call_signal_queue.dart';
 import '../utils/web_file_picker.dart';
 import '../utils/inline_image_cache.dart';
 import '../widgets/inline_message_image.dart';
+import '../widgets/call_surface.dart';
 import '../widgets/message_context_menu_transition.dart';
 
 class _MessageRenderFlags {
@@ -1637,7 +1639,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     }
     final text = rawMsg.trim();
     final lower = text.toLowerCase();
-    
+
     if (lower.startsWith('data:image') ||
         lower.contains('/uploads/') ||
         lower.endsWith('.png') ||
@@ -1648,7 +1650,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         lower == 'image') {
       return 'Đã gửi một hình ảnh';
     }
-    
+
     if (lower.startsWith('data:audio') ||
         lower.contains('.webm') ||
         lower.contains('.mp3') ||
@@ -1656,11 +1658,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         lower == 'audio') {
       return 'Đã gửi một tin nhắn thoại';
     }
-    
+
     if (lower.startsWith('{"filename"') || lower.startsWith('{"url"')) {
       return 'Đã gửi một tệp đính kèm';
     }
-    
+
     return text;
   }
 
@@ -6329,137 +6331,24 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
 
         return WillPopScope(
           onWillPop: () async => canDismiss,
-          child: Material(
-            color: const Color(0xFF090D1A),
-            child: SafeArea(
-              child: SizedBox.expand(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        children: [
-                          const SizedBox(height: 20),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                isVideo ? Icons.videocam_rounded : Icons.phone_in_talk_rounded,
-                                color: const Color(0xFF10B981),
-                                size: 20,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Cuộc gọi ${isVideo ? "Video" : "Thoại"} đến',
-                                style: const TextStyle(
-                                  color: Color(0xFF10B981),
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-
-                      Column(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: const Color(0xFF10B981).withOpacity(0.5), width: 3),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFF10B981).withOpacity(0.2),
-                                  blurRadius: 30,
-                                  spreadRadius: 10,
-                                ),
-                              ],
-                            ),
-                            child: CircleAvatar(
-                              radius: 60,
-                              backgroundColor: const Color(0xFF0068FF),
-                              child: Text(
-                                callerName.isNotEmpty ? callerName[0].toUpperCase() : 'U',
-                                style: const TextStyle(fontSize: 48, color: Colors.white, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          Text(
-                            callerName,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            incomingMediaError ?? (isAnswering ? 'Đang mở micro/camera...' : 'Đang đổ chuông...'),
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Color(0xFF94A3B8),
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 24),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  iconSize: 36,
-                                  style: IconButton.styleFrom(
-                                    backgroundColor: const Color(0xFFEF4444),
-                                    padding: const EdgeInsets.all(22),
-                                    elevation: 6,
-                                  ),
-                                  icon: const Icon(Icons.call_end_rounded, color: Colors.white),
-                                  tooltip: 'Từ chối',
-                                  onPressed: () {
-                                    SocketService.socket?.emit('reject_call', {
-                                      'callerId': callerId,
-                                      'callId': callId,
-                                      'callType': callType,
-                                    });
-                                    safeDismissCallDialog(dialogContext);
-                                  },
-                                ),
-                                const SizedBox(height: 12),
-                                const Text(
-                                  'Từ chối',
-                                  style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500),
-                                ),
-                              ],
-                            ),
-
-                            Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  iconSize: 36,
-                                  style: IconButton.styleFrom(
-                                    backgroundColor: const Color(0xFF10B981),
-                                    padding: const EdgeInsets.all(22),
-                                    elevation: 6,
-                                  ),
-                                  icon: const Icon(Icons.call_rounded, color: Colors.white),
-                                  tooltip: 'Trả lời',
-                                  onPressed: isAnswering ? null : () async {
+          child: CallSurface(name: callerName,
+            avatar: ApiService.formatImageUrl(data['callerAvatar']?.toString() ?? ''),
+            video: isVideo, incoming: true,
+            status: isAnswering ? 'Đang chuẩn bị micro'+(isVideo ? ' và camera…' : '…') : 'Cuộc gọi đến',
+            notice: incomingMediaError,
+            actions: [
+              CallControl(icon: Icons.call_end_rounded, label: 'Từ chối', color: const Color(0xFFE5525E),
+                onPressed: () {
+                  SocketService.socket?.emit('reject_call', {'callerId':callerId,'callId':callId,'callType':callType});
+                  safeDismissCallDialog(dialogContext);
+                }),
+              CallControl(icon: isVideo ? Icons.videocam_rounded : Icons.call_rounded, label: 'Trả lời',
+                color: const Color(0xFF23A982), busy: isAnswering,
+                onPressed: () async {
                                     if (isDialogClosed) return;
                                     setIncomingState(() { isAnswering = true; incomingMediaError = null; });
                                     autoRejectTimer?.cancel(); autoRejectTimer = null;
+                                    SoundService.stopAllCallSounds();
                                     try { callWebFunction('unlockAudio', []); } catch (_) {}
                                     html.MediaStream captured;
                                     try {
@@ -6471,13 +6360,24 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                       });
                                       return;
                                     }
-                                    if (isDialogClosed || !mounted || !dialogContext.mounted || !SocketService.isConnected) {
+                                    if (isDialogClosed || !mounted || !dialogContext.mounted) {
                                       stopCallMedia(captured);
                                       if (!isDialogClosed && dialogContext.mounted) setIncomingState(() {
                                         isAnswering = false; incomingMediaError = 'Mất kết nối. Kết nối lại rồi thử nhận cuộc gọi.';
                                       });
                                       return;
                                     }
+                                    try {
+                                      await SocketService.acceptCall(callerId: callerId, callId: callId);
+                                    } catch (error) {
+                                      stopCallMedia(captured);
+                                      if (!isDialogClosed && dialogContext.mounted) setIncomingState(() {
+                                        isAnswering = false;
+                                        incomingMediaError = error.toString().replaceFirst('Bad state: ', '');
+                                      });
+                                      return;
+                                    }
+                                    if (isDialogClosed || !dialogContext.mounted) { stopCallMedia(captured); return; }
                                     isDialogClosed = true;
                                     _isIncomingCallShowing = false;
                                     autoRejectTimer?.cancel();
@@ -6490,11 +6390,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                     final audioPlayer = html.document.getElementById('remoteAudioPlayer') as html.AudioElement?;
                                     audioPlayer?.muted = false;
                                     audioPlayer?.volume = 1.0;
-                                    SocketService.clearCallSignals();
-                                    SocketService.socket?.emit('accept_call', {'callerId': callerId, 'callId': callId});
+
                                     _showCallDialog(
                                       context: context,
                                       partnerName: callerName,
+                                      partnerAvatar: ApiService.formatImageUrl(data['callerAvatar']?.toString() ?? ''),
                                       isVideo: isVideo,
                                       targetUserId: callerId,
                                       isCaller: false,
@@ -6504,24 +6404,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                         if (dialogContext.mounted) dismissCallRoute(dialogContext);
                                       },
                                     );
-                                  },
-                                ),
-                                const SizedBox(height: 12),
-                                const Text(
-                                  'Trả lời',
-                                  style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
+                                  }),
+            ]),
         );
       }),
     ).then((_) {
@@ -6600,6 +6484,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     _showCallDialog(
       context: context,
       partnerName: conv.name,
+      partnerAvatar: conv.avatar,
       isVideo: isVideo,
       targetUserId: targetUserId,
       isCaller: true,
@@ -6611,6 +6496,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   void _showCallDialog({
     required BuildContext context,
     required String partnerName,
+    String? partnerAvatar,
     required bool isVideo,
     required String targetUserId,
     required bool isCaller,
@@ -6625,6 +6511,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     bool isCameraOff = false;
     String callStatus = isCaller ? 'Đang gọi...' : 'Đang kết nối...';
     int callDurationSeconds = 0;
+    DateTime? connectedAt;
+    String? callNotice;
+    bool relayConfigured = false;
+    bool repairingAudio = false;
+    Timer? connectionDeadline;
+    StreamSubscription? resumeSub;
+    StreamSubscription? localMuteSub;
     Timer? callDurationTimer;
     final videoViewId = DateTime.now().microsecondsSinceEpoch;
     final remoteViewType = 'call-remote-$videoViewId';
@@ -6685,7 +6578,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     }
 
     void cleanupCall() {
+      if (callClosed) return;
+      if (connectedAt != null) callDurationSeconds = DateTime.now().difference(connectedAt!).inSeconds;
       callClosed = true;
+      connectionDeadline?.cancel();
+      resumeSub?.cancel();
+      localMuteSub?.cancel();
       callDurationTimer?.cancel();
       callDurationTimer = null;
       signalQueue.close();
@@ -6742,7 +6640,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
       context: context,
       barrierDismissible: false,
       barrierLabel: 'CallRoom',
-      barrierColor: isVideo ? Colors.transparent : Colors.black.withOpacity(0.9),
+      transitionDuration: const Duration(milliseconds: 180),
+      barrierColor: const Color(0xFF101923),
       pageBuilder: (dialogContext, anim1, anim2) {
         if (!didShowCall) {
           didShowCall = true;
@@ -6839,13 +6738,38 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
               }
             }
 
+            void showConnectionIssue(String message) {
+              if (!callClosed && dialogContext.mounted) setDialogState(() {callNotice = message;});
+            }
+            Future<void> repairAudio() async {
+              if (callClosed || repairingAudio) return;
+              repairingAudio = true;
+              try {
+                callWebFunction('unlockAudio', []);
+                final fresh = await requestCallMedia(video: false);
+                if (callClosed) {stopCallMedia(fresh);return;}
+                await replaceCallMicrophone(pc, fresh);
+                if (callClosed) {stopCallMedia(fresh);return;}
+                final previous = List<html.MediaStreamTrack>.from(localStream!.getAudioTracks());
+                for (final track in previous) { localStream!.removeTrack(track); track.stop(); }
+                for (final track in fresh.getAudioTracks()) {track.enabled = !isMuted;localStream!.addTrack(track);}
+                callWebFunction('unlockAudio', []);
+                if (dialogContext.mounted) setDialogState(() {callNotice = null;});
+              } catch (error) {showConnectionIssue(callMediaError(error, video:false));}
+              finally {repairingAudio = false;}
+            }
+
             Future<void> initWebRTC() async {
               if (!kIsWeb || pc != null || initializing || callClosed) return;
               initializing = true;
               try {
                 final config = await ApiService.getCallIceConfig();
                 if (callClosed) return;
-                pc = html.RtcPeerConnection(config);
+                relayConfigured = config['relayConfigured'] == true;
+                pc = html.RtcPeerConnection({'iceServers': config['iceServers'], 'iceCandidatePoolSize': 0});
+                connectionDeadline = Timer(const Duration(seconds: 25), () {
+                  showConnectionIssue(relayConfigured ? 'Kết nối đang chậm. Kiểm tra mạng của hai thiết bị.' : 'Chưa thiết lập được đường truyền âm thanh. Máy chủ chưa có TURN dự phòng; hãy thử cùng Wi-Fi.');
+                });
 
                 var existingAudio = html.document.getElementById('remoteAudioPlayer') as html.AudioElement?;
                 if (existingAudio != null) {
@@ -6869,6 +6793,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                 remoteAudio!.volume = 1.0;
 
                 requireCallTracks(localStream, video: isVideo);
+                localMuteSub = localStream!.getAudioTracks().first.onMute.listen((_) {
+                  showConnectionIssue('Micro đang bị hệ thống tạm dừng. Mở lại app hoặc bấm “Thử lại âm thanh”.');
+                });
+                resumeSub = html.document.onVisibilityChange.listen((_) {
+                  if (!callClosed && html.document.hidden != true) {
+                    try { callWebFunction('unlockAudio', []); } catch (_) {}
+                  }
+                });
 
                 if (isVideo && localStream != null) {
                   for (var track in localStream!.getVideoTracks()) {
@@ -6958,19 +6890,24 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                   if (state == 'connected' || state == 'completed') {
                     if (!callClosed && dialogContext.mounted) {
                       setDialogState(() {
+                        connectionDeadline?.cancel();
+                        callNotice = null;
+                        SoundService.stopAllCallSounds();
                         callStatus = 'Đang đàm thoại';
+                        connectedAt ??= DateTime.now();
                         callDurationTimer ??= Timer.periodic(const Duration(seconds: 1), (tm) {
                           if (callClosed || !dialogContext.mounted) {
                             tm.cancel();
                             return;
                           }
                           setDialogState(() {
-                            callDurationSeconds++;
+                            callDurationSeconds = DateTime.now().difference(connectedAt!).inSeconds;
                           });
                         });
                       });
                     }
                   }
+                  if (state == 'disconnected') { showConnectionIssue('Mạng bị gián đoạn. Đang kết nối lại…'); }
                   if (state == 'failed') {
                     if (!callClosed && dialogContext.mounted) setDialogState(() { callStatus = 'Không kết nối được. Kiểm tra mạng rồi gọi lại.'; });
                     // Only the caller restarts ICE, avoiding simultaneous offers.
@@ -7026,10 +6963,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                 initializing = false;
                 if (callClosed) return;
                 final message = callMediaError(e, video: isVideo);
-                SocketService.socket?.emit('end_call', {'connectedUserId': targetUserId, 'callId': callId});
+                SocketService.socket?.emit('end_call', {'connectedUserId': targetUserId, 'callId': callId, 'reason': 'media_error'});
                 cleanupCall();
                 if (dialogContext.mounted) {
-                  setDialogState(() { callStatus = message; });
+                  setDialogState(() { callStatus = 'Không thể kết nối'; callNotice = message; });
                 }
                 debugPrint('WebRTC init failed: $e');
               }
@@ -7054,14 +6991,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                   return;
                 }
                 try {
-                  final bUrl = (kIsWeb && ((html.window.location.hostname ?? '').contains('pages.dev') ||
-                                          (html.window.location.hostname ?? '').contains('workers.dev') ||
-                                          (html.window.location.hostname ?? '').contains('cloudflare')))
-                      ? 'https://chat-tho-fi-vn-9s8u.onrender.com'
-                      : '';
-                  final res = await html.HttpRequest.getString('$bUrl/api/call/status?callerId=$callerId&calleeId=$targetUserId&t=${DateTime.now().millisecondsSinceEpoch}');
+                  final data = await ApiService.getCallStatus(callerId ?? '', targetUserId);
                   if (callClosed || !dialogContext.mounted) return;
-                  final data = jsonDecode(res);
                   if (!matchesCallSession(data, callId)) return;
                   if (data['isAccepted'] == true && callStatus != 'Đang đàm thoại') {
                     print('🔄 [Caller Fallback] Callee đã bắt máy -> Chuyển sang đàm thoại!');
@@ -7077,34 +7008,21 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
             }
 
             rejectSub ??= SocketService.onCallRejected.listen((data) {
-              if (!matchesCallSession(data, callId)) return;
-              if (callClosed || !dialogContext.mounted) return;
-              SoundService.stopAllCallSounds();
+              if (!matchesCallSession(data, callId) || callClosed || !dialogContext.mounted) return;
+              cleanupCall();
               setDialogState(() {
-                callStatus = 'Người dùng bận / Từ chối';
-              });
-              Future.delayed(const Duration(milliseconds: 1200), () {
-                if (callClosed || !dialogContext.mounted) return;
-                cleanupCall();
-                if (dialogContext.mounted) dismissCallRoute(dialogContext);
+                callStatus = data['reason'] == 'offline' ? 'Người nhận chưa trực tuyến' : data['reason'] == 'busy' ? 'Người nhận đang bận' : 'Cuộc gọi đã bị từ chối';
               });
             });
-
             endSub ??= SocketService.onCallEnded.listen((data) {
-              if (!matchesCallSession(data, callId)) return;
-              if (callClosed) return;
-              if (data is Map) {
-                final endedCallerId = data['callerId']?.toString();
-                final endedTargetId = data['targetId']?.toString();
-                if (endedCallerId != null && endedTargetId != null && endedCallerId.isNotEmpty && endedTargetId.isNotEmpty) {
-                  if (endedCallerId != targetUserId && endedTargetId != targetUserId) {
-                    print('ℹ️ Bỏ qua call_ended không thuộc về đối phương ($targetUserId): caller=$endedCallerId, target=$endedTargetId');
-                    return;
-                  }
-                }
-              }
+              if (!matchesCallSession(data, callId) || callClosed || !dialogContext.mounted) return;
+              final peer = data['callerId']?.toString(), target = data['targetId']?.toString();
+              if (peer != targetUserId && target != targetUserId) return;
               cleanupCall();
-              if (dialogContext.mounted) dismissCallRoute(dialogContext);
+              setDialogState(() {
+                final reason = data['reason'];
+                callStatus = reason == 'no_answer' ? 'Không có trả lời' : reason == 'offline' ? 'Người nhận chưa trực tuyến' : reason == 'media_error' ? 'Không mở được micro hoặc camera' : 'Cuộc gọi đã kết thúc';
+              });
             });
 
             signalSub ??= SocketService.onWebrtcSignal.listen((data) async {
@@ -7115,203 +7033,32 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
               initWebRTC();
             }
 
-            return WillPopScope(
-              onWillPop: () async => false,
-              child: Material(
-                color: isVideo ? Colors.transparent : const Color(0xFF090D1A),
-                child: Stack(
-                  children: [
-                    if (isVideo && kIsWeb)
-                      Positioned.fill(child: IgnorePointer(child: HtmlElementView(viewType: remoteViewType))),
-                    if (isVideo && kIsWeb)
-                      Positioned(top: 60, right: 16, width: 110, height: 150,
-                        child: ClipRRect(borderRadius: BorderRadius.circular(16),
-                          child: IgnorePointer(child: HtmlElementView(viewType: localViewType)))),
-                    SafeArea(
-                  child: SizedBox.expand(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            children: [
-                              const SizedBox(height: 10),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.5),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      isVideo ? Icons.videocam_rounded : Icons.phone_rounded,
-                                      color: isVideo ? const Color(0xFF10B981) : const Color(0xFF0068FF),
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      callDurationSeconds > 0
-                                          ? '${(callDurationSeconds ~/ 60).toString().padLeft(2, '0')}:${(callDurationSeconds % 60).toString().padLeft(2, '0')}'
-                                          : (callClosed ? 'Không thể bắt đầu cuộc gọi' : callStatus),
-                                      style: TextStyle(
-                                        color: isVideo ? const Color(0xFF10B981) : const Color(0xFF0068FF),
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          if (!isVideo)
-                            Column(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: const Color(0xFF0068FF).withOpacity(0.5), width: 3),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: const Color(0xFF0068FF).withOpacity(0.25),
-                                        blurRadius: 40,
-                                        spreadRadius: 10,
-                                      ),
-                                    ],
-                                  ),
-                                  child: CircleAvatar(
-                                    radius: 64,
-                                    backgroundColor: const Color(0xFF0068FF),
-                                    child: Text(
-                                      partnerName.isNotEmpty ? partnerName[0].toUpperCase() : 'U',
-                                      style: const TextStyle(fontSize: 52, color: Colors.white, fontWeight: FontWeight.bold),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
-                                Text(
-                                  partnerName,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  callStatus == 'Đang đàm thoại' ? 'Cuộc gọi đã kết nối' : callStatus,
-                                  style: const TextStyle(
-                                    color: Color(0xFF94A3B8),
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            )
-                          else
-                            const SizedBox.shrink(),
-
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 24),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.6),
-                                borderRadius: BorderRadius.circular(32),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    iconSize: 30,
-                                    icon: Icon(isMuted ? Icons.mic_off_rounded : Icons.mic_rounded, color: Colors.white),
-                                    onPressed: () {
-                                      setDialogState(() {
-                                        isMuted = !isMuted;
-                                        if (localStream != null) {
-                                          for (var track in localStream!.getAudioTracks()) {
-                                            track.enabled = !isMuted;
-                                          }
-                                        }
-                                      });
-                                    },
-                                  ),
-                                  const SizedBox(width: 16),
-
-                                  if (isVideo) ...[
-                                    IconButton(
-                                      iconSize: 30,
-                                      icon: Icon(isCameraOff ? Icons.videocam_off_rounded : Icons.videocam_rounded, color: Colors.white),
-                                      onPressed: () {
-                                        setDialogState(() {
-                                          isCameraOff = !isCameraOff;
-                                          if (localStream != null) {
-                                            for (var track in localStream!.getVideoTracks()) {
-                                              track.enabled = !isCameraOff;
-                                            }
-                                          }
-                                        });
-                                      },
-                                    ),
-                                    const SizedBox(width: 16),
-                                  ],
-
-                                  IconButton(
-                                    iconSize: 36,
-                                    style: IconButton.styleFrom(
-                                      backgroundColor: const Color(0xFFEF4444),
-                                      padding: const EdgeInsets.all(16),
-                                    ),
-                                    icon: const Icon(Icons.call_end_rounded, color: Colors.white),
-                                    tooltip: 'Kết thúc cuộc gọi',
-                                    onPressed: () {
-                                      final curConv = Provider.of<ChatProvider>(context, listen: false).selectedConversation;
-                                      SocketService.socket?.emit('end_call', {
-                                        'connectedUserId': targetUserId,
-                    'callId': callId,
-                                        'conversationId': curConv?.id ?? '',
-                                      });
-                                      cleanupCall();
-                                      if (dialogContext.mounted) dismissCallRoute(dialogContext);
-                                    },
-                                  ),
-                                  const SizedBox(width: 16),
-
-                                  IconButton(
-                                    iconSize: 30,
-                                    icon: Icon(isSpeakerOn ? Icons.volume_up_rounded : Icons.volume_off_rounded, color: Colors.white),
-                                    onPressed: () {
-                                      setDialogState(() {
-                                        isSpeakerOn = !isSpeakerOn;
-                                        try { callWebFunction('setCallSpeakerEnabled', [isSpeakerOn]); } catch (_) {}
-                                        if (remoteAudio != null) {
-                                          remoteAudio!.muted = !isSpeakerOn;
-                                        }
-                                        final remoteVid = remoteCallVideo;
-                                        if (remoteVid != null) {
-                                          remoteVid.muted = true;
-                                          remoteVid.volume = 1.0;
-                                        }
-                                      });
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                  ],
-                ),
-              ),
+            return WillPopScope(onWillPop: () async => false,
+              child: CallSurface(name: partnerName, avatar: partnerAvatar, video: isVideo,
+                status: callStatus, connected: callStatus == 'Đang đàm thoại', ended: callClosed,
+                notice: callNotice,
+                duration: connectedAt != null ? formatCallDuration(callDurationSeconds) : null,
+                videoView: isVideo && kIsWeb ? IgnorePointer(child: HtmlElementView(viewType:remoteViewType)) : null,
+                localVideoView: isVideo && kIsWeb && !isCameraOff ? IgnorePointer(child:HtmlElementView(viewType:localViewType)) : null,
+                onRepairAudio: !callClosed && pc != null && callNotice != null ? repairAudio : null,
+                actions: [
+                  if (!callClosed) CallControl(icon:isMuted ? Icons.mic_off_rounded : Icons.mic_rounded,
+                    label: isMuted ? 'Bật micro' : 'Tắt micro', active:isMuted,
+                    onPressed: () {setDialogState(() {isMuted = !isMuted;for(final track in localStream?.getAudioTracks() ?? <html.MediaStreamTrack>[]) {track.enabled = !isMuted;}});}),
+                  if (!callClosed && isVideo) CallControl(icon:isCameraOff ? Icons.videocam_off_rounded : Icons.videocam_rounded,
+                    label:isCameraOff ? 'Bật camera' : 'Tắt camera', active:isCameraOff,
+                    onPressed: () {setDialogState(() {isCameraOff = !isCameraOff;for(final track in localStream?.getVideoTracks() ?? <html.MediaStreamTrack>[]) {track.enabled = !isCameraOff;}});}),
+                  if (!callClosed) CallControl(icon:isSpeakerOn ? Icons.volume_up_rounded : Icons.volume_off_rounded,
+                    label:isSpeakerOn ? 'Tắt âm thanh' : 'Bật âm thanh', active:!isSpeakerOn,
+                    onPressed: () {setDialogState(() {isSpeakerOn = !isSpeakerOn;try {callWebFunction('setCallSpeakerEnabled',[isSpeakerOn]);if(isSpeakerOn) callWebFunction('unlockAudio',[]);} catch (_) {} remoteAudio?.muted = !isSpeakerOn;});}),
+                  CallControl(icon:callClosed ? Icons.close_rounded : Icons.call_end_rounded,
+                    label:callClosed ? 'Đóng' : 'Kết thúc cuộc gọi', color:const Color(0xFFE5525E),
+                    onPressed: () {
+                      if (!callClosed) SocketService.socket?.emit('end_call', {'connectedUserId':targetUserId,'callId':callId,'conversationId':context.read<ChatProvider>().selectedConversation?.id ?? ''});
+                      cleanupCall();
+                      if (dialogContext.mounted) dismissCallRoute(dialogContext);
+                    }),
+                ]),
             );
           },
         );

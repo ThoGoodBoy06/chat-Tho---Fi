@@ -391,9 +391,10 @@ app.get("/api/health", (req, res) => {
 // Nhận telemetry log từ Flutter Web client
 // Endpoint HTTP Fallback: Kết thúc cuộc gọi chắc chắn 100%
 // [Call Status API] Kiểm tra trạng thái cuộc gọi theo thời gian thực (Polling Fallback)
-app.get("/api/call/status", (req, res) => {
+app.get("/api/call/status", authMiddleware, (req, res) => {
     try {
         const { callerId, calleeId, room } = req.query;
+        if (req.user.id !== callerId && req.user.id !== calleeId) return res.status(403).json({active:false});
         let isActive = false;
         let isAccepted = false;
         let callId = null;
@@ -419,9 +420,12 @@ app.get("/api/call/status", (req, res) => {
     }
 });
 
-app.post("/api/call/end", async (req, res) => {
+app.post("/api/call/end", authMiddleware, async (req, res) => {
     try {
         const { callerId, connectedUserId, conversationId, callType, callId } = req.body || {};
+        if (callerId !== req.user.id) return res.status(403).json({status:'forbidden'});
+        const active = global.activeCalls?.get(req.user.id);
+        if (!active || active.partnerId !== connectedUserId || (callId && active.callId !== callId)) return res.status(409).json({status:'expired'});
         console.log(`🔴 [HTTP API /api/call/end] Nhận lệnh kết thúc: caller=${callerId}, partner=${connectedUserId}, room=${conversationId}`);
         if (global.endCallCore) {
             await global.endCallCore({ callerId, targetId: connectedUserId, conversationId, callType, callId });

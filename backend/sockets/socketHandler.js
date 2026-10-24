@@ -106,27 +106,25 @@ module.exports = (io) => {
   }
 
   // 🌟 Hàm toàn cục hỗ trợ HTTP Fallback khi client cúp máy
-  global.endCallCore = async ({ callerId, targetId, conversationId, callType, callId }) => {
+  global.endCallCore = async ({ callerId, targetId, conversationId, callType, callId, reason = "ended" }) => {
     console.log(`🔴 [global.endCallCore] Phát call_ended: target=${targetId}, caller=${callerId}, room=${conversationId}`);
     const activeInfo = activeCalls.get(callerId) || (targetId ? activeCalls.get(targetId) : null);
     if (callId && (!activeInfo || activeInfo.callId !== callId)) return;
+    clearTimeout(activeInfo?.ringTimer);
     const isAccepted = activeInfo?.isAccepted || false;
     const finalCallType = callType || activeInfo?.callType || "audio";
     const finalConvId = conversationId || activeInfo?.conversationId;
+    if (callerId) io.to(callerId).emit('call_ended', {callerId, targetId, conversationId:finalConvId, callId:activeInfo?.callId, reason});
+    if (finalConvId) io.to(finalConvId).emit('call_ended', {callerId, targetId, conversationId:finalConvId, callId:activeInfo?.callId, reason});
 
     if (targetId) {
-      io.to(targetId).emit("call_ended", { callerId, targetId, conversationId: finalConvId, callId: activeInfo?.callId });
+      io.to(targetId).emit("call_ended", { callerId, targetId, conversationId: finalConvId, callId: activeInfo?.callId, reason });
       const targetSocketId = userSockets.get(targetId);
       if (targetSocketId && targetSocketId !== targetId) {
-        io.to(targetSocketId).emit("call_ended", { callerId, targetId, conversationId: finalConvId, callId: activeInfo?.callId });
+        io.to(targetSocketId).emit("call_ended", { callerId, targetId, conversationId: finalConvId, callId: activeInfo?.callId, reason });
       }
       activeCalls.delete(targetId);
       if (callerId) activeCalls.delete(callerId);
-      for (const [uid, info] of activeCalls.entries()) {
-        if (uid === targetId || uid === callerId || info?.partnerId === targetId || info?.partnerId === callerId) {
-          activeCalls.delete(uid);
-        }
-      }
       try {
         const targetUser = await prisma.users.findUnique({
           where: { id: targetId },
@@ -146,12 +144,6 @@ module.exports = (io) => {
         await createMissedCallMessage({ callerId, targetId, conversationId: finalConvId, callType: finalCallType });
       }
     }
-    if (finalConvId) {
-      io.to(finalConvId).emit("call_ended", { callerId, targetId, conversationId: finalConvId, callId: activeInfo?.callId });
-    }
-    if (callerId) {
-      activeCalls.delete(callerId);
-    }
   };
 
   async function handleUserConnect(socket, userId) {
@@ -167,6 +159,11 @@ module.exports = (io) => {
     userSockets.set(userId, socket.id);
     socket.userId = userId;
     socket.join(userId);
+    const active = activeCalls.get(userId);
+    if (active?.incoming && active.ready && !active.isAccepted) socket.emit('incoming_call', active.incoming);
+    if (active?.pendingSignals?.length) {
+      for (const signal of active.pendingSignals.splice(0)) socket.emit('webrtc_signal', signal);
+    }
 
     // Chạy song song không block: Lấy conversations & pending friend requests
     Promise.all([
@@ -901,115 +898,74 @@ module.exports = (io) => {
     });
 
     // 5. User A gửi yêu cầu gọi (request_call) cho User B
-    socket.on("request_call", async (payload = {}) => {
-        const { callerId, callerName, calleeId, callType, callerAvatar, conversationId } = payload;
-        const convId = conversationId || payload.convId || "";
-        const callId = payload.callId || uuidv4();
-        // Do not replace an active pair or reject it because of a duplicate request.
-        const rejectIfBusy = () => {
-          const callerActive = activeCalls.get(callerId);
-          const calleeActive = activeCalls.get(calleeId);
-          if (!callerActive && !calleeActive) return false;
-          if (callerActive?.partnerId !== calleeId || calleeActive?.partnerId !== callerId || (payload.callId && callerActive?.callId !== callId)) {
-            socket.emit("call_rejected", {reason: "busy", calleeId, callId});
-          }
-          return true;
-        };
-        if (rejectIfBusy()) return;
-
-        // Kiểm tra chặn trước khi kết nối cuộc gọi
-        const isBlocked = await prisma.block.findFirst({
-            where: {
-                OR: [
-                    { blockerId: callerId, blockedId: calleeId },
-                    { blockerId: calleeId, blockedId: callerId }
-                ]
-            }
-        });
-
-        if (isBlocked) {
-            socket.emit("call_rejected", { reason: "blocked", calleeId, callId });
-            console.log(`🚫 Cuộc gọi bị chặn giữa ${callerId} và ${calleeId} do chặn nhau`);
+    socket.on("request_call", async (payload = {}, ack) => {
+      const callerId = socket.userId;
+      const {calleeId, callerName, callerAvatar} = payload;
+      const callType = payload.callType === 'video' ? 'video' : 'audio';
+      const callId = payload.callId || uuidv4();
+      const conversationId = payload.conversationId || payload.convId || '';
+      const reply = data => { if (typeof ack === 'function') ack(data); };
+      const reject = reason => {
+        socket.emit('call_rejected', {reason, calleeId, callId});
+        reply({ok:false, reason, callId});
+      };
+      if (!callerId || !calleeId || callerId === calleeId || (payload.callerId && payload.callerId !== callerId)) return reject('invalid');
+      const existing = activeCalls.get(callerId);
+      if (existing || activeCalls.has(calleeId)) {
+        if (existing?.partnerId === calleeId && (!payload.callId || existing.callId === callId)) return reply({ok:true, callId});
+        return reject('busy');
+      }
+      // Reserve synchronously. Cancellation during a DB/push await must stay cancelled.
+      const incoming = {callerId, callerName, callerAvatar, callType, callId, conversationId};
+      const caller = {partnerId:calleeId, conversationId, callId, callType, isAccepted:false, socketId:socket.id};
+      const callee = {partnerId:callerId, conversationId, callId, callType, isAccepted:false, incoming};
+      activeCalls.set(callerId, caller); activeCalls.set(calleeId, callee);
+      const current = () => activeCalls.get(callerId)?.callId === callId && activeCalls.get(calleeId)?.callId === callId;
+      const release = () => { if (current()) {activeCalls.delete(callerId);activeCalls.delete(calleeId);} };
+      try {
+        const blocked = await prisma.block.findFirst({where:{OR:[{blockerId:callerId,blockedId:calleeId},{blockerId:calleeId,blockedId:callerId}]}});
+        if (!current()) return;
+        if (blocked) { release(); return reject('blocked'); }
+        // Ring online clients immediately. Push latency never delays socket signaling.
+        activeCalls.get(calleeId).ready = true;
+        const online = !!io.sockets.adapter.rooms.get(calleeId)?.size;
+        if (online) io.to(calleeId).emit('incoming_call', incoming);
+        reply({ok:true, callId});
+        const timer = setTimeout(() => {
+          const active = activeCalls.get(callerId);
+          if (active?.callId !== callId || active.isAccepted) return;
+          global.endCallCore({callerId,targetId:calleeId,conversationId,callId,reason:'no_answer'});
+        }, 60000);
+        timer?.unref?.();
+        activeCalls.get(callerId).ringTimer = timer; activeCalls.get(calleeId).ringTimer = timer;
+        // The pair exists before a push can wake the iPhone PWA and receive an answer.
+        Promise.resolve().then(async () => {
+          const user = await prisma.users.findUnique({where:{id:calleeId},select:{fcmToken:true}});
+          const active = activeCalls.get(callerId);
+          if (active?.callId !== callId || active.isAccepted) return;
+          if (!user?.fcmToken) {
+            if (!online) global.endCallCore({callerId,targetId:calleeId,conversationId,callId,reason:'offline'});
             return;
-        }
-
-        // Kiểm tra trạng thái online thời gian thực của callee qua room Socket.IO
-        const calleeRoom = io.sockets.adapter.rooms.get(calleeId);
-        const isCalleeOnline = calleeRoom && calleeRoom.size > 0;
-
-        let hasFcmToken = false;
-        // Bắn Push Notification cuộc gọi chạy ngầm (để khi tắt máy/thoát màn hình chính vẫn nhận được)
-        try {
-          const calleeUser = await prisma.users.findUnique({
-            where: { id: calleeId },
-            select: { fcmToken: true },
-          });
-
-          if (calleeUser && calleeUser.fcmToken) {
-            hasFcmToken = true;
-            const callTitle = `${callerName} đang gọi cho bạn...`;
-            const callBody = `Cuộc gọi ${callType === "video" ? "Video" : "Thoại"} đến. Nhấn để trả lời.`;
-            const customData = {
-              type: "incoming_call",
-              callerId: String(callerId),
-              callerName: String(callerName),
-              callType: String(callType),
-              callerAvatar: String(callerAvatar || ""),
-              t: String(Date.now()) // 🌟 Thêm timestamp để kiểm tra quá hạn ở client
-            };
-            
-            try {
-              await sendPushNotification(calleeUser.fcmToken, callTitle, callBody, customData, true);
-              console.log(`📲 Đã bắn Push cuộc gọi đến thành công cho User ${calleeId}`);
-            } catch (pushErr) {
-              console.error("❌ Lỗi bắn Push cuộc gọi:", pushErr.message);
-              hasFcmToken = false; // Đánh dấu không có Token hợp lệ để lập tức trả offline
-              
-              // Xóa token hết hạn/lỗi khỏi database để tránh spam push vô ích
-              if (pushErr.code === "messaging/registration-token-not-registered" || 
-                  pushErr.message.includes("not registered") ||
-                  pushErr.message.includes("registration token")) {
-                await prisma.users.update({
-                  where: { id: calleeId },
-                  data: { fcmToken: null }
-                });
-                console.log(`🗑️ Đã xóa FCM Token lỗi của user ${calleeId}`);
-              }
-            }
           }
-        } catch (dbErr) {
-          console.error("Lỗi truy vấn FCM Token khi gọi điện:", dbErr.message);
-        }
-
-        if (rejectIfBusy()) return;
-        if (isCalleeOnline) {
-          console.log(`📞 ${callerName} đang gọi cho ${calleeId} (room: ${convId || 'none'})`);
-          activeCalls.set(callerId, { partnerId: calleeId, conversationId: convId, callId, isAccepted: false, callType, socketId: socket.id });
-          activeCalls.set(calleeId, { partnerId: callerId, conversationId: convId, callId, isAccepted: false, callType });
-          // Chuyển tiếp cuộc gọi đến (incoming_call) cho User B (qua room)
-          io.to(calleeId).emit("incoming_call", {
-            callerId,
-            callId,
-            callerName,
-            callerAvatar,
-            callType,
-            conversationId: convId,
-          });
-        } else if (hasFcmToken) {
-          console.log(`📞 ${callerName} đang gọi qua Push cho ${calleeId} (tạm thời offline socket)`);
-          activeCalls.set(callerId, { partnerId: calleeId, conversationId: convId, callId, isAccepted: false, callType, socketId: socket.id });
-          activeCalls.set(calleeId, { partnerId: callerId, conversationId: convId, callId, isAccepted: false, callType });
-        } else {
-          // Trả trực tiếp phản hồi từ chối do offline về cho caller (do không kết nối socket và không có FCM token/FCM hỏng)
-          socket.emit("call_rejected", { reason: "offline", calleeId, callId });
-        }
-      },
-    );
+          try {
+            await sendPushNotification(user.fcmToken, (callerName || 'Người dùng')+' đang gọi cho bạn',
+              'Nhấn để trả lời cuộc gọi '+(callType === 'video' ? 'video' : 'thoại'),
+              {type:'incoming_call',callerId:String(callerId),callerName:String(callerName || ''),
+                callerAvatar:String(callerAvatar || ''),callType,callId,conversationId,t:String(Date.now())}, true);
+          } catch (_) {
+            if (!io.sockets.adapter.rooms.get(calleeId)?.size) global.endCallCore({callerId,targetId:calleeId,conversationId,callId,reason:'offline'});
+          }
+        }).catch(() => {
+          if (!online) global.endCallCore({callerId,targetId:calleeId,conversationId,callId,reason:'unavailable'});
+        });
+      } catch (_) { release(); reject('unavailable'); }
+    });
 
     // 6. User B từ chối cuộc gọi
     socket.on("reject_call", async ({ callerId, callType, callId }) => {
       const activeInfo = activeCalls.get(socket.userId);
-      if (!activeInfo || activeInfo.partnerId !== callerId || (callId && activeInfo.callId !== callId)) return;
+      if (!activeInfo || activeInfo.isAccepted || activeInfo.partnerId !== callerId || (callId && activeInfo.callId !== callId)) return;
+      clearTimeout(activeInfo.ringTimer);
       activeCalls.delete(callerId);
       activeCalls.delete(socket.userId);
       io.to(callerId).emit("call_rejected", { reason: "rejected", calleeId: socket.userId, callId: activeInfo.callId });
@@ -1019,7 +975,7 @@ module.exports = (io) => {
     });
 
     // 7. User B chấp nhận cuộc gọi
-    socket.on("accept_call", async (payload = {}) => {
+    socket.on("accept_call", async (payload = {}, ack) => {
       let d = payload;
       if (typeof d === "string") {
         try { d = JSON.parse(d); } catch (_) { d = { callerId: payload }; }
@@ -1028,7 +984,10 @@ module.exports = (io) => {
       const callerId = d.callerId || d.targetUserId || d.connectedUserId || (activeCalls.get(socket.userId) && activeCalls.get(socket.userId).partnerId);
 
       const pending = activeCalls.get(socket.userId);
-      if (!pending || pending.partnerId !== callerId || (d.callId && pending.callId !== d.callId)) return;
+      const reply = data => { if (typeof ack === 'function') ack(data); };
+      if (!pending || pending.partnerId !== callerId || (d.callId && pending.callId !== d.callId)) return reply({ok:false,reason:'expired'});
+      if (pending.isAccepted && pending.socketId && pending.socketId !== socket.id) return reply({ok:false,reason:'answered_elsewhere'});
+      clearTimeout(pending.ringTimer);
       const activeCaller = (callerId ? activeCalls.get(callerId) : null) || {};
       const activeCallee = activeCalls.get(socket.userId) || {};
       if (socket.userId) activeCalls.set(socket.userId, { ...activeCallee, partnerId: callerId, isAccepted: true, socketId: socket.id });
@@ -1051,6 +1010,7 @@ module.exports = (io) => {
       // ⚡ PHÁT TÍN HIỆU NGHE MÁY DUY NHẤT 1 LẦN (tránh race condition / khởi tạo nhiều PeerConnection)
       if (callerId) {
         io.to(callerId).emit("call_accepted", acceptEventData);
+        reply({ok:true,callId:pending.callId});
       }
     });
 
@@ -1068,7 +1028,7 @@ module.exports = (io) => {
       }
 
       const active = activeCalls.get(socket.userId);
-      if (d.callId && (!active || active.callId !== d.callId || active.partnerId !== connectedUserId)) return;
+      if (!active || active.partnerId !== connectedUserId || (d.callId && active.callId !== d.callId)) return;
       const signalType = signal.type || (signal.candidate ? 'candidate' : 'unknown');
       console.log(`⚡ [webrtc_signal] ${signalType} từ ${socket.userId} -> ${connectedUserId}`);
 
@@ -1079,6 +1039,13 @@ module.exports = (io) => {
       };
 
       // 🌟 Gửi tín hiệu WebRTC chính xác 1 lần duy nhất tới phòng cá nhân của connectedUserId
+      if (!io.sockets.adapter.rooms.get(connectedUserId)?.size) {
+        const target = activeCalls.get(connectedUserId);
+        if (target?.callId === active.callId) {
+          target.pendingSignals ||= [];
+          if (target.pendingSignals.length < 128) target.pendingSignals.push(signalPayload);
+        }
+      }
       io.to(connectedUserId).emit("webrtc_signal", signalPayload);
     });
 
@@ -1092,6 +1059,7 @@ module.exports = (io) => {
       const activeInfo = activeCalls.get(socket.userId);
       if (d.callId && (!activeInfo || activeInfo.callId !== d.callId)) return;
       const targetId = d.connectedUserId || d.to || d.targetUserId || d.userId || d.calleeId || d.callerId || activeInfo?.partnerId;
+      clearTimeout(activeInfo?.ringTimer);
       const conversationId = d.conversationId || d.convId || activeInfo?.conversationId;
       const callType = d.callType || activeInfo?.callType || "audio";
       const isAccepted = activeInfo?.isAccepted || false;
@@ -1100,21 +1068,22 @@ module.exports = (io) => {
 
       // Debounce: Chống client spam emit end_call dồn dập trong 1s
       const now = Date.now();
-      const lastEnded = lastEndCallMap.get(socket.userId);
+      const endKey = socket.userId + ':' + (activeInfo?.callId || 'legacy');
+      const lastEnded = lastEndCallMap.get(endKey);
       if (lastEnded && (now - lastEnded < 1000)) {
         console.log(`⚠️ [end_call] Bỏ qua emit trùng lặp trong 1s từ user ${socket.userId}`);
         return;
       }
-      lastEndCallMap.set(socket.userId, now);
+      lastEndCallMap.set(endKey, now);
 
       if (targetId) {
-        io.to(targetId).emit("call_ended", { callerId: socket.userId, targetId, conversationId, callId: activeInfo?.callId });
+        io.to(targetId).emit("call_ended", { callerId: socket.userId, targetId, conversationId, callId: activeInfo?.callId, reason: d.reason || "ended" });
         const targetSocketId = userSockets.get(targetId);
         if (targetSocketId && targetSocketId !== targetId) {
-          io.to(targetSocketId).emit("call_ended", { callerId: socket.userId, targetId, conversationId, callId: activeInfo?.callId });
+          io.to(targetSocketId).emit("call_ended", { callerId: socket.userId, targetId, conversationId, callId: activeInfo?.callId, reason: d.reason || "ended" });
         }
         if (conversationId) {
-          socket.to(conversationId).emit("call_ended", { callerId: socket.userId, targetId, conversationId, callId: activeInfo?.callId });
+          socket.to(conversationId).emit("call_ended", { callerId: socket.userId, targetId, conversationId, callId: activeInfo?.callId, reason: d.reason || "ended" });
         }
         activeCalls.delete(targetId);
         if (socket.userId) activeCalls.delete(socket.userId);
@@ -1144,10 +1113,10 @@ module.exports = (io) => {
           await createMissedCallMessage({ callerId: socket.userId, targetId, conversationId, callType });
         }
       } else if (conversationId) {
-        io.to(conversationId).emit("call_ended", { callerId: socket.userId, conversationId, callId: activeInfo?.callId });
+        io.to(conversationId).emit("call_ended", { callerId: socket.userId, conversationId, callId: activeInfo?.callId, reason: d.reason || "ended" });
       }
 
-      activeCalls.delete(socket.userId);
+      if (activeCalls.get(socket.userId) === activeInfo) activeCalls.delete(socket.userId);
     });
 
     // 10. Nâng cấp từ Voice lên Video

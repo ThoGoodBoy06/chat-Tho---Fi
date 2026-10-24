@@ -202,3 +202,18 @@ Future<html.MediaStream> requestCallMedia({required bool video}) {
   }
   return acquireCallMedia(video: video, request: (constraints) => devices.getUserMedia(constraints));
 }
+
+Future<void> replaceCallMicrophone(html.RtcPeerConnection? connection, html.MediaStream stream) async {
+  if (connection == null) { stopCallMedia(stream); throw StateError('Cuộc gọi chưa kết nối.'); }
+  try {
+    final senders = js_util.callMethod(connection, 'getSenders', []) as List;
+    for (final sender in senders) {
+      final track = js_util.getProperty(sender, 'track');
+      if (track != null && js_util.getProperty(track, 'kind') == 'audio') {
+        await js_util.promiseToFuture(js_util.callMethod(sender, 'replaceTrack', [stream.getAudioTracks().first]));
+        return;
+      }
+    }
+    throw StateError('Không tìm thấy đường truyền micro.');
+  } catch (_) { stopCallMedia(stream); rethrow; }
+}

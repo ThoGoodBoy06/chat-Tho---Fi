@@ -156,3 +156,16 @@ node scripts/test-pwa-code-update.cjs
 ```
 
 Các browser tests cần Playwright trong node_modules hoặc NODE_PATH. Build production từ lib/main.dart; build script từ chối dependency scripts/fixtures để tránh phát hành app test tự đăng nhập.
+
+## Sửa phiên gọi và giao diện mobile (24/10/2026)
+
+- Backend giữ chỗ cặp gọi đồng bộ trước khi đợi DB/push; hủy trong lúc DB chờ không tạo lại phiên ma. Phát chuông qua socket trước khi lấy token/gửi push. Push không chặn việc bắt máy.
+- accept_call có acknowledgement: màn hình đến chỉ chuyển khi máy chủ xác nhận; chờ socket kết nối lại tối đa 10 giây khi quyền thiết bị làm gián đoạn. Không xóa SDP đã đến sớm trong lúc chờ xác nhận.
+- Lưu tối đa 128 SDP/ICE khi đối phương tạm mất socket và phát lại một lần khi kết nối lại. Thiết bị khác không được từ chối phiên đã nhận. Dọn dẹp bất đồng bộ của cuộc gọi cũ không xóa phiên mới.
+- HTTP status/end yêu cầu đăng nhập và kiểm tra đúng người tham gia; frontend dùng API có Authorization để đọc status.
+- CallSurface dùng chung cho thoại/video/chuông/kết thúc, có safe area, nút 60px, trạng thái lỗi giữ lại để đọc. Khi kết nối, timer hiện 00:00 ngay; tính bằng thời gian trôi qua thay vì đếm callback, giữ tổng thời gian khi kết thúc, hỗ trợ HH:MM:SS.
+- Khi micro bị hệ thống mute, hiển thị nút thử lại; thao tác này xin micro mới và replaceTrack, giữ video/phiên hiện có. Lỗi mở thiết bị hiển thị trên màn hình thay vì tự biến mất.
+- 17 Flutter tests, 15 tests server qua. Browser test ChatScreen thực: voice/video, đổi viewport khi nhận, timer, mute/unmute, replaceTrack sau sự kiện mute, âm thanh giải mã hai chiều và hangup. Ép lỗi tạo peer cho thấy lỗi được giữ trên màn hình và phiên máy chủ được giải phóng. Camera xanh/tone trong browser test là thiết bị giả, không xuất bản fixture.
+- Full-system script truy cập được DB, Supabase/R2, dispatcher và cấu hình Firebase. Kiểm tra HTTP localhost không đạt vì không chạy server local; dòng kết luận chung của script không chứng minh cuộc gọi trên thiết bị thật.
+
+Kiểm tra hosting ngày 24/10: Cloudflare Workers & Pages chỉ có hai dự án Pages (chat-tho-fi và hotrosinhvien-dnc); chưa có Worker backend của app. TURN Server chuyển tới trang Get Started, chưa kích hoạt. Render vẫn trả release.json và frontend vẫn nối API/Socket.IO tới Render. Chưa di chuyển backend sang Cloudflare và chưa xác thực TURN thật. Không bảo đảm gọi qua hai mạng khác nhau khi chưa có relay. Cần kiểm tra hai điện thoại thật trước khi kết luận lỗi mobile đã hết hoàn toàn.

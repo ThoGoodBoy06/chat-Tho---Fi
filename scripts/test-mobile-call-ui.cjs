@@ -30,15 +30,16 @@ io.on('connection',socket=>socket.onAny((event,data)=>{if(/call|webrtc/.test(eve
   await new Promise(r=>server.listen(0,'127.0.0.2',r));
   browser=process.env.TEST_WEBKIT ? await webkit.launch({headless:true}) : await chromium.launch({executablePath:process.env.CHROME_EXECUTABLE||'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true,args:['--use-fake-ui-for-media-stream','--use-fake-device-for-media-stream']});
 
-  for (const video of [false,true]) {
+  for (const scenario of process.env.CALL_SCENARIO ? [process.env.CALL_SCENARIO] : ['voice','video','failure']) {
+    const video=scenario==='video',fail=scenario==='failure';
     const pages=[],contexts=[];
     for(const user of ['a','b']){
       const context=await browser.newContext({...(process.env.TEST_WEBKIT ? devices['iPhone 13'] : {}),viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:1});contexts.push(context); if(process.env.TEST_WEBKIT) await context.grantPermissions(['microphone','camera']);
-      await context.addInitScript(({delay})=>{
+      await context.addInitScript(({delay,fail})=>{
         window.testPeers=[];
         const NativePeer=window.RTCPeerConnection;
         if (!NativePeer) throw Error('This browser build has no WebRTC support; it cannot validate calls.');
-        window.RTCPeerConnection=new Proxy(NativePeer,{construct(Target,args){const pc=new Target(...args);window.testPeers.push(pc);return pc;}});
+        window.RTCPeerConnection=new Proxy(NativePeer,{construct(Target,args){if(fail)throw Error('NotReadableError: interrupted mobile device');const pc=new Target(...args);window.testPeers.push(pc);return pc;}});
         const gum=navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
         navigator.mediaDevices.getUserMedia=async constraints=>{
           const stream=await gum(constraints);
@@ -52,7 +53,7 @@ io.on('connection',socket=>socket.onAny((event,data)=>{if(/call|webrtc/.test(eve
           if(delay)await new Promise(r=>setTimeout(r,600));
           return stream;
         };
-      },{delay:user==='b'});
+      },{delay:user==='b',fail:fail&&user==='b'});
       const page=await context.newPage();page.on('pageerror',e=>errors.push(user+': '+e.stack));
       await page.goto('http://127.0.0.2:'+server.address().port+'/?user='+user);
       await page.getByRole('button',{name:'Gọi thoại',exact:true}).waitFor({timeout:30000});pages.push(page);
@@ -63,8 +64,17 @@ io.on('connection',socket=>socket.onAny((event,data)=>{if(/call|webrtc/.test(eve
     await pages[1].getByRole('button',{name:'Trả lời',exact:true}).click();
     // Mobile viewport changes while the OS permission request is resolving.
     await pages[1].setViewportSize({width:390,height:650});
+    if(fail){
+      for(const page of pages)await page.getByRole('button',{name:'Đóng',exact:true}).waitFor({timeout:10000});
+      assert(await pages[1].getByText('Không thể kết nối',{exact:true}).isVisible());
+      assert.equal(globals.activeCalls.size,0);
+      for(const context of contexts)await context.close();
+      console.log('Mobile initialization failure: visible error, retained call screen, released server session passed');
+      continue;
+    }
     await pages[1].getByRole('button',{name:'Kết thúc cuộc gọi',exact:true}).waitFor({timeout:30000});
     for(const page of pages)await page.waitForFunction(()=>window.testPeers.some(pc=>pc.iceConnectionState==='connected'||pc.iceConnectionState==='completed'),{},{timeout:30000});
+    await pages[1].getByText(/^00:\d{2}$/).waitFor({timeout:10000});
     io.to('b').emit('call_ended',{callerId:'a',targetId:'b',conversationId:'room',callId:'previous-call'});
     await pages[1].waitForTimeout(300);
     assert(await pages[1].getByRole('button',{name:'Kết thúc cuộc gọi',exact:true}).isVisible(),'Stale end event closed the mobile call');
@@ -76,7 +86,17 @@ io.on('connection',socket=>socket.onAny((event,data)=>{if(/call|webrtc/.test(eve
     await pages[1].setViewportSize({width:390,height:844});
     await pages[1].screenshot({path:path.join(root,'scratch/mobile-after-answer-'+(video?'video':'voice')+'.png')});
     assert(audio.every(a=>a.energy>0&&a.playing&&a.hasStream));
+    await pages[1].getByRole('button',{name:'Tắt micro',exact:true}).click();
+    await pages[1].waitForFunction(()=>window.testPeers.some(pc=>pc.getSenders().some(s=>s.track?.kind==='audio'&&!s.track.enabled)));
+    await pages[1].getByRole('button',{name:'Bật micro',exact:true}).click();
+    const oldMic=await pages[1].evaluate(()=>window.testPeers[0].getSenders().find(s=>s.track?.kind==='audio').track.id);
+    await pages[1].evaluate(()=>window.testPeers[0].getSenders().find(s=>s.track?.kind==='audio').track.dispatchEvent(new Event('mute')));
+    await pages[1].getByRole('button',{name:'Thử lại âm thanh',exact:true}).click();
+    await pages[1].waitForFunction(old=>window.testPeers[0].getSenders().some(s=>s.track?.kind==='audio'&&s.track.id!==old),oldMic);
     await pages[1].getByRole('button',{name:'Kết thúc cuộc gọi',exact:true}).click();
+    await pages[0].getByRole('button',{name:'Đóng',exact:true}).waitFor({timeout:30000});
+    assert(await pages[0].getByText('Cuộc gọi đã kết thúc',{exact:true}).isVisible());
+    await pages[0].getByRole('button',{name:'Đóng',exact:true}).click();
     await pages[0].getByRole('button',{name:'Gọi thoại',exact:true}).waitFor({timeout:30000});
     assert.equal(globals.activeCalls.size,0);
     console.log('Mobile '+(video?'video':'voice')+' UI: permission resize, answer, stale-end protection, two-way audio and hangup passed',JSON.stringify(audio));

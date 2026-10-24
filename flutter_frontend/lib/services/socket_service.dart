@@ -44,6 +44,25 @@ class SocketService {
   static Stream<Map<String, dynamic>> get onUserTyping => _typingController.stream;
   static Stream<Map<String, dynamic>> get onUserStopTyping => _stopTypingController.stream;
   static bool get isConnected => socket != null && socket!.connected;
+  /// Permission prompts may briefly suspend iPhone signaling. Keep the incoming
+  /// screen until both reconnection and the server's acceptance are confirmed.
+  static Future<void> acceptCall({required String callerId, String? callId}) async {
+    final deadline = DateTime.now().add(const Duration(seconds: 10));
+    while (!isConnected && DateTime.now().isBefore(deadline)) {
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+    }
+    if (!isConnected) throw StateError('Mất kết nối máy chủ. Kiểm tra mạng rồi thử nhận lại.');
+    final result = Completer<void>();
+    socket!.emitWithAck('accept_call', {'callerId':callerId,'callId':callId}, ack: (data) {
+      if (result.isCompleted) return;
+      if (data is Map && data['ok'] == true) { result.complete(); }
+      else { result.completeError(StateError(data is Map && data['reason'] == 'answered_elsewhere'
+        ? 'Cuộc gọi đã được nhận trên thiết bị khác.' : 'Cuộc gọi đã kết thúc hoặc hết hạn.')); }
+    });
+    await result.future.timeout(const Duration(seconds: 10), onTimeout: () {
+      throw StateError('Máy chủ chưa xác nhận. Kiểm tra mạng rồi thử nhận lại.');
+    });
+  }
   static Stream<Map<String, dynamic>> get onMessageReacted => _reactedController.stream;
   static Stream<Map<String, dynamic>> get onMessagesRead => _readController.stream;
   static Stream<Map<String, dynamic>> get onMessageDelivered => _deliveredController.stream;

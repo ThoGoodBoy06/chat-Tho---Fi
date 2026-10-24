@@ -11,7 +11,7 @@ const scratch = path.join(root, 'scratch');
 fs.mkdirSync(scratch, {recursive:true});
 const relative = p => path.relative(scratch,p).replaceAll('\\','/');
 const source = fs.readFileSync(bootstrap,'utf8')
-  .replace("package:flutter_frontend/main.dart",relative(path.join(root,'scripts/fixtures/mobile_call_app.dart')))
+  .replace("import 'package:flutter_frontend/main.dart' as entrypoint;", "import '"+relative(path.join(root,'scripts/fixtures/mobile_call_app.dart'))+"' as entrypoint;")
   .replace("'web_plugin_registrant.dart'",JSON.stringify(relative(path.join(path.dirname(bootstrap),'web_plugin_registrant.dart'))));
 const target = path.join(scratch,'mobile_call_bootstrap.dart');
 fs.writeFileSync(target,source);

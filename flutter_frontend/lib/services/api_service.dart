@@ -7,6 +7,12 @@ import '../models/models.dart';
 import 'network_status.dart';
 
 class ApiService {
+  static Future<Map<String, dynamic>> getCallStatus(String callerId, String calleeId) async {
+    final uri = Uri.parse('$baseUrl/call/status').replace(queryParameters:{'callerId':callerId,'calleeId':calleeId});
+    final response = await _client.get(uri, headers:await _getHeaders()).timeout(const Duration(seconds: 5));
+    if (response.statusCode != 200) return {};
+    return Map<String,dynamic>.from(jsonDecode(response.body));
+  }
   static Future<Map<String, dynamic>> getCallIceConfig() async {
     final fallback = <String, dynamic>{
       'iceServers': [

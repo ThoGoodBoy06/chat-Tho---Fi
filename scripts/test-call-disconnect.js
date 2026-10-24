@@ -17,7 +17,7 @@ function fixture(){
  vm.runInNewContext(source,sandbox);sandbox.module.exports(io);
  async function socket(id,user){const handlers={};const socket={id,handshake:{auth:{},query:{}},on(name,fn){handlers[name]=fn;},emit(name,data){events.push({room:id,name,data});},join(room){const members=rooms.get(room)||new Set();members.add(id);rooms.set(room,members);},to:io.to};await connect(socket);handlers.user_connected(user);return {socket,handlers,disconnect(){rooms.get(user)?.delete(id);handlers.disconnect();}};}
  function seed(){globals.activeCalls.set('a',{partnerId:'b',conversationId:'room',isAccepted:true,socketId:'a1'});globals.activeCalls.set('b',{partnerId:'a',conversationId:'room',isAccepted:true,socketId:'b1'});}
- return {socket,seed,events,timers,calls:globals.activeCalls,expire(){for(const [id,t]of [...timers]){timers.delete(id);t.fn();}}};
+ return {socket,seed,events,timers,prisma,globals,calls:globals.activeCalls,expire(){for(const [id,t]of [...timers]){timers.delete(id);t.fn();}}};
 }
 test('temporary mobile disconnect retains an accepted call and reconnect cancels expiry',async()=>{
  const f=fixture(),a=await f.socket('a1','a');await f.socket('b1','b');f.seed();a.disconnect();
@@ -66,4 +66,53 @@ test('a current SDP is tagged and stale SDP is not relayed',async()=>{
  const f=fixture(),a=await f.socket('a1','a');f.seed();f.calls.get('a').callId='current';
  a.handlers.webrtc_signal({connectedUserId:'b',callId:'old',signal:{type:'offer'}});assert.equal(f.events.length,0);
  a.handlers.webrtc_signal({connectedUserId:'b',callId:'current',signal:{type:'offer'}});assert.equal(f.events[0].data.callId,'current');
+});
+test('cancellation during a database check cannot revive a ghost call',async()=>{
+ const f=fixture(),a=await f.socket('a1','a');await f.socket('b1','b');
+ let finish;f.prisma.block.findFirst=()=>new Promise(r=>{finish=r;});
+ const request=a.handlers.request_call({callerId:'a',calleeId:'b',callId:'cancelled'});
+ assert.equal(f.calls.size,2);
+ await a.handlers.end_call({connectedUserId:'b',callId:'cancelled'});
+ finish(null);await request;
+ assert.equal(f.calls.size,0);assert(!f.events.some(e=>e.name==='incoming_call'));
+});
+test('push token lookup does not delay ringing or acceptance acknowledgement',async()=>{
+ const f=fixture(),a=await f.socket('a1','a'),b=await f.socket('b1','b');
+ let finish;f.prisma.users.findUnique=()=>new Promise(r=>{finish=r;});
+ await a.handlers.request_call({callerId:'a',calleeId:'b',callId:'fast-answer'});
+ assert(f.events.some(e=>e.name==='incoming_call'));
+ let ack;await b.handlers.accept_call({callerId:'a',callId:'fast-answer'},data=>{ack=data;});
+ assert.equal(ack.ok,true);assert(f.calls.get('b').isAccepted);finish(null);
+});
+test('an expired accept is acknowledged and another tab cannot reject an answered call',async()=>{
+ const f=fixture();const b=await f.socket('b1','b');let ack;
+ await b.handlers.accept_call({callerId:'a',callId:'missing'},data=>{ack=data;});assert.equal(ack.reason,'expired');
+ f.seed();f.calls.get('a').callId='current';f.calls.get('b').callId='current';
+ const other=await f.socket('b2','b');
+ await other.handlers.reject_call({callerId:'a',callId:'current'});
+ await other.handlers.accept_call({callerId:'a',callId:'current'},data=>{ack=data;});
+ assert.equal(ack.reason,'answered_elsewhere');assert.equal(f.calls.size,2);
+});
+test('SDP is retained during a mobile disconnect and replayed once on reconnect',async()=>{
+ const f=fixture(),a=await f.socket('a1','a'),b=await f.socket('b1','b');f.seed();
+ f.calls.get('a').callId='current';f.calls.get('b').callId='current';b.disconnect();
+ a.handlers.webrtc_signal({connectedUserId:'b',callId:'current',signal:{type:'offer',sdp:'test'}});
+ await f.socket('b2','b');
+ assert.equal(f.events.filter(e=>e.room==='b2'&&e.name==='webrtc_signal').length,1);
+ await f.socket('b3','b');assert.equal(f.events.filter(e=>e.room==='b3'&&e.name==='webrtc_signal').length,0);
+});
+test('late asynchronous hangup cleanup does not delete a replacement session',async()=>{
+ const f=fixture(),a=await f.socket('a1','a');await f.socket('b1','b');f.seed();
+ let finish;f.prisma.users.findUnique=()=>new Promise(r=>{finish=r;});
+ const ending=a.handlers.end_call({connectedUserId:'b'});
+ f.calls.set('a',{partnerId:'c',callId:'new'});f.calls.set('c',{partnerId:'a',callId:'new'});
+ finish(null);await ending;assert.equal(f.calls.get('a').callId,'new');assert.equal(f.calls.get('c').callId,'new');
+});
+test('mobile reconnect while the block check is pending preserves the reserved call',async()=>{
+ const f=fixture(),a=await f.socket('a1','a');await f.socket('b1','b');
+ let finish;f.prisma.block.findFirst=()=>new Promise(r=>{finish=r;});
+ const request=a.handlers.request_call({callerId:'a',calleeId:'b',callId:'reconnect'});
+ a.disconnect();await f.socket('a2','a');finish(null);await request;
+ assert(f.events.some(e=>e.name==='incoming_call'));assert.equal(f.calls.get('a').socketId,'a2');
+ assert.equal(f.calls.get('b').ready,true);
 });
