@@ -18,6 +18,7 @@ import '../providers/theme_provider.dart';
 import '../services/socket_service.dart';
 import '../services/api_service.dart';
 import '../services/network_status.dart';
+import '../utils/avatar_image.dart';
 import '../services/sound_service.dart';
 import 'friend_requests_screen.dart';
 import 'my_groups_screen.dart';
@@ -364,13 +365,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     }
   }
 
-  ImageProvider? _partnerAvatarProvider(String? avatar, {int width = 56, int height = 56}) {
+  ImageProvider? _partnerAvatarProvider(String? avatar, {int size = 56}) {
     if (avatar == null || avatar.isEmpty) return null;
     final url = ApiService.formatImageUrl(avatar);
-    final key = '$url|$width|$height';
+    final key = '$url|$size';
     return _partnerAvatarProviders.putIfAbsent(
       key,
-      () => ResizeImage(NetworkImage(url), width: width, height: height),
+      () => resizeAvatar(NetworkImage(url), size: size),
     );
   }
 
@@ -2073,7 +2074,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                               ? (isDark ? const Color(0xFF1E293B) : const Color(0x0D007AFF))
                               : bgColor;
 
-                          final avatarImg = _partnerAvatarProvider(conv.avatar, width: 104, height: 104);
+                          final avatarImg = _partnerAvatarProvider(conv.avatar, size: 104);
                           return InkWell(
                             onTap: () {
                               final isDesktopScreen = MediaQuery.of(context).size.width >= 900;
@@ -2618,7 +2619,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         ),
         child: CircleAvatar(
           radius: 8,
-          foregroundImage: ResizeImage(NetworkImage(fullUrl), width: 32, height: 32),
+          foregroundImage: resizeAvatar(NetworkImage(fullUrl), size: 32),
           onForegroundImageError: (_, __) {},
           backgroundColor: const Color(0xFFE4E6EB),
           child: Text(conv?.name.isNotEmpty == true ? conv!.name[0].toUpperCase() : 'U',
@@ -3998,12 +3999,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                             ),
                             child: ClipOval(
                               child: (u['avatar'] != null && u['avatar'].toString().trim().isNotEmpty)
-                                  ? Image.network(
-                                      ApiService.formatImageUrl(u['avatar'].toString()),
+                                  ? Image(
+                                      image: resizeAvatar(NetworkImage(ApiService.formatImageUrl(u['avatar'].toString())), size: 150),
                                       width: 48,
                                       height: 48,
-                                      cacheWidth: 150,
-                                      cacheHeight: 150,
                                       fit: BoxFit.cover,
                                       errorBuilder: (_, __, ___) => Container(
                                         width: 48,

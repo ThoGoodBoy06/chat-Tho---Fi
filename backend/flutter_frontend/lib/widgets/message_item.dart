@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
+import '../utils/avatar_image.dart';
 
 /// MessageItemBubble: Widget hiển thị một bong bóng tin nhắn riêng biệt.
 /// Độc lập, được cô lập bằng RepaintBoundary và ValueKey để GPU không phải vẽ lại
@@ -43,10 +44,9 @@ class MessageItemBubble extends StatelessWidget {
                 radius: 14,
                 backgroundColor: const Color(0xFF0068FF),
                 backgroundImage: (avatarUrl != null && avatarUrl!.isNotEmpty)
-                    ? ResizeImage(
+                    ? resizeAvatar(
                         NetworkImage(ApiService.formatImageUrl(avatarUrl!)),
-                        width: 56,
-                        height: 56,
+                        size: 56,
                       )
                     : null,
                 child: (avatarUrl == null || avatarUrl!.isEmpty)

@@ -12,6 +12,7 @@ import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/chat_screen.dart';
 import 'utils/web_utils.dart' as web_utils;
+import 'utils/avatar_image.dart';
 
 /// Custom ScrollBehavior tối ưu cho Flutter Web:
 /// Kích hoạt cuộn mượt cho chuột, cảm ứng, trackpad với BouncingScrollPhysics.
@@ -157,7 +158,7 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
         for (final size in [104, 56]) {
           if (!mounted || DateTime.now().isAfter(deadline)) return;
           await precacheImage(
-            ResizeImage(NetworkImage(url), width: size, height: size), context,
+            resizeAvatar(NetworkImage(url), size: size), context,
             onError: (_, __) {},
           );
         }
