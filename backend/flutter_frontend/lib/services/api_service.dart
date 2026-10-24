@@ -888,6 +888,7 @@ class ApiService {
           'success': true,
           'text': decoded['text'] ?? '',
           'conversationId': decoded['conversationId'],
+          'conversationName': decoded['conversationName'],
         };
       }
       return {'success': false, 'error': decoded['error'] ?? 'Lỗi kết nối tới Trợ lý AI'};

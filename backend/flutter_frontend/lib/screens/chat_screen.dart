@@ -108,7 +108,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     {'sender': 'ai', 'content': 'Xin chào! Tôi là Trợ lý AI Chat Tho-Fi. Tôi có thể giúp gì cho bạn hôm nay?'}
   ];
   final _aiTextController = TextEditingController();
+  final FocusNode _aiFocusNode = FocusNode();
   bool _isAiLoading = false;
+  bool _isAiHistoryLoading = false;
   bool _hasLoadedAiHistory = false;
   final ScrollController _aiScrollController = ScrollController();
   String? _aiCurrentConversationId;
@@ -437,6 +439,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     _scrollController.removeListener(_onScroll);
     _textController.dispose();
     _aiTextController.dispose();
+    _aiFocusNode.dispose();
     _searchController.dispose();
     _contactSearchController.dispose();
     _scrollController.dispose();
@@ -1193,26 +1196,39 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   Future<void> _loadAiHistory({String? conversationId, bool forceReload = false}) async {
     if (conversationId == null && _hasLoadedAiHistory && !forceReload) return;
     if (conversationId == null) _hasLoadedAiHistory = true;
+
+    if (mounted) setState(() => _isAiHistoryLoading = true);
     try {
       final res = await ApiService.getAiHistory(conversationId: conversationId);
       if (mounted && res['success'] == true) {
         setState(() {
           _aiCurrentConversationId = res['conversationId']?.toString();
-          if (res['conversationName'] != null) {
-            _aiCurrentConversationName = res['conversationName'];
+          if (res['conversationName'] != null && res['conversationName'].toString().trim().isNotEmpty) {
+            _aiCurrentConversationName = res['conversationName'].toString();
           }
           _aiMessages.clear();
-          final msgs = res['messages'] as List<Map<String, String>>? ?? [];
-          if (msgs.isNotEmpty) {
-            _aiMessages.addAll(msgs);
+          final rawMsgs = res['messages'];
+          if (rawMsgs is List && rawMsgs.isNotEmpty) {
+            for (var m in rawMsgs) {
+              if (m is Map) {
+                _aiMessages.add({
+                  'sender': m['sender']?.toString() ?? 'ai',
+                  'content': m['content']?.toString() ?? '',
+                });
+              }
+            }
           } else {
             _aiMessages.add({'sender': 'ai', 'content': 'Xin chào! Tôi là Trợ lý AI Chat Tho-Fi. Tôi có thể giúp gì cho bạn hôm nay?'});
           }
+          _isAiHistoryLoading = false;
         });
         _scrollAiToBottom();
+      } else {
+        if (mounted) setState(() => _isAiHistoryLoading = false);
       }
     } catch (e) {
       debugPrint('⚠️ Error _loadAiHistory: $e');
+      if (mounted) setState(() => _isAiHistoryLoading = false);
     }
   }
 
@@ -1255,7 +1271,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
       await _loadAiSessions();
       if (_aiCurrentConversationId == id) {
         if (_aiSessions.isNotEmpty) {
-          _selectAiSession(_aiSessions.first['id']?.toString() ?? '');
+          final first = _aiSessions.first;
+          _selectAiSession(first['id']?.toString() ?? '', first['name']?.toString());
         } else {
           _createNewAiSession();
         }
@@ -1263,8 +1280,16 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     }
   }
 
-  void _selectAiSession(String id) {
-    _loadAiHistory(conversationId: id);
+  void _selectAiSession(String id, [String? name]) {
+    if (_aiCurrentConversationId == id) return;
+    setState(() {
+      _aiCurrentConversationId = id;
+      if (name != null && name.trim().isNotEmpty) {
+        _aiCurrentConversationName = name;
+      }
+      _isAiHistoryLoading = true;
+    });
+    _loadAiHistory(conversationId: id, forceReload: true);
   }
 
   void _scrollAiToBottom() {
@@ -1285,8 +1310,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     });
   }
 
-  Future<void> _handleAiSend() async {
-    final text = _aiTextController.text.trim();
+  Future<void> _handleAiSend([String? presetText]) async {
+    final text = (presetText ?? _aiTextController.text).trim();
     if (text.isEmpty || _isAiLoading) return;
 
     setState(() {
@@ -1303,7 +1328,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         if (response['success'] == true) {
           _aiMessages.add({'sender': 'ai', 'content': response['text'] ?? ''});
           if (response['conversationId'] != null) {
-            _aiCurrentConversationId = response['conversationId'];
+            _aiCurrentConversationId = response['conversationId']?.toString();
+          }
+          if (response['conversationName'] != null && response['conversationName'].toString().trim().isNotEmpty) {
+            _aiCurrentConversationName = response['conversationName'].toString();
           }
         } else {
           _aiMessages.add({'sender': 'ai', 'content': '⚠️ ' + (response['error'] ?? 'Đã có lỗi xảy ra. Vui lòng thử lại!')});
@@ -1311,6 +1339,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
       });
       _scrollAiToBottom();
       _loadAiSessions();
+      _aiFocusNode.requestFocus();
     }
   }
 
@@ -4212,7 +4241,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
 
   // TAB 3: Trợ lý AI
   Widget _buildAiAssistantTab() {
-    _loadAiHistory();
+    if (!_hasLoadedAiHistory) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _loadAiHistory());
+    }
     final isDark = Provider.of<ThemeProvider>(context).isDarkMode;
     final bgColor = isDark ? const Color(0xFF0F172A) : const Color(0xFFF0F2F5);
     final cardBgColor = isDark ? const Color(0xFF1E293B) : Colors.white;
@@ -4332,116 +4363,294 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
 
           // Messages
           Expanded(
-            child: ListView.builder(
-              controller: _aiScrollController,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              itemCount: _aiMessages.length + (_isAiLoading ? 1 : 0),
-              itemBuilder: (context, index) {
-                // Khi AI đang phản hồi: hiển thị avatar icon.png nhỏ và 3 chấm nảy lên
-                if (index == _aiMessages.length && _isAiLoading) {
-                  return _AiBouncingDotsBubble(isDark: isDark);
-                }
-
-                final msg = _aiMessages[index];
-                final isUser = msg['sender'] == 'user';
-                return Align(
-                  alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: Row(
+            child: _isAiHistoryLoading
+                ? Center(
+                    child: Column(
                       mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
                       children: [
-                        if (!isUser) ...[
-                          Container(
-                            width: 28,
-                            height: 28,
-                            margin: const EdgeInsets.only(right: 8, bottom: 2),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: const Color(0xFF0068FF).withOpacity(0.2), width: 1),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(14),
-                              child: Image.asset(
-                                'assets/tho_fi_logo_transparent.png',
-                                width: 28,
-                                height: 28,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Image.network(
-                                  '/tho_fi_logo_transparent.png',
-                                  width: 28,
-                                  height: 28,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => const Icon(Icons.smart_toy_rounded, color: Color(0xFF0068FF), size: 16),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                        Flexible(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.76),
-                            decoration: BoxDecoration(
-                              color: isUser ? const Color(0xFF0068FF) : cardBgColor,
-                              borderRadius: BorderRadius.only(
-                                topLeft: const Radius.circular(18),
-                                topRight: const Radius.circular(18),
-                                bottomLeft: Radius.circular(isUser ? 18 : 4),
-                                bottomRight: Radius.circular(isUser ? 4 : 18),
-                              ),
-                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.2 : 0.04), blurRadius: 6, offset: const Offset(0, 2))],
-                            ),
-                            child: SelectableText(
-                              msg['content']!,
-                              style: TextStyle(color: isUser ? Colors.white : textColor, fontSize: 15, height: 1.35),
-                            ),
-                          ),
+                        const SizedBox(
+                          width: 28,
+                          height: 28,
+                          child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF0068FF)),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Đang tải cuộc trò chuyện...',
+                          style: TextStyle(color: subTextColor, fontSize: 13),
                         ),
                       ],
                     ),
+                  )
+                : ListView.builder(
+                    controller: _aiScrollController,
+                    keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    itemCount: _aiMessages.length + (_isAiLoading ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      // Khi AI đang phản hồi: hiển thị avatar bot nhỏ và 3 chấm nảy lên
+                      if (index == _aiMessages.length && _isAiLoading) {
+                        return _AiBouncingDotsBubble(isDark: isDark);
+                      }
+
+                      final msg = _aiMessages[index];
+                      final isUser = msg['sender'] == 'user';
+                      final content = msg['content'] ?? '';
+                      final isError = !isUser && content.startsWith('⚠️');
+
+                      final bubbleWidget = Align(
+                        alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+                            children: [
+                              if (!isUser) ...[
+                                Container(
+                                  width: 28,
+                                  height: 28,
+                                  margin: const EdgeInsets.only(right: 8, bottom: 2),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: const Color(0xFF0068FF).withOpacity(0.2), width: 1),
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(14),
+                                    child: Image.asset(
+                                      'assets/tho_fi_logo_transparent.png',
+                                      width: 28,
+                                      height: 28,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Image.network(
+                                        '/tho_fi_logo_transparent.png',
+                                        width: 28,
+                                        height: 28,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => const Icon(Icons.smart_toy_rounded, color: Color(0xFF0068FF), size: 16),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              Flexible(
+                                child: Column(
+                                  crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
+                                      decoration: BoxDecoration(
+                                        color: isUser
+                                            ? const Color(0xFF0068FF)
+                                            : (isError ? const Color(0xFFEF4444).withOpacity(0.1) : cardBgColor),
+                                        borderRadius: BorderRadius.only(
+                                          topLeft: const Radius.circular(18),
+                                          topRight: const Radius.circular(18),
+                                          bottomLeft: Radius.circular(isUser ? 18 : 4),
+                                          bottomRight: Radius.circular(isUser ? 4 : 18),
+                                        ),
+                                        border: isError ? Border.all(color: const Color(0xFFEF4444).withOpacity(0.3)) : null,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
+                                            blurRadius: 6,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: SelectableText(
+                                        content,
+                                        style: TextStyle(
+                                          color: isUser ? Colors.white : (isError ? const Color(0xFFEF4444) : textColor),
+                                          fontSize: 15,
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                    ),
+                                    if (!isUser && content.isNotEmpty && !content.startsWith('Xin chào!')) ...[
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          InkWell(
+                                            onTap: () {
+                                              Clipboard.setData(ClipboardData(text: content));
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text('Đã sao chép vào bộ nhớ tạm'),
+                                                  duration: Duration(seconds: 1),
+                                                  behavior: SnackBarBehavior.floating,
+                                                ),
+                                              );
+                                            },
+                                            borderRadius: BorderRadius.circular(6),
+                                            child: Padding(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(Icons.copy_rounded, size: 14, color: subTextColor),
+                                                  const SizedBox(width: 4),
+                                                  Text('Sao chép', style: TextStyle(color: subTextColor, fontSize: 11)),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                          if (isError && _aiMessages.length >= 2) ...[
+                                            const SizedBox(width: 8),
+                                            InkWell(
+                                              onTap: () {
+                                                final lastUserMsg = _aiMessages.lastWhere(
+                                                  (m) => m['sender'] == 'user',
+                                                  orElse: () => {},
+                                                );
+                                                if (lastUserMsg.isNotEmpty && lastUserMsg['content'] != null) {
+                                                  _handleAiSend(lastUserMsg['content']!);
+                                                }
+                                              },
+                                              borderRadius: BorderRadius.circular(6),
+                                              child: const Padding(
+                                                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Icon(Icons.refresh_rounded, size: 14, color: Color(0xFF0068FF)),
+                                                    SizedBox(width: 4),
+                                                    Text('Thử lại', style: TextStyle(color: Color(0xFF0068FF), fontSize: 11, fontWeight: FontWeight.bold)),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+
+                      // Hiển thị gợi ý câu hỏi khi đoạn chat mới chỉ có câu chào mở đầu
+                      if (index == 0 && _aiMessages.length == 1 && !isUser) {
+                        final suggestions = [
+                          '💡 Giới thiệu về ứng dụng Chat Tho-Fi',
+                          '💻 Viết một hàm JavaScript kiểm tra chuỗi đối xứng',
+                          '🚀 Lộ trình học lập trình Web hiệu quả',
+                          '📝 Cách tối ưu hiệu năng cơ sở dữ liệu PostgreSQL',
+                        ];
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            bubbleWidget,
+                            Padding(
+                              padding: const EdgeInsets.only(left: 36, bottom: 8),
+                              child: Text(
+                                'Gợi ý câu hỏi:',
+                                style: TextStyle(color: subTextColor, fontSize: 12, fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(left: 36, bottom: 16),
+                              child: Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: suggestions.map((s) {
+                                  return InkWell(
+                                    onTap: () => _handleAiSend(s.substring(3)),
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: cardBgColor,
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(color: const Color(0xFF0068FF).withOpacity(0.25)),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
+                                            blurRadius: 4,
+                                            offset: const Offset(0, 1),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Text(
+                                        s,
+                                        style: TextStyle(color: textColor, fontSize: 12.5, fontWeight: FontWeight.w500),
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+
+                      return bubbleWidget;
+                    },
                   ),
-                );
-              },
-            ),
           ),
 
           // Input
           Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             color: cardBgColor,
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _aiTextController,
-                    style: TextStyle(color: textColor),
-                    enabled: !_isAiLoading,
-                    decoration: InputDecoration(
-                      hintText: _isAiLoading ? 'Chat AI đang trả lời...' : 'Hỏi AI Tho-Fi',
-                      hintStyle: TextStyle(color: subTextColor),
-                      filled: true,
-                      fillColor: inputBgColor,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            child: SafeArea(
+              top: false,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: Focus(
+                      onKeyEvent: (node, event) {
+                        if (event is KeyDownEvent &&
+                            event.logicalKey == LogicalKeyboardKey.enter &&
+                            !HardwareKeyboard.instance.isShiftPressed) {
+                          _handleAiSend();
+                          return KeyEventResult.handled;
+                        }
+                        return KeyEventResult.ignored;
+                      },
+                      child: TextField(
+                        controller: _aiTextController,
+                        focusNode: _aiFocusNode,
+                        minLines: 1,
+                        maxLines: 4,
+                        keyboardType: TextInputType.multiline,
+                        style: TextStyle(color: textColor, fontSize: 14.5),
+                        enabled: !_isAiLoading,
+                        decoration: InputDecoration(
+                          hintText: _isAiLoading ? 'Chat AI đang suy nghĩ...' : 'Hỏi AI Tho-Fi (Shift+Enter để xuống dòng)...',
+                          hintStyle: TextStyle(color: subTextColor, fontSize: 13.5),
+                          filled: true,
+                          fillColor: inputBgColor,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: BorderSide.none),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        ),
+                      ),
                     ),
-                    onSubmitted: (_) => _handleAiSend(),
                   ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: _isAiLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0068FF)),
-                        )
-                      : const Icon(Icons.send_rounded, color: Color(0xFF0068FF)),
-                  onPressed: _isAiLoading ? null : _handleAiSend,
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 2),
+                    child: IconButton(
+                      icon: _isAiLoading
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0068FF)),
+                            )
+                          : const Icon(Icons.send_rounded, color: Color(0xFF0068FF), size: 24),
+                      tooltip: 'Gửi',
+                      onPressed: _isAiLoading ? null : () => _handleAiSend(),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -4664,7 +4873,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                             ),
                                             onTap: () {
                                               Navigator.pop(dialogCtx);
-                                              _selectAiSession(sId);
+                                              _selectAiSession(sId, sName);
                                             },
                                           ),
                                         );
@@ -4683,7 +4892,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     );
   }
 
-  // TAB 4: Cá nhân
+    // TAB 4: Cá nhân
   Widget _buildProfileTab(ChatProvider provider) {
     return ProfileTab(onLogout: widget.onLogout);
   }
