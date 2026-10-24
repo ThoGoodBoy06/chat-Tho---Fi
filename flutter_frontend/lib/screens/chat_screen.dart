@@ -93,6 +93,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   final _contactSearchController = TextEditingController();
   String _contactSearchQuery = '';
   StreamSubscription? _incomingCallSub;
+  StreamSubscription? _pushIntentSub;
   StreamSubscription? _visibilitySub;
   bool _isIncomingCallShowing = false;
   bool _isDialogClosed = false;
@@ -246,6 +247,15 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         _handleIncomingCall(data);
       }
     });
+    SocketService.requestPendingCall();
+    _pushIntentSub ??= listenWebPushIntent(_handlePushIntent);
+    final pushIntent = consumeWebPushIntent();
+    final params = Uri.base.queryParameters;
+    if (pushIntent != null) {
+      _handlePushIntent(pushIntent);
+    } else if (params['conversationId'] != null) {
+      _handlePushIntent({'conversationId':params['conversationId'],'type':params['action']});
+    }
     _friendRequestSub?.cancel();
     _friendRequestSub = SocketService.onFriendRequestReceived.listen((data) {
       debugPrint('⚡ [ChatScreen] Real-time friend request socket event: $data');
@@ -270,6 +280,29 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         } catch (_) {}
       }
     });
+  }
+
+  Future<void> _handlePushIntent(Map<String,dynamic> intent) async {
+    consumeWebPushIntent();
+    if (intent['type'] == 'call_ended') {
+      SocketService.receivePushCallEnded(intent);
+      return;
+    }
+    if (intent['type'] == 'incoming_call') SocketService.requestPendingCall();
+    if (!mounted || _isCallRoomShowing || _isIncomingCallShowing) return;
+    final conversationId = intent['conversationId']?.toString();
+    if (conversationId == null || conversationId.isEmpty) return;
+    final provider = context.read<ChatProvider>();
+    if (!provider.conversations.any((conversation) => conversation.id == conversationId)) {
+      try {await provider.fetchConversations(showLoading:false);} catch (_) {return;}
+    }
+    if (!mounted || _isCallRoomShowing || _isIncomingCallShowing) return;
+    for (final conversation in provider.conversations) {
+      if (conversation.id == conversationId) {
+        provider.selectConversation(conversation);
+        break;
+      }
+    }
   }
 
   void _onScroll() {
@@ -395,6 +428,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     _pendingRefreshTimer?.cancel();
     _focusScrollTimer?.cancel();
     _incomingCallSub?.cancel();
+    _pushIntentSub?.cancel();
     _boundProvider?.onNewMessageReceived = null;
     _boundProvider?.onConversationSelected = null;
     _boundProvider = null;

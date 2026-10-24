@@ -178,3 +178,16 @@ Kiểm tra hosting ngày 24/10: Cloudflare Workers & Pages chỉ có hai dự á
 - Xử lý offer va chạm khi hai bên cùng nâng video: một phía rollback, trả lời offer của bên kia rồi gửi lại thay đổi local đang chờ. Server cập nhật callType cho cả cặp đang gọi, giữ cùng callId.
 - Browser test kiểm tra framesDecoded, videoWidth và readyState của video hiển thị ở hai phía; âm thanh vẫn nhận sau khi chuyển video. Gọi trực tiếp video và gọi lại liên tiếp theo cả hai hướng trên cùng hai trang; bài test giữ hai offer rồi phát cùng lúc để kiểm tra va chạm thật.
 - 17 Flutter tests và 16 tests server qua. Voice/video browser scenarios qua, gồm gọi lại, camera bị từ chối, nâng video và nâng video đồng thời. Thiết bị camera/micro là giả lập của Chrome; chưa thay thế xác nhận trên hai điện thoại thật.
+
+## Thông báo PWA khi khóa màn hình / thoát app (24/10/2026)
+
+- Firebase dry-run: 3 device tokens (2 web_mobile, 1 web_desktop) được chấp nhận. Dry-run của payload incoming_call, call_ended và chat_message thực từ helper đều được Firebase chấp nhận; không gửi thông báo thật tới tài khoản khác và không ghi tokens ra log.
+- Sửa cuộc gọi chỉ gửi tới Users.fcmToken gần nhất: gọi sendPushNotification bằng userId để lấy toàn bộ UserDevices. Không kết luận offline chỉ vì legacy token trống. Kiểm tra phiên còn tồn tại ngay trước khi gửi để tránh thông báo gọi sau khi đã hủy.
+- Push cuộc gọi có callId, conversationId, thời điểm hết hạn, TTL 60 giây và tag theo phiên; end-update TTL 120 giây, không làm rung lại. Push kết thúc vẫn có thông báo hiển thị, tránh mô hình silent web push bị Safari thu hồi quyền. Không đóng mọi banner của các phiên khác.
+- Khi bấm banner: PWA đang mở nhận intent và focus, không reload làm ngắt cuộc gọi. Khi app đã đóng, mở URL cùng origin với conversationId / callId; ChatScreen yêu cầu sync_pending_call sau khi đã cài listener. Máy chủ phát lại phiên chưa nhận, dùng trạng thái xác thực trên server thay vì tự nhận cuộc gọi theo URL.
+- Tự cập nhật lại đăng ký đã được cấp quyền khi load, online hoặc resume (giới hạn 1 lần/phút); không tự bật hộp xin quyền. Chỉ thao tác Bật thông báo mới xin quyền. Loader tải web_notifications.js sau khi vô hiệu cache code cũ, đã kiểm tra fallback offline.
+- 12 push tests, 17 call-server tests qua; cold-start ChatScreen browser test qua: đóng trang nhận trước khi gọi, mở lại như từ push, nhận cuộc gọi, RTP/audio/video frames, nâng video và gọi lại. Cache online/offline qua cả Chromium và WebKit Windows.
+- Chưa xác nhận nhận push thực trên màn hình khóa iOS/Android. Kiểm thử code và Firebase dry-run không chứng minh OS đã hiển thị. Mở PWA > Cài đặt > Thông báo > Bật/Cập nhật > Thử gửi thông báo; sau đó khóa màn hình và thử tin nhắn/cuộc gọi từ tài khoản thứ hai.
+- iOS hỗ trợ Web Push cho app thêm vào màn hình chính từ iOS 16.4, cần cho phép thông báo. Khóa/tắt màn hình hoặc ra khỏi app khác với tắt nguồn. PWA không tích hợp màn hình cuộc gọi hệ thống như CallKit; bấm thông báo mở app rồi nhận cuộc gọi.
+
+Nguồn: https://webkit.org/blog/13878/ và https://firebase.google.com/docs/cloud-messaging/web/receive-messages

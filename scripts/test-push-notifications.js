@@ -7,18 +7,19 @@ const root = path.resolve(__dirname, '..');
 const clientSource = fs.readFileSync(path.join(root, 'flutter_frontend/web/web_notifications.js'), 'utf8');
 const html = fs.readFileSync(path.join(root, 'flutter_frontend/web/index.html'), 'utf8');
 function client(permission = 'granted', installed = true) {
-  const calls = [], notices = [], alerts = [];
+  const calls = [], notices = [], alerts = [], events = [], listeners = {};
   const storage = new Map([['flutter.authToken', '"test-auth"']]);
   let prompts = 0, onMessage;
   const registration = {active: {}, showNotification: async (...args) => notices.push(args)};
   const messaging = {getToken: async options => {calls.push(options); return 'test-fcm';}, onMessage: fn => {onMessage = fn;}};
   const context = {console, setTimeout, clearTimeout, location: {hostname: 'chat-tho-fi.pages.dev'},
-    navigator: {serviceWorker: {register: async (...args) => {calls.push(args); return registration;}}},
+    navigator: {serviceWorker: {register: async (...args) => {calls.push(args); return registration;},addEventListener:(name,fn)=>{listeners[name]=fn;}}},
     localStorage: {getItem: key => storage.get(key), setItem: (key, value) => storage.set(key, value)},
     Notification: {permission, requestPermission: async () => {prompts++; context.Notification.permission = 'granted'; return 'granted';}},
     firebase: {apps: [{}], messaging: () => messaging}, isSecureContext: true,
     fetch: async (url, options) => {calls.push({url, ...options}); return {ok: true, json: async () => ({success: true})};},
-    document: {getElementById: () => null}, alert: value => alerts.push(value)};
+    document: {getElementById: () => null}, alert: value => alerts.push(value),
+    CustomEvent:class {constructor(type,options){this.type=type;this.detail=options.detail;}},dispatchEvent:event=>events.push(event)};
   if (installed) context.PushManager = function () {};
   context.window = context;
   vm.createContext(context);
@@ -27,7 +28,7 @@ function client(permission = 'granted', installed = true) {
   const start = html.indexOf('    window.handleActivateNotificationClick');
   const end = html.indexOf('    window.handleTestPushClick', start);
   vm.runInContext(html.slice(start, end), context);
-  return {context, calls, notices, alerts, prompts: () => prompts, foreground: payload => onMessage(payload)};
+  return {context, calls, notices, alerts, events, listeners, prompts: () => prompts, foreground: payload => onMessage(payload)};
 }
 test('iOS Home Screen: no automatic permission prompt, tap grants and saves to Render', async () => {
   const c = client('default');
@@ -72,7 +73,7 @@ test('foreground web messages show one notification and repeat messages renotify
 test('worker has a single Firebase push owner and handles data-only messages once', async () => {
   const listeners = {}, shown = [], order = [];
   let background;
-  const context = {console, clients: {matchAll: async () => [], openWindow: async url => {shown.push(url);}},
+  const context = {URL,console, clients: {matchAll: async () => [], openWindow: async url => {shown.push(url);}},
     firebase: {initializeApp: () => {}, messaging: () => ({onBackgroundMessage: fn => {background = fn;}})},
     importScripts: () => order.push('firebase'),
     location: {origin: 'https://chat-tho-fi.pages.dev'},
@@ -91,7 +92,25 @@ test('worker has a single Firebase push owner and handles data-only messages onc
   listeners.notificationclick({notification: {close() {}, data: {FCM_MSG: {data: {conversationId: 'room & 1'}}}},
     stopImmediatePropagation() {}, waitUntil: promise => {pending = promise;}});
   await pending;
-  assert.equal(shown.at(-1), '/?conversationId=room%20%26%201');
+  assert.equal(new URL(shown.at(-1),'https://chat-tho-fi.pages.dev').searchParams.get('conversationId'),'room & 1');
+  let focused=0,opened;
+  context.clients.matchAll=async()=>[{url:'https://chat-tho-fi.pages.dev/',postMessage:data=>{opened=data;},focus:async()=>{focused++;},navigate:()=>{throw Error('Reload interrupted the call');}}];
+  listeners.notificationclick({notification:{close(){},data:{type:'incoming_call',callId:'call-1'}},stopImmediatePropagation(){},waitUntil:p=>{pending=p;}});
+  await pending;assert.equal(focused,1);assert.equal(opened.type,'PUSH_OPEN');assert.equal(opened.data.callId,'call-1');
+  await background({data:{type:'call_ended',callId:'call-1',title:'Cuộc gọi đã kết thúc'}});
+  assert.equal(shown.at(-1)[1].tag,'call-call-1');
+  assert.equal(shown.at(-1)[1].renotify,false);
+  await background({data:{type:'incoming_call',callId:'old',expiresAt:String(Date.now()-1000)}});
+  assert.equal(shown.at(-1)[0],'Cuộc gọi nhỡ');
+});
+
+test('resume refreshes granted subscriptions without prompting and queues cold-start intents',async()=>{
+ const c=client();await c.context.refreshPushRegistration();
+ assert.equal(c.prompts(),0);assert(c.context.isWebPushRegistered());
+ const calls=c.calls.length;await c.context.refreshPushRegistration();assert.equal(c.calls.length,calls);
+ c.listeners.message({data:{type:'PUSH_OPEN',data:{type:'incoming_call',callId:'pending'}}});
+ assert.equal(JSON.parse(c.context.consumePushIntent()).callId,'pending');assert.equal(c.context.consumePushIntent(),null);
+ assert.equal(c.events[0].type,'tho-fi-push');
 });
 test('registering a phone preserves other phones and keeps native platform identity', async () => {
   const calls = [];
@@ -128,6 +147,18 @@ test('test push targets this installation and links to the PWA origin', async ()
   assert.equal(payload.tokens[0], 'phone-a');
   assert.equal(payload.webpush.fcmOptions.link, 'https://chat-tho-fi.pages.dev/?conversationId=room%201');
   assert.equal(payload.webpush.notification.renotify, true);
+});
+test('incoming calls target all devices, expire promptly and carry the call identity',async()=>{
+ const server=pushServer();
+ await server.send('user-a','Caller','Call',{type:'incoming_call',callId:'session',conversationId:'room'},true);
+ const payload=server.captured.find(x=>x.tokens);
+ assert.equal(payload.tokens.length,2);assert.equal(payload.webpush.headers.TTL,'60');
+ assert.equal(payload.webpush.notification.tag,'call-session');assert(payload.webpush.fcmOptions.link.includes('callId=session'));
+});
+test('a cancelled call is not sent after asynchronous token lookup',async()=>{
+ const server=pushServer();
+ const result=await server.send('user-a','Caller','Call',{type:'incoming_call'},true,{shouldSend:()=>false});
+ assert.equal(result.reason,'cancelled');assert(!server.captured.some(x=>x.tokens));
 });
 test('test endpoint reports failure when Firebase is unconfigured or accepts zero deliveries', async () => {
   for (const server of [pushServer([]), pushServer([{}], 0)]) {

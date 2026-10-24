@@ -473,7 +473,6 @@
       }
     };
   </script>
-  <script src="web_notifications.js?v=916b893017fbd68b"></script>
 
 
   <style>
@@ -3403,8 +3402,8 @@
     // An older PWA worker ignores ?v= when matching code in its cache. Remove
     // only stale public code after verifying this release is reachable online.
     (async function () {
-      const version = '916b893017fbd68b';
-      const corePaths = new Set(['/main.dart.js', '/flutter_bootstrap.js', '/webrtc_audio_helper.js']);
+      const version = '6b1fc0512d091fe1';
+      const corePaths = new Set(['/main.dart.js', '/flutter_bootstrap.js', '/webrtc_audio_helper.js', '/web_notifications.js']);
       if ('caches' in window && navigator.onLine !== false) {
         const controller = new AbortController();
         const timer = setTimeout(function () { controller.abort(); }, 2500);
@@ -3433,6 +3432,7 @@
           document.body.appendChild(script);
         });
       }
+      await loadScript('/web_notifications.js?v=' + version);
       await loadScript('/webrtc_audio_helper.js?v=' + version);
       await loadScript('/flutter_bootstrap.js?v=' + version);
     })().catch(function (error) { console.error('[App startup]', error); });

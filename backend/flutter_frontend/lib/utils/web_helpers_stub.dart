@@ -32,6 +32,8 @@ void registerVideoPlayerView(String viewId, String videoUrl) {}
 void vibrateWeb(Object pattern) {}
 
 dynamic callWebFunction(String name, List<dynamic> arguments) => null;
+StreamSubscription? listenWebPushIntent(void Function(Map<String,dynamic>) onIntent) => null;
+Map<String,dynamic>? consumeWebPushIntent() => null;
 
 dynamic registerCallVideoView(String viewType, String elementId) => null;
 

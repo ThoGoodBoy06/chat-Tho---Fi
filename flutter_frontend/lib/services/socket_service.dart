@@ -137,6 +137,7 @@ class SocketService {
       if (_currentUserId != null && _currentUserId!.isNotEmpty) {
         socket?.emit('user_connected', _currentUserId);
       }
+      if (_incomingCallController.hasListener) requestPendingCall();
       if (_currentRoomId != null) {
         socket?.emit('join_room', _currentRoomId);
         socket?.emit('join_conversation', _currentRoomId);
@@ -509,6 +510,12 @@ class SocketService {
   }
 
   static void clearCallSignals() => _webrtcSignalController.clear();
+  static void requestPendingCall() {
+    if (isConnected) socket?.emit('sync_pending_call');
+  }
+  static void receivePushCallEnded(Map<String,dynamic> data) {
+    if (data['callId'] != null) _callEndedController.add(data);
+  }
 
   static void disconnect() {
     _webrtcSignalController.clear();

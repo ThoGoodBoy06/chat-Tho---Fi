@@ -130,9 +130,11 @@ module.exports = (io) => {
           where: { id: targetId },
           select: { fcmToken: true }
         });
-        if (targetUser && targetUser.fcmToken) {
-          sendPushNotification(targetUser.fcmToken, "Cuộc gọi đã kết thúc", "", {
+        if (targetId) {
+          sendPushNotification(targetId, "Cuộc gọi đã kết thúc", "", {
             type: "call_ended",
+                        callId: String(activeInfo?.callId || ""),
+                        conversationId: String(activeInfo?.conversationId || ""),
             callerId: String(callerId || ""),
             t: String(Date.now())
           }, true).catch(() => {});
@@ -221,6 +223,11 @@ module.exports = (io) => {
     socket.on("user_connected", (userId) => {
       handleUserConnect(socket, userId);
     });
+    // Cold PWA startup may connect before ChatScreen installs its listener.
+    socket.on('sync_pending_call', () => {
+      const pending = activeCalls.get(socket.userId);
+      if (pending?.incoming && pending.ready && !pending.isAccepted) socket.emit('incoming_call', pending.incoming);
+    });
 
     // Lắng nghe khi client yêu cầu tham gia phòng trò chuyện (như khi được thêm vào nhóm)
     socket.on("join_conversation", (conversationId) => {
@@ -293,9 +300,11 @@ module.exports = (io) => {
                     where: { id: partnerId },
                     select: { fcmToken: true }
                   }).then(u => {
-                    if (u && u.fcmToken) {
-                      sendPushNotification(u.fcmToken, "Cuộc gọi đã kết thúc", "", {
+                    if (partnerId) {
+                      sendPushNotification(partnerId, "Cuộc gọi đã kết thúc", "", {
                         type: "call_ended",
+                        callId: String(activeInfo?.callId || ""),
+                        conversationId: String(activeInfo?.conversationId || ""),
                         callerId: String(socket.userId || ""),
                         t: String(Date.now())
                       }, true).catch(() => {});
@@ -940,18 +949,15 @@ module.exports = (io) => {
         activeCalls.get(callerId).ringTimer = timer; activeCalls.get(calleeId).ringTimer = timer;
         // The pair exists before a push can wake the iPhone PWA and receive an answer.
         Promise.resolve().then(async () => {
-          const user = await prisma.users.findUnique({where:{id:calleeId},select:{fcmToken:true}});
           const active = activeCalls.get(callerId);
           if (active?.callId !== callId || active.isAccepted) return;
-          if (!user?.fcmToken) {
-            if (!online) global.endCallCore({callerId,targetId:calleeId,conversationId,callId,reason:'offline'});
-            return;
-          }
           try {
-            await sendPushNotification(user.fcmToken, (callerName || 'Người dùng')+' đang gọi cho bạn',
+            const result = await sendPushNotification(calleeId, (callerName || 'Người dùng')+' đang gọi cho bạn',
               'Nhấn để trả lời cuộc gọi '+(callType === 'video' ? 'video' : 'thoại'),
               {type:'incoming_call',callerId:String(callerId),callerName:String(callerName || ''),
-                callerAvatar:String(callerAvatar || ''),callType,callId,conversationId,t:String(Date.now())}, true);
+                callerAvatar:String(callerAvatar || ''),callType,callId,conversationId,t:String(Date.now()),expiresAt:String(Date.now()+60000)}, true,
+              {shouldSend:()=>activeCalls.get(callerId)?.callId===callId && !activeCalls.get(callerId)?.isAccepted});
+            if (result?.successCount === 0 && !io.sockets.adapter.rooms.get(calleeId)?.size) global.endCallCore({callerId,targetId:calleeId,conversationId,callId,reason:'offline'});
           } catch (_) {
             if (!io.sockets.adapter.rooms.get(calleeId)?.size) global.endCallCore({callerId,targetId:calleeId,conversationId,callId,reason:'offline'});
           }
@@ -1104,9 +1110,11 @@ module.exports = (io) => {
             where: { id: targetId },
             select: { fcmToken: true }
           });
-          if (targetUser && targetUser.fcmToken) {
-            sendPushNotification(targetUser.fcmToken, "Cuộc gọi đã kết thúc", "", {
+          if (targetId) {
+            sendPushNotification(targetId, "Cuộc gọi đã kết thúc", "", {
               type: "call_ended",
+                        callId: String(activeInfo?.callId || ""),
+                        conversationId: String(activeInfo?.conversationId || ""),
               callerId: String(socket.userId || ""),
               t: String(Date.now())
             }, true).catch(() => {});

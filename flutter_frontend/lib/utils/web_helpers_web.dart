@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'call_media.dart';
 import 'dart:js' as js;
 import 'dart:js_util' as js_util;
@@ -155,6 +156,19 @@ void markWebPushRegistered(bool registered) {
 }
 
 dynamic callWebFunction(String name, List<dynamic> arguments) => js_util.callMethod(html.window, name, arguments);
+
+StreamSubscription? listenWebPushIntent(void Function(Map<String,dynamic>) onIntent) =>
+    html.window.on['tho-fi-push'].listen((event) {
+      if (event is html.CustomEvent && event.detail is String) {
+        try {onIntent(Map<String,dynamic>.from(jsonDecode(event.detail)));} catch (_) {}
+      }
+    });
+Map<String,dynamic>? consumeWebPushIntent() {
+  try {
+    final value = js_util.callMethod(html.window, 'consumePushIntent', []);
+    return value == null ? null : Map<String,dynamic>.from(jsonDecode(value));
+  } catch (_) {return null;}
+}
 
 html.VideoElement registerCallVideoView(String viewType, String elementId) {
   final video = html.VideoElement()..id = elementId;

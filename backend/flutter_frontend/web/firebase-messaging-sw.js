@@ -1,151 +1,55 @@
-// Version tracking - giúp trình duyệt nhận diện bản cập nhật mới và hủy cache SW cũ
-const SW_VERSION = "push-3";
-console.log("[firebase-messaging-sw.js] SW Version Active:", SW_VERSION);
-
-self.addEventListener("install", (event) => {
-  self.skipWaiting();
-});
-
-self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
-});
-
-// Xử lý khi click vào banner thông báo chạy ngầm trên điện thoại / máy tính
-self.addEventListener("notificationclick", function(event) {
+'use strict';
+const SW_VERSION = 'push-4';
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
+self.addEventListener('notificationclick', event => {
   event.stopImmediatePropagation();
   event.notification.close();
-  const action = event.action; // "accept" hoặc "decline" hoặc undefined
-  const rawData = event.notification.data || {};
-  const notificationData = rawData.FCM_MSG?.data || rawData;
-  const conversationId = notificationData.conversationId || "";
-
-  if (notificationData && (notificationData.type === "incoming_call" || notificationData.type === "INCOMING_CALL")) {
-    let url = `/?action=incoming_call&callerId=${notificationData.callerId}&callerName=${encodeURIComponent(notificationData.callerName || "")}&callType=${notificationData.callType || "voice"}&callerAvatar=${encodeURIComponent(notificationData.callerAvatar || "")}&t=${Date.now()}`;
-
-    if (action === "accept") {
-      url += "&autoAccept=true";
-    } else if (action === "decline") {
-      url += "&autoDecline=true";
+  const raw = event.notification.data || {};
+  const data = raw.FCM_MSG?.data || raw;
+  const kind = String(data.type || '').toLowerCase();
+  const target = new URL('/', self.location.origin);
+  if (data.conversationId) target.searchParams.set('conversationId', data.conversationId);
+  if (kind === 'incoming_call') {
+    target.searchParams.set('action', 'incoming_call');
+    if (data.callId) target.searchParams.set('callId', data.callId);
+  }
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({type:'window',includeUncontrolled:true});
+    const client = windows.find(window => new URL(window.url).origin === self.location.origin);
+    if (client) {
+      // Reloading an existing PWA would interrupt its live call.
+      client.postMessage({type:'PUSH_OPEN',data});
+      return client.focus();
     }
-
-    event.waitUntil(
-      clients.matchAll({ type: "window", includeUncontrolled: true }).then(function(clientList) {
-        for (let i = 0; i < clientList.length; i++) {
-          let client = clientList[i];
-          if (client.url.includes(self.location.origin) && "navigate" in client) {
-            return client.navigate(url).then(() => client.focus());
-          }
-        }
-        if (clients.openWindow) {
-          return clients.openWindow(url);
-        }
-      })
-    );
-  } else {
-    // Xử lý click tin nhắn chat
-    const targetUrl = conversationId ? `/?conversationId=${encodeURIComponent(conversationId)}` : "/";
-
-    event.waitUntil(
-      clients.matchAll({ type: "window", includeUncontrolled: true }).then(function(clientList) {
-        for (let i = 0; i < clientList.length; i++) {
-          let client = clientList[i];
-          if (client.url.includes(self.location.origin)) {
-            // Bắn message tới Flutter PWA tab đang mở để trigger state navigation
-            if (client.postMessage) {
-              client.postMessage({
-                type: "NOTIFICATION_CLICKED",
-                conversationId: conversationId,
-              });
-            }
-            if ("navigate" in client) {
-              return client.navigate(targetUrl).then(() => client.focus());
-            }
-            if ("focus" in client) {
-              return client.focus();
-            }
-          }
-        }
-        if (clients.openWindow) {
-          return clients.openWindow(targetUrl);
-        }
-      })
-    );
-  }
+    return self.clients.openWindow(target.pathname + target.search);
+  })());
 });
-
-
-importScripts(
-  "https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js",
-);
-importScripts(
-  "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js",
-);
-
-// Cấu hình Firebase Web (firebaseConfig)
-const firebaseConfig = {
-  apiKey: "AIzaSyDk6fayVDs0YbbhwldYxgHcN4nnjnPwmRc",
-  authDomain: "chat-tho-fi.firebaseapp.com",
-  projectId: "chat-tho-fi",
-  storageBucket: "chat-tho-fi.firebasestorage.app",
-  messagingSenderId: "513501588929",
-  appId: "1:513501588929:web:54fd6c5fab227868bfd340",
-};
-firebase.initializeApp(firebaseConfig);
-
-const messaging = firebase.messaging();
-
-messaging.onBackgroundMessage((payload) => {
-  console.log("[firebase-messaging-sw.js] Đã nhận tin nhắn chạy ngầm", payload);
-  // [Auto-Dismiss] Huỷ thông báo cuộc gọi đến khi đối phương tắt máy
-  if (payload.data?.type === "call_ended" || payload.data?.type === "CALL_ENDED") {
-    return Promise.all([
-      self.registration.getNotifications().then((notifications) => {
-        notifications.forEach((n) => {
-          if (n.tag === "incoming-call" || (n.title && n.title.includes("gọi"))) {
-            n.close();
-          }
-        });
-      }),
-      self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
-        clients.forEach((client) => {
-          client.postMessage({ type: "call_ended" });
-        });
-      })
-    ]);
+importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
+firebase.initializeApp({
+  apiKey:'AIzaSyDk6fayVDs0YbbhwldYxgHcN4nnjnPwmRc',
+  authDomain:'chat-tho-fi.firebaseapp.com',projectId:'chat-tho-fi',
+  storageBucket:'chat-tho-fi.firebasestorage.app',messagingSenderId:'513501588929',
+  appId:'1:513501588929:web:54fd6c5fab227868bfd340'
+});
+firebase.messaging().onBackgroundMessage(async payload => {
+  const data = payload.data || {};
+  const kind = String(data.type || '').toLowerCase();
+  const isCall = kind === 'incoming_call', ended = kind === 'call_ended';
+  if (ended && data.callId) {
+    const windows = await self.clients.matchAll({type:'window',includeUncontrolled:true});
+    for (const client of windows) client.postMessage({type:'PUSH_CALL_ENDED',data});
   }
-
-  // 🛡️ CHỐNG TRÙNG LẶP THÔNG BÁO (DUPLICATE NOTIFICATION PREVENTER):
-  // Khi tin nhắn đã có 'notification' (hoặc webpush.notification), Firebase Web SDK
-  // ngầm ĐÃ TỰ ĐỘNG hiển thị thông báo ra màn hình người dùng.
-  // Nếu gọi self.registration.showNotification() nữa sẽ sinh ra 2 thông báo cùng lúc!
-  // Chỉ tự tay hiển thị thủ công khi đây là DATA-ONLY message (như cuộc gọi đến INCOMING_CALL).
-  if (payload.notification) {
-    console.log("[firebase-messaging-sw.js] Bỏ qua showNotification thủ công vì Firebase SDK đã tự render.");
-    return;
-  }
-
-  const isCall = payload.data?.type === "incoming_call" || payload.data?.type === "INCOMING_CALL";
-
-  const title = payload.notification?.title || (payload.data?.callerName ? `${payload.data.callerName} đang gọi cho bạn` : (payload.data?.title || "Tin nhắn mới"));
-  const body = payload.notification?.body || payload.data?.body || (isCall ? `Cuộc gọi ${payload.data?.callType === 'video' ? 'Video' : 'Thoại'} đến` : "Bạn có thông báo mới");
-
-  const options = {
-    body: body,
-    icon: payload.data?.callerAvatar || payload.data?.image || payload.notification?.image || "/icon.png",
-    badge: "/icon.png",
-    data: payload.data,
-    vibrate: isCall ? [1000, 500, 1000, 500, 1000, 500, 1000, 500] : [400, 100, 400, 100, 600],
-    tag: isCall ? "incoming-call" : (payload.data?.conversationId ? `conv-${payload.data.conversationId}` : "tho-fi-chat-notification"),
-    renotify: true,
-    requireInteraction: isCall ? true : false,
-  };
-
-  if (isCall) {
-    options.actions = [
-      { action: "accept", title: "Trả lời" },
-      { action: "decline", title: "Từ chối" }
-    ];
-  }
-
-  return self.registration.showNotification(title, options);
+  if (payload.notification) return; // Firebase already displayed it.
+  // Web pushes must remain visible, including call-end updates, on Safari.
+  const expired = isCall && Number(data.expiresAt)>0 && Number(data.expiresAt)<Date.now();
+  const title = expired ? 'Cuộc gọi nhỡ' : data.title || (isCall ? (data.callerName || 'Người dùng')+' đang gọi cho bạn' : ended ? 'Cuộc gọi đã kết thúc' : 'Tin nhắn mới');
+  return self.registration.showNotification(title, {
+    body:data.body || (isCall ? 'Mở app để nhận cuộc gọi' : 'Mở app để xem'),
+    icon:data.callerAvatar || data.avatar || '/icon.png',badge:'/icon.png',data,
+    tag:isCall || ended ? 'call-'+(data.callId || data.conversationId || 'incoming') : data.conversationId ? 'conv-'+data.conversationId : 'tho-fi-message',
+    renotify:!ended && !expired,requireInteraction:isCall && !expired,
+    vibrate:isCall ? [500,250,500] : [200,100,200]
+  });
 });

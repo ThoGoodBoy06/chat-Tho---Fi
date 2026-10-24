@@ -1,6 +1,6 @@
 const test=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
 const source=fs.readFileSync(require('node:path').join(__dirname,'../sockets/socketHandler.js'),'utf8');
-function fixture(){
+function fixture(push = async()=>{}){
  const events=[],timers=new Map();let sequence=0,connect;
  const rooms=new Map();
  const io={sockets:{adapter:{rooms}},on(name,fn){if(name==='connection')connect=fn;},emit(){},to(room){return {emit:(name,data)=>events.push({room,name,data})};}};
@@ -10,7 +10,7 @@ function fixture(){
   if(name==='../prisma')return prisma;
   if(name==='uuid')return {v4:()=> 'test'};
   if(name==='jsonwebtoken')return {};
-  if(name==='../controllers/chat.controller')return {sendPushNotification:async()=>{},clearConversationMessagesCache(){}};
+  if(name==='../controllers/chat.controller')return {sendPushNotification:push,clearConversationMessagesCache(){}};
   if(name==='../services/call-disconnect-grace')return require('../services/call-disconnect-grace');
   throw Error('Unexpected dependency '+name);
  }};
@@ -77,12 +77,20 @@ test('cancellation during a database check cannot revive a ghost call',async()=>
  assert.equal(f.calls.size,0);assert(!f.events.some(e=>e.name==='incoming_call'));
 });
 test('push token lookup does not delay ringing or acceptance acknowledgement',async()=>{
- const f=fixture(),a=await f.socket('a1','a'),b=await f.socket('b1','b');
- let finish;f.prisma.users.findUnique=()=>new Promise(r=>{finish=r;});
+ let finish;const f=fixture(()=>new Promise(r=>{finish=r;})),a=await f.socket('a1','a'),b=await f.socket('b1','b');
  await a.handlers.request_call({callerId:'a',calleeId:'b',callId:'fast-answer'});
  assert(f.events.some(e=>e.name==='incoming_call'));
  let ack;await b.handlers.accept_call({callerId:'a',callId:'fast-answer'},data=>{ack=data;});
  assert.equal(ack.ok,true);assert(f.calls.get('b').isAccepted);finish(null);
+});
+test('an offline PWA is rung by user identity and pending call can be replayed after startup',async()=>{
+ const recipients=[];const f=fixture(async id=>{recipients.push(id);return {successCount:1};});
+ const a=await f.socket('a1','a');
+ await a.handlers.request_call({callerId:'a',calleeId:'b',callId:'background',conversationId:'room'});
+ await Promise.resolve();assert.equal(recipients[0],'b');
+ const b=await f.socket('b1','b');f.events.length=0;
+ b.handlers.sync_pending_call();
+ assert.equal(f.events[0].name,'incoming_call');assert.equal(f.events[0].data.callId,'background');
 });
 test('an expired accept is acknowledged and another tab cannot reject an answered call',async()=>{
  const f=fixture();const b=await f.socket('b1','b');let ack;

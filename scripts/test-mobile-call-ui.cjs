@@ -44,7 +44,7 @@ io.on('connection',socket=>socket.onAny((event,data)=>{if(/call|webrtc/.test(eve
   await new Promise(r=>server.listen(0,'127.0.0.2',r));
   browser=process.env.TEST_WEBKIT ? await webkit.launch({headless:true}) : await chromium.launch({executablePath:process.env.CHROME_EXECUTABLE||'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true,args:['--use-fake-ui-for-media-stream','--use-fake-device-for-media-stream']});
 
-  for (const scenario of process.env.CALL_SCENARIO ? [process.env.CALL_SCENARIO] : ['voice','video','failure']) {
+  for (const scenario of process.env.CALL_SCENARIO ? [process.env.CALL_SCENARIO] : ['voice','video','cold','failure']) {
     const video=scenario==='video',fail=scenario==='failure';
     const pages=[],contexts=[];
     for(const user of ['a','b']){
@@ -73,7 +73,16 @@ io.on('connection',socket=>socket.onAny((event,data)=>{if(/call|webrtc/.test(eve
       await page.goto('http://127.0.0.2:'+server.address().port+'/?user='+user);
       await page.getByRole('button',{name:'Gọi thoại',exact:true}).waitFor({timeout:30000});pages.push(page);
     }
+    if(scenario==='cold'){
+      const socket=[...io.sockets.sockets.values()].find(s=>s.userId==='b');
+      const disconnected=new Promise(resolve=>socket.once('disconnect',resolve));
+      await pages[1].close();await disconnected;
+    }
     await pages[0].getByRole('button',{name:video?'Gọi Video':'Gọi thoại',exact:true}).click();
+    if(scenario==='cold'){
+      pages[1]=await contexts[1].newPage();pages[1].on('pageerror',e=>errors.push('cold: '+e.stack));
+      await pages[1].goto('http://127.0.0.2:'+server.address().port+'/?user=b&action=incoming_call&conversationId=room');
+    }
     await pages[1].getByRole('button',{name:'Trả lời',exact:true}).waitFor({timeout:30000});
     await pages[1].screenshot({path:path.join(root,'scratch/mobile-before-answer-'+(video?'video':'voice')+'.png')});
     await pages[1].getByRole('button',{name:'Trả lời',exact:true}).click();
@@ -158,7 +167,7 @@ io.on('connection',socket=>socket.onAny((event,data)=>{if(/call|webrtc/.test(eve
       for(const page of pages)await page.getByRole('button',{name:'Gọi thoại',exact:true}).waitFor();
       assert.equal(globals.activeCalls.size,0);
     }
-    console.log('Mobile '+(video?'video':'voice')+' UI: answer, two-way audio/video frames, camera denial/upgrade, repeated calls both directions and simultaneous upgrade passed',JSON.stringify(audio));
+    console.log('Mobile '+scenario+' UI: answer, two-way audio/video frames, camera denial/upgrade, repeated calls both directions and simultaneous upgrade passed',JSON.stringify(audio));
     for(const context of contexts)await context.close();
   }
   assert.equal(errors.length,0,errors.join('\n'));

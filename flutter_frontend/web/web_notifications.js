@@ -53,7 +53,7 @@
         storageBucket: 'chat-tho-fi.firebasestorage.app', messagingSenderId: '513501588929',
         appId: '1:513501588929:web:54fd6c5fab227868bfd340'
       });
-      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js?v=push-3', {
+      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js?v=push-4', {
         scope: '/firebase-cloud-messaging-push-scope', updateViaCache: 'none'
       });
       if (!registration.active) await new Promise((resolve, reject) => {
@@ -72,7 +72,10 @@
       if (!foregroundListening) {
         messaging.onMessage(payload => {
           const data = payload.data || {};
-          if (/^(call_ended|CALL_ENDED)$/.test(data.type || '')) return;
+          if (/^(call_ended|CALL_ENDED)$/.test(data.type || '')) {
+            if (data.callId) dispatchIntent({...data,type:'call_ended'});
+            return;
+          }
           const notice = payload.notification || {};
           registration.showNotification(notice.title || data.title || 'Tin nhắn mới', {
             body: notice.body || data.body || 'Bạn có tin nhắn mới',
@@ -92,4 +95,38 @@
       throw error;
     }
   };
+  let pendingIntent = null;
+  function dispatchIntent(data) {
+    pendingIntent = data;
+    window.dispatchEvent(new CustomEvent('tho-fi-push', {detail:JSON.stringify(data)}));
+  }
+  window.consumePushIntent = function () {
+    const value = pendingIntent;
+    pendingIntent = null;
+    return value ? JSON.stringify(value) : null;
+  };
+  if (navigator.serviceWorker?.addEventListener) navigator.serviceWorker.addEventListener('message', event => {
+    if (event.data?.type !== 'PUSH_OPEN' && event.data?.type !== 'PUSH_CALL_ENDED') return;
+    const data = event.data.data || {};
+    dispatchIntent(event.data.type === 'PUSH_CALL_ENDED' ? {...data,type:'call_ended'} : data);
+  });
+  let refreshing = false, lastRefresh = 0;
+  window.refreshPushRegistration = async function () {
+    if (refreshing || Date.now()-lastRefresh < 60000 || !window.isNotificationSupported() || Notification.permission !== 'granted') return;
+    if (!localStorage.getItem('flutter.authToken') && !localStorage.getItem('authToken')) return;
+    refreshing = true; lastRefresh = Date.now();
+    try {
+      const token = await window.registerFCMAndGetToken();
+      if (token) {
+        await window.postUserPushApi('fcm-token',{fcmToken:token,platform:'web',deviceId:window.getWebDeviceId()});
+        window.markWebPushRegistered(true);
+      }
+    } catch (error) { window.markWebPushRegistered(false); console.warn('[Push] Không cập nhật được đăng ký:',error.message); }
+    finally {refreshing=false;}
+  };
+  if (window.addEventListener) window.addEventListener('online',window.refreshPushRegistration);
+  if (window.addEventListener) window.addEventListener('load',window.refreshPushRegistration);
+  if (document.addEventListener) document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) window.refreshPushRegistration();
+  });
 })();

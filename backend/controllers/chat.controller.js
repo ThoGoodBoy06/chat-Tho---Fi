@@ -1256,7 +1256,12 @@ exports.sendPushNotification = async(targetUserIdOrToken, title, body, customDat
     }
 
     const conversationId = (customData && customData.conversationId) || "";
-    const collapseTag = conversationId ? `conv-${conversationId}` : ((customData && customData.type) || "tho-fi-chat-notification");
+    const kind = String(customData?.type || '').toLowerCase();
+    const incomingCall = kind === 'incoming_call';
+    const endedCall = kind === 'call_ended';
+    const collapseTag = incomingCall || endedCall ? 'call-' + (customData?.callId || conversationId || 'incoming') : conversationId ? `conv-${conversationId}` : (kind || "tho-fi-chat-notification");
+    const clickLink = incomingCall ? `${FRONTEND_URL}/?action=incoming_call&callId=${encodeURIComponent(customData?.callId || '')}&conversationId=${encodeURIComponent(conversationId)}` : conversationId ? `${FRONTEND_URL}/?conversationId=${encodeURIComponent(conversationId)}` : FRONTEND_URL;
+    recipientTokens = [...new Set(recipientTokens)];
 
     const payload = {
         tokens: recipientTokens,
@@ -1264,7 +1269,6 @@ exports.sendPushNotification = async(targetUserIdOrToken, title, body, customDat
             priority: "high",
             notification: {
                 channelId: dataOnly ? "incoming_calls_v3" : "chat_messages_v3",
-                channel_id: dataOnly ? "incoming_calls_v3" : "chat_messages_v3",
                 sound: dataOnly ? "ringtone" : "amthanhtinnhan",
                 defaultVibrateTimings: !dataOnly,
                 vibrateTimingsMillis: dataOnly ? [0, 1000, 500, 1000, 500, 1000, 500, 1000, 500] : undefined,
@@ -1290,7 +1294,7 @@ exports.sendPushNotification = async(targetUserIdOrToken, title, body, customDat
         webpush: {
             headers: {
                 Urgency: "high",
-                TTL: "86400",
+                TTL: incomingCall ? "60" : endedCall ? "120" : "86400",
             },
             notification: {
                 title: title,
@@ -1298,13 +1302,13 @@ exports.sendPushNotification = async(targetUserIdOrToken, title, body, customDat
                 icon: `${BASE_HOST_URL}/icon.png`,
                 badge: `${BASE_HOST_URL}/icon.png`,
                 tag: collapseTag,
-                renotify: true,
+                renotify: !endedCall,
                 vibrate: dataOnly ? [1000, 500, 1000, 500] : [500, 250, 500, 250, 500],
-                requireInteraction: dataOnly ? true : false,
+                requireInteraction: incomingCall,
                 sound: "default",
             },
             fcmOptions: {
-                link: conversationId ? `${FRONTEND_URL}/?conversationId=${encodeURIComponent(conversationId)}` : FRONTEND_URL,
+                link: clickLink,
             }
         },
         data: {
@@ -1324,6 +1328,7 @@ exports.sendPushNotification = async(targetUserIdOrToken, title, body, customDat
     }
 
     try {
+        if (options.shouldSend && !options.shouldSend()) return {successCount:0,reason:'cancelled'};
         const response = await getMessaging().sendEachForMulticast(payload);
         console.log(`📲 Đã gửi Push Multicast thành công cho ${response.successCount}/${recipientTokens.length} thiết bị`);
 
