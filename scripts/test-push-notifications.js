@@ -70,24 +70,28 @@ test('foreground web messages show one notification and repeat messages renotify
   assert.equal(c.notices.length, 1);
   assert.equal(c.notices[0][1].renotify, true);
 });
-test('worker has a single Firebase push owner and handles data-only messages once', async () => {
+test('cold worker displays every push without Firebase imports or an open app', async () => {
   const listeners = {}, shown = [], order = [];
-  let background;
   const context = {URL,console, clients: {matchAll: async () => [], openWindow: async url => {shown.push(url);}},
-    firebase: {initializeApp: () => {}, messaging: () => ({onBackgroundMessage: fn => {background = fn;}})},
-    importScripts: () => order.push('firebase'),
+    importScripts: () => {throw Error('Cold worker must not require a network SDK');},
     location: {origin: 'https://chat-tho-fi.pages.dev'},
     registration: {showNotification: async (...args) => shown.push(args), getNotifications: async () => []},
     addEventListener: (name, fn) => {listeners[name] = fn; order.push(name);}, skipWaiting: () => {}};
   context.self = context;
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(path.join(root, 'flutter_frontend/web/firebase-messaging-sw.js'), 'utf8'), context);
-  assert.equal(listeners.push, undefined, 'Do not install a second raw handler beside Firebase');
-  assert.ok(order.indexOf('notificationclick') < order.indexOf('firebase'));
+  assert.equal(typeof listeners.push, 'function');
+  async function background(payload) {
+    let lifetime;
+    listeners.push({data:{json:()=>payload},waitUntil:p=>{lifetime=p;}});
+    assert(lifetime,'Push lifetime must be registered synchronously');
+    await lifetime;
+  }
   await background({data: {title: 'Sender', body: 'Hello', conversationId: 'room'}});
   assert.equal(shown.length, 1);
   await background({notification: {title: 'SDK notification'}, data: {conversationId: 'room'}});
-  assert.equal(shown.length, 1, 'Firebase owns notification payload rendering');
+  assert.equal(shown.length, 2, 'Native worker owns FCM notification payloads too');
+  assert.equal(shown.at(-1)[0], 'SDK notification');
   let pending;
   listeners.notificationclick({notification: {close() {}, data: {FCM_MSG: {data: {conversationId: 'room & 1'}}}},
     stopImmediatePropagation() {}, waitUntil: promise => {pending = promise;}});
@@ -102,6 +106,15 @@ test('worker has a single Firebase push owner and handles data-only messages onc
   assert.equal(shown.at(-1)[1].renotify,false);
   await background({data:{type:'incoming_call',callId:'old',expiresAt:String(Date.now()-1000)}});
   assert.equal(shown.at(-1)[0],'Cuộc gọi nhỡ');
+  const count=shown.length;
+  let lifetime;
+  listeners.push({data:{json(){throw Error('Invalid JSON');}},waitUntil:p=>{lifetime=p;}});
+  await lifetime;assert.equal(shown.length,count+1,'Malformed push must still be visible on Safari');
+  assert.equal(shown.at(-1)[0],'Tin nhắn mới');
+  // A suspended window must not delay the mandatory visible notification.
+  context.clients.matchAll=()=>new Promise(()=>{});
+  listeners.push({data:{json:()=>({data:{type:'call_ended',callId:'hung'}})},waitUntil(){}});
+  assert.equal(shown.at(-1)[1].tag,'call-hung');
 });
 
 test('resume refreshes granted subscriptions without prompting and queues cold-start intents',async()=>{

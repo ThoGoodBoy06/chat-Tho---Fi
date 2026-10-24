@@ -191,3 +191,11 @@ Kiểm tra hosting ngày 24/10: Cloudflare Workers & Pages chỉ có hai dự á
 - iOS hỗ trợ Web Push cho app thêm vào màn hình chính từ iOS 16.4, cần cho phép thông báo. Khóa/tắt màn hình hoặc ra khỏi app khác với tắt nguồn. PWA không tích hợp màn hình cuộc gọi hệ thống như CallKit; bấm thông báo mở app rồi nhận cuộc gọi.
 
 Nguồn: https://webkit.org/blog/13878/ và https://firebase.google.com/docs/cloud-messaging/web/receive-messages
+
+## Thông báo nền khởi động nguội và video bị cắt (25/10/2026)
+
+- Worker push-5 xử lý trực tiếp sự kiện Push API, giữ nguyên URL/scope và token FCM hiện có. Không tải Firebase SDK từ CDN khi iOS đánh thức worker. Chỉ worker này sở hữu việc hiện thông báo, cả payload notification và data-only đều hiển thị đúng một lần; không cần trang app hoặc Socket.IO hoạt động.
+- Gọi showNotification ngay trong push và đăng ký event.waitUntil đồng bộ. Đồng bộ trạng thái kết thúc cuộc gọi với cửa sổ chạy song song, không trì hoãn hiển thị khi cửa sổ bị treo. Payload hỏng vẫn có thông báo dự phòng để tránh silent push trên Safari.
+- Cả video đối phương lẫn preview camera dùng object-fit:contain, căn giữa, nền tối; giữ nguyên tỉ lệ và toàn bộ khung camera, không cắt thành khung dọc gây cảm giác zoom. Preview chỉ lật ngang, không phóng hình.
+- scripts/test-push-cold-worker.cjs khởi chạy Chrome thật, đăng ký đúng worker/scope, đóng trang app, dừng worker rồi bơm envelope FCM qua CDP. Tin nhắn và cuộc gọi đều hiển thị đúng một thông báo sau cold start. Đây là kiểm thử vòng đời worker; không phải gửi qua APNs hay xác nhận trên màn hình khóa iPhone thật.
+- scripts/test-mobile-call-ui.cjs kiểm tra framesDecoded cùng computed object-fit của cả hai video trên khung mobile. Chưa có thiết bị iOS thật để xác nhận hành vi hệ điều hành; không coi kiểm thử Chrome hoặc Firebase dry-run là bằng chứng giao nhận trên iPhone.

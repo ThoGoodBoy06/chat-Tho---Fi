@@ -6611,7 +6611,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         ..left = '0'
         ..width = '100%'
         ..height = '100%'
-        ..objectFit = 'cover'
+        // Preserve the camera's entire field of view on narrow phone screens.
+        ..objectFit = 'contain'
+        ..objectPosition = 'center'
+        ..backgroundColor = '#101923'
         ..zIndex = 'auto'
         ..pointerEvents = 'none';
       if (isLocal) el.style.transform = 'scaleX(-1)';

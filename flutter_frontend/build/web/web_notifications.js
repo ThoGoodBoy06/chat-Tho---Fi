@@ -53,7 +53,7 @@
         storageBucket: 'chat-tho-fi.firebasestorage.app', messagingSenderId: '513501588929',
         appId: '1:513501588929:web:54fd6c5fab227868bfd340'
       });
-      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js?v=push-4', {
+      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js?v=push-5', {
         scope: '/firebase-cloud-messaging-push-scope', updateViaCache: 'none'
       });
       if (!registration.active) await new Promise((resolve, reject) => {

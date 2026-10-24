@@ -126,6 +126,10 @@ io.on('connection',socket=>socket.onAny((event,data)=>{if(/call|webrtc/.test(eve
     for(const page of pages) {
       await page.waitForFunction(async()=>{for(const r of(await window.testPeers.at(-1).getStats()).values())if(r.type==='inbound-rtp'&&r.kind==='video'&&r.framesDecoded>0)return true;return false;},{},{timeout:15000});
       await page.waitForFunction(()=>{const v=document.getElementById('remoteVideoPlayer');return v?.videoWidth>0&&v.readyState>=2;},{},{timeout:10000});
+        const fit=await page.evaluate(()=>['remoteVideoPlayer','localVideoPlayer'].map(id=>{
+          const v=document.getElementById(id);return {id,fit:v&&getComputedStyle(v).objectFit,transform:v&&getComputedStyle(v).transform};
+        }));
+        for(const video of fit) assert.equal(video.fit,'contain',video.id+' must preserve the full camera frame');
     }
     for(const [i,page] of pages.entries())await page.waitForFunction(async previous=>{
       for(const r of(await window.testPeers.at(-1).getStats()).values())

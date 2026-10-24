@@ -1,5 +1,5 @@
 'use strict';
-const SW_VERSION = 'push-4';
+const SW_VERSION = 'push-5';
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
 self.addEventListener('notificationclick', event => {
@@ -25,31 +25,30 @@ self.addEventListener('notificationclick', event => {
     return self.clients.openWindow(target.pathname + target.search);
   })());
 });
-importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
-firebase.initializeApp({
-  apiKey:'AIzaSyDk6fayVDs0YbbhwldYxgHcN4nnjnPwmRc',
-  authDomain:'chat-tho-fi.firebaseapp.com',projectId:'chat-tho-fi',
-  storageBucket:'chat-tho-fi.firebasestorage.app',messagingSenderId:'513501588929',
-  appId:'1:513501588929:web:54fd6c5fab227868bfd340'
-});
-firebase.messaging().onBackgroundMessage(async payload => {
+// One native Push API owner. FCM still transports the encrypted payload, but a
+// cold iOS worker must not fetch/initialize external SDKs before showing it.
+// Keep this worker URL/scope so existing FCM subscriptions continue to work.
+self.addEventListener('push', event => {
+  let payload = {};
+  try { payload = event.data?.json() || {}; } catch (_) {}
   const data = payload.data || {};
+  const notice = payload.notification || {};
   const kind = String(data.type || '').toLowerCase();
   const isCall = kind === 'incoming_call', ended = kind === 'call_ended';
-  if (ended && data.callId) {
-    const windows = await self.clients.matchAll({type:'window',includeUncontrolled:true});
-    for (const client of windows) client.postMessage({type:'PUSH_CALL_ENDED',data});
-  }
-  if (payload.notification) return; // Firebase already displayed it.
-  // Web pushes must remain visible, including call-end updates, on Safari.
+  // Start display immediately, even with a suspended/hung page or no windows.
+  // Every push, including call-end and malformed data, must remain user-visible.
   const expired = isCall && Number(data.expiresAt)>0 && Number(data.expiresAt)<Date.now();
-  const title = expired ? 'Cuộc gọi nhỡ' : data.title || (isCall ? (data.callerName || 'Người dùng')+' đang gọi cho bạn' : ended ? 'Cuộc gọi đã kết thúc' : 'Tin nhắn mới');
-  return self.registration.showNotification(title, {
-    body:data.body || (isCall ? 'Mở app để nhận cuộc gọi' : 'Mở app để xem'),
-    icon:data.callerAvatar || data.avatar || '/icon.png',badge:'/icon.png',data,
+  const title = expired ? 'Cuộc gọi nhỡ' : notice.title || data.title || (isCall ? (data.callerName || 'Người dùng')+' đang gọi cho bạn' : ended ? 'Cuộc gọi đã kết thúc' : 'Tin nhắn mới');
+  const display = self.registration.showNotification(title, {
+    body:notice.body || data.body || (isCall ? 'Mở app để nhận cuộc gọi' : 'Mở app để xem'),
+    icon:data.callerAvatar || data.avatar || notice.icon || '/icon.png',badge:'/icon.png',data,
     tag:isCall || ended ? 'call-'+(data.callId || data.conversationId || 'incoming') : data.conversationId ? 'conv-'+data.conversationId : 'tho-fi-message',
     renotify:!ended && !expired,requireInteraction:isCall && !expired,
     vibrate:isCall ? [500,250,500] : [200,100,200]
   });
+  const update = ended && data.callId ? self.clients.matchAll({type:'window',includeUncontrolled:true})
+    .then(windows => {for (const client of windows) client.postMessage({type:'PUSH_CALL_ENDED',data});})
+    .catch(() => {}) : Promise.resolve();
+  // Register the lifetime synchronously; no page, socket or network dependency.
+  event.waitUntil(Promise.all([display, update]));
 });
