@@ -5,6 +5,7 @@ import 'package:flutter_frontend/models/models.dart';
 import 'package:flutter_frontend/providers/chat_provider.dart';
 import 'package:flutter_frontend/providers/theme_provider.dart';
 import 'package:flutter_frontend/screens/chat_screen.dart';
+import 'package:flutter_frontend/screens/settings_screen.dart';
 import 'package:flutter_frontend/services/api_service.dart';
 
 Future<void> main() async {
@@ -21,5 +22,6 @@ Future<void> main() async {
   runApp(MultiProvider(providers:[
     ChangeNotifierProvider<ChatProvider>.value(value: provider),
     ChangeNotifierProvider<ThemeProvider>(create: (_) => ThemeProvider()),
-  ],child:MaterialApp(theme:ThemeData(fontFamily:'Inter'),home:ChatScreen(onLogout:(){}))));
+  ],child:MaterialApp(theme:ThemeData(fontFamily:'Inter'),home:Uri.base.queryParameters['settings']=='1'
+    ? SettingsScreen(onLogout:(){}) : ChatScreen(onLogout:(){}))));
 }

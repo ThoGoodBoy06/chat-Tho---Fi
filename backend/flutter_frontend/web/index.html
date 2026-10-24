@@ -2302,12 +2302,17 @@
     }
 
     .notif-content {
+      min-height: 0;
       padding: 18px 20px;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       display: flex;
       flex-direction: column;
       gap: 14px;
+    }
+
+    .notif-content > *, .notif-header, .notif-drag-bar {
+      flex-shrink: 0;
     }
 
     .notif-status-box {
@@ -2524,10 +2529,11 @@
 
     window.showNotificationModal = function () {
       const overlay = document.getElementById('notif-modal-overlay');
-      if (!overlay) return;
+      if (!overlay) return false;
       window.updateNotificationModalState();
       if (window.refreshBackgroundPushTest) window.refreshBackgroundPushTest();
       overlay.classList.add('active');
+      return true;
     };
 
     window.closeNotificationModal = function () {
@@ -2556,8 +2562,8 @@
         if (statusBox) {
           statusBox.className = 'notif-status-box active';
           statusIcon.textContent = '✅';
-          statusTitle.textContent = 'Thông báo đang BẬT';
-          statusDesc.textContent = 'Thiết bị này đã sẵn sàng nhận chuông cuộc gọi & tin nhắn khi bạn khóa màn hình hoặc ra ngoài.';
+          statusTitle.textContent = 'Đã đăng ký thông báo';
+          statusDesc.textContent = 'Máy chủ đã lưu đăng ký thiết bị. Dùng phép thử 15 giây bên dưới để kiểm tra khi khóa màn hình hoặc đóng app.';
         }
         if (btnText) btnText.textContent = 'Làm mới đăng ký thông báo';
       } else {
@@ -2596,7 +2602,7 @@
           window.markWebPushRegistered(true);
 
           window.updateNotificationModalState();
-          alert('🎉 Đã bật thông báo thành công! Bây giờ bạn có thể thử khóa màn hình hoặc thoát ra ngoài màn hình chính để kiểm tra.');
+          alert('Đã làm mới đăng ký thông báo. Bấm “Thử khi khóa màn hình / đóng app (15 giây)” để kiểm tra thông báo nền.');
         } else {
           window.updateNotificationModalState();
           alert('⚠️ Chưa thể kích hoạt thông báo. Nếu bạn đang dùng iPhone, hãy chắc chắn rằng bạn đã "Thêm vào MH chính" bằng Safari và mở ứng dụng từ màn hình chính!');
@@ -2607,7 +2613,7 @@
         alert('Lỗi kích hoạt thông báo: ' + err.message);
       } finally {
         if (btn) btn.disabled = false;
-        if (btnText) btnText.textContent = originalText;
+        window.updateNotificationModalState();
       }
     };
 

@@ -217,3 +217,10 @@ Nguồn: https://webkit.org/blog/13878/ và https://firebase.google.com/docs/clo
 - 16 tests thông báo, 6 tests server probe qua; Chrome thật đóng hết cửa sổ app + dừng worker vẫn nhận cả chat/call envelope và gửi báo nhận về server thử. Kiểm tra cache WebKit Windows qua. Full-system script xác nhận DB/storage/FCM cấu hình, HTTP local không chạy nên không dùng kết luận tổng quát của script làm bằng chứng end-to-end.
 
 Nguồn: https://webkit.org/blog/13878/ và https://support.apple.com/en-lamr/guide/iphone/-iph07c867f28/ios
+
+## Nối đúng màn hình cài đặt PWA (25/10/2026)
+
+- Phát hiện thiếu sót ở các bản trước: SettingsScreen dùng bottom sheet Flutter riêng. Làm mới subscription và thử nền 15 giây đã thêm ở HTML nhưng chưa nối từ màn hình người dùng đang mở. Luồng Flutter cũ vẫn gọi getToken thông thường, nên nút cập nhật không đi qua renewSubscription và người dùng không thấy phép thử mới.
+- PWA nay mở một bảng cài đặt dùng chung từ SettingsScreen qua JS bridge; bridge trả true khi mở thành công. Thiếu bảng thì hiện lỗi tải lại, không rơi về luồng cũ gây báo thành công sai. App native vẫn dùng sheet riêng.
+- Nội dung cuộn bên trong bảng, các nút giữ chiều cao ít nhất 44px trên điện thoại. Nhãn sau đăng ký được cập nhật theo trạng thái hiện tại. Đổi lời báo thành công thành đã lưu đăng ký, không đồng nhất với iOS nhận/hiển thị.
+- Test mới scripts/test-notification-settings-ui.cjs chạy SettingsScreen thật trong browser mobile: bấm mục cài đặt, thấy nút thử 15 giây, bấm làm mới gọi deleteToken/getToken và lưu device đúng tài khoản, hẹn phép thử và đóng bảng. Fixture đăng nhập giả chỉ biên dịch vào scratch, không xuất bản. Test này và 16 tests thông báo qua. Chưa xác nhận push trên iPhone thật.

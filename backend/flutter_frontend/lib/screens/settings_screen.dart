@@ -283,6 +283,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showNotificationModal(BuildContext context, bool isDark) {
+    if (kIsWeb) {
+      // PWA registration, subscription repair and background test share one UI.
+      // The native sheet below does not expose the web repair/receipt flow.
+      try {
+        if (callWebFunction('showNotificationModal', []) == true) return;
+      } catch (_) {}
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Chưa tải được cài đặt thông báo. Hãy tải lại app rồi thử lại.'),
+      ));
+      return;
+    }
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
