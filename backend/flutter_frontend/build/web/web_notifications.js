@@ -54,7 +54,7 @@
         storageBucket: 'chat-tho-fi.firebasestorage.app', messagingSenderId: '513501588929',
         appId: '1:513501588929:web:54fd6c5fab227868bfd340'
       });
-      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js?v=push-5', {
+      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js?v=push-6', {
         scope: '/firebase-cloud-messaging-push-scope', updateViaCache: 'none'
       });
       if (!registration.active) await new Promise((resolve, reject) => {
@@ -85,7 +85,7 @@
             body: notice.body || data.body || 'Bạn có tin nhắn mới',
             icon: data.avatar || '/icon.png', badge: '/icon.png', data,
             tag: data.conversationId ? 'conv-' + data.conversationId : 'tho-fi-message',
-            renotify: true
+            silent: false, vibrate: [200,100,200], renotify: true
           }).catch(error => console.warn('[Push] Không hiện được thông báo:', error.message));
         });
         foregroundListening = true;
@@ -133,6 +133,40 @@
     dispatchIntent(event.data.type === 'PUSH_CALL_ENDED' ? {...data,type:'call_ended'} : data);
   });
   let refreshing = false, lastRefresh = 0;
+  const probeStorage = 'tho_fi_background_push_probe';
+  let probeTimer;
+  function probeStatus(text) {
+    const el=document.getElementById('notif-background-test-status');
+    if(el) el.textContent=text;
+  }
+  window.startBackgroundPushTest = async function () {
+    const button=document.getElementById('notif-background-test-btn');
+    if(button) button.disabled=true;
+    try {
+      const result=await window.postUserPushApi('test-push-background',{deviceId:window.getWebDeviceId()});
+      localStorage.setItem(probeStorage,JSON.stringify({testId:result.testId,expiresAt:result.expiresAt}));
+      probeStatus('Đã hẹn gửi sau 15 giây. Bây giờ hãy khóa màn hình hoặc vuốt đóng app. Mở lại app để xem kết quả nhận nền.');
+      clearTimeout(probeTimer);
+      probeTimer=setTimeout(window.refreshBackgroundPushTest,17000);
+    } catch(error) {probeStatus(error.message);}
+    finally {if(button) button.disabled=false;}
+  };
+  window.refreshBackgroundPushTest = async function () {
+    if(document.hidden) return;
+    let probe;try{probe=JSON.parse(localStorage.getItem(probeStorage));}catch(_){return;}
+    if(!probe?.testId) return;
+    if(probe.expiresAt<Date.now()) {localStorage.removeItem(probeStorage);probeStatus('Lượt thử đã hết hạn. Bấm thử lại khi khóa màn hình.');return;}
+    try {
+      const result=await window.postUserPushApi('test-push-background/status',{testId:probe.testId});
+      const descriptions={scheduled:'Đang chờ gửi. Bạn có thể khóa màn hình hoặc đóng app ngay.',
+        sending:'Máy chủ đang gửi thông báo thử.',accepted:'Firebase đã nhận lệnh gửi, nhưng chưa có xác nhận từ bộ nhận nền của thiết bị. Chưa thể kết luận thông báo đã đến.',
+        send_failed:'Máy chủ chưa gửi được thông báo tới đăng ký của thiết bị. Hãy làm mới đăng ký rồi thử lại.',
+        worker_received:result.notificationRequested ? 'Bộ nhận nền trên thiết bị đã nhận push và yêu cầu hệ điều hành hiển thị. Nếu không thấy banner/rung, kiểm tra Thông báo, Âm thanh & Cảm ứng và chế độ Tập trung trên iPhone.' : 'Bộ nhận nền đã nhận push nhưng hệ điều hành từ chối yêu cầu hiển thị. Kiểm tra quyền thông báo của Chat Tho-Fi.'};
+      probeStatus(descriptions[result.phase] || 'Đang kiểm tra thông báo nền.');
+      clearTimeout(probeTimer);
+      if(['scheduled','sending','accepted'].includes(result.phase)) probeTimer=setTimeout(window.refreshBackgroundPushTest,5000);
+    }catch(error){probeStatus(error.message);}
+  };
   window.refreshPushRegistration = async function () {
     if (refreshing || Date.now()-lastRefresh < 60000 || !window.isNotificationSupported() || Notification.permission !== 'granted') return;
     if (!localStorage.getItem('flutter.authToken') && !localStorage.getItem('authToken')) return;
@@ -148,7 +182,9 @@
   };
   if (window.addEventListener) window.addEventListener('online',window.refreshPushRegistration);
   if (window.addEventListener) window.addEventListener('load',window.refreshPushRegistration);
+  if (window.addEventListener) window.addEventListener('load',window.refreshBackgroundPushTest);
   if (document.addEventListener) document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) window.refreshPushRegistration();
+    if (!document.hidden) {window.refreshPushRegistration();window.refreshBackgroundPushTest();}
+    else clearTimeout(probeTimer);
   });
 })();

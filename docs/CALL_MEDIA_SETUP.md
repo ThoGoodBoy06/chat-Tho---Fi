@@ -206,3 +206,14 @@ Nguồn: https://webkit.org/blog/13878/ và https://firebase.google.com/docs/clo
 - Nút làm mới trước đây chỉ lấy lại token từ cache. Nay thao tác chủ động này xóa token/subscription cũ qua Firebase rồi đăng ký lại; khởi động/resume bình thường vẫn giữ nguyên subscription. Tuần tự hóa yêu cầu lấy token với thao tác làm mới.
 - Chỉ trả token để lưu sau khi xác nhận PushSubscription có endpoint, p256dh và auth; đăng ký rỗng của WebKit hiện lỗi thay vì báo bật thành công. Không ghi endpoint/key/token ra log.
 - 15 tests thông báo qua, gồm làm mới thủ công, giữ subscription khi tự khởi động, đăng ký rỗng và yêu cầu đồng thời. Cold-worker Chrome và cập nhật cache online/offline qua. Chưa kiểm chứng giao nhận APNs trên iPhone thật; cần kết quả “Thử gửi” của chính thiết bị để phân biệt đăng ký với giao nhận.
+
+## Xác nhận giao nhận nền thay vì chỉ Firebase accepted (25/10/2026)
+
+- Thêm nút thử sau 15 giây: máy chủ gửi đến đúng deviceId đã đăng ký, không dùng bộ hẹn giờ trong trang. Người dùng có thể khóa màn hình/vuốt đóng PWA trước khi gửi. Khi mở lại hoặc mở cài đặt thông báo, trang đọc kết quả bằng API có xác thực, chỉ chủ tài khoản xem được.
+- Worker báo nhận bằng mã ngẫu nhiên chỉ dùng cho lượt thử, sau khi showNotification đã resolve/reject. Không gửi JWT, token FCM, khóa subscription hoặc nội dung chat. URL báo nhận chỉ cho phép backend đã biết hoặc cùng origin. Việc báo nhận không trì hoãn yêu cầu hiển thị.
+- Các trạng thái phân biệt scheduled/sending, Firebase accepted, send_failed và worker_received + kết quả yêu cầu hiển thị. Worker nhận và showNotification thành công KHÔNG chứng minh người dùng đã thấy banner hoặc máy đã rung. Không có báo nhận cũng có thể do mạng gửi báo nhận lỗi.
+- Trạng thái thử lưu tạm trong bộ nhớ máy chủ tối đa 500 lượt, hết hạn sau 10 phút; deploy/restart làm lượt thử hết hạn và UI báo thử lại. Không thay đổi schema DB và không ảnh hưởng thông báo chat/cuộc gọi đang chạy.
+- Thông báo đặt silent:false và mẫu vibrate cho trình duyệt hỗ trợ. iOS điều khiển rung/âm thanh qua Notifications, Sounds & Haptics, Focus; JavaScript không thể ép hệ điều hành bỏ qua cài đặt này. Chưa xác nhận iPhone thật nhận push sau khi vuốt đóng app.
+- 16 tests thông báo, 6 tests server probe qua; Chrome thật đóng hết cửa sổ app + dừng worker vẫn nhận cả chat/call envelope và gửi báo nhận về server thử. Kiểm tra cache WebKit Windows qua. Full-system script xác nhận DB/storage/FCM cấu hình, HTTP local không chạy nên không dùng kết luận tổng quát của script làm bằng chứng end-to-end.
+
+Nguồn: https://webkit.org/blog/13878/ và https://support.apple.com/en-lamr/guide/iphone/-iph07c867f28/ios

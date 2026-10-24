@@ -153,6 +153,19 @@ test('manual repair waits for in-flight registration before deleting its token',
  assert.equal(await startup,'old-token');assert.equal(await repair,'new-token');
  assert.equal(c.calls.filter(x=>x==='deleteToken').length,1);
 });
+
+test('resumed background test distinguishes Firebase acceptance from device receipt',async()=>{
+ const c=client();const element={textContent:''};c.context.document.getElementById=()=>element;
+ c.context.setTimeout=()=>1;
+ c.context.postUserPushApi=async()=>({testId:'probe',expiresAt:Date.now()+60000});
+ await c.context.startBackgroundPushTest();assert(element.textContent.includes('15 giây'));
+ c.context.postUserPushApi=async()=>({phase:'accepted'});
+ await c.context.refreshBackgroundPushTest();assert(element.textContent.includes('chưa có xác nhận'));
+ c.context.postUserPushApi=async()=>({phase:'worker_received',notificationRequested:true});
+ await c.context.refreshBackgroundPushTest();assert(element.textContent.includes('yêu cầu hệ điều hành'));
+ c.context.postUserPushApi=async()=>({phase:'worker_received',notificationRequested:false});
+ await c.context.refreshBackgroundPushTest();assert(element.textContent.includes('từ chối'));
+});
 test('registering a phone preserves other phones and keeps native platform identity', async () => {
   const calls = [];
   const prisma = {userDevices: {deleteMany: async value => calls.push(['delete', value]), upsert: async value => calls.push(['upsert', value])},
@@ -208,7 +221,7 @@ test('test endpoint reports failure when Firebase is unconfigured or accepts zer
       process: {env: {}}, require: () => ({sendPushNotification: server.send})};
     vm.createContext(context);
     const source = fs.readFileSync(path.join(root, 'server.js'), 'utf8');
-    vm.runInContext(source.slice(source.indexOf('app.post("/api/users/test-push"'), source.indexOf('// Middleware xử lý lỗi chung')), context);
+    vm.runInContext(source.slice(source.indexOf('app.post("/api/users/test-push"'), source.indexOf("require('./services/push_probe.service')")), context);
     let status = 200, body;
     const response = {status: value => {status = value; return response;}, json: value => {body = value;}};
     await handler({headers: {authorization: 'Bearer test-auth'}, body: {deviceId: 'installation-a'}}, response);

@@ -2472,6 +2472,10 @@
         <button id="notif-test-push-btn" class="notif-btn-outline" onclick="window.handleTestPushClick()">
           <span>📲</span> Gửi thông báo đẩy thử nghiệm (Test Push)
         </button>
+        <button id="notif-background-test-btn" class="notif-btn-outline" onclick="window.startBackgroundPushTest()">
+          Thử khi khóa màn hình / đóng app (15 giây)
+        </button>
+        <div id="notif-background-test-status" role="status" aria-live="polite" style="font-size:13px;line-height:1.5;color:#475569"></div>
 
         <!-- Hàng nút Test Âm thanh & Rung -->
         <div style="font-size: 12px; font-weight: 700; color: #64748b; letter-spacing: 0.5px; margin-top: 4px;">
@@ -2508,6 +2512,7 @@
             <div class="notif-step-badge">4</div>
             <div>Vào <b>Cài đặt iPhone ➔ Thông báo ➔ Chat Tho-Fi</b> ➔ Bật Màn hình khóa, Biểu ngữ & Âm thanh.</div>
           </div>
+          <div style="font-size:12px;line-height:1.5;margin-top:10px">Rung và âm báo trên iPhone do iOS quyết định theo cài đặt Âm thanh & Cảm ứng, Thông báo và chế độ Tập trung. App không thể ép rung khi hệ điều hành chặn.</div>
         </div>
       </div>
     </div>
@@ -2521,6 +2526,7 @@
       const overlay = document.getElementById('notif-modal-overlay');
       if (!overlay) return;
       window.updateNotificationModalState();
+      if (window.refreshBackgroundPushTest) window.refreshBackgroundPushTest();
       overlay.classList.add('active');
     };
 

@@ -3,7 +3,11 @@
 const {chromium}=require('playwright');
 const fs=require('fs'),path=require('path'),http=require('http'),assert=require('assert/strict');
 const source=fs.readFileSync(path.join(__dirname,'../flutter_frontend/web/firebase-messaging-sw.js'));
+const receipts=[];
 const server=http.createServer((req,res)=>{
+  if(req.url==='/api/users/push-receipt'){
+    let body='';req.on('data',chunk=>{body+=chunk;});req.on('end',()=>{receipts.push(JSON.parse(body));res.setHeader('Content-Type','application/json');res.end('{"success":true}');});return;
+  }
   res.setHeader('Cache-Control','no-store');
   if(req.url.startsWith('/firebase-messaging-sw.js')) {res.setHeader('Content-Type','text/javascript');return res.end(source);}
   res.setHeader('Content-Type','text/html');res.end('<!doctype html><title>Push lifecycle test</title>');
@@ -32,7 +36,7 @@ const server=http.createServer((req,res)=>{
     for(const type of ['chat_message','incoming_call']) {
       await cdp.send('ServiceWorker.stopAllWorkers');
       // FCM's HTTP v1 envelope at the Push API boundary, including data-only calls.
-      const data={type,callId:'cold-call',conversationId:'cold-room',title:type,body:'Closed app delivery'};
+      const data={type,callId:'cold-call',conversationId:'cold-room',title:type,body:'Closed app delivery',pushProbeId:type,pushProbeKey:'test-capability',pushProbeUrl:origin+'/api/users/push-receipt'};
       const payload=type==='chat_message'?{notification:{title:type,body:data.body},data}:{data};
       await cdp.send('ServiceWorker.deliverPushMessage',{origin,registrationId,data:JSON.stringify(payload)});
       app=await context.newPage();await app.goto(origin);
@@ -46,6 +50,8 @@ const server=http.createServer((req,res)=>{
         n.forEach(v=>v.close());return result;
       });
       assert.equal(notices.length,1);assert.equal(notices[0].title,type);assert.equal(notices[0].data.type,type);
+      await app.waitForFunction(async url=>{return (await fetch(url)).ok;},origin);
+      assert(receipts.some(r=>r.testId===type&&r.notificationRequested===true),'Closed worker must report its OS display request');
       await app.close();
       console.log('Cold native worker, no open app: '+type+' displayed once');
     }

@@ -1,5 +1,5 @@
 'use strict';
-const SW_VERSION = 'push-5';
+const SW_VERSION = 'push-6';
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
 self.addEventListener('notificationclick', event => {
@@ -43,12 +43,25 @@ self.addEventListener('push', event => {
     body:notice.body || data.body || (isCall ? 'Mở app để nhận cuộc gọi' : 'Mở app để xem'),
     icon:data.callerAvatar || data.avatar || notice.icon || '/icon.png',badge:'/icon.png',data,
     tag:isCall || ended ? 'call-'+(data.callId || data.conversationId || 'incoming') : data.conversationId ? 'conv-'+data.conversationId : 'tho-fi-message',
-    renotify:!ended && !expired,requireInteraction:isCall && !expired,
+    silent:false,renotify:!ended && !expired,requireInteraction:isCall && !expired,
     vibrate:isCall ? [500,250,500] : [200,100,200]
   });
   const update = ended && data.callId ? self.clients.matchAll({type:'window',includeUncontrolled:true})
     .then(windows => {for (const client of windows) client.postMessage({type:'PUSH_CALL_ENDED',data});})
     .catch(() => {}) : Promise.resolve();
   // Register the lifetime synchronously; no page, socket or network dependency.
-  event.waitUntil(Promise.all([display, update]));
+  const receipt = display.then(() => reportReceipt(data,true), () => reportReceipt(data,false));
+  event.waitUntil(Promise.allSettled([display, update, receipt]));
 });
+
+function reportReceipt(data, notificationRequested) {
+  // A one-use random capability reports only this test. Never send auth tokens,
+  // message contents or subscription keys from a background worker.
+  if(!data.pushProbeId || !data.pushProbeKey || !data.pushProbeUrl) return Promise.resolve();
+  const url = new URL(data.pushProbeUrl, self.location.origin);
+  if(url.origin !== self.location.origin && url.origin !== 'https://chat-tho-fi-vn-9s8u.onrender.com') return Promise.resolve();
+  if(url.pathname !== '/api/users/push-receipt') return Promise.resolve();
+  return fetch(url.href, {method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({testId:data.pushProbeId,key:data.pushProbeKey,notificationRequested}),
+    signal:AbortSignal.timeout(8000)}).catch(()=>{});
+}

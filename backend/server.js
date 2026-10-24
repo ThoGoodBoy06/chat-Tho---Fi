@@ -862,6 +862,12 @@ app.post("/api/users/test-push", async (req, res) => {
     }
 });
 
+require('./services/push_probe.service').installPushProbeRoutes(app, {
+    jwt, prisma,
+    send: (...args) => require('./controllers/chat.controller').sendPushNotification(...args),
+    receiptUrl: (process.env.RENDER_EXTERNAL_URL || 'https://chat-tho-fi-vn-9s8u.onrender.com').replace(/\/$/, '') + '/api/users/push-receipt'
+});
+
 // Middleware xử lý lỗi chung (Global Error Handler)
 app.use((err, req, res, next) => {
     console.error("🔥 [Global Error] Lỗi Server:", err);
