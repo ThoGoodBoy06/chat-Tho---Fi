@@ -2987,9 +2987,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                   ),
                 ),
                   IconButton(
-                  icon: Icon(Icons.search_rounded, color: primaryColor, size: 22),
-                  padding: const EdgeInsets.all(6),
-                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                  icon: Icon(Icons.search_rounded, color: primaryColor, size: 20),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  visualDensity: VisualDensity.compact,
                   onPressed: () {
                     if (provider.isSearching) {
                       _inChatSearchController.clear();
@@ -3001,23 +3002,26 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                   tooltip: 'Tìm kiếm tin nhắn',
                 ),
                 IconButton(
-                  icon: Icon(Icons.phone_rounded, color: primaryColor, size: 22),
-                  padding: const EdgeInsets.all(6),
-                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                  icon: Icon(Icons.phone_rounded, color: primaryColor, size: 20),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  visualDensity: VisualDensity.compact,
                   onPressed: () => _startVoiceCall(provider),
                   tooltip: 'Gọi thoại',
                 ),
                 IconButton(
-                  icon: Icon(Icons.videocam_rounded, color: primaryColor, size: 24),
-                  padding: const EdgeInsets.all(6),
-                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                  icon: Icon(Icons.videocam_rounded, color: primaryColor, size: 22),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  visualDensity: VisualDensity.compact,
                   onPressed: () => _startVideoCall(provider),
                   tooltip: 'Gọi Video',
                 ),
                 IconButton(
-                  icon: Icon(Icons.info_outline, color: primaryColor, size: 22),
-                  padding: const EdgeInsets.all(6),
-                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                  icon: Icon(Icons.info_outline, color: primaryColor, size: 20),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  visualDensity: VisualDensity.compact,
                   onPressed: () => _showChatInfo(provider),
                   tooltip: 'Thông tin cuộc trò chuyện',
                 ),
@@ -5503,8 +5507,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
           elevation: 8,
           backgroundColor: Colors.white,
           child: Container(
-            width: 320,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+            constraints: const BoxConstraints(maxWidth: 360),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -5586,51 +5590,54 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                           border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
                         ),
                         child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Row(
-                              children: [
-                                Container(
-                                  width: 22,
-                                  height: 22,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    gradient: currentTheme.gradient,
-                                    border: Border.all(color: Colors.white, width: 2),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: currentTheme.primaryColor.withOpacity(0.4),
-                                        blurRadius: 4,
-                                        offset: const Offset(0, 1),
-                                      ),
-                                    ],
+                            Container(
+                              width: 22,
+                              height: 22,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: currentTheme.gradient,
+                                border: Border.all(color: Colors.white, width: 2),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: currentTheme.primaryColor.withOpacity(0.4),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 1),
                                   ),
-                                ),
-                                const SizedBox(width: 10),
-                                const Text(
-                                  'Chủ đề đoạn chat',
-                                  style: TextStyle(
-                                    color: Color(0xFF0F172A),
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                            Row(
-                              children: [
-                                Text(
-                                  currentTheme.name.split(' (')[0],
-                                  style: TextStyle(
-                                    color: currentTheme.primaryColor,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                            const SizedBox(width: 10),
+                            const Expanded(
+                              child: Text(
+                                'Chủ đề đoạn chat',
+                                style: TextStyle(
+                                  color: Color(0xFF0F172A),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
                                 ),
-                                const SizedBox(width: 4),
-                                const Icon(Icons.chevron_right_rounded, color: Color(0xFF94A3B8), size: 20),
-                              ],
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: currentTheme.primaryColor.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                currentTheme.name.split(' (')[0],
+                                style: TextStyle(
+                                  color: currentTheme.primaryColor,
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.chevron_right_rounded, color: Color(0xFF94A3B8), size: 18),
                           ],
                         ),
                       ),
@@ -5685,28 +5692,31 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                       border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Row(
-                          children: [
-                            Icon(Icons.photo_library_outlined, color: Color(0xFF0068FF), size: 20),
-                            SizedBox(width: 10),
-                            Text(
-                              'Ảnh, video & tệp đã gửi',
-                              style: TextStyle(color: Color(0xFF0F172A), fontSize: 14, fontWeight: FontWeight.w600),
-                            ),
-                          ],
+                        const Icon(Icons.photo_library_outlined, color: Color(0xFF0068FF), size: 20),
+                        const SizedBox(width: 10),
+                        const Expanded(
+                          child: Text(
+                            'Ảnh, video & tệp đã gửi',
+                            style: TextStyle(color: Color(0xFF0F172A), fontSize: 14, fontWeight: FontWeight.w600),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        Row(
-                          children: [
-                            Text(
-                              '${provider.sharedMediaMessages.length + provider.sharedFileMessages.length} mục',
-                              style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
-                            ),
-                            const SizedBox(width: 4),
-                            const Icon(Icons.chevron_right_rounded, color: Color(0xFF94A3B8), size: 20),
-                          ],
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '${provider.sharedMediaMessages.length + provider.sharedFileMessages.length} mục',
+                            style: const TextStyle(color: Color(0xFF64748B), fontSize: 12, fontWeight: FontWeight.w600),
+                          ),
                         ),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.chevron_right_rounded, color: Color(0xFF94A3B8), size: 18),
                       ],
                     ),
                   ),
@@ -5729,28 +5739,31 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                       border: Border.all(color: const Color(0xFFFDE68A), width: 1),
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Row(
-                          children: [
-                            Icon(Icons.star_rounded, color: Color(0xFFF59E0B), size: 20),
-                            SizedBox(width: 10),
-                            Text(
-                              'Tin nhắn đã lưu (Đánh dấu sao)',
-                              style: TextStyle(color: Color(0xFF92400E), fontSize: 14, fontWeight: FontWeight.w600),
-                            ),
-                          ],
+                        const Icon(Icons.star_rounded, color: Color(0xFFF59E0B), size: 20),
+                        const SizedBox(width: 10),
+                        const Expanded(
+                          child: Text(
+                            'Tin nhắn đã lưu (Sao)',
+                            style: TextStyle(color: Color(0xFF92400E), fontSize: 14, fontWeight: FontWeight.w600),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        Row(
-                          children: [
-                            Text(
-                              '${provider.starredMessages.length}',
-                              style: const TextStyle(color: Color(0xFFB45309), fontSize: 13, fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(width: 4),
-                            const Icon(Icons.chevron_right_rounded, color: Color(0xFFF59E0B), size: 20),
-                          ],
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF3C7),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '${provider.starredMessages.length}',
+                            style: const TextStyle(color: Color(0xFFB45309), fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
                         ),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.chevron_right_rounded, color: Color(0xFFF59E0B), size: 18),
                       ],
                     ),
                   ),
