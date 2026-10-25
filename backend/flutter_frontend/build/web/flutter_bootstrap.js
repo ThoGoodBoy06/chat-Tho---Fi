@@ -10,7 +10,7 @@ _flutter.buildConfig = {"engineRevision":"f6344b75dcf861d8bf1f1322780b8811f982e3
 
 
 for (const build of _flutter.buildConfig.builds) {
-  if (build.mainJsPath) build.mainJsPath += '?v=481e3dfddd4a2c76';
+  if (build.mainJsPath) build.mainJsPath += '?v=e6dbee4db619d8ef';
 }
 _flutter.loader.load({
   config: {renderer: 'canvaskit', canvasKitBaseUrl: 'canvaskit/', useColorEmoji: true},

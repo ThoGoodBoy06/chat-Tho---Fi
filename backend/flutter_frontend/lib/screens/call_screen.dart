@@ -274,6 +274,19 @@ class _CallScreenState extends State<CallScreen> {
       body: SafeArea(
         child: Stack(
           children: [
+            if (widget.isVideo)
+              Positioned(
+                top: 16,
+                right: 16,
+                child: FloatingActionButton.small(
+                  heroTag: 'switch_cam_btn',
+                  backgroundColor: Colors.white24,
+                  onPressed: _isSwitchingCamera ? null : _switchCamera,
+                  child: _isSwitchingCamera
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.flip_camera_ios_rounded, color: Colors.white, size: 20),
+                ),
+              ),
             Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -330,7 +343,7 @@ class _CallScreenState extends State<CallScreen> {
                     onPressed: () => _hangUp(notifyPeer: true),
                     child: const Icon(Icons.call_end, color: Colors.white),
                   ),
-                  if (widget.isVideo) ...[
+                  if (widget.isVideo)
                     FloatingActionButton(
                       heroTag: 'video_btn',
                       backgroundColor: _isVideoEnabled ? Colors.white24 : Colors.white,
@@ -340,16 +353,6 @@ class _CallScreenState extends State<CallScreen> {
                         color: _isVideoEnabled ? Colors.white : Colors.black,
                       ),
                     ),
-                    FloatingActionButton(
-                      heroTag: 'switch_cam_btn',
-                      backgroundColor: Colors.white24,
-                      onPressed: _switchCamera,
-                      child: const Icon(
-                        Icons.flip_camera_ios_rounded,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),

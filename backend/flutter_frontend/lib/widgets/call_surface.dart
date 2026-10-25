@@ -6,11 +6,12 @@ import 'package:flutter/material.dart';
 class CallSurface extends StatelessWidget {
   const CallSurface({super.key, required this.name, this.avatar, required this.video,
     required this.status, required this.actions, this.duration, this.notice,
-    this.videoView, this.localVideoView, this.onRepairAudio, this.onSwitchCamera, this.connected = false,
+    this.videoView, this.localVideoView, this.onRepairAudio, this.onSwitchCamera,
+    this.isSwitchingCamera = false, this.connected = false,
     this.ended = false, this.incoming = false});
   final String name, status;
   final String? avatar, notice, duration;
-  final bool video, connected, ended, incoming;
+  final bool video, connected, ended, incoming, isSwitchingCamera;
   final List<Widget> actions;
   final Widget? videoView, localVideoView;
   final VoidCallback? onRepairAudio;
@@ -75,38 +76,59 @@ class CallSurface extends StatelessWidget {
                 if (localVideoView != null && !ended)
                   Align(
                     alignment: Alignment.centerRight,
-                    child: Stack(
-                      children: [
-                        Container(
-                          width: compact ? 76 : 92, height: compact ? 100 : 122,
-                          margin: const EdgeInsets.only(bottom: 18),
-                          decoration: BoxDecoration(color: const Color(0xFF233140), borderRadius: BorderRadius.circular(18)),
-                          clipBehavior: Clip.antiAlias, child: localVideoView,
-                        ),
-                        if (onSwitchCamera != null)
-                          Positioned(
-                            top: 6,
-                            right: 6,
-                            child: Material(
-                              color: Colors.black.withOpacity(0.6),
-                              shape: const CircleBorder(),
-                              child: InkWell(
-                                customBorder: const CircleBorder(),
-                                onTap: onSwitchCamera,
-                                child: const Padding(
-                                  padding: EdgeInsets.all(6),
-                                  child: Icon(Icons.flip_camera_ios_rounded, color: Colors.white, size: 15),
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
+                    child: Container(
+                      width: compact ? 76 : 92, height: compact ? 100 : 122,
+                      margin: const EdgeInsets.only(bottom: 18),
+                      decoration: BoxDecoration(color: const Color(0xFF233140), borderRadius: BorderRadius.circular(18)),
+                      clipBehavior: Clip.antiAlias, child: localVideoView,
                     ),
                   ),
                 Row(mainAxisAlignment: incoming ? MainAxisAlignment.spaceAround : MainAxisAlignment.spaceEvenly,
                   crossAxisAlignment: CrossAxisAlignment.start, children: actions),
               ]))));
         })),
+        if (onSwitchCamera != null && !ended)
+          Positioned(
+            top: 16,
+            right: 16,
+            child: SafeArea(
+              child: Tooltip(
+                message: 'Đổi camera trước/sau',
+                child: Material(
+                  color: const Color(0x73000000),
+                  shape: const CircleBorder(),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: isSwitchingCamera ? null : onSwitchCamera,
+                    child: Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white38, width: 1.2),
+                      ),
+                      child: isSwitchingCamera
+                          ? const Center(
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            )
+                          : const Icon(
+                              Icons.flip_camera_ios_rounded,
+                              color: Colors.white,
+                              size: 22,
+                            ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
       ]),
     );
   }

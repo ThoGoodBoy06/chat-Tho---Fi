@@ -7176,6 +7176,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                 localVideoView: videoMode && kIsWeb && !isCameraOff ? IgnorePointer(child:HtmlElementView(viewType:localViewType)) : null,
                 onRepairAudio: !callClosed && pc != null && callNotice != null ? repairAudio : null,
                 onSwitchCamera: !callClosed && videoMode && !isCameraOff && localStream?.getVideoTracks().isNotEmpty == true ? switchCamera : null,
+                isSwitchingCamera: switchingCamera,
                 actions: [
                   if (!callClosed) CallControl(icon:isMuted ? Icons.mic_off_rounded : Icons.mic_rounded,
                     label: isMuted ? 'Bật micro' : 'Tắt micro', active:isMuted,
@@ -7188,13 +7189,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                       if (localStream?.getVideoTracks().isEmpty ?? true) {enableVideo(); return;}
                       setDialogState(() {isCameraOff = !isCameraOff;for(final track in localStream!.getVideoTracks()) {track.enabled = !isCameraOff;}});
                     }),
-                  if (!callClosed && videoMode && !isCameraOff && localStream?.getVideoTracks().isNotEmpty == true)
-                    CallControl(
-                      icon: Icons.flip_camera_ios_rounded,
-                      label: cameraFacingMode == 'user' ? 'Đổi cam sau' : 'Đổi cam trước',
-                      busy: switchingCamera,
-                      onPressed: switchCamera,
-                    ),
                   if (!callClosed) CallControl(icon:isSpeakerOn ? Icons.volume_up_rounded : Icons.volume_off_rounded,
                     label:isSpeakerOn ? 'Tắt âm thanh' : 'Bật âm thanh', active:!isSpeakerOn,
                     onPressed: () {setDialogState(() {isSpeakerOn = !isSpeakerOn;try {callWebFunction('setCallSpeakerEnabled',[isSpeakerOn]);if(isSpeakerOn) callWebFunction('unlockAudio',[]);} catch (_) {} remoteAudio?.muted = !isSpeakerOn;});}),
