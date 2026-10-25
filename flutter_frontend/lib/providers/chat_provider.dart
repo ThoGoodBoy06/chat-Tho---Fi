@@ -381,8 +381,12 @@ class ChatProvider extends ChangeNotifier {
         final idx = messages.indexWhere((m) => m.id == msgId);
         if (idx != -1) {
           messages[idx] = messages[idx].copyWith(isRecalled: true);
-          notifyListeners();
         }
+        final pIdx = pinnedMessages.indexWhere((m) => m.id == msgId);
+        if (pIdx != -1) {
+          pinnedMessages[pIdx] = pinnedMessages[pIdx].copyWith(isRecalled: true);
+        }
+        notifyListeners();
       }
     });
 
@@ -646,6 +650,7 @@ class ChatProvider extends ChangeNotifier {
       // Call REST API fallback only when socket is disconnected
       ApiService.reactToMessage(messageId, emoji).catchError((e) {
         debugPrint('⚠️ Fallback react API error: $e');
+        return <String, dynamic>{};
       });
     }
   }
@@ -1608,8 +1613,12 @@ class ChatProvider extends ChangeNotifier {
       final idx = messages.indexWhere((m) => m.id == messageId);
       if (idx != -1) {
         messages[idx] = messages[idx].copyWith(isRecalled: true);
-        notifyListeners();
       }
+      final pIdx = pinnedMessages.indexWhere((m) => m.id == messageId);
+      if (pIdx != -1) {
+        pinnedMessages[pIdx] = pinnedMessages[pIdx].copyWith(isRecalled: true);
+      }
+      notifyListeners();
       if (selectedConversation != null) {
         SocketService.emitRecallMessage(messageId, selectedConversation!.id);
       }

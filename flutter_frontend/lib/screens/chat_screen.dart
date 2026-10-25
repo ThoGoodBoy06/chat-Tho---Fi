@@ -80,7 +80,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     final provider = Provider.of<ChatProvider>(context, listen: false);
     final idx = provider.messages.indexWhere((m) => m.id == msgId);
     if (idx != -1 && _scrollController.hasClients) {
-      final targetOffset = (_scrollController.position.maxScrollExtent * (idx / provider.messages.length))
+      final total = provider.messages.length;
+      final reversedIdx = total - 1 - idx;
+      final denom = total > 1 ? (total - 1) : 1;
+      final targetOffset = (_scrollController.position.maxScrollExtent * (reversedIdx / denom))
           .clamp(0.0, _scrollController.position.maxScrollExtent);
       _scrollController.animateTo(
         targetOffset,
@@ -3384,8 +3387,20 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                                                     final originSender = (originMsg != null && originMsg.senderId == provider.currentUser?.id)
                                                                         ? 'Bạn'
                                                                         : (conv.name.isNotEmpty ? conv.name : 'Người dùng');
-                                                                    return Container(
-                                                                      margin: const EdgeInsets.only(bottom: 6),
+                                                                    return InkWell(
+                                                                      borderRadius: BorderRadius.circular(10),
+                                                                      onTap: () {
+                                                                        if (msg.replyMessageId != null && msg.replyMessageId!.isNotEmpty) {
+                                                                          _scrollToMessageById(msg.replyMessageId!);
+                                                                          setState(() => _highlightedMessageId = msg.replyMessageId);
+                                                                          _highlightTimer?.cancel();
+                                                                          _highlightTimer = Timer(const Duration(milliseconds: 2500), () {
+                                                                            if (mounted) setState(() => _highlightedMessageId = null);
+                                                                          });
+                                                                        }
+                                                                      },
+                                                                      child: Container(
+                                                                        margin: const EdgeInsets.only(bottom: 6),
                                                                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                                                       decoration: BoxDecoration(
                                                                         color: isMe ? Colors.white.withOpacity(0.2) : Colors.black.withOpacity(0.06),
@@ -3420,6 +3435,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                                                             ),
                                                                           ),
                                                                         ],
+                                                                      ),
                                                                       ),
                                                                     );
                                                                   },
@@ -6279,20 +6295,53 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     }
 
     if (isFile) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.insert_drive_file_rounded, color: isMe ? Colors.white : const Color(0xFF0068FF)),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              content.isNotEmpty ? content : 'Tệp đính kèm',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: isMe ? Colors.white : const Color(0xFF0F172A), fontSize: 14, fontWeight: FontWeight.w500),
-            ),
+      final fName = content.isNotEmpty ? content.split('/').last.split('\\').last : 'Tệp đính kèm';
+      final fUrl = ApiService.formatImageUrl(content);
+      return InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: () {
+          if (kIsWeb && fUrl.isNotEmpty) {
+            html.window.open(fUrl, '_blank');
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: (isMe ? Colors.white : const Color(0xFF0068FF)).withOpacity(0.18),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.insert_drive_file_rounded, color: isMe ? Colors.white : const Color(0xFF0068FF), size: 20),
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      fName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: isMe ? Colors.white : const Color(0xFF0F172A), fontSize: 13.5, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Nhấn để tải về / mở tệp',
+                      style: TextStyle(color: isMe ? Colors.white70 : const Color(0xFF64748B), fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(Icons.download_rounded, size: 18, color: isMe ? Colors.white70 : const Color(0xFF0068FF)),
+            ],
           ),
-        ],
+        ),
       );
     }
 
@@ -7696,16 +7745,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
           Expanded(
             child: InkWell(
               onTap: () {
-                final idx = provider.messages.indexWhere((m) => m.id == pinned.id);
-                if (idx != -1 && _scrollController.hasClients) {
-                  final targetOffset = (_scrollController.position.maxScrollExtent * (idx / provider.messages.length))
-                      .clamp(0.0, _scrollController.position.maxScrollExtent);
-                  _scrollController.animateTo(
-                    targetOffset,
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeOutCubic,
-                  );
-                }
+                _scrollToMessageById(pinned.id);
+                setState(() => _highlightedMessageId = pinned.id);
+                _highlightTimer?.cancel();
+                _highlightTimer = Timer(const Duration(milliseconds: 2500), () {
+                  if (mounted) setState(() => _highlightedMessageId = null);
+                });
               },
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -7733,10 +7778,16 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    pinned.content.isNotEmpty ? pinned.content : (pinned.type == 'image' ? '[Hình ảnh]' : '[Tệp đính kèm]'),
+                    pinned.isRecalled
+                        ? 'Tin nhắn đã được thu hồi'
+                        : (pinned.content.isNotEmpty ? pinned.content : (pinned.type == 'image' ? '[Hình ảnh]' : '[Tệp đính kèm]')),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 13, color: textCol),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: pinned.isRecalled ? subTextCol : textCol,
+                      fontStyle: pinned.isRecalled ? FontStyle.italic : FontStyle.normal,
+                    ),
                   ),
                 ],
               ),
