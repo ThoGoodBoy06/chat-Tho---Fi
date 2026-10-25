@@ -155,6 +155,9 @@ class MessageModel {
   final DateTime createdAt;
   final String status; // 'sending', 'sent', 'error'
   final bool isForwarded;
+  final bool isEdited;
+  final bool isPinned;
+  final DateTime? pinnedAt;
   final String? clientTempId;
 
   Map<String, dynamic>? get systemMetadata {
@@ -180,6 +183,9 @@ class MessageModel {
     this.isDelivered = false,
     this.isRecalled = false,
     this.isForwarded = false,
+    this.isEdited = false,
+    this.isPinned = false,
+    this.pinnedAt,
     this.replyMessageId,
     this.reactions = const {},
     required this.createdAt,
@@ -244,6 +250,9 @@ class MessageModel {
     final delivered = json['isDelivered'] == true || read;
     final recalled = json['isRecalled'] == true;
     final forwarded = json['isForwarded'] == true || json['is_forwarded'] == true;
+    final edited = json['isEdited'] == true || json['is_edited'] == true;
+    final pinned = json['isPinned'] == true || json['is_pinned'] == true;
+    final pinnedAtDate = json['pinnedAt'] != null ? DateTime.tryParse(json['pinnedAt'].toString())?.toLocal() : null;
     final statusStr = json['status']?.toString() ?? 'sent';
     final tempId = json['clientTempId']?.toString() ?? json['tempId']?.toString();
 
@@ -260,6 +269,9 @@ class MessageModel {
       isDelivered: delivered,
       isRecalled: recalled,
       isForwarded: forwarded,
+      isEdited: edited,
+      isPinned: pinned,
+      pinnedAt: pinnedAtDate,
       replyMessageId: json['replyMessageId']?.toString(),
       reactions: parsedReactions,
       createdAt: json['createdAt'] != null
@@ -284,6 +296,9 @@ class MessageModel {
       'isDelivered': isDelivered,
       'isRecalled': isRecalled,
       'isForwarded': isForwarded,
+      'isEdited': isEdited,
+      'isPinned': isPinned,
+      'pinnedAt': pinnedAt?.toIso8601String(),
       'replyMessageId': replyMessageId,
       'reactions': reactions,
       'createdAt': createdAt.toIso8601String(),
@@ -304,6 +319,10 @@ class MessageModel {
     bool? isRead,
     bool? isDelivered,
     bool? isRecalled,
+    bool? isForwarded,
+    bool? isEdited,
+    bool? isPinned,
+    DateTime? pinnedAt,
     String? replyMessageId,
     Map<String, String>? reactions,
     DateTime? createdAt,
@@ -322,6 +341,10 @@ class MessageModel {
       isRead: isRead ?? this.isRead,
       isDelivered: isDelivered ?? this.isDelivered,
       isRecalled: isRecalled ?? this.isRecalled,
+      isForwarded: isForwarded ?? this.isForwarded,
+      isEdited: isEdited ?? this.isEdited,
+      isPinned: isPinned ?? this.isPinned,
+      pinnedAt: pinnedAt ?? this.pinnedAt,
       replyMessageId: replyMessageId ?? this.replyMessageId,
       reactions: reactions ?? this.reactions,
       createdAt: createdAt ?? this.createdAt,

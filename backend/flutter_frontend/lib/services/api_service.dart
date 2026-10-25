@@ -546,6 +546,80 @@ class ApiService {
     }
   }
 
+
+  // Edit Message: PATCH /api/chat/messages/:messageId/edit
+  static Future<Map<String, dynamic>> editMessage(String messageId, String newContent) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await _client.patch(
+        Uri.parse('$baseUrl/chat/messages/$messageId/edit'),
+        headers: headers,
+        body: jsonEncode({'newContent': newContent}),
+      ).timeout(const Duration(seconds: 15));
+      return jsonDecode(response.body);
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.editMessage: $e');
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  // Pin / Unpin Message: POST /api/chat/messages/:messageId/pin
+  static Future<Map<String, dynamic>> pinMessage(String messageId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await _client.post(
+        Uri.parse('$baseUrl/chat/messages/$messageId/pin'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 15));
+      return jsonDecode(response.body);
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.pinMessage: $e');
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  // Get Pinned Messages: GET /api/chat/:conversationId/pins
+  static Future<List<dynamic>> getPinnedMessages(String conversationId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await _client.get(
+        Uri.parse('$baseUrl/chat/$conversationId/pins'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 15));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map && decoded['data'] is List) {
+          return decoded['data'];
+        } else if (decoded is List) {
+          return decoded;
+        }
+      }
+      return [];
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.getPinnedMessages: $e');
+      return [];
+    }
+  }
+
+  // Forward Message: POST /api/chat/messages/forward
+  static Future<Map<String, dynamic>> forwardMessage(String messageId, List<String> conversationIds) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await _client.post(
+        Uri.parse('$baseUrl/chat/messages/forward'),
+        headers: headers,
+        body: jsonEncode({
+          'messageId': messageId,
+          'conversationIds': conversationIds,
+        }),
+      ).timeout(const Duration(seconds: 15));
+      return jsonDecode(response.body);
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.forwardMessage: $e');
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
   // --- ADMIN APIs ---
 
   // Lấy thống kê tổng quan (Overview Stats)

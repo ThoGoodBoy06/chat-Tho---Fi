@@ -33,6 +33,9 @@ class SocketService {
   static final _unfriendController = StreamController<Map<String, dynamic>>.broadcast();
   static final _profileUpdatedController = StreamController<Map<String, dynamic>>.broadcast();
   static final _themeController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _editedController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _pinnedController = StreamController<Map<String, dynamic>>.broadcast();
+  static final _unpinnedController = StreamController<Map<String, dynamic>>.broadcast();
 
   static Stream<Map<String, dynamic>> get onMessageReceived => _messageController.stream;
   static Stream<Map<String, dynamic>> get onMessageRecalled => _recalledController.stream;
@@ -68,6 +71,9 @@ class SocketService {
   static Stream<Map<String, dynamic>> get onMessageDelivered => _deliveredController.stream;
   static Stream<Map<String, dynamic>> get onUserStatusChanged => _userStatusController.stream;
   static Stream<Map<String, dynamic>> get onNicknameChanged => _nicknameController.stream;
+  static Stream<Map<String, dynamic>> get onMessageEdited => _editedController.stream;
+  static Stream<Map<String, dynamic>> get onMessagePinned => _pinnedController.stream;
+  static Stream<Map<String, dynamic>> get onMessageUnpinned => _unpinnedController.stream;
   static Stream<Map<String, dynamic>> get onConversationNicknamesUpdated => _conversationNicknamesController.stream;
   static Stream<Map<String, dynamic>> get onFriendRequestReceived => _friendRequestController.stream;
   static Stream<Map<String, dynamic>> get onUserUnfriended => _unfriendController.stream;
@@ -230,6 +236,24 @@ class SocketService {
     socket?.on('message_reacted', (data) {
       if (data is Map) {
         _reactedController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('message_edited', (data) {
+      if (data is Map) {
+        _editedController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('message_pinned', (data) {
+      if (data is Map) {
+        _pinnedController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket?.on('message_unpinned', (data) {
+      if (data is Map) {
+        _unpinnedController.add(Map<String, dynamic>.from(data));
       }
     });
 

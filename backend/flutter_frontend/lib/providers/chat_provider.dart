@@ -261,6 +261,10 @@ class ChatProvider extends ChangeNotifier {
   StreamSubscription? _conversationNicknamesSubscription;
   StreamSubscription? _profileUpdatedSubscription;
   StreamSubscription? _themeSubscription;
+  StreamSubscription? _editedSubscription;
+  StreamSubscription? _pinnedSubscription;
+  StreamSubscription? _unpinnedSubscription;
+  List<MessageModel> pinnedMessages = [];
 
   /// Callback để thông báo cho UI cuộn xuống khi có tin nhắn mới
   VoidCallback? onNewMessageReceived;
@@ -369,6 +373,50 @@ class ChatProvider extends ChangeNotifier {
           messages[idx] = messages[idx].copyWith(isRecalled: true);
           notifyListeners();
         }
+      }
+    });
+
+    _editedSubscription = SocketService.onMessageEdited.listen((data) {
+      final msgId = data['messageId']?.toString();
+      final newContent = data['newContent']?.toString() ?? data['content']?.toString();
+      if (msgId != null && newContent != null) {
+        final idx = messages.indexWhere((m) => m.id == msgId);
+        if (idx != -1) {
+          messages[idx] = messages[idx].copyWith(content: newContent, isEdited: true);
+        }
+        final pIdx = pinnedMessages.indexWhere((m) => m.id == msgId);
+        if (pIdx != -1) {
+          pinnedMessages[pIdx] = pinnedMessages[pIdx].copyWith(content: newContent, isEdited: true);
+        }
+        notifyListeners();
+      }
+    });
+
+    _pinnedSubscription = SocketService.onMessagePinned.listen((data) {
+      final convId = data['conversationId']?.toString();
+      final msgId = data['messageId']?.toString();
+      if (msgId != null) {
+        final idx = messages.indexWhere((m) => m.id == msgId);
+        if (idx != -1) {
+          messages[idx] = messages[idx].copyWith(isPinned: true);
+        }
+        if (selectedConversation?.id == convId) {
+          fetchPinnedMessages(convId!);
+        }
+        notifyListeners();
+      }
+    });
+
+    _unpinnedSubscription = SocketService.onMessageUnpinned.listen((data) {
+      final convId = data['conversationId']?.toString();
+      final msgId = data['messageId']?.toString();
+      if (msgId != null) {
+        final idx = messages.indexWhere((m) => m.id == msgId);
+        if (idx != -1) {
+          messages[idx] = messages[idx].copyWith(isPinned: false);
+        }
+        pinnedMessages.removeWhere((m) => m.id == msgId);
+        notifyListeners();
       }
     });
 
@@ -1044,7 +1092,9 @@ class ChatProvider extends ChangeNotifier {
     }
     final revision = ++_messageLoadRevision;
     final session = _sessionRevision;
-    selectedConversation = conv;
+        selectedConversation = conv;
+    pinnedMessages = [];
+    fetchPinnedMessages(conv.id);
     final nextTyping = typingUsers.containsKey(conv.id);
     final selectionChanged = !isSameConversation ||
         isPartnerTyping != nextTyping ||
@@ -1530,6 +1580,56 @@ class ChatProvider extends ChangeNotifier {
     return false;
   }
 
+
+  Future<bool> editMessage(String messageId, String newContent) async {
+    final res = await ApiService.editMessage(messageId, newContent);
+    if (res['success'] == true || res['data'] != null) {
+      final idx = messages.indexWhere((m) => m.id == messageId);
+      if (idx != -1) {
+        messages[idx] = messages[idx].copyWith(content: newContent, isEdited: true);
+      }
+      final pIdx = pinnedMessages.indexWhere((m) => m.id == messageId);
+      if (pIdx != -1) {
+        pinnedMessages[pIdx] = pinnedMessages[pIdx].copyWith(content: newContent, isEdited: true);
+      }
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
+  Future<bool> togglePinMessage(String messageId) async {
+    final res = await ApiService.pinMessage(messageId);
+    if (res['success'] == true) {
+      final isPinned = res['pinned'] == true;
+      final idx = messages.indexWhere((m) => m.id == messageId);
+      if (idx != -1) {
+        messages[idx] = messages[idx].copyWith(isPinned: isPinned);
+      }
+      if (selectedConversation != null) {
+        await fetchPinnedMessages(selectedConversation!.id);
+      }
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
+  Future<void> fetchPinnedMessages(String conversationId) async {
+    try {
+      final rawList = await ApiService.getPinnedMessages(conversationId);
+      pinnedMessages = rawList.map((item) => MessageModel.fromJson(item)).toList();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('⚠️ Error fetching pinned messages: $e');
+    }
+  }
+
+  Future<bool> forwardMessage(String messageId, List<String> conversationIds) async {
+    final res = await ApiService.forwardMessage(messageId, conversationIds);
+    return res['success'] == true;
+  }
+
   @override
   void dispose() {
     NetworkStatus.online.removeListener(_onNetworkChanged);
@@ -1551,7 +1651,10 @@ class ChatProvider extends ChangeNotifier {
     _userStatusSubscription?.cancel();
     _nicknameSubscription?.cancel();
     _profileUpdatedSubscription?.cancel();
-    _themeSubscription?.cancel();
+        _themeSubscription?.cancel();
+    _editedSubscription?.cancel();
+    _pinnedSubscription?.cancel();
+    _unpinnedSubscription?.cancel();
     super.dispose();
   }
 }

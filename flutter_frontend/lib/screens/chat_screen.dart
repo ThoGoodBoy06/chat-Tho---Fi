@@ -7375,6 +7375,281 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
       ),
     );
   }
+
+  // --- TÍNH NĂNG GHIM, SỬA, CHUYỂN TIẾP TIN NHẮN ---
+
+  Widget _buildPinnedMessageBanner(ChatProvider provider, bool isDark) {
+    if (provider.pinnedMessages.isEmpty) return const SizedBox.shrink();
+    final pinned = provider.pinnedMessages.first;
+    final pinCount = provider.pinnedMessages.length;
+    final primaryColor = Theme.of(context).primaryColor;
+    final bgColor = isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9);
+    final textCol = isDark ? Colors.white : const Color(0xFF0F172A);
+    final subTextCol = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: bgColor,
+        border: Border(
+          bottom: BorderSide(
+            color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+            width: 1,
+          ),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: primaryColor.withOpacity(0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.push_pin_rounded, color: primaryColor, size: 16),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: InkWell(
+              onTap: () {
+                final idx = provider.messages.indexWhere((m) => m.id == pinned.id);
+                if (idx != -1 && _scrollController.hasClients) {
+                  final targetOffset = (_scrollController.position.maxScrollExtent * (idx / provider.messages.length))
+                      .clamp(0.0, _scrollController.position.maxScrollExtent);
+                  _scrollController.animateTo(
+                    targetOffset,
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOutCubic,
+                  );
+                }
+              },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        'Tin nhắn đã ghim',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: primaryColor,
+                        ),
+                      ),
+                      if (pinCount > 1)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4),
+                          child: Text(
+                            '($pinCount)',
+                            style: TextStyle(fontSize: 11, color: subTextCol),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    pinned.content.isNotEmpty ? pinned.content : (pinned.type == 'image' ? '[Hình ảnh]' : '[Tệp đính kèm]'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 13, color: textCol),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.close_rounded, size: 18, color: subTextCol),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+            tooltip: 'Bỏ ghim',
+            onPressed: () async {
+              await provider.togglePinMessage(pinned.id);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditMessageDialog(BuildContext context, MessageModel msg, ChatProvider provider) {
+    final controller = TextEditingController(text: msg.content);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.edit_note_rounded, color: Color(0xFF0068FF)),
+            SizedBox(width: 8),
+            Text('Chỉnh sửa tin nhắn', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: TextField(
+          controller: controller,
+          maxLines: 4,
+          minLines: 1,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: 'Nhập nội dung mới...',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            filled: true,
+            fillColor: const Color(0xFFF8FAFC),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0068FF),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () async {
+              final newText = controller.text.trim();
+              if (newText.isEmpty || newText == msg.content) {
+                Navigator.pop(ctx);
+                return;
+              }
+              Navigator.pop(ctx);
+              final ok = await provider.editMessage(msg.id, newText);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(ok ? 'Đã chỉnh sửa tin nhắn thành công' : 'Không thể chỉnh sửa tin nhắn')),
+                );
+              }
+            },
+            child: const Text('Lưu thay đổi', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showForwardMessageDialog(BuildContext context, MessageModel msg, ChatProvider provider) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final conversations = provider.conversations
+            .where((c) => c.id != provider.selectedConversation?.id)
+            .toList();
+        final isDark = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+        final bg = isDark ? const Color(0xFF1E293B) : Colors.white;
+        final textCol = isDark ? Colors.white : const Color(0xFF0F172A);
+
+        return Container(
+          constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    const Icon(Icons.shortcut_rounded, color: Color(0xFF0068FF), size: 22),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Chuyển tiếp tin nhắn',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textCol),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 6),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                  'Chọn cuộc trò chuyện để gửi tin nhắn này',
+                  style: TextStyle(fontSize: 13, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                ),
+              ),
+              const Divider(height: 20),
+              if (conversations.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Center(
+                    child: Text(
+                      'Không có cuộc trò chuyện nào khác để chuyển tiếp',
+                      style: TextStyle(color: isDark ? Colors.white60 : Colors.black54),
+                    ),
+                  ),
+                )
+              else
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: conversations.length,
+                    itemBuilder: (cCtx, i) {
+                      final conv = conversations[i];
+                      return ListTile(
+                        leading: AppAvatar(
+                          radius: 20,
+                          backgroundColor: const Color(0xFF0068FF),
+                          foregroundImage: conv.avatar != null && conv.avatar!.isNotEmpty
+                              ? NetworkImage(ApiService.formatImageUrl(conv.avatar!))
+                              : null,
+                          child: Text(
+                            conv.name.isNotEmpty ? conv.name[0].toUpperCase() : '?',
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        title: Text(conv.name, style: TextStyle(fontWeight: FontWeight.w600, color: textCol)),
+                        subtitle: Text(
+                          conv.isGroup ? 'Nhóm (${conv.memberCount} thành viên)' : 'Trò chuyện cá nhân',
+                          style: TextStyle(fontSize: 12, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                        ),
+                        trailing: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0068FF),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          ),
+                          onPressed: () async {
+                            Navigator.pop(ctx);
+                            final ok = await provider.forwardMessage(msg.id, [conv.id]);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(ok ? 'Đã chuyển tiếp tới ${conv.name}' : 'Chuyển tiếp thất bại'),
+                                  backgroundColor: ok ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                                ),
+                              );
+                            }
+                          },
+                          child: const Text('Gửi', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
 }
 
 class _SwipeToReplyWrapper extends StatefulWidget {
@@ -7742,6 +8017,7 @@ class _FlyingEmojiWidgetState extends State<_FlyingEmojiWidget> with SingleTicke
       },
     );
   }
+
 }
 
 class BouncingDotsIndicator extends StatefulWidget {
@@ -7793,6 +8069,7 @@ class _BouncingDotsIndicatorState extends State<BouncingDotsIndicator> with Sing
       }),
     );
   }
+
 }
 
 class BlinkingRedDot extends StatefulWidget {
