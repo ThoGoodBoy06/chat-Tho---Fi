@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
@@ -368,9 +369,16 @@ class SocketService {
     });
 
     socket?.on('conversation_theme_updated', (data) {
-      print('🎨 Socket conversation_theme_updated');
+      print('🎨 Socket conversation_theme_updated: $data');
       if (data is Map) {
         _themeController.add(Map<String, dynamic>.from(data));
+      } else if (data is String) {
+        try {
+          final decoded = jsonDecode(data);
+          if (decoded is Map) {
+            _themeController.add(Map<String, dynamic>.from(decoded));
+          }
+        } catch (_) {}
       }
     });
 

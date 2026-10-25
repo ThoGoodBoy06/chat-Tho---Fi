@@ -519,8 +519,7 @@ module.exports = (io) => {
           where: { id: conversationId }, include: { ConversationMembers: true },
         });
         if (!conversation || !conversation.ConversationMembers.some(m => m.userId === socket.userId)) return;
-        if (conversation.theme === themeToSet) return;
-        const rooms = [conversationId, ...conversation.ConversationMembers.map(m => m.userId)];
+
         await prisma.conversations.update({
           where: { id: conversationId },
           data: { theme: themeToSet },
@@ -532,10 +531,17 @@ module.exports = (io) => {
           if (chatCtrl.conversationsCache) chatCtrl.conversationsCache.clear();
         } catch (e) {}
 
-        io.to(rooms).emit("conversation_theme_updated", {
+        const memberUserIds = conversation.ConversationMembers.map(m => m.userId).filter(Boolean);
+        const payload = {
           conversationId,
+          conversation_id: conversationId,
           theme: themeToSet,
-        });
+        };
+
+        io.to(conversationId).emit("conversation_theme_updated", payload);
+        for (const uid of memberUserIds) {
+          io.to(uid).emit("conversation_theme_updated", payload);
+        }
         console.log(`🎨 Phòng chat ${conversationId} đã đổi chủ đề sang: ${themeToSet}`);
 
         // Gửi tin nhắn hệ thống giống Messenger thông báo cho cả 2 bên
@@ -575,8 +581,16 @@ module.exports = (io) => {
           const mappedSysMsg = {
             ...sysMsg,
             Users: sysMsg.Users ? { ...sysMsg.Users, avatar: `/api/users/${sysMsg.Users.id}/avatar` } : null,
+            systemMetadata: {
+              action: "theme_changed",
+              theme: themeToSet,
+              conversationId,
+            },
           };
-          io.to(rooms).emit("receive_message", mappedSysMsg);
+          io.to(conversationId).emit("receive_message", mappedSysMsg);
+          for (const uid of memberUserIds) {
+            io.to(uid).emit("receive_message", mappedSysMsg);
+          }
         } catch (sysErr) {
           console.error("Lỗi tạo systemMessage cho theme:", sysErr.message);
         }

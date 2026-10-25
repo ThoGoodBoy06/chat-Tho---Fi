@@ -312,6 +312,28 @@ class ChatProvider extends ChangeNotifier {
       final messageChanged = addRealtimeMessage(newMsg, notify: false);
       final conversationChanged =
           _updateLastMessageInConversation(newMsg, notify: false);
+      final convId = newMsg.conversationId;
+      if (convId != null && newMsg.type == 'system' && (newMsg.content.contains('đã đổi chủ đề') || newMsg.systemMetadata?['action'] == 'theme_changed')) {
+        final metaTheme = newMsg.systemMetadata?['theme']?.toString();
+        if (metaTheme != null && metaTheme.isNotEmpty) {
+          _updateConversationThemeLocally(convId, metaTheme);
+        } else {
+          const themeMap = {
+            'Hoàng hôn (Sunset)': 'sunset',
+            'Đại dương (Ocean)': 'ocean',
+            'Quả mọng (Berry)': 'berry',
+            'Ngọc bích (Emerald)': 'emerald',
+            'Tình yêu (Love)': 'love',
+            'Mặc định (Classic)': 'classic',
+          };
+          for (final entry in themeMap.entries) {
+            if (newMsg.content.contains(entry.key)) {
+              _updateConversationThemeLocally(convId, entry.value);
+              break;
+            }
+          }
+        }
+      }
       if (messageChanged || conversationChanged) {
         notifyListeners();
         if (messageChanged) onNewMessageReceived?.call();
@@ -538,7 +560,9 @@ class ChatProvider extends ChangeNotifier {
 
     _themeSubscription =
         SocketService.onConversationThemeUpdated.listen((data) {
-      final convId = data['conversationId']?.toString();
+      final convId = data['conversationId']?.toString() ??
+          data['conversation_id']?.toString() ??
+          data['id']?.toString();
       final theme = data['theme']?.toString();
       if (convId != null && theme != null) {
         _updateConversationThemeLocally(convId, theme);
@@ -550,12 +574,13 @@ class ChatProvider extends ChangeNotifier {
   int _themeRevision = 0;
   void _updateConversationThemeLocally(String convId, String theme) {
     _themeRevision++;
+    final resolvedTheme = (theme == 'default' || theme.isEmpty) ? 'classic' : theme;
     final idx = conversations.indexWhere((c) => c.id == convId);
     if (idx != -1) {
-      conversations[idx] = conversations[idx].copyWith(theme: theme);
+      conversations[idx] = conversations[idx].copyWith(theme: resolvedTheme);
     }
     if (selectedConversation != null && selectedConversation!.id == convId) {
-      selectedConversation = selectedConversation!.copyWith(theme: theme);
+      selectedConversation = selectedConversation!.copyWith(theme: resolvedTheme);
     }
     notifyListeners();
   }
@@ -568,6 +593,8 @@ class ChatProvider extends ChangeNotifier {
         conversations.where((c) => c.id == conversationId).firstOrNull;
     final previous = conv?.theme ?? 'classic';
     _updateConversationThemeLocally(conversationId, theme);
+    // Bắn ngay tín hiệu Socket để đối phương thấy tức thì 0ms theo thời gian thực
+    SocketService.emitUpdateConversationTheme(conversationId, theme);
     try {
       final response = await ApiService.updateConversationTheme(conversationId, theme);
       if (response['success'] != true) throw StateError('Không lưu được chủ đề');

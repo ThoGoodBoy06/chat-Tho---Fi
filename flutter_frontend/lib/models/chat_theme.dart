@@ -5,7 +5,9 @@ class ChatThemeItem {
   final String name;
   final LinearGradient gradient;
   final LinearGradient? backgroundGradient;
+  final LinearGradient? darkBackgroundGradient;
   final Color? headerColor;
+  final Color? darkHeaderColor;
   final Color primaryColor;
   final Color previewColor;
 
@@ -14,7 +16,9 @@ class ChatThemeItem {
     required this.name,
     required this.gradient,
     this.backgroundGradient,
+    this.darkBackgroundGradient,
     this.headerColor,
+    this.darkHeaderColor,
     required this.primaryColor,
     required this.previewColor,
   });
@@ -30,6 +34,7 @@ class ChatThemes {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       ),
+      darkHeaderColor: Color(0xFF1E293B),
       primaryColor: Color(0xFF0084FF),
       previewColor: Color(0xFF0084FF),
     ),
@@ -46,7 +51,13 @@ class ChatThemes {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       ),
+      darkBackgroundGradient: LinearGradient(
+        colors: [Color(0xFF230D1C), Color(0xFF180A1A), Color(0xFF120512)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
       headerColor: Color(0xFFFFF7F4),
+      darkHeaderColor: Color(0xFF220D1D),
       primaryColor: Color(0xFFFF512F),
       previewColor: Color(0xFFDD2476),
     ),
@@ -63,7 +74,13 @@ class ChatThemes {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       ),
+      darkBackgroundGradient: LinearGradient(
+        colors: [Color(0xFF081C33), Color(0xFF061426), Color(0xFF040E1B)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
       headerColor: Color(0xFFF5FAFF),
+      darkHeaderColor: Color(0xFF081E36),
       primaryColor: Color(0xFF00B4DB),
       previewColor: Color(0xFF0083B0),
     ),
@@ -80,7 +97,13 @@ class ChatThemes {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       ),
+      darkBackgroundGradient: LinearGradient(
+        colors: [Color(0xFF220C26), Color(0xFF18081D), Color(0xFF110414)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
       headerColor: Color(0xFFFBF6FB),
+      darkHeaderColor: Color(0xFF200B24),
       primaryColor: Color(0xFFE94057),
       previewColor: Color(0xFF8A2387),
     ),
@@ -97,7 +120,13 @@ class ChatThemes {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       ),
+      darkBackgroundGradient: LinearGradient(
+        colors: [Color(0xFF06221A), Color(0xFF041813), Color(0xFF03100D)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
       headerColor: Color(0xFFF5FCF7),
+      darkHeaderColor: Color(0xFF062019),
       primaryColor: Color(0xFF11998E),
       previewColor: Color(0xFF38EF7D),
     ),
@@ -114,7 +143,13 @@ class ChatThemes {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       ),
+      darkBackgroundGradient: LinearGradient(
+        colors: [Color(0xFF260C1B), Color(0xFF1A0713), Color(0xFF12040D)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
       headerColor: Color(0xFFFFF5F8),
+      darkHeaderColor: Color(0xFF240A1A),
       primaryColor: Color(0xFFFF3377),
       previewColor: Color(0xFFFF3377),
     ),

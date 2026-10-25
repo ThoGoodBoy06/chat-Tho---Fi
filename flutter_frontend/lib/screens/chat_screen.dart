@@ -1498,13 +1498,18 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   Widget build(BuildContext context) {
     final provider = Provider.of<ChatProvider>(context, listen: false);
     final selectedConv = context.select<ChatProvider, ConversationModel?>((p) => p.selectedConversation);
-    if (selectedConv != null && _activeMobileConversation?.id != selectedConv.id) {
-      _activeMobileConversation = selectedConv;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _mobileChatSlideController.status != AnimationStatus.forward && _mobileChatSlideController.value < 0.99) {
-          _mobileChatSlideController.forward(from: 0.0);
-        }
-      });
+    if (selectedConv != null) {
+      final shouldSlide = _activeMobileConversation?.id != selectedConv.id;
+      if (shouldSlide || _activeMobileConversation?.theme != selectedConv.theme) {
+        _activeMobileConversation = selectedConv;
+      }
+      if (shouldSlide) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _mobileChatSlideController.status != AnimationStatus.forward && _mobileChatSlideController.value < 0.99) {
+            _mobileChatSlideController.forward(from: 0.0);
+          }
+        });
+      }
     } else if (selectedConv == null && _activeMobileConversation != null && !_isClosingMobileChat) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _mobileChatSlideController.status != AnimationStatus.reverse && _mobileChatSlideController.value > 0.0) {
@@ -2823,13 +2828,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     final activeTheme = ChatThemes.getTheme(conv.theme);
     final primaryColor = activeTheme.primaryColor;
     final bubbleGradient = activeTheme.gradient;
-    final bgDecoration = (isDark || activeTheme.backgroundGradient == null)
-        ? null
-        : BoxDecoration(gradient: activeTheme.backgroundGradient);
+    final bgGradient = isDark ? activeTheme.darkBackgroundGradient : activeTheme.backgroundGradient;
+    final bgDecoration = bgGradient != null ? BoxDecoration(gradient: bgGradient) : null;
     final resolvedBgColor = bgDecoration != null ? null : defaultBgColor;
-    final headerBgColor = (isDark || activeTheme.headerColor == null)
-        ? defaultHeaderBgColor
-        : activeTheme.headerColor!;
+    final headerBgColor = isDark
+        ? (activeTheme.darkHeaderColor ?? defaultHeaderBgColor)
+        : (activeTheme.headerColor ?? defaultHeaderBgColor);
 
     return Container(
       color: resolvedBgColor,

@@ -2475,28 +2475,22 @@ exports.changeConversationTheme = async (req, res) => {
         const conversation = await prisma.conversations.findUnique({where:{id:conversationId},include:{ConversationMembers:true}});
         if (!conversation) return res.status(404).json({success:false,message:'Không tìm thấy cuộc trò chuyện'});
         if (!conversation.ConversationMembers.some(m => m.userId === req.user?.id)) return res.status(403).json({success:false,message:'Bạn không có quyền đổi chủ đề'});
-        if (conversation.theme === themeToSet) return res.json({success:true,data:{conversationId,theme:themeToSet}});
-        const rooms = [conversationId, ...conversation.ConversationMembers.map(m=>m.userId)];
-
-        await prisma.conversations.update({
-            where: { id: conversationId },
-            data: { theme: themeToSet },
-        });
-
-        // Xóa cache danh sách chat để dữ liệu luôn tươi mới
-        if (typeof conversationsCache !== 'undefined') {
-            conversationsCache.clear();
-        }
+        const memberUserIds = conversation.ConversationMembers.map(m => m.userId).filter(Boolean);
+        const payload = {
+            conversationId,
+            conversation_id: conversationId,
+            theme: themeToSet,
+        };
 
         const io = req.app.get("io");
         if (io) {
-            io.to(rooms).emit("conversation_theme_updated", {
-                conversationId,
-                theme: themeToSet,
-            });
+            io.to(conversationId).emit("conversation_theme_updated", payload);
+            for (const uid of memberUserIds) {
+                io.to(uid).emit("conversation_theme_updated", payload);
+            }
         }
 
-        // Tạo tin nhắn hệ thống ghi nhận đổi chủ đề cho cả 2 bên thấy
+        // Tạo tin nhắn hệ thống ghi nhận đổi chủ đề cho cả 2 bên thấy ngay lập tức
         try {
             {
                 const themeLabels = {
@@ -2534,9 +2528,17 @@ exports.changeConversationTheme = async (req, res) => {
                 const mappedSysMsg = {
                     ...sysMsg,
                     Users: sysMsg.Users ? { ...sysMsg.Users, avatar: `/api/users/${sysMsg.Users.id}/avatar` } : null,
+                    systemMetadata: {
+                        action: "theme_changed",
+                        theme: themeToSet,
+                        conversationId,
+                    },
                 };
                 if (io) {
-                    io.to(rooms).emit("receive_message", mappedSysMsg);
+                    io.to(conversationId).emit("receive_message", mappedSysMsg);
+                    for (const uid of memberUserIds) {
+                        io.to(uid).emit("receive_message", mappedSysMsg);
+                    }
                 }
             }
         } catch (sysErr) {
