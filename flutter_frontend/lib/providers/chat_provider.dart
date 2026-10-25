@@ -266,6 +266,16 @@ class ChatProvider extends ChangeNotifier {
   StreamSubscription? _unpinnedSubscription;
   List<MessageModel> pinnedMessages = [];
 
+  // --- TÌM KIẾM TIN NHẮN TRONG CUỘC TRÒ CHUYỆN ---
+  bool isSearching = false;
+  String searchQuery = '';
+  List<String> searchResultIds = [];
+  int currentSearchIndex = -1;
+  ValueChanged<String>? onHighlightMessage;
+
+  // --- TIN NHẮN ĐÃ LƯU / ĐÁNH DẤU SAO ---
+  Set<String> starredMessageIds = {};
+
   /// Callback để thông báo cho UI cuộn xuống khi có tin nhắn mới
   VoidCallback? onNewMessageReceived;
 
@@ -1121,6 +1131,8 @@ class ChatProvider extends ChangeNotifier {
         selectedConversation = conv;
     pinnedMessages = [];
     fetchPinnedMessages(conv.id);
+    loadStarredMessages(conv.id);
+    closeSearch();
     final nextTyping = typingUsers.containsKey(conv.id);
     final selectionChanged = !isSameConversation ||
         isPartnerTyping != nextTyping ||
@@ -1722,6 +1734,153 @@ class ChatProvider extends ChangeNotifier {
   Future<bool> forwardMessage(String messageId, List<String> conversationIds) async {
     final res = await ApiService.forwardMessage(messageId, conversationIds);
     return res['success'] == true;
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // TÌM KIẾM TIN NHẮN (In-chat Search)
+  // ═══════════════════════════════════════════════════════
+
+  void openSearch() {
+    isSearching = true;
+    searchQuery = '';
+    searchResultIds = [];
+    currentSearchIndex = -1;
+    notifyListeners();
+  }
+
+  void closeSearch() {
+    isSearching = false;
+    searchQuery = '';
+    searchResultIds = [];
+    currentSearchIndex = -1;
+    notifyListeners();
+  }
+
+  Future<void> performSearch(String query) async {
+    searchQuery = query.trim();
+    if (searchQuery.isEmpty) {
+      searchResultIds = [];
+      currentSearchIndex = -1;
+      notifyListeners();
+      return;
+    }
+
+    final lowerQuery = searchQuery.toLowerCase();
+    final matchedIds = <String>[];
+
+    // 1. Tìm kiếm trong tin nhắn cục bộ
+    for (final m in messages) {
+      if (!m.isRecalled && m.content.toLowerCase().contains(lowerQuery)) {
+        matchedIds.add(m.id);
+      }
+    }
+
+    // 2. Kết hợp tìm kiếm từ máy chủ nếu cần
+    if (selectedConversation != null && searchQuery.length > 1) {
+      try {
+        final serverResults = await ApiService.searchMessages(selectedConversation!.id, searchQuery);
+        for (final item in serverResults) {
+          final id = item['id']?.toString();
+          if (id != null && !matchedIds.contains(id)) {
+            matchedIds.add(id);
+          }
+        }
+      } catch (_) {}
+    }
+
+    searchResultIds = matchedIds;
+    currentSearchIndex = matchedIds.isNotEmpty ? 0 : -1;
+    notifyListeners();
+
+    if (currentSearchIndex != -1 && onHighlightMessage != null) {
+      onHighlightMessage!(searchResultIds[currentSearchIndex]);
+    }
+  }
+
+  void nextSearchResult() {
+    if (searchResultIds.isEmpty) return;
+    currentSearchIndex = (currentSearchIndex + 1) % searchResultIds.length;
+    notifyListeners();
+    if (onHighlightMessage != null) {
+      onHighlightMessage!(searchResultIds[currentSearchIndex]);
+    }
+  }
+
+  void previousSearchResult() {
+    if (searchResultIds.isEmpty) return;
+    currentSearchIndex = (currentSearchIndex - 1 + searchResultIds.length) % searchResultIds.length;
+    notifyListeners();
+    if (onHighlightMessage != null) {
+      onHighlightMessage!(searchResultIds[currentSearchIndex]);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // TIN NHẮN ĐÃ ĐÁNH DẤU SAO / LƯU LẠI (Starred Messages)
+  // ═══════════════════════════════════════════════════════
+
+  Future<void> loadStarredMessages(String conversationId) async {
+    try {
+      final prefs = _sharedPreferences ?? await SharedPreferences.getInstance();
+      _sharedPreferences = prefs;
+      final raw = prefs.getStringList('starred_$conversationId');
+      if (raw != null) {
+        starredMessageIds = raw.toSet();
+      } else {
+        starredMessageIds = {};
+      }
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<void> toggleStarMessage(String messageId) async {
+    if (selectedConversation == null) return;
+    final convId = selectedConversation!.id;
+    if (starredMessageIds.contains(messageId)) {
+      starredMessageIds.remove(messageId);
+    } else {
+      starredMessageIds.add(messageId);
+    }
+    notifyListeners();
+
+    try {
+      final prefs = _sharedPreferences ?? await SharedPreferences.getInstance();
+      _sharedPreferences = prefs;
+      await prefs.setStringList('starred_$convId', starredMessageIds.toList());
+    } catch (_) {}
+  }
+
+  bool isMessageStarred(String messageId) => starredMessageIds.contains(messageId);
+
+  List<MessageModel> get starredMessages {
+    return messages.where((m) => starredMessageIds.contains(m.id)).toList();
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // KHO PHƯƠNG TIỆN & FILE ĐÃ GỬI (Shared Media & Docs)
+  // ═══════════════════════════════════════════════════════
+
+  List<MessageModel> get sharedMediaMessages {
+    return messages.where((m) {
+      if (m.isRecalled) return false;
+      final type = m.type;
+      final content = m.content.toLowerCase();
+      final hasImgExt = content.endsWith('.jpg') || content.endsWith('.jpeg') ||
+          content.endsWith('.png') || content.endsWith('.webp') ||
+          content.endsWith('.gif') || content.contains('/chat-media/') ||
+          content.contains('.jpg?') || content.contains('.png?');
+      final hasVidExt = content.endsWith('.mp4') || content.endsWith('.mov') ||
+          content.endsWith('.webm') || content.endsWith('.mkv') ||
+          content.contains('/videos/') || content.contains('.mp4?');
+      return type == 'image' || type == 'video' || hasImgExt || hasVidExt;
+    }).toList();
+  }
+
+  List<MessageModel> get sharedFileMessages {
+    return messages.where((m) {
+      if (m.isRecalled) return false;
+      return m.type == 'file';
+    }).toList();
   }
 
   @override

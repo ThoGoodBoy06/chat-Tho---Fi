@@ -3414,7 +3414,7 @@
     // An older PWA worker ignores ?v= when matching code in its cache. Remove
     // only stale public code after verifying this release is reachable online.
     (async function () {
-      const version = '06aa975efa10d04b';
+      const version = '8d4ad271662519ca';
       const corePaths = new Set(['/main.dart.js', '/flutter_bootstrap.js', '/webrtc_audio_helper.js', '/web_notifications.js']);
       if ('caches' in window && navigator.onLine !== false) {
         const controller = new AbortController();

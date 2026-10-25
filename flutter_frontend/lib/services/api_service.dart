@@ -620,6 +620,25 @@ class ApiService {
     }
   }
 
+  // Search Messages: GET /api/chat/:conversationId/search?q=query
+  static Future<List<dynamic>> searchMessages(String conversationId, String query) async {
+    try {
+      final headers = await _getHeaders();
+      final uri = Uri.parse('$baseUrl/chat/$conversationId/search?q=${Uri.encodeComponent(query)}');
+      final response = await _client.get(uri, headers: headers).timeout(const Duration(seconds: 15));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map && decoded['data'] is List) {
+          return decoded['data'];
+        }
+      }
+      return [];
+    } catch (e) {
+      debugPrint('⚠️ Error in ApiService.searchMessages: $e');
+      return [];
+    }
+  }
+
   // --- ADMIN APIs ---
 
   // Lấy thống kê tổng quan (Overview Stats)
