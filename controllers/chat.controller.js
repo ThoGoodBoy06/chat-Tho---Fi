@@ -1790,6 +1790,17 @@ exports.forwardMessage = async (req, res) => {
         const io = req.app.get("io");
         const forwardedMessages = [];
 
+        // ⚡ Tối ưu hiệu năng: Lấy danh sách thành viên của tất cả các cuộc hội thoại nhận tin (1 query duy nhất)
+        const allMembers = await prisma.conversationMembers.findMany({
+            where: { conversationId: { in: conversationIds } },
+            select: { conversationId: true, userId: true },
+        });
+        const membersByConv = {};
+        for (const m of allMembers) {
+            if (!membersByConv[m.conversationId]) membersByConv[m.conversationId] = [];
+            membersByConv[m.conversationId].push(m.userId);
+        }
+
         for (const convId of conversationIds) {
             for (const originalMessage of originalMessages) {
                 const isImage = originalMessage.type === "image" || (originalMessage.imageUrl && originalMessage.imageUrl.trim() !== "");
@@ -1822,19 +1833,22 @@ exports.forwardMessage = async (req, res) => {
 
                 forwardedMessages.push(mapped);
 
-                // Phát socket event đến phòng nhận và từng thành viên
+                // ⚡ Phát socket event tức thì tới room và các thành viên
                 if (io) {
                     io.to(convId).emit("receive_message", mapped);
-                    const members = await prisma.conversationMembers.findMany({
-                        where: { conversationId: convId },
-                        select: { userId: true },
-                    });
-                    members.forEach((member) => {
-                        io.to(member.userId).emit("receive_message", mapped);
-                    });
+                    const targetUserIds = membersByConv[convId] || [];
+                    for (const uId of targetUserIds) {
+                        io.to(uId).emit("receive_message", mapped);
+                    }
                 }
             }
         }
+
+        // Cập nhật thời gian cuộc trò chuyện nhận tin để đưa lên đầu danh sách
+        prisma.conversations.updateMany({
+            where: { id: { in: conversationIds } },
+            data: { updatedAt: new Date() },
+        }).catch(() => {});
 
         res.status(201).json({ success: true, data: forwardedMessages, message: `Đã chuyển tiếp tin nhắn tới ${conversationIds.length} cuộc hội thoại.` });
     } catch (error) {

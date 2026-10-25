@@ -3303,7 +3303,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                                   return Container(
                                                     constraints: BoxConstraints(maxWidth: maxBubbleWidth),
                                                     padding: isPureImage
-                                                        ? EdgeInsets.zero
+                                                        ? (msg.isForwarded ? const EdgeInsets.fromLTRB(6, 6, 6, 4) : EdgeInsets.zero)
                                                         : (isSpecialType
                                                             ? const EdgeInsets.all(4)
                                                             : const EdgeInsets.symmetric(horizontal: 15, vertical: 10)),
@@ -3311,9 +3311,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                                       color: msg.isRecalled
                                                           ? Colors.transparent
                                                           : (isPureImage
-                                                              ? Colors.transparent
+                                                              ? (msg.isForwarded ? (isMe ? null : (isDark ? const Color(0xFF1E293B) : const Color(0xFFE4E6EB))) : Colors.transparent)
                                                               : (isMe ? null : (isDark ? const Color(0xFF1E293B) : const Color(0xFFE4E6EB)))),
-                                                      gradient: (isMe && !msg.isRecalled && !isPureImage)
+                                                      gradient: (isMe && !msg.isRecalled && (!isPureImage || msg.isForwarded))
                                                           ? bubbleGradient
                                                           : null,
                                                       border: msg.id == _highlightedMessageId
@@ -3364,14 +3364,36 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                                                 ),
                                                               ],
                                                               if (msg.isForwarded) ...[
-                                                                Padding(
-                                                                  padding: const EdgeInsets.only(bottom: 4),
+                                                                Container(
+                                                                  margin: const EdgeInsets.only(bottom: 6),
+                                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                                                                  decoration: BoxDecoration(
+                                                                    color: isMe
+                                                                        ? Colors.white.withOpacity(0.18)
+                                                                        : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                                                                    borderRadius: BorderRadius.circular(10),
+                                                                  ),
                                                                   child: Row(
                                                                     mainAxisSize: MainAxisSize.min,
                                                                     children: [
-                                                                      Icon(Icons.shortcut_rounded, size: 12, color: isMe ? Colors.white70 : const Color(0xFF64748B)),
-                                                                      const SizedBox(width: 3),
-                                                                      Text('Đã chuyển tiếp', style: TextStyle(fontSize: 10.5, fontStyle: FontStyle.italic, color: isMe ? Colors.white70 : const Color(0xFF64748B))),
+                                                                      Transform.flip(
+                                                                        flipX: true,
+                                                                        child: Icon(
+                                                                          Icons.reply_rounded,
+                                                                          size: 14,
+                                                                          color: isMe ? Colors.white : const Color(0xFF0068FF),
+                                                                        ),
+                                                                      ),
+                                                                      const SizedBox(width: 4),
+                                                                      Text(
+                                                                        'Đã chuyển tiếp',
+                                                                        style: TextStyle(
+                                                                          fontSize: 11.5,
+                                                                          fontWeight: FontWeight.w600,
+                                                                          color: isMe ? Colors.white : (isDark ? const Color(0xFF93C5FD) : const Color(0xFF0068FF)),
+                                                                          letterSpacing: 0.2,
+                                                                        ),
+                                                                      ),
                                                                     ],
                                                                   ),
                                                                 ),
@@ -8166,122 +8188,219 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   }
 
   void _showForwardMessageDialog(BuildContext context, MessageModel msg, ChatProvider provider) {
+    final isDark = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+    final bg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final textCol = isDark ? Colors.white : const Color(0xFF0F172A);
+    final subTextCol = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final sentConvIds = <String>{};
+    String searchQuery = '';
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
-        final conversations = provider.conversations
-            .where((c) => c.id != provider.selectedConversation?.id)
-            .toList();
-        final isDark = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
-        final bg = isDark ? const Color(0xFF1E293B) : Colors.white;
-        final textCol = isDark ? Colors.white : const Color(0xFF0F172A);
+        return StatefulBuilder(
+          builder: (modalContext, setModalState) {
+            final allConversations = provider.conversations
+                .where((c) => c.id != provider.selectedConversation?.id)
+                .toList();
+            final filteredConversations = searchQuery.isEmpty
+                ? allConversations
+                : allConversations.where((c) => c.name.toLowerCase().contains(searchQuery)).toList();
 
-        return Container(
-          constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
+            return Container(
+              constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.75),
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
               ),
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  children: [
-                    const Icon(Icons.shortcut_rounded, color: Color(0xFF0068FF), size: 22),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Chuyển tiếp tin nhắn',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textCol),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 6),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Text(
-                  'Chọn cuộc trò chuyện để gửi tin nhắn này',
-                  style: TextStyle(fontSize: 13, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
-                ),
-              ),
-              const Divider(height: 20),
-              if (conversations.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Center(
+                  ),
+                  const SizedBox(height: 14),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        Transform.flip(
+                          flipX: true,
+                          child: const Icon(Icons.reply_rounded, color: Color(0xFF0068FF), size: 24),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Chuyển tiếp tin nhắn',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textCol),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Text(
-                      'Không có cuộc trò chuyện nào khác để chuyển tiếp',
-                      style: TextStyle(color: isDark ? Colors.white60 : Colors.black54),
+                      'Chọn người nhận hoặc nhóm để chuyển tiếp ngay lập tức',
+                      style: TextStyle(fontSize: 13, color: subTextCol),
                     ),
                   ),
-                )
-              else
-                Flexible(
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: conversations.length,
-                    itemBuilder: (cCtx, i) {
-                      final conv = conversations[i];
-                      return ListTile(
-                        leading: AppAvatar(
-                          radius: 20,
-                          backgroundColor: const Color(0xFF0068FF),
-                          foregroundImage: conv.avatar != null && conv.avatar!.isNotEmpty
-                              ? NetworkImage(ApiService.formatImageUrl(conv.avatar!))
-                              : null,
-                          child: Text(
-                            conv.name.isNotEmpty ? conv.name[0].toUpperCase() : '?',
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                          ),
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: TextField(
+                        style: TextStyle(fontSize: 13.5, color: textCol),
+                        decoration: InputDecoration(
+                          icon: Icon(Icons.search_rounded, size: 18, color: subTextCol),
+                          hintText: 'Tìm kiếm người nhận hoặc nhóm...',
+                          hintStyle: TextStyle(fontSize: 13, color: isDark ? Colors.white38 : Colors.black38),
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 10),
                         ),
-                        title: Text(conv.name, style: TextStyle(fontWeight: FontWeight.w600, color: textCol)),
-                        subtitle: Text(
-                          conv.isGroup ? 'Nhóm (${conv.memberCount} thành viên)' : 'Trò chuyện cá nhân',
-                          style: TextStyle(fontSize: 12, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
-                        ),
-                        trailing: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0068FF),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          ),
-                          onPressed: () async {
-                            Navigator.pop(ctx);
-                            final ok = await provider.forwardMessage(msg.id, [conv.id]);
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(ok ? 'Đã chuyển tiếp tới ${conv.name}' : 'Chuyển tiếp thất bại'),
-                                  backgroundColor: ok ? const Color(0xFF10B981) : const Color(0xFFEF4444),
-                                ),
-                              );
-                            }
-                          },
-                          child: const Text('Gửi', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-                        ),
-                      );
-                    },
+                        onChanged: (val) {
+                          setModalState(() => searchQuery = val.trim().toLowerCase());
+                        },
+                      ),
+                    ),
                   ),
-                ),
-            ],
-          ),
+                  const Divider(height: 20),
+                  if (filteredConversations.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Center(
+                        child: Text(
+                          allConversations.isEmpty
+                              ? 'Không có cuộc trò chuyện nào khác để chuyển tiếp'
+                              : 'Không tìm thấy kết quả phù hợp',
+                          style: TextStyle(color: subTextCol),
+                        ),
+                      ),
+                    )
+                  else
+                    Flexible(
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: filteredConversations.length,
+                        itemBuilder: (cCtx, i) {
+                          final conv = filteredConversations[i];
+                          final isSent = sentConvIds.contains(conv.id);
+
+                          return ListTile(
+                            leading: AppAvatar(
+                              radius: 20,
+                              backgroundColor: const Color(0xFF0068FF),
+                              foregroundImage: conv.avatar != null && conv.avatar!.isNotEmpty
+                                  ? NetworkImage(ApiService.formatImageUrl(conv.avatar!))
+                                  : null,
+                              child: Text(
+                                conv.name.isNotEmpty ? conv.name[0].toUpperCase() : '?',
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            title: Text(conv.name, style: TextStyle(fontWeight: FontWeight.w600, color: textCol)),
+                            subtitle: Text(
+                              conv.isGroup ? 'Nhóm (${conv.memberCount} thành viên)' : 'Trò chuyện cá nhân',
+                              style: TextStyle(fontSize: 12, color: subTextCol),
+                            ),
+                            trailing: isSent
+                                ? Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF10B981).withOpacity(0.15),
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(color: const Color(0xFF10B981), width: 1.2),
+                                    ),
+                                    child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.check_rounded, color: Color(0xFF10B981), size: 16),
+                                        SizedBox(width: 4),
+                                        Text('Đã gửi', style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold, fontSize: 12.5)),
+                                      ],
+                                    ),
+                                  )
+                                : ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF0068FF),
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                    ),
+                                    onPressed: () {
+                                      // 1. Phản hồi tức thì trên nút chuyển sang "Đã gửi"
+                                      setModalState(() {
+                                        sentConvIds.add(conv.id);
+                                      });
+
+                                      // 2. Hiển thị thông báo tức thì (0ms) với icon tích xanh nổi bật
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            behavior: SnackBarBehavior.floating,
+                                            duration: const Duration(seconds: 2),
+                                            backgroundColor: const Color(0xFF10B981),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                            content: Row(
+                                              children: [
+                                                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    'Đã chuyển tiếp tới ${conv.name}',
+                                                    style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      }
+
+                                      // 3. Tự động đóng modal sau 280ms
+                                      Future.delayed(const Duration(milliseconds: 280), () {
+                                        if (ctx.mounted) Navigator.pop(ctx);
+                                      });
+
+                                      // 4. Thực thi chuyển tiếp dưới nền đồng thời
+                                      provider.forwardMessage(msg.id, [conv.id]).then((ok) {
+                                        if (!ok && context.mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text('Chuyển tiếp tới ${conv.name} thất bại'),
+                                              backgroundColor: const Color(0xFFEF4444),
+                                            ),
+                                          );
+                                        }
+                                      });
+                                    },
+                                    child: const Text('Gửi', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                                  ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
         );
       },
     );

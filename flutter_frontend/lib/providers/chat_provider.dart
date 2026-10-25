@@ -1764,8 +1764,17 @@ class ChatProvider extends ChangeNotifier {
   }
 
   Future<bool> forwardMessage(String messageId, List<String> conversationIds) async {
-    final res = await ApiService.forwardMessage(messageId, conversationIds);
-    return res['success'] == true;
+    try {
+      final res = await ApiService.forwardMessage(messageId, conversationIds);
+      if (res['success'] == true) {
+        fetchConversations();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('⚠️ Error in forwardMessage: $e');
+      return false;
+    }
   }
 
   // ═══════════════════════════════════════════════════════
