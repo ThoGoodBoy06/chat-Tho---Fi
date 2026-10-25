@@ -1631,10 +1631,20 @@ exports.pinMessage = async (req, res) => {
         const { messageId } = req.params;
         const userId = req.user ? req.user.id : req.userId;
 
-        const message = await prisma.messages.findUnique({ where: { id: messageId } });
+        const message = await prisma.messages.findUnique({
+            where: { id: messageId },
+            include: { Users: { select: { id: true, fullName: true, avatarUrl: true } } },
+        });
+
         if (!message) {
             return res.status(404).json({ success: false, message: "Không tìm thấy tin nhắn." });
         }
+
+        const conversationId = message.conversationId;
+        const members = await prisma.conversationMembers.findMany({
+            where: { conversationId },
+        });
+        const io = req.app.get("io");
 
         // Nếu tin nhắn đang ghim → bỏ ghim
         if (message.isPinned) {
@@ -1643,10 +1653,16 @@ exports.pinMessage = async (req, res) => {
                 data: { isPinned: false, pinnedAt: null },
             });
 
-            // Phát socket event bỏ ghim
-            const io = req.app.get("io");
+            // Xóa cache tin nhắn của đoạn chat
+            clearConversationMessagesCache(conversationId);
+
+            // Phát socket event bỏ ghim tới phòng chat VÀ từng thành viên để nhận realtime tức thì
             if (io) {
-                io.to(message.conversationId).emit("message_unpinned", { messageId, conversationId: message.conversationId });
+                const unpinPayload = { messageId, conversationId };
+                io.to(conversationId).emit("message_unpinned", unpinPayload);
+                members.forEach((m) => {
+                    io.to(m.userId).emit("message_unpinned", unpinPayload);
+                });
             }
 
             return res.status(200).json({ success: true, message: "Đã bỏ ghim tin nhắn.", pinned: false });
@@ -1654,7 +1670,7 @@ exports.pinMessage = async (req, res) => {
 
         // Kiểm tra số lượng tin nhắn đang ghim (tối đa 3)
         const pinnedCount = await prisma.messages.count({
-            where: { conversationId: message.conversationId, isPinned: true },
+            where: { conversationId, isPinned: true },
         });
 
         if (pinnedCount >= 3) {
@@ -1665,19 +1681,42 @@ exports.pinMessage = async (req, res) => {
         const updatedMessage = await prisma.messages.update({
             where: { id: messageId },
             data: { isPinned: true, pinnedAt: new Date() },
-            include: { Users: { select: { id: true, fullName: true } } },
+            include: { Users: { select: { id: true, fullName: true, avatarUrl: true } } },
         });
 
-        // Phát socket event ghim
-        const io = req.app.get("io");
+        // Xóa cache tin nhắn của đoạn chat
+        clearConversationMessagesCache(conversationId);
+
+        // Phát socket event ghim tới phòng chat VÀ từng thành viên với đầy đủ dữ liệu
         if (io) {
-            io.to(message.conversationId).emit("message_pinned", {
+            const pinPayload = {
                 messageId,
-                conversationId: message.conversationId,
+                conversationId,
                 content: updatedMessage.content,
                 type: updatedMessage.type,
                 senderName: updatedMessage.Users ? updatedMessage.Users.fullName : "Người dùng",
                 pinnedAt: updatedMessage.pinnedAt,
+                message: {
+                    id: updatedMessage.id,
+                    conversationId: updatedMessage.conversationId,
+                    senderId: updatedMessage.senderId,
+                    content: updatedMessage.content,
+                    type: updatedMessage.type,
+                    fileUrl: updatedMessage.fileUrl,
+                    fileName: updatedMessage.fileName,
+                    fileSize: updatedMessage.fileSize,
+                    createdAt: updatedMessage.createdAt,
+                    senderName: updatedMessage.Users ? updatedMessage.Users.fullName : "Người dùng",
+                    senderAvatar: updatedMessage.Users ? updatedMessage.Users.avatarUrl : null,
+                    isPinned: true,
+                    pinnedAt: updatedMessage.pinnedAt,
+                    isEdited: updatedMessage.isEdited,
+                    isForwarded: updatedMessage.isForwarded,
+                },
+            };
+            io.to(conversationId).emit("message_pinned", pinPayload);
+            members.forEach((m) => {
+                io.to(m.userId).emit("message_pinned", pinPayload);
             });
         }
 
@@ -1699,16 +1738,25 @@ exports.getPinnedMessages = async (req, res) => {
         const pinnedMessages = await prisma.messages.findMany({
             where: { conversationId, isPinned: true, isRecalled: false },
             orderBy: { pinnedAt: "desc" },
-            include: { Users: { select: { id: true, fullName: true } } },
+            include: { Users: { select: { id: true, fullName: true, avatarUrl: true } } },
         });
 
         const mapped = pinnedMessages.map((m) => ({
             id: m.id,
+            conversationId: m.conversationId,
+            senderId: m.senderId,
             content: m.content,
             type: m.type,
+            fileUrl: m.fileUrl,
+            fileName: m.fileName,
+            fileSize: m.fileSize,
             senderName: m.Users ? m.Users.fullName : "Người dùng",
+            senderAvatar: m.Users ? m.Users.avatarUrl : null,
             pinnedAt: m.pinnedAt,
             createdAt: m.createdAt,
+            isPinned: true,
+            isEdited: m.isEdited,
+            isForwarded: m.isForwarded,
         }));
 
         res.status(200).json({ success: true, data: mapped });

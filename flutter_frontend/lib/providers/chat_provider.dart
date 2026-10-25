@@ -396,12 +396,38 @@ class ChatProvider extends ChangeNotifier {
       final convId = data['conversationId']?.toString();
       final msgId = data['messageId']?.toString();
       if (msgId != null) {
+        final pinnedDate = data['pinnedAt'] != null
+            ? DateTime.tryParse(data['pinnedAt'].toString())?.toLocal()
+            : DateTime.now();
+
         final idx = messages.indexWhere((m) => m.id == msgId);
+        MessageModel? pinnedModel;
         if (idx != -1) {
-          messages[idx] = messages[idx].copyWith(isPinned: true);
+          messages[idx] = messages[idx].copyWith(
+            isPinned: true,
+            pinnedAt: pinnedDate,
+          );
+          pinnedModel = messages[idx];
+        } else if (data['message'] != null && data['message'] is Map) {
+          pinnedModel = MessageModel.fromJson(data['message']);
+        } else {
+          pinnedModel = MessageModel(
+            id: msgId,
+            conversationId: convId,
+            content: data['content']?.toString() ?? '',
+            type: data['type']?.toString() ?? 'text',
+            createdAt: DateTime.now(),
+            isPinned: true,
+            pinnedAt: pinnedDate,
+          );
         }
-        if (selectedConversation?.id == convId) {
-          fetchPinnedMessages(convId!);
+
+        if (pinnedModel != null && (selectedConversation?.id == convId || convId == null || selectedConversation?.id == pinnedModel.conversationId)) {
+          pinnedMessages.removeWhere((m) => m.id == msgId);
+          pinnedMessages.insert(0, pinnedModel);
+          if (pinnedMessages.length > 3) {
+            pinnedMessages = pinnedMessages.take(3).toList();
+          }
         }
         notifyListeners();
       }
@@ -413,7 +439,7 @@ class ChatProvider extends ChangeNotifier {
       if (msgId != null) {
         final idx = messages.indexWhere((m) => m.id == msgId);
         if (idx != -1) {
-          messages[idx] = messages[idx].copyWith(isPinned: false);
+          messages[idx] = messages[idx].copyWith(isPinned: false, pinnedAt: null);
         }
         pinnedMessages.removeWhere((m) => m.id == msgId);
         notifyListeners();
@@ -1599,20 +1625,88 @@ class ChatProvider extends ChangeNotifier {
   }
 
   Future<bool> togglePinMessage(String messageId) async {
-    final res = await ApiService.pinMessage(messageId);
-    if (res['success'] == true) {
-      final isPinned = res['pinned'] == true;
-      final idx = messages.indexWhere((m) => m.id == messageId);
-      if (idx != -1) {
-        messages[idx] = messages[idx].copyWith(isPinned: isPinned);
+    final idx = messages.indexWhere((m) => m.id == messageId);
+    if (idx == -1) {
+      final pIdx = pinnedMessages.indexWhere((m) => m.id == messageId);
+      if (pIdx != -1) {
+        final removedMsg = pinnedMessages[pIdx];
+        pinnedMessages.removeAt(pIdx);
+        notifyListeners();
+        try {
+          final res = await ApiService.pinMessage(messageId);
+          if (res['success'] != true) {
+            pinnedMessages.insert(pIdx, removedMsg);
+            notifyListeners();
+            return false;
+          }
+          return true;
+        } catch (_) {
+          pinnedMessages.insert(pIdx, removedMsg);
+          notifyListeners();
+          return false;
+        }
       }
-      if (selectedConversation != null) {
-        await fetchPinnedMessages(selectedConversation!.id);
+      return false;
+    }
+
+    final targetMsg = messages[idx];
+    final originalPinned = targetMsg.isPinned;
+    final newPinned = !originalPinned;
+    final now = DateTime.now();
+
+    // 1. Phản hồi tức thì trên giao diện 0ms (Optimistic UI)
+    messages[idx] = targetMsg.copyWith(
+      isPinned: newPinned,
+      pinnedAt: newPinned ? now : null,
+    );
+
+    if (newPinned) {
+      pinnedMessages.removeWhere((m) => m.id == messageId);
+      pinnedMessages.insert(0, messages[idx]);
+      if (pinnedMessages.length > 3) {
+        pinnedMessages = pinnedMessages.take(3).toList();
+      }
+    } else {
+      pinnedMessages.removeWhere((m) => m.id == messageId);
+    }
+    notifyListeners();
+
+    // 2. Chạy ngầm request lên server để đồng bộ và phát Socket
+    try {
+      final res = await ApiService.pinMessage(messageId);
+      if (res['success'] != true) {
+        // Rollback nếu thất bại (ví dụ tối đa 3 tin ghim)
+        final currIdx = messages.indexWhere((m) => m.id == messageId);
+        if (currIdx != -1) {
+          messages[currIdx] = targetMsg;
+        }
+        if (originalPinned) {
+          if (!pinnedMessages.any((m) => m.id == messageId)) {
+            pinnedMessages.insert(0, targetMsg);
+          }
+        } else {
+          pinnedMessages.removeWhere((m) => m.id == messageId);
+        }
+        notifyListeners();
+        return false;
+      }
+      return true;
+    } catch (e) {
+      // Rollback nếu lỗi kết nối
+      final currIdx = messages.indexWhere((m) => m.id == messageId);
+      if (currIdx != -1) {
+        messages[currIdx] = targetMsg;
+      }
+      if (originalPinned) {
+        if (!pinnedMessages.any((m) => m.id == messageId)) {
+          pinnedMessages.insert(0, targetMsg);
+        }
+      } else {
+        pinnedMessages.removeWhere((m) => m.id == messageId);
       }
       notifyListeners();
-      return true;
+      return false;
     }
-    return false;
   }
 
   Future<void> fetchPinnedMessages(String conversationId) async {

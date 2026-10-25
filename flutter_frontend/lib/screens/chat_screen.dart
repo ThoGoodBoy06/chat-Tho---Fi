@@ -1031,14 +1031,22 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
                                           title: Text(msg.isPinned ? 'Bỏ ghim' : 'Ghim tin nhắn', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Color(0xFF0F172A))),
                                           trailing: Icon(msg.isPinned ? Icons.push_pin_outlined : Icons.push_pin_rounded, color: const Color(0xFF0F172A), size: 20),
-                                          onTap: () async {
+                                          onTap: () {
                                             Navigator.pop(dialogContext);
-                                            final ok = await provider.togglePinMessage(msg.id);
-                                            if (mounted) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                SnackBar(content: Text(ok ? (msg.isPinned ? 'Đã bỏ ghim tin nhắn' : 'Đã ghim tin nhắn') : 'Không thể thực hiện ghim.')),
-                                              );
-                                            }
+                                            final wasPinned = msg.isPinned;
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(
+                                                content: Text(wasPinned ? 'Đã bỏ ghim tin nhắn' : 'Đã ghim tin nhắn'),
+                                                duration: const Duration(seconds: 2),
+                                              ),
+                                            );
+                                            provider.togglePinMessage(msg.id).then((ok) {
+                                              if (!ok && mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  const SnackBar(content: Text('Không thể ghim (tối đa 3 tin nhắn ghim).')),
+                                                );
+                                              }
+                                            });
                                           },
                                         ),
                                         const Divider(height: 1, color: Color(0xFFE2E8F0)),
@@ -7555,8 +7563,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
             tooltip: 'Bỏ ghim',
-            onPressed: () async {
-              await provider.togglePinMessage(pinned.id);
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Đã bỏ ghim tin nhắn'), duration: Duration(seconds: 1)),
+              );
+              provider.togglePinMessage(pinned.id);
             },
           ),
         ],
