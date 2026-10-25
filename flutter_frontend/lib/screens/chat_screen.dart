@@ -1011,6 +1011,48 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                           );
                                         },
                                       ),
+                                      if ((msg.senderId == provider.currentUser?.id || isMe) && !msg.isRecalled && !isImg && !isVideo && msg.type != 'audio' && msg.type != 'file') ...[
+                                        const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                                        ListTile(
+                                          dense: true,
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                                          title: const Text('Chỉnh sửa', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Color(0xFF0F172A))),
+                                          trailing: const Icon(Icons.edit_outlined, color: Color(0xFF0F172A), size: 20),
+                                          onTap: () {
+                                            Navigator.pop(dialogContext);
+                                            _showEditMessageDialog(context, msg, provider);
+                                          },
+                                        ),
+                                      ],
+                                      if (!msg.isRecalled) ...[
+                                        const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                                        ListTile(
+                                          dense: true,
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                                          title: Text(msg.isPinned ? 'Bỏ ghim' : 'Ghim tin nhắn', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Color(0xFF0F172A))),
+                                          trailing: Icon(msg.isPinned ? Icons.push_pin_outlined : Icons.push_pin_rounded, color: const Color(0xFF0F172A), size: 20),
+                                          onTap: () async {
+                                            Navigator.pop(dialogContext);
+                                            final ok = await provider.togglePinMessage(msg.id);
+                                            if (mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(content: Text(ok ? (msg.isPinned ? 'Đã bỏ ghim tin nhắn' : 'Đã ghim tin nhắn') : 'Không thể thực hiện ghim.')),
+                                              );
+                                            }
+                                          },
+                                        ),
+                                        const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                                        ListTile(
+                                          dense: true,
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                                          title: const Text('Chuyển tiếp', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Color(0xFF0F172A))),
+                                          trailing: const Icon(Icons.shortcut_rounded, color: Color(0xFF0F172A), size: 20),
+                                          onTap: () {
+                                            Navigator.pop(dialogContext);
+                                            _showForwardMessageDialog(context, msg, provider);
+                                          },
+                                        ),
+                                      ],
                                       if (isImg || isVideo) ...[
                                         const Divider(height: 1, color: Color(0xFFE2E8F0)),
                                         ListTile(
@@ -2884,6 +2926,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
             ),
           ),
 
+          _buildPinnedMessageBanner(provider, isDark),
+
           // C. Messages List #messages
           Expanded(
             child: GestureDetector(
@@ -3199,6 +3243,32 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                                             crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                                                             mainAxisSize: MainAxisSize.min,
                                                             children: [
+                                                              if (msg.isPinned) ...[
+                                                                Padding(
+                                                                  padding: const EdgeInsets.only(bottom: 4),
+                                                                  child: Row(
+                                                                    mainAxisSize: MainAxisSize.min,
+                                                                    children: [
+                                                                      Icon(Icons.push_pin_rounded, size: 12, color: isMe ? Colors.white70 : const Color(0xFF0068FF)),
+                                                                      const SizedBox(width: 3),
+                                                                      Text('Tin nhắn ghim', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: isMe ? Colors.white70 : const Color(0xFF0068FF))),
+                                                                    ],
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                              if (msg.isForwarded) ...[
+                                                                Padding(
+                                                                  padding: const EdgeInsets.only(bottom: 4),
+                                                                  child: Row(
+                                                                    mainAxisSize: MainAxisSize.min,
+                                                                    children: [
+                                                                      Icon(Icons.shortcut_rounded, size: 12, color: isMe ? Colors.white70 : const Color(0xFF64748B)),
+                                                                      const SizedBox(width: 3),
+                                                                      Text('Đã chuyển tiếp', style: TextStyle(fontSize: 10.5, fontStyle: FontStyle.italic, color: isMe ? Colors.white70 : const Color(0xFF64748B))),
+                                                                    ],
+                                                                  ),
+                                                                ),
+                                                              ],
                                                               if (msg.replyMessageId != null && msg.replyMessageId!.isNotEmpty) ...[
                                                                 Builder(
                                                                   builder: (context) {
@@ -6043,6 +6113,28 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
           Text(
             content.isNotEmpty ? content : 'Cuộc gọi nhỡ',
             style: TextStyle(color: isMe ? Colors.white : const Color(0xFF0F172A), fontSize: 13.5, fontWeight: FontWeight.w500),
+          ),
+        ],
+      );
+    }
+
+    if (msg.isEdited) {
+      return Column(
+        crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            content,
+            style: TextStyle(color: isMe ? Colors.white : (isDark ? Colors.white : const Color(0xFF0F172A)), fontSize: 15, height: 1.3),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'đã chỉnh sửa',
+            style: TextStyle(
+              fontSize: 10.5,
+              fontStyle: FontStyle.italic,
+              color: isMe ? Colors.white70 : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+            ),
           ),
         ],
       );
