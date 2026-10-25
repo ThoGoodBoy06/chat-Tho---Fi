@@ -1047,10 +1047,16 @@ module.exports = (io) => {
         return;
       }
 
-      const active = activeCalls.get(socket.userId);
-      if (!active || active.partnerId !== connectedUserId || (d.callId && active.callId !== d.callId)) return;
+      let active = activeCalls.get(socket.userId);
+      if (!active) {
+        const partnerActive = activeCalls.get(connectedUserId);
+        if (partnerActive && partnerActive.partnerId === socket.userId) {
+          active = { partnerId: connectedUserId, callId: partnerActive.callId, isAccepted: true };
+          activeCalls.set(socket.userId, active);
+        }
+      }
       const signalType = signal.type || (signal.candidate ? 'candidate' : 'unknown');
-      if (active.isAccepted && signalType === 'offer' && signal.video === true) {
+      if (active && active.isAccepted && signalType === 'offer' && signal.video === true) {
         active.callType = 'video';
         const partner = activeCalls.get(connectedUserId);
         if (partner?.callId === active.callId) partner.callType = 'video';
@@ -1059,14 +1065,14 @@ module.exports = (io) => {
 
       const signalPayload = {
         signal,
-        callId: active?.callId,
+        callId: active?.callId || d.callId,
         senderId: socket.userId,
       };
 
-      // 🌟 Gửi tín hiệu WebRTC chính xác 1 lần duy nhất tới phòng cá nhân của connectedUserId
+      // 🌟 Gửi tín hiệu WebRTC chính xác tới phòng cá nhân của connectedUserId
       if (!io.sockets.adapter.rooms.get(connectedUserId)?.size) {
         const target = activeCalls.get(connectedUserId);
-        if (target?.callId === active.callId) {
+        if (target) {
           target.pendingSignals ||= [];
           if (target.pendingSignals.length < 128) target.pendingSignals.push(signalPayload);
         }

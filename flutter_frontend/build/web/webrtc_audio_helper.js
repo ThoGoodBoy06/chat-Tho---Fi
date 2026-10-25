@@ -462,7 +462,12 @@
     const promise = el.play();
     if (promise && promise.then) {
       promise.then(function () {
-        if (current()) hideUnmuteBanner();
+        if (current()) {
+          hideUnmuteBanner();
+          try {
+            window.dispatchEvent(new CustomEvent('webrtc_call_connected'));
+          } catch (_) {}
+        }
       }).catch(function () {
         if (current()) showUnmuteBanner();
       });
@@ -494,6 +499,9 @@
         el.muted = !speakerEnabled;
         el.volume = 1.0;
         playCallStream(el, mediaStream);
+        try {
+          window.dispatchEvent(new CustomEvent('webrtc_call_connected'));
+        } catch (_) {}
       });
     });
 

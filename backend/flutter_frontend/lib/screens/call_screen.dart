@@ -30,8 +30,9 @@ class _CallScreenState extends State<CallScreen> {
   bool _isMuted = false;
   bool _isVideoEnabled = true;
   String _callStatus = 'Đang kết nối...';
-  StreamSubscription? _signalSub;
-  StreamSubscription? _endSub;
+  dynamic _signalHandler;
+  dynamic _endHandler;
+  final List<Map<String, dynamic>> _iceCandidateQueue = [];
   Timer? _durationTimer;
   int _callDurationSeconds = 0;
   bool _isCallConnected = false;
@@ -61,16 +62,29 @@ class _CallScreenState extends State<CallScreen> {
     });
   }
 
+  Future<void> _processIceQueue(html.RtcPeerConnection pc) async {
+    final queued = List<Map<String, dynamic>>.of(_iceCandidateQueue);
+    _iceCandidateQueue.clear();
+    for (var candidateMap in queued) {
+      try {
+        await pc.addIceCandidate(html.RtcIceCandidate(candidateMap));
+      } catch (e) {
+        debugPrint('⚠️ [CallScreen] Error adding queued ICE candidate: $e');
+      }
+    }
+  }
+
   Future<void> _setupCall() async {
     // Lắng nghe tín hiệu kết thúc từ socket
-    _endSub = SocketService.socket?.on('call_ended', (_) {
+    _endHandler = (_) {
       if (mounted) {
         _hangUp(notifyPeer: false);
       }
-    }) as StreamSubscription?;
+    };
+    SocketService.socket?.on('call_ended', _endHandler);
 
     // Lắng nghe tín hiệu WebRTC (offer, answer, candidate)
-    _signalSub = SocketService.socket?.on('webrtc_signal', (data) async {
+    _signalHandler = (data) async {
       if (data == null || data is! Map) return;
       final signal = data['signal'];
       if (signal == null || signal is! Map) return;
@@ -84,6 +98,7 @@ class _CallScreenState extends State<CallScreen> {
             'type': 'offer',
             'sdp': signal['sdp'],
           });
+          await _processIceQueue(pc);
           final answer = await pc.createAnswer({
             'offerToReceiveAudio': true,
             'offerToReceiveVideo': widget.isVideo,
@@ -104,6 +119,7 @@ class _CallScreenState extends State<CallScreen> {
             'type': 'answer',
             'sdp': signal['sdp'],
           });
+          await _processIceQueue(pc);
           if (mounted) {
             setState(() {
               _isCallConnected = true;
@@ -113,17 +129,31 @@ class _CallScreenState extends State<CallScreen> {
         } else if (type == 'candidate') {
           final candidateStr = signal['candidate']?.toString();
           if (candidateStr != null && candidateStr.isNotEmpty) {
-            await pc.addIceCandidate(html.RtcIceCandidate({
+            int? mLineIndex;
+            if (signal['sdpMLineIndex'] != null) {
+              if (signal['sdpMLineIndex'] is int) {
+                mLineIndex = signal['sdpMLineIndex'] as int;
+              } else {
+                mLineIndex = int.tryParse(signal['sdpMLineIndex'].toString());
+              }
+            }
+            final candidateMap = <String, dynamic>{
               'candidate': candidateStr,
-              'sdpMid': signal['sdpMid']?.toString(),
-              'sdpMLineIndex': signal['sdpMLineIndex'],
-            }));
+              if (signal['sdpMid'] != null) 'sdpMid': signal['sdpMid'].toString(),
+              if (mLineIndex != null) 'sdpMLineIndex': mLineIndex,
+            };
+            if (pc.remoteDescription != null) {
+              await pc.addIceCandidate(html.RtcIceCandidate(candidateMap));
+            } else {
+              _iceCandidateQueue.add(candidateMap);
+            }
           }
         }
       } catch (e) {
         debugPrint('⚠️ [CallScreen] Signal handling error: $e');
       }
-    }) as StreamSubscription?;
+    };
+    SocketService.socket?.on('webrtc_signal', _signalHandler);
 
     // Khởi tạo PeerConnection
     final pc = await _webrtcService.initPeerConnection(
@@ -249,8 +279,14 @@ class _CallScreenState extends State<CallScreen> {
     }
 
     _durationTimer?.cancel();
-    _signalSub?.cancel();
-    _endSub?.cancel();
+    if (_signalHandler != null) {
+      SocketService.socket?.off('webrtc_signal', _signalHandler);
+      _signalHandler = null;
+    }
+    if (_endHandler != null) {
+      SocketService.socket?.off('call_ended', _endHandler);
+      _endHandler = null;
+    }
     _webrtcService.dispose();
 
     if (mounted) {
@@ -261,8 +297,14 @@ class _CallScreenState extends State<CallScreen> {
   @override
   void dispose() {
     _durationTimer?.cancel();
-    _signalSub?.cancel();
-    _endSub?.cancel();
+    if (_signalHandler != null) {
+      SocketService.socket?.off('webrtc_signal', _signalHandler);
+      _signalHandler = null;
+    }
+    if (_endHandler != null) {
+      SocketService.socket?.off('call_ended', _endHandler);
+      _endHandler = null;
+    }
     _webrtcService.dispose();
     super.dispose();
   }

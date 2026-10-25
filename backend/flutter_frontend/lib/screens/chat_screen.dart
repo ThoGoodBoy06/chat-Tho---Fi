@@ -6974,6 +6974,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     final List<Map<String, dynamic>> iceCandidateQueue = [];
     String cameraFacingMode = 'user';
     bool switchingCamera = false;
+    html.EventListener? voiceConnectedListener;
 
     html.VideoElement getOrCreateVideo(String id, {required bool isLocal}) {
       var el = isLocal ? localCallVideo : remoteCallVideo;
@@ -7016,6 +7017,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
       signalQueue.close();
       SocketService.clearCallSignals();
       try {
+        if (voiceConnectedListener != null) {
+          try { html.window.removeEventListener('webrtc_call_connected', voiceConnectedListener!); } catch (_) {}
+          voiceConnectedListener = null;
+        }
         SoundService.stopAllCallSounds();
         try {
           callWebFunction('stopCallAudio', []);
@@ -7078,6 +7083,27 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         }
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            void markConnected() {
+              if (callClosed || !dialogContext.mounted) return;
+              if (connectedAt != null && callStatus == 'Đang đàm thoại') return;
+              setDialogState(() {
+                connectionDeadline?.cancel();
+                callNotice = null;
+                SoundService.stopAllCallSounds();
+                callStatus = 'Đang đàm thoại';
+                connectedAt ??= DateTime.now();
+                callDurationTimer ??= Timer.periodic(const Duration(seconds: 1), (tm) {
+                  if (callClosed || !dialogContext.mounted) {
+                    tm.cancel();
+                    return;
+                  }
+                  setDialogState(() {
+                    callDurationSeconds = DateTime.now().difference(connectedAt!).inSeconds;
+                  });
+                });
+              });
+            }
+
             Future<void> sendVideoOffer() async {
               final connection = pc;
               if (callClosed || connection == null || connection.signalingState != 'stable') return;
@@ -7171,10 +7197,18 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                   if (ignoreOffer) return;
                   final candidateStr = signal['candidate']?.toString();
                   if (candidateStr != null && candidateStr.isNotEmpty) {
-                    final candidateMap = {
+                    int? mLineIndex;
+                    if (signal['sdpMLineIndex'] != null) {
+                      if (signal['sdpMLineIndex'] is int) {
+                        mLineIndex = signal['sdpMLineIndex'] as int;
+                      } else {
+                        mLineIndex = int.tryParse(signal['sdpMLineIndex'].toString());
+                      }
+                    }
+                    final candidateMap = <String, dynamic>{
                       'candidate': candidateStr,
-                      'sdpMid': signal['sdpMid']?.toString(),
-                      'sdpMLineIndex': signal['sdpMLineIndex'],
+                      if (signal['sdpMid'] != null) 'sdpMid': signal['sdpMid'].toString(),
+                      if (mLineIndex != null) 'sdpMLineIndex': mLineIndex,
                     };
                     if (pc?.remoteDescription != null) {
                       try {
@@ -7382,6 +7416,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
 
                 void handleRemoteStream(html.MediaStream? stream) {
                   if (stream == null || callClosed) return;
+                  markConnected();
                   incomingStream ??= html.MediaStream();
                   final existingTrackIds = <Object?>{};
                   for (final track in incomingStream!.getTracks()) { existingTrackIds.add(track.id); }
@@ -7409,6 +7444,27 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                     video.play().catchError((_) {});
                   }
                 }
+
+                if (voiceConnectedListener == null) {
+                  voiceConnectedListener = (html.Event _) {
+                    print('🔊 [WebRTC Event] webrtc_call_connected received -> markConnected()');
+                    markConnected();
+                  };
+                  try {
+                    html.window.addEventListener('webrtc_call_connected', voiceConnectedListener!);
+                  } catch (_) {}
+                }
+
+                try {
+                  final dynamic pcDyn = pc;
+                  pcDyn.addEventListener('connectionstatechange', (event) {
+                    final cState = pcDyn.connectionState?.toString();
+                    print('⚡ WebRTC peerConnection.connectionState: $cState');
+                    if (cState == 'connected') {
+                      markConnected();
+                    }
+                  });
+                } catch (_) {}
 
                 pc?.onAddStream.listen((event) {
                   print('🔊 WebRTC onAddStream fired! Stream: ${event.stream?.id}');
@@ -7446,24 +7502,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                   final state = pc?.iceConnectionState ?? '';
                   print('⚡ WebRTC ICE Connection State: $state');
                   if (state == 'connected' || state == 'completed') {
-                    if (!callClosed && dialogContext.mounted) {
-                      setDialogState(() {
-                        connectionDeadline?.cancel();
-                        callNotice = null;
-                        SoundService.stopAllCallSounds();
-                        callStatus = 'Đang đàm thoại';
-                        connectedAt ??= DateTime.now();
-                        callDurationTimer ??= Timer.periodic(const Duration(seconds: 1), (tm) {
-                          if (callClosed || !dialogContext.mounted) {
-                            tm.cancel();
-                            return;
-                          }
-                          setDialogState(() {
-                            callDurationSeconds = DateTime.now().difference(connectedAt!).inSeconds;
-                          });
-                        });
-                      });
-                    }
+                    markConnected();
                   }
                   if (state == 'disconnected') { showConnectionIssue('Mạng bị gián đoạn. Đang kết nối lại…'); }
                   if (state == 'failed') {
