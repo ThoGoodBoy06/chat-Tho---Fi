@@ -10,8 +10,9 @@ function allowedImage(value) {
 }
 
 function createNewsImageService({ lookup, fetchImpl = global.fetch, now = Date.now,
+  width = 264, maximumInputBytes = MAX_BYTES,
   resize = async buffer => require('sharp')(buffer, { limitInputPixels: 20000000, animated: false })
-    .rotate().resize({ width: 264, height: 264, fit: 'inside', withoutEnlargement: true })
+    .rotate().resize({ width, height: width, fit: 'inside', withoutEnlargement: true })
     .webp({ quality: 76, effort: 2 }).toBuffer(),
 } = {}) {
   const cache = new Map(), pending = new Map(), failed = new Map();
@@ -34,11 +35,11 @@ function createNewsImageService({ lookup, fetchImpl = global.fetch, now = Date.n
       headers: { Accept: 'image/*', 'User-Agent': 'ChatThoFi-NewsReader/1.0' },
     });
     if (!response.ok || !/^image\/(jpeg|png|webp|gif|avif)(;|$)/i.test(response.headers.get('content-type') || '') ||
-        Number(response.headers.get('content-length')) > MAX_BYTES) throw Error('Invalid photo');
+        Number(response.headers.get('content-length')) > maximumInputBytes) throw Error('Invalid photo');
     const chunks = []; let length = 0;
     for await (const chunk of response.body) {
       length += chunk.length;
-      if (length > MAX_BYTES) throw Error('Photo too large');
+      if (length > maximumInputBytes) throw Error('Photo too large');
       chunks.push(Buffer.from(chunk));
     }
     const buffer = await resize(Buffer.concat(chunks));

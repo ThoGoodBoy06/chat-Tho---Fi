@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:universal_html/html.dart' as html;
+import '../screens/news_article_screen.dart';
 import '../services/news_service.dart';
 import '../services/api_service.dart';
 import 'skeleton_box.dart';
@@ -84,13 +84,8 @@ class _NewsTabState extends State<NewsTab> with WidgetsBindingObserver {
       widget.onOpenArticle!(article.link);
       return;
     }
-    try {
-      html.window.open(article.link, '_blank', 'noopener,noreferrer');
-    } catch (_) {
-      if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Chưa mở được bài báo. Vui lòng thử lại.')));
-    }
+    await Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => NewsArticleScreen(article: article)));
   }
 
   @override
@@ -337,7 +332,7 @@ class NewsArticleRow extends StatelessWidget {
                   button: !loading,
                   label: loading
                       ? 'Đang tải tin tức'
-                      : 'Đọc bài gốc: ${article!.title}',
+                      : 'Đọc bài báo: ${article!.title}',
                   child: content))),
       const Divider(height: 1, indent: 20, endIndent: 20),
     ]);

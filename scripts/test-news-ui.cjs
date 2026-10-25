@@ -9,6 +9,9 @@ const web = path.join(root, 'flutter_frontend/build/web');
 const feeds = createNewsFeedService();
 const { createNewsImageService } = require('../services/news_image.service');
 const photos = createNewsImageService({lookup:async id => (await feeds.getLatest()).data.find(n => n.id === id)});
+const { createNewsArticleService } = require('../services/news_article.service');
+const articles = createNewsArticleService({lookup:async id=>(await feeds.getLatest()).data.find(n=>n.id===id)});
+const fullPhotos = createNewsImageService({lookup:id=>articles.findImage(id),width:1440,maximumInputBytes:12*1024*1024});
 let newsRequests = 0, releaseNews;
 const gate = new Promise(resolve => { releaseNews = resolve; });
 const server = http.createServer(async (req, res) => {
@@ -20,6 +23,16 @@ const server = http.createServer(async (req, res) => {
       res.setHeader('Content-Type', 'image/webp');
       return res.end(image);
     } catch (e) { console.log('Photo failure:',url.pathname,e.message); res.statusCode = 404; return res.end(); }
+  }
+  const contentMatch=url.pathname.match(/^\/api\/news\/([a-f0-9]{24})\/content$/);
+  if(contentMatch) {
+    try {const data=await articles.get(contentMatch[1]);res.setHeader('Content-Type','application/json; charset=utf-8');return res.end(JSON.stringify({success:true,data}));}
+    catch {res.statusCode=404;return res.end('{}');}
+  }
+  const imageMatch=url.pathname.match(/^\/api\/news\/([a-f0-9]{24})\/images\/([a-f0-9]{24})$/);
+  if(imageMatch) {
+    try {await articles.get(imageMatch[1]);const image=await fullPhotos.get(imageMatch[2]);res.setHeader('Content-Type','image/webp');return res.end(image);}
+    catch {res.statusCode=404;return res.end();}
   }
   if (url.pathname === '/api/news') {
     newsRequests++; await gate;
@@ -61,21 +74,41 @@ const io = new Server(server);
         await page.screenshot({path:path.join(root, 'scratch/news-loading-mobile.png')});
         releaseNews();
       }
-      for (const [category, label] of [['Vietnam','Việt Nam'], ['World','Thế giới'], ['Tech_AI','Công nghệ']]) {
-        await page.getByText(label, {exact:true}).click();
-        const first = feed.data.find(n => n.category === category);
-        try { await page.getByText(first.title, {exact:false}).first().waitFor({timeout:20000}); } catch (e) { await page.screenshot({path:path.join(root,'scratch/news-error.png')}); fs.writeFileSync(path.join(root,'scratch/news-error-dom.txt'),await page.locator('body').innerText()); throw e; }
-        if (category === 'Vietnam') await page.screenshot({path:path.join(root, `scratch/news-${name}.png`)});
+      const current=feed.data.find(n=>n.category==='Vietnam' && n.imageUrl);
+      const detail=await articles.get(current.id);
+      assert.equal(detail.available,true);
+      const photoBlock=detail.blocks.find(b=>b.type==='image');
+      assert(photoBlock,'live article should have a full-size photo');
+      let popups=0;page.on('popup',()=>popups++);
+      const imageResponse=page.waitForResponse(r=>r.url().includes('/images/')&&r.status()===200);
+      await page.getByText(current.title,{exact:false}).first().click();
+      await page.getByRole('button',{name:'Quay lại tin tức',exact:true}).waitFor();
+      const paragraph=detail.blocks.find(b=>b.type==='paragraph'||b.type==='lead');
+      await page.screenshot({path:path.join(root,`scratch/article-${name}.png`)});
+      fs.writeFileSync(path.join(root,'scratch/article-semantics.html'),await page.locator('flt-semantics-host').innerHTML());
+      await page.locator('textarea').first().waitFor({state:'attached'});
+      assert.equal(await page.locator('textarea').first().inputValue(),paragraph.text);
+
+      assert.equal(new URL(page.url()).hostname,'127.0.0.1');assert.equal(popups,0);
+      const photo=page.getByRole('img',{name:photoBlock.alt||'Ảnh trong bài báo',exact:true}).first();
+      await page.mouse.move(viewport.width/2,viewport.height/2);
+      for(let i=0;i<12;i++) {
+        const bounds=await photo.boundingBox();
+        if(bounds && bounds.y>=60 && bounds.y+bounds.height/2<viewport.height-40) break;
+        await page.mouse.wheel(0,300);
+        await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
       }
-      const current = feed.data.find(n => n.category === 'Tech_AI');
-      const popupPromise = page.waitForEvent('popup');
-      await page.getByText(current.title, {exact:false}).first().click();
-      const popup = await popupPromise;
-      await popup.waitForURL(url => url.hostname === new URL(current.link).hostname, {waitUntil:'commit'});
-      await popup.close();
+      await imageResponse;
+      await page.screenshot({path:path.join(root,`scratch/article-${name}.png`)});
+      await photo.click({force:true});
+      await page.getByText('Xem ảnh',{exact:true}).waitFor();
+      await page.getByRole('button',{name:'Back',exact:true}).click({force:true});
+      await page.getByText('Xem ảnh',{exact:true}).waitFor({state:'hidden'});
+      await page.getByRole('button',{name:'Quay lại tin tức',exact:true}).click({force:true});
+      await page.getByText('Tin tức',{exact:true}).waitFor();
       assert.equal(errors.length, 0, errors.join('\n'));
-      console.log(name + ': live categories, source articles, loading and original-link action passed');
-    } finally { await browser.close(); }
+      console.log(name + ': live in-app article, full-size photo viewer and back navigation passed');
+    } catch(e) { const pages=browser.contexts()[0]?.pages();if(pages?.[0])await pages[0].screenshot({path:path.join(root,'scratch/article-ui-error.png')});throw e; } finally { await browser.close(); }
   }
   assert.equal(newsRequests, 3, 'switching categories should not fetch the feed again');
   console.log('RSS live article counts:', JSON.stringify(Object.fromEntries(['Vietnam','World','Tech_AI'].map(c=>[c,feed.data.filter(n=>n.category===c).length]))));

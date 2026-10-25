@@ -7,6 +7,16 @@ import '../models/models.dart';
 import 'network_status.dart';
 
 class ApiService {
+  static Future<Map<String, dynamic>> getNewsArticle(String id) async {
+    final response = await _client.get(Uri.parse('$baseUrl/news/${Uri.encodeComponent(id)}/content'),
+      headers: {'Accept': 'application/json'}).timeout(const Duration(seconds: 25));
+    final body = jsonDecode(utf8.decode(response.bodyBytes));
+    if (response.statusCode != 200 || body is! Map || body['success'] != true || body['data'] is! Map) {
+      throw Exception('Không tải được bài báo. Vui lòng thử lại.');
+    }
+    return Map<String, dynamic>.from(body['data']);
+  }
+
   static Future<Map<String, dynamic>> getNewsFeed() async {
     final response = await _client.get(Uri.parse('$baseUrl/news'),
       headers: {'Accept': 'application/json'}).timeout(const Duration(seconds: 15));
