@@ -5075,6 +5075,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         }
 
         // Tạo ngay tin nhắn ảnh tạm thời với hiệu ứng đang gửi (Optimistic UI)
+        final hasNetwork = NetworkStatus.online.value;
         final optId = 'optimistic-image-${DateTime.now().microsecondsSinceEpoch}-${Random().nextInt(1 << 32)}';
         final base64Url = 'data:$mimeType;base64,${base64Encode(bytes)}';
         final tempMsg = MessageModel(
@@ -5086,6 +5087,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
           imageUrl: base64Url,
           createdAt: DateTime.now(),
           clientTempId: optId,
+          status: hasNetwork ? 'sent' : 'sending',
+          isDelivered: hasNetwork,
         );
         provider.addRealtimeMessage(tempMsg);
 
@@ -5154,6 +5157,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         }
 
         String mimeType = file.type.isNotEmpty ? file.type : 'image/jpeg';
+        final hasNetwork = NetworkStatus.online.value;
         final optId = 'optimistic-${DateTime.now().millisecondsSinceEpoch}';
         final base64Url = 'data:$mimeType;base64,${base64Encode(bytes)}';
         final tempMsg = MessageModel(
@@ -5165,6 +5169,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
           imageUrl: base64Url,
           createdAt: DateTime.now(),
           clientTempId: optId,
+          status: hasNetwork ? 'sent' : 'sending',
+          isDelivered: hasNetwork,
         );
         provider.addRealtimeMessage(tempMsg);
 

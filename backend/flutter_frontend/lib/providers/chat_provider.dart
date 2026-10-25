@@ -1396,12 +1396,14 @@ class ChatProvider extends ChangeNotifier {
     final replyId = replyingToMessage?.id;
     replyingToMessage = null;
 
-    // Optimistic UI message (Hiển thị tức thì trên màn hình)
+    // Optimistic UI message (Hiển thị tức thì "Đã nhận" 0ms khi mạng bình thường)
+    final hasNetwork = NetworkStatus.online.value;
     final optId = 'optimistic-${DateTime.now().microsecondsSinceEpoch}';
     final optMsg = MessageModel(
       id: optId,
       clientTempId: optId,
-      status: 'sending',
+      status: hasNetwork ? 'sent' : 'sending',
+      isDelivered: hasNetwork,
       conversationId: conversation.id,
       senderId: currentUser?.id,
       content: text,
@@ -1415,6 +1417,23 @@ class ChatProvider extends ChangeNotifier {
     _updateLastMessageInConversation(optMsg, notify: false);
     notifyListeners();
     onNewMessageReceived?.call();
+
+    // Nếu mạng chậm/treo quá 6s thì tự động xoay để báo hiệu người dùng mạng có vấn đề
+    Timer? slowNetworkTimer;
+    if (hasNetwork) {
+      slowNetworkTimer = Timer(const Duration(seconds: 6), () {
+        if (_disposed || session != _sessionRevision) return;
+        final targetMessages = selectedConversation?.id == conversation.id
+            ? messages
+            : (_messagesCache[conversation.id] ?? <MessageModel>[]);
+        final idx = targetMessages.indexWhere((m) => m.id == optId);
+        if (idx != -1 && targetMessages[idx].status != 'error') {
+          targetMessages[idx] = targetMessages[idx].copyWith(status: 'sending', isDelivered: false);
+          _cacheMessages(conversation.id, targetMessages);
+          notifyListeners();
+        }
+      });
+    }
 
     // Relay immediately over the established socket while REST persists it.
     if (SocketService.socket != null && SocketService.socket!.connected) {
@@ -1439,6 +1458,7 @@ class ChatProvider extends ChangeNotifier {
         replyMessageId: replyId,
         clientTempId: optId,
       );
+      slowNetworkTimer?.cancel();
       if (_disposed || session != _sessionRevision) return;
       final msgData = res['data'] ?? (res['success'] == true ? res : null);
       if (msgData is Map) {
@@ -1467,19 +1487,20 @@ class ChatProvider extends ChangeNotifier {
             : (_messagesCache[conversation.id] ?? <MessageModel>[]);
         final idx = targetMessages.indexWhere((m) => m.id == optId);
         if (idx != -1) {
-          targetMessages[idx] = targetMessages[idx].copyWith(status: 'sent');
+          targetMessages[idx] = targetMessages[idx].copyWith(status: 'sent', isDelivered: true);
           _cacheMessages(conversation.id, targetMessages);
           notifyListeners();
         }
       }
     } catch (e) {
+      slowNetworkTimer?.cancel();
       debugPrint('Error sending message: $e');
       if (_disposed || session != _sessionRevision) return;
       final targetMessages = selectedConversation?.id == conversation.id
           ? messages : (_messagesCache[conversation.id] ?? <MessageModel>[]);
       final index = targetMessages.indexWhere((message) => message.id == optId);
       if (index != -1) {
-        targetMessages[index] = targetMessages[index].copyWith(status: 'error');
+        targetMessages[index] = targetMessages[index].copyWith(status: 'error', isDelivered: false);
         _cacheMessages(conversation.id, targetMessages);
         notifyListeners();
       }
