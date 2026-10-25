@@ -623,7 +623,7 @@ module.exports = (io) => {
         const realtimePayload = {
           id: tempId || `rt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           clientTempId: tempId || null,
-          status: 'sending',
+          status: 'sent',
           conversationId,
           senderId: uid,
           content,

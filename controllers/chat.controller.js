@@ -593,7 +593,7 @@ exports.sendMessage = async(req, res) => {
         if (io) {
             let broadcast = io.to(conversationId);
             for (const member of conversation.ConversationMembers) {
-                if (member.userId !== senderId) broadcast = broadcast.to(member.userId);
+                broadcast = broadcast.to(member.userId);
             }
             broadcast.emit("receive_message", mappedMessage);
         }
@@ -2187,7 +2187,17 @@ exports.uploadMedia = async (req, res) => {
 
         const io = req.app.get("io");
         if (io) {
-            io.to(conversationId).emit("receive_message", mappedMessage);
+            let broadcast = io.to(conversationId);
+            try {
+                const members = await prisma.conversationMembers.findMany({
+                    where: { conversationId },
+                    select: { userId: true },
+                });
+                for (const m of members) {
+                    broadcast = broadcast.to(m.userId);
+                }
+            } catch (_) {}
+            broadcast.emit("receive_message", mappedMessage);
         }
     } catch (error) {
         console.error("❌ Lỗi uploadMedia:", error);

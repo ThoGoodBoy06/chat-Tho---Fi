@@ -2678,8 +2678,22 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   Widget _buildMessageStatusIndicator(MessageModel msg, ConversationModel? conv, bool isLastSentMessage) {
     if (!isLastSentMessage) return const SizedBox.shrink();
 
-    // 0. Trạng thái Đang gửi (Optimistic UI)
-    if (msg.id.startsWith('optimistic-') || msg.id.startsWith('uploading-')) {
+    // -1. Trạng thái lỗi gửi tin nhắn
+    if (msg.status == 'error') {
+      return Container(
+        margin: const EdgeInsets.only(top: 3, right: 2),
+        width: 14,
+        height: 14,
+        child: const Center(
+          child: Icon(Icons.error_outline_rounded, size: 14, color: Color(0xFFEF4444)),
+        ),
+      );
+    }
+
+    // 0. Trạng thái Đang gửi (Chỉ hiển thị vòng xoay khi status == 'sending')
+    final isPending = (msg.status == 'sending') &&
+        (msg.id.startsWith('optimistic-') || msg.id.startsWith('uploading-') || msg.id.startsWith('rt-'));
+    if (isPending) {
       return Container(
         margin: const EdgeInsets.only(top: 3, right: 2),
         width: 14,
@@ -6191,7 +6205,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         );
       }
 
-      final isSending = msg.id.startsWith('optimistic-') || msg.id.startsWith('uploading-');
+      final isSending = isMe && (msg.status == 'sending') && (msg.id.startsWith('optimistic-') || msg.id.startsWith('uploading-'));
       Widget imageContent = imgWidget;
       if (isSending) {
         imageContent = Stack(

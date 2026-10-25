@@ -301,10 +301,10 @@ class ApiService {
       body: jsonEncode(bodyMap),
     ).timeout(const Duration(seconds: 45));
     final result = jsonDecode(response.body);
-    if (response.statusCode < 200 || response.statusCode >= 300 || result is! Map<String, dynamic> || result['success'] == false) {
+    if (response.statusCode < 200 || response.statusCode >= 300 || result is! Map || result['success'] == false) {
       throw http.ClientException('Unable to send message (${response.statusCode})');
     }
-    return result;
+    return Map<String, dynamic>.from(result);
   }
 
   // Upload Media (Image, Video, Audio, File)
@@ -339,7 +339,11 @@ class ApiService {
     }
     final streamedResponse = await _client.send(request).timeout(const Duration(seconds: 180));
     final response = await http.Response.fromStream(streamedResponse);
-    return jsonDecode(response.body);
+    final decoded = jsonDecode(response.body);
+    if (decoded is Map) {
+      return Map<String, dynamic>.from(decoded);
+    }
+    return <String, dynamic>{'success': false, 'message': 'Invalid response format'};
   }
 
   // Get all users (Contacts)

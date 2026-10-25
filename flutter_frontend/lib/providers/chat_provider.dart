@@ -838,6 +838,15 @@ class ChatProvider extends ChangeNotifier {
       }
     }
 
+    // Dọn dẹp sạch sẽ bất kỳ tin nhắn tạm/optimistic nào trùng khớp với tin nhắn thực vừa nhận
+    if (!msg.id.startsWith('optimistic-') && !msg.id.startsWith('rt-')) {
+      messages.removeWhere((m) =>
+          m.id != msg.id &&
+          (m.id.startsWith('optimistic-') || m.id.startsWith('rt-')) &&
+          ((msg.clientTempId != null && msg.clientTempId!.isNotEmpty && (m.id == msg.clientTempId || m.clientTempId == msg.clientTempId)) ||
+           (m.senderId == msg.senderId && (m.content == msg.content || (m.type == msg.type && m.type != 'text')))));
+    }
+
     _cacheMessages(selectedConversation!.id, messages);
     if (notify) {
       notifyListeners();
@@ -1318,9 +1327,11 @@ class ChatProvider extends ChangeNotifier {
           final matchingTimes =
               fetchedTimesBySenderAndContent[message.senderId ?? '']
                   ?[message.content];
-          final acknowledged = temporary &&
-              matchingTimes != null &&
-              _hasNearbyTimestamp(matchingTimes, message.createdAt, 30);
+          final acknowledged = temporary && (
+              (matchingTimes != null && _hasNearbyTimestamp(matchingTimes, message.createdAt, 30)) ||
+              cleanFetched.any((m) => (m.clientTempId != null && (m.clientTempId == message.id || m.clientTempId == message.clientTempId))) ||
+              DateTime.now().difference(message.createdAt).inSeconds > 60
+          );
           if (!acknowledged) merged[message.id] = message;
         }
       }
@@ -1430,26 +1441,36 @@ class ChatProvider extends ChangeNotifier {
       );
       if (_disposed || session != _sessionRevision) return;
       final msgData = res['data'] ?? (res['success'] == true ? res : null);
-      if (msgData is Map<String, dynamic>) {
-        final decoded = MessageModel.fromJson(msgData);
+      if (msgData is Map) {
+        final decoded = MessageModel.fromJson(Map<String, dynamic>.from(msgData));
         final targetMessages = selectedConversation?.id == conversation.id
             ? messages
             : (_messagesCache[conversation.id] ?? <MessageModel>[]);
-        final idx = targetMessages.indexWhere((m) => m.id == optId);
+        final idx = targetMessages.indexWhere((m) => m.id == optId || (m.clientTempId != null && m.clientTempId == optId));
         final realMsg = _withReadReceipt(decoded,
-            previous: targetMessages.firstWhere((m) => m.id == decoded.id || m.id == optId, orElse: () => decoded));
+            previous: targetMessages.firstWhere((m) => m.id == decoded.id || m.id == optId || (m.clientTempId != null && m.clientTempId == optId), orElse: () => decoded));
         final realIdx = targetMessages.indexWhere((m) => m.id == realMsg.id);
         if (realIdx != -1) {
           targetMessages[realIdx] = realMsg;
-          targetMessages.removeWhere((m) => m.id == optId);
         } else if (idx != -1) {
           targetMessages[idx] = realMsg;
         } else {
           targetMessages.add(realMsg);
         }
+        targetMessages.removeWhere((m) => m.id != realMsg.id && (m.id == optId || (m.clientTempId != null && m.clientTempId == optId)));
         _cacheMessages(conversation.id, targetMessages);
         _updateLastMessageInConversation(realMsg, notify: false);
         notifyListeners();
+      } else {
+        final targetMessages = selectedConversation?.id == conversation.id
+            ? messages
+            : (_messagesCache[conversation.id] ?? <MessageModel>[]);
+        final idx = targetMessages.indexWhere((m) => m.id == optId);
+        if (idx != -1) {
+          targetMessages[idx] = targetMessages[idx].copyWith(status: 'sent');
+          _cacheMessages(conversation.id, targetMessages);
+          notifyListeners();
+        }
       }
     } catch (e) {
       debugPrint('Error sending message: $e');
