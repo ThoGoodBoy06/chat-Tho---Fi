@@ -310,9 +310,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
 
   void _onScroll() {
     if (!_scrollController.hasClients) return;
-    final maxScroll = _scrollController.position.maxScrollExtent;
-    final currentScroll = _scrollController.offset;
-    _showScrollToBottomButton = (maxScroll - currentScroll) > 150;
+    // The list is reversed: offset zero is the newest message.
+    _showScrollToBottomButton = _scrollController.offset > 150;
   }
 
   String _lastTypingText = '';
@@ -1536,7 +1535,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                 ignoring: progress > 0.85,
                 child: TickerMode(
                   enabled: progress < 0.99,
-                  child: conversationList,
+                  child: Offstage(
+                    offstage: progress >= 1.0,
+                    child: conversationList,
+                  ),
                 ),
               ),
             ),
@@ -1760,8 +1762,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   }
 
   Widget _buildChatList(ChatProvider provider) {
-    return Consumer<ChatProvider>(
-      builder: (context, updatedProvider, _) => _buildChatListContent(updatedProvider),
+    return Selector<ChatProvider, List<Object?>>(
+      selector: (_, p) => [
+        List<ConversationModel>.of(p.conversations), p.selectedConversationId,
+        p.showUnreadOnly, p.isLoadingConversations, p.currentUser,
+        Map<String, String>.of(p.typingUsers),
+      ],
+      builder: (context, _, __) => _buildChatListContent(context.read<ChatProvider>()),
     );
   }
 
@@ -2892,8 +2899,15 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                   });
                 }
               },
-              child: Consumer<ChatProvider>(
-                builder: (context, chatProv, _) {
+              child: Selector<ChatProvider, List<Object?>>(
+                // Copy the mutable list so in-place receipt updates are detected.
+                selector: (_, p) => [
+                  List<MessageModel>.of(p.messages), p.currentUser,
+                  p.selectedConversation, p.isLoadingMessages,
+                  p.getTypingUserForSelectedConversation(),
+                ],
+                builder: (context, _, __) {
+                  final chatProv = context.read<ChatProvider>();
                   if (chatProv.isLoadingMessages && chatProv.messages.isEmpty) {
                     return _buildMessageSkeletonList(isDark);
                   }
@@ -6843,7 +6857,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                 await replaceCallMicrophone(pc, fresh);
                 if (callClosed) {stopCallMedia(fresh);return;}
                 final previous = List<html.MediaStreamTrack>.from(localStream!.getAudioTracks());
-                for (final track in previous) { localStream!.removeTrack(track); track.stop(); }
+                for (final track in previous) { localStream!.removeTrack(track); (track as dynamic).stop(); }
                 for (final track in fresh.getAudioTracks()) {track.enabled = !isMuted;localStream!.addTrack(track);}
                 callWebFunction('unlockAudio', []);
                 if (dialogContext.mounted) setDialogState(() {callNotice = null;});
@@ -6881,7 +6895,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
               } catch (error) {
                 for (final sender in addedSenders) { try {pc?.removeTrack(sender);} catch (_) {} }
                 for (final track in camera?.getVideoTracks() ?? <html.MediaStreamTrack>[]) {
-                  localStream?.removeTrack(track);track.stop();
+                  localStream?.removeTrack(track);(track as dynamic).stop();
                 }
                 showConnectionIssue(callMediaError(error, video:true));
               } finally {
@@ -6924,7 +6938,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                 remoteAudio!.volume = 1.0;
 
                 requireCallTracks(localStream, video: isVideo);
-                localMuteSub = localStream!.getAudioTracks().first.onMute.listen((_) {
+                localMuteSub = (localStream!.getAudioTracks().first as dynamic).onMute.listen((_) {
                   showConnectionIssue('Micro đang bị hệ thống tạm dừng. Mở lại app hoặc bấm “Thử lại âm thanh”.');
                 });
                 resumeSub = html.document.onVisibilityChange.listen((_) {

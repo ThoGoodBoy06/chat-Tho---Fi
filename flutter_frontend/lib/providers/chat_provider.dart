@@ -949,7 +949,7 @@ class ChatProvider extends ChangeNotifier {
       if (_disposed || session != _sessionRevision) return;
       final cached = _messagesCache[conv.id];
       if (cached != null && cached.isNotEmpty) {
-        _warmMessageImages(cached);
+        _warmMessageImages(cached, maxImages: selectedConversation?.id == conv.id ? 6 : 1);
         continue;
       }
       try {
@@ -967,7 +967,7 @@ class ChatProvider extends ChangeNotifier {
           ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
         if (fetched.isNotEmpty) {
           _cacheMessages(conv.id, fetched);
-          _warmMessageImages(fetched);
+          _warmMessageImages(fetched, maxImages: selectedConversation?.id == conv.id ? 6 : 1);
           if (selectedConversation?.id == conv.id && messages.isEmpty) {
             messages = List.from(fetched);
             isLoadingMessages = false;

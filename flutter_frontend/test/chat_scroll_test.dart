@@ -177,9 +177,12 @@ void main() {
     controller.jumpTo(800);
     final readingOffset = controller.offset;
     await tester.pump();
+    final listBeforeSidebarUpdate = tester.widget<ListView>(listFinder);
     provider.setShowUnreadOnly(true);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));
+    expect(identical(tester.widget<ListView>(listFinder), listBeforeSidebarUpdate), isTrue,
+        reason: 'Sidebar changes must not rebuild the message list.');
     expect(controller.offset, readingOffset, reason: 'Updating the desktop sidebar must not reopen/scroll the active chat.');
     provider.addRealtimeMessage(MessageModel(
       id: 'new', conversationId: 'room', senderId: 'partner', content: 'New incoming message',
@@ -225,7 +228,7 @@ void main() {
     expect(controller.offset, 500, reason: 'Typing should preserve history reading position.');
     provider.setShowUnreadOnly(true);
     await tester.pump();
-    expect(find.text('Chưa đọc'), findsWidgets, reason: 'Sidebar must react to provider changes without animating the whole screen again.');
+    expect(find.text('Chưa đọc', skipOffstage: false), findsWidgets, reason: 'Sidebar must react to provider changes without animating the whole screen again.');
     expect(controller.offset, 500);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
