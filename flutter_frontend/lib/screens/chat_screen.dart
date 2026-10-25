@@ -3004,9 +3004,17 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
             ),
           ),
 
-          if (provider.isSearching)
-            _buildInChatSearchBar(provider, isDark),
-          _buildPinnedMessageBanner(provider, isDark),
+          Consumer<ChatProvider>(
+            builder: (context, chatProv, _) {
+              if (!chatProv.isSearching) return const SizedBox.shrink();
+              return _buildInChatSearchBar(chatProv, isDark);
+            },
+          ),
+          Consumer<ChatProvider>(
+            builder: (context, chatProv, _) {
+              return _buildPinnedMessageBanner(chatProv, isDark);
+            },
+          ),
 
           // C. Messages List #messages
           Expanded(
