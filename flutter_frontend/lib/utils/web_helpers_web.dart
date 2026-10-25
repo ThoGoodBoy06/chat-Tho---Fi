@@ -233,13 +233,33 @@ Future<void> replaceCallMicrophone(html.RtcPeerConnection? connection, html.Medi
   } catch (_) { stopCallMedia(stream); rethrow; }
 }
 
-Future<html.MediaStream> requestCallCamera() async {
+Future<html.MediaStream> requestCallCamera([String facingMode = 'user']) async {
   final devices = html.window.navigator.mediaDevices;
   if (devices == null) throw StateError('Không truy cập được camera. Mở app bằng HTTPS.');
-  final stream = await devices.getUserMedia({'audio':false,'video':{'facingMode':{'ideal':'user'}}});
+  final stream = await devices.getUserMedia({
+    'audio': false,
+    'video': {
+      'facingMode': {'ideal': facingMode}
+    }
+  });
   if (!hasLiveCallTrack(stream.getVideoTracks())) {
     stopCallMedia(stream);
     throw StateError('Không mở được camera. Kiểm tra quyền camera rồi thử lại.');
   }
   return stream;
+}
+
+Future<void> replaceCallCamera(html.RtcPeerConnection? connection, html.MediaStream stream) async {
+  if (connection == null) { stopCallMedia(stream); throw StateError('Cuộc gọi chưa kết nối.'); }
+  try {
+    final senders = js_util.callMethod(connection, 'getSenders', []) as List;
+    for (final sender in senders) {
+      final track = js_util.getProperty(sender, 'track');
+      if (track != null && js_util.getProperty(track, 'kind') == 'video') {
+        await js_util.promiseToFuture(js_util.callMethod(sender, 'replaceTrack', [stream.getVideoTracks().first]));
+        return;
+      }
+    }
+    throw StateError('Không tìm thấy đường truyền camera.');
+  } catch (_) { stopCallMedia(stream); rethrow; }
 }

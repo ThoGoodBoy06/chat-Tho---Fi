@@ -6548,6 +6548,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     html.AudioElement? remoteAudio;
     final List<Map<String, dynamic>> pendingSignals = [];
     final List<Map<String, dynamic>> iceCandidateQueue = [];
+    String cameraFacingMode = 'user';
+    bool switchingCamera = false;
 
     html.VideoElement getOrCreateVideo(String id, {required bool isLocal}) {
       var el = isLocal ? localCallVideo : remoteCallVideo;
@@ -6825,6 +6827,70 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                 if (!callClosed && dialogContext.mounted) setDialogState(() {});
               }
             }
+            Future<void> switchCamera() async {
+              if (callClosed || switchingCamera || localStream == null) return;
+              final currentTracks = localStream!.getVideoTracks();
+              if (currentTracks.isEmpty || isCameraOff) return;
+
+              switchingCamera = true;
+              setDialogState(() {});
+
+              final targetFacingMode = (cameraFacingMode == 'user') ? 'environment' : 'user';
+
+              try {
+                // 1. Lấy luồng camera mới
+                final newCameraStream = await requestCallCamera(targetFacingMode);
+                if (callClosed) {
+                  stopCallMedia(newCameraStream);
+                  return;
+                }
+
+                final newVideoTracks = newCameraStream.getVideoTracks();
+                if (newVideoTracks.isEmpty) {
+                  throw StateError('Không tìm thấy camera mới.');
+                }
+                final newTrack = newVideoTracks.first;
+
+                // 2. Thay thế video track gửi đi qua WebRTC PeerConnection
+                if (pc != null) {
+                  await replaceCallCamera(pc, newCameraStream);
+                }
+
+                // 3. Dừng và gỡ bỏ track video cũ khỏi localStream
+                for (final oldTrack in List<html.MediaStreamTrack>.from(localStream!.getVideoTracks())) {
+                  try {
+                    localStream!.removeTrack(oldTrack);
+                    (oldTrack as dynamic).stop();
+                  } catch (_) {}
+                }
+
+                // 4. Thêm track video mới vào localStream
+                newTrack.enabled = !isCameraOff;
+                localStream!.addTrack(newTrack);
+
+                // 5. Cập nhật preview video cục bộ (lật gương với cam trước, không lật gương với cam sau)
+                final preview = getOrCreateVideo('localVideoPlayer', isLocal: true);
+                if (targetFacingMode == 'environment') {
+                  preview.style.transform = 'scaleX(1)';
+                } else {
+                  preview.style.transform = 'scaleX(-1)';
+                }
+                preview.srcObject = localStream;
+                preview.play().catchError((_) {});
+
+                cameraFacingMode = targetFacingMode;
+                print('📸 [WebRTC] Đã chuyển sang camera: ' + cameraFacingMode);
+              } catch (error) {
+                print('⚠️ [WebRTC] Lỗi chuyển đổi camera: ' + error.toString());
+                showConnectionIssue('Không thể đổi camera: ' + callMediaError(error, video: true));
+              } finally {
+                switchingCamera = false;
+                if (!callClosed && dialogContext.mounted) {
+                  setDialogState(() {});
+                }
+              }
+            }
+
 
             Future<void> initWebRTC() async {
               if (!kIsWeb || pc != null || initializing || callClosed) return;
@@ -7109,6 +7175,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                 videoView: videoMode && kIsWeb && incomingStream?.getVideoTracks().isNotEmpty == true ? IgnorePointer(child: HtmlElementView(viewType:remoteViewType)) : null,
                 localVideoView: videoMode && kIsWeb && !isCameraOff ? IgnorePointer(child:HtmlElementView(viewType:localViewType)) : null,
                 onRepairAudio: !callClosed && pc != null && callNotice != null ? repairAudio : null,
+                onSwitchCamera: !callClosed && videoMode && !isCameraOff && localStream?.getVideoTracks().isNotEmpty == true ? switchCamera : null,
                 actions: [
                   if (!callClosed) CallControl(icon:isMuted ? Icons.mic_off_rounded : Icons.mic_rounded,
                     label: isMuted ? 'Bật micro' : 'Tắt micro', active:isMuted,
@@ -7121,6 +7188,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                       if (localStream?.getVideoTracks().isEmpty ?? true) {enableVideo(); return;}
                       setDialogState(() {isCameraOff = !isCameraOff;for(final track in localStream!.getVideoTracks()) {track.enabled = !isCameraOff;}});
                     }),
+                  if (!callClosed && videoMode && !isCameraOff && localStream?.getVideoTracks().isNotEmpty == true)
+                    CallControl(
+                      icon: Icons.flip_camera_ios_rounded,
+                      label: cameraFacingMode == 'user' ? 'Đổi cam sau' : 'Đổi cam trước',
+                      busy: switchingCamera,
+                      onPressed: switchCamera,
+                    ),
                   if (!callClosed) CallControl(icon:isSpeakerOn ? Icons.volume_up_rounded : Icons.volume_off_rounded,
                     label:isSpeakerOn ? 'Tắt âm thanh' : 'Bật âm thanh', active:!isSpeakerOn,
                     onPressed: () {setDialogState(() {isSpeakerOn = !isSpeakerOn;try {callWebFunction('setCallSpeakerEnabled',[isSpeakerOn]);if(isSpeakerOn) callWebFunction('unlockAudio',[]);} catch (_) {} remoteAudio?.muted = !isSpeakerOn;});}),

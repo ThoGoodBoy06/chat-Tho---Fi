@@ -35,6 +35,8 @@ class _CallScreenState extends State<CallScreen> {
   Timer? _durationTimer;
   int _callDurationSeconds = 0;
   bool _isCallConnected = false;
+  String _cameraFacingMode = "user";
+  bool _isSwitchingCamera = false;
 
   @override
   void initState() {
@@ -191,6 +193,54 @@ class _CallScreenState extends State<CallScreen> {
     });
   }
 
+
+  Future<void> _switchCamera() async {
+    if (!widget.isVideo || _isSwitchingCamera) return;
+    final pc = _webrtcService.peerConnection;
+    final localStream = _webrtcService.localStream;
+    if (pc == null || localStream == null) return;
+
+    _isSwitchingCamera = true;
+    final targetMode = _cameraFacingMode == 'user' ? 'environment' : 'user';
+
+    try {
+      final devices = html.window.navigator.mediaDevices;
+      if (devices == null) return;
+      final newStream = await devices.getUserMedia({
+        'audio': false,
+        'video': {'facingMode': {'ideal': targetMode}},
+      });
+
+      final newVideoTracks = newStream.getVideoTracks();
+      if (newVideoTracks.isNotEmpty) {
+        final newTrack = newVideoTracks.first;
+        final dynamic pcDynamic = pc;
+        if (pcDynamic.getSenders != null) {
+          final senders = pcDynamic.getSenders() as List;
+          for (final sender in senders) {
+            final dynamic s = sender;
+            if (s.track != null && s.track.kind == 'video') {
+              await s.replaceTrack(newTrack);
+              break;
+            }
+          }
+        }
+        for (final oldTrack in List.from(localStream.getVideoTracks())) {
+          localStream.removeTrack(oldTrack);
+          (oldTrack as dynamic).stop();
+        }
+        newTrack.enabled = _isVideoEnabled;
+        localStream.addTrack(newTrack);
+        _cameraFacingMode = targetMode;
+        if (mounted) setState(() {});
+      }
+    } catch (e) {
+      debugPrint('⚠️ [CallScreen] switchCamera error: ' + e.toString());
+    } finally {
+      _isSwitchingCamera = false;
+    }
+  }
+
   void _hangUp({bool notifyPeer = true}) {
     if (notifyPeer) {
       SocketService.socket?.emit('end_call', {
@@ -280,7 +330,7 @@ class _CallScreenState extends State<CallScreen> {
                     onPressed: () => _hangUp(notifyPeer: true),
                     child: const Icon(Icons.call_end, color: Colors.white),
                   ),
-                  if (widget.isVideo)
+                  if (widget.isVideo) ...[
                     FloatingActionButton(
                       heroTag: 'video_btn',
                       backgroundColor: _isVideoEnabled ? Colors.white24 : Colors.white,
@@ -290,6 +340,16 @@ class _CallScreenState extends State<CallScreen> {
                         color: _isVideoEnabled ? Colors.white : Colors.black,
                       ),
                     ),
+                    FloatingActionButton(
+                      heroTag: 'switch_cam_btn',
+                      backgroundColor: Colors.white24,
+                      onPressed: _switchCamera,
+                      child: const Icon(
+                        Icons.flip_camera_ios_rounded,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
