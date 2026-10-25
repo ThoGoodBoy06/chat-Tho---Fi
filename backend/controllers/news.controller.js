@@ -2,36 +2,32 @@ const prisma = require("../prisma");
 const { GoogleDecoder } = require("google-news-url-decoder");
 const googleDecoder = new GoogleDecoder();
 
-const getLatestNews = async(req, res) => {
+const { createNewsFeedService } = require('../services/news_feed.service');
+const newsFeeds = createNewsFeedService();
+const { createNewsImageService } = require('../services/news_image.service');
+const newsImages = createNewsImageService({lookup: async id =>
+    (await newsFeeds.getLatest()).data.find(article => article.id === id)});
+
+const getNewsImage = async (req, res) => {
     try {
-        // Lấy song song tin tức của từng danh mục để tránh việc danh mục này đè mất danh mục kia
-        const [worldNews, vietnamNews, techAiNews] = await Promise.all([
-            prisma.news.findMany({
-                where: { category: "World" },
-                take: 50,
-                orderBy: { createdAt: "desc" },
-            }),
-            prisma.news.findMany({
-                where: { category: "Vietnam" },
-                take: 50,
-                orderBy: { createdAt: "desc" },
-            }),
-            prisma.news.findMany({
-                where: { category: "Tech_AI" },
-                take: 80, // Ưu tiên lấy nhiều tin Công nghệ & AI hơn cho người dùng học IT
-                orderBy: { createdAt: "desc" },
-            }),
-        ]);
-
-        // Gộp chung và sắp xếp lại theo thời gian giảm dần
-        const allNews = [...worldNews, ...vietnamNews, ...techAiNews].sort(
-            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-
-        return res.status(200).json({ success: true, data: allNews });
+        const image = await newsImages.get(req.params.id);
+        res.set({ 'Content-Type': 'image/webp', 'Cache-Control': 'public, max-age=3600',
+            'Access-Control-Allow-Origin': '*', 'Cross-Origin-Resource-Policy': 'cross-origin' });
+        return res.send(image);
     } catch (error) {
-        console.error("Lỗi khi lấy tin tức:", error);
-        return res.status(500).json({ success: false, message: "Lỗi máy chủ khi lấy tin tức." });
+        res.set('Cache-Control', 'no-store');
+        return res.status(error.status || 502).end();
+    }
+};
+
+const getLatestNews = async (req, res) => {
+    try {
+        const result = await newsFeeds.getLatest(req.query.category);
+        res.set('Cache-Control', result.success ? 'public, max-age=60' : 'no-store');
+        return res.status(result.success ? 200 : 503).json(result);
+    } catch (error) {
+        return res.status(error.status || 503).json({ success: false, data: [],
+            message: error.status === 400 ? error.message : 'Không tải được tin tức. Vui lòng thử lại.' });
     }
 };
 
@@ -286,5 +282,6 @@ const getNewsContent = async(req, res) => {
 
 module.exports = {
     getLatestNews,
+    getNewsImage,
     getNewsContent,
 };

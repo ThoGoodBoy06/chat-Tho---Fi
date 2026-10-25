@@ -1,3 +1,4 @@
+import 'skeleton_box.dart';
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -75,7 +76,7 @@ class _InlineMessageImageState extends State<InlineMessageImage> {
           _deferredDecode = null;
           if (mounted) setState(() {});
         });
-        return const SizedBox(width: 240, height: 180);
+        return const SkeletonBox(width: 240, height: 180, borderRadius: 16);
       }
       _deferredDecode?.cancel();
       _deferredDecode = null;
@@ -91,6 +92,8 @@ class _InlineMessageImageState extends State<InlineMessageImage> {
     return Image.memory(
       _bytes!,
       cacheWidth: widget.cacheWidth,
+      frameBuilder: (_, child, frame, synchronous) => synchronous || frame != null
+          ? child : const SkeletonBox(width: 240, height: 180, borderRadius: 16),
       fit: widget.fit,
       errorBuilder: widget.errorBuilder,
     );

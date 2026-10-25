@@ -1,3 +1,4 @@
+import 'app_avatar.dart';
 import 'package:flutter/material.dart';
 
 /// One responsive composition for ringing, connecting, connected and ended calls.
@@ -45,7 +46,7 @@ class CallSurface extends StatelessWidget {
                         child: Container(padding: const EdgeInsets.all(9),
                           decoration: BoxDecoration(shape: BoxShape.circle,
                             border: Border.all(color: const Color(0xFF3B4F63))),
-                          child: CircleAvatar(radius: compact ? 40 : 56,
+                          child: AppAvatar(radius: compact ? 40 : 56,
                             backgroundColor: const Color(0xFF334F6B),
                             foregroundImage: avatar != null && avatar!.isNotEmpty ? NetworkImage(avatar!) : null,
                             child: Text(name.isEmpty ? '?' : name.characters.first.toUpperCase(),

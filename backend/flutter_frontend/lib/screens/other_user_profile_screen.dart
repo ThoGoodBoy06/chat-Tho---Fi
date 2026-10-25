@@ -1,3 +1,6 @@
+import '../widgets/app_avatar.dart';
+import '../widgets/skeleton_box.dart';
+import '../widgets/loading_photo.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -254,16 +257,6 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen> {
     if (_isLoading) {
       return Scaffold(
         backgroundColor: bgColor,
-        appBar: AppBar(
-          backgroundColor: cardBgColor,
-          elevation: 0.5,
-          leading: IconButton(
-            icon: Icon(Icons.arrow_back_ios_new_rounded, color: textColor, size: 20),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: Text('Trang cá nhân', style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 18)),
-          centerTitle: true,
-        ),
         body: _buildProfileSkeleton(isDark),
       );
     }
@@ -342,13 +335,10 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen> {
                                 : [const Color(0xFF0068FF), const Color(0xFF00C6FF)],
                           )
                         : null,
-                    image: coverUrl != null
-                        ? DecorationImage(
-                            image: NetworkImage(coverUrl),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
                   ),
+                  child: coverUrl != null && coverUrl.isNotEmpty ? LoadingPhoto(
+                    image: ResizeImage(NetworkImage(ApiService.formatImageUrl(coverUrl)), width: 1024),
+                    width: double.infinity, height: 220) : null,
                 ),
 
                 // Top Floating AppBar Controls (Back + 3 Dots Menu)
@@ -571,8 +561,8 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen> {
                       ),
                       child: Stack(
                         children: [
-                          CircleAvatar(
-                            radius: 46,
+                          AppAvatar(
+                            key: const ValueKey('profile_avatar'), radius: 46,
                             backgroundColor: const Color(0xFF0068FF),
                             backgroundImage: (avatarUrl != null && avatarUrl.isNotEmpty)
                                 ? NetworkImage(avatarUrl)
@@ -748,86 +738,82 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen> {
   }
 
   Widget _buildProfileSkeleton(bool isDark) {
-    final baseColor = isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9);
-    final shimmerColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
-
-    return SingleChildScrollView(
-      physics: const NeverScrollableScrollPhysics(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: double.infinity,
-            height: 200,
-            color: baseColor,
-          ),
-          Transform.translate(
-            offset: const Offset(0, -45),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 90,
-                    height: 90,
-                    decoration: BoxDecoration(
-                      color: shimmerColor,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: isDark ? const Color(0xFF0F172A) : Colors.white,
-                        width: 4,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    width: 170,
-                    height: 22,
-                    decoration: BoxDecoration(color: shimmerColor, borderRadius: BorderRadius.circular(6)),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    width: 110,
-                    height: 14,
-                    decoration: BoxDecoration(color: baseColor, borderRadius: BorderRadius.circular(4)),
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    width: double.infinity,
-                    height: 14,
-                    decoration: BoxDecoration(color: baseColor, borderRadius: BorderRadius.circular(4)),
-                  ),
-                  const SizedBox(height: 6),
-                  Container(
-                    width: 240,
-                    height: 14,
-                    decoration: BoxDecoration(color: baseColor, borderRadius: BorderRadius.circular(4)),
-                  ),
+    final color = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+    final card = isDark ? const Color(0xFF1E293B) : Colors.white;
+    return CustomScrollView(
+        physics: const NeverScrollableScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(
+              child: Stack(clipBehavior: Clip.none, children: [
+            SkeletonBox(
+                width: double.infinity,
+                height: 220,
+                borderRadius: 0,
+                color: color),
+            Container(
+                margin: const EdgeInsets.only(top: 170),
+                padding: const EdgeInsets.fromLTRB(20, 56, 20, 24),
+                decoration: BoxDecoration(
+                    color: card,
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(28))),
+                child: Column(children: [
+                  SkeletonBox(width: 170, height: 26, color: color),
+                  const SizedBox(height: 3),
+                  SkeletonBox(width: 110, height: 17, color: color),
+                  const SizedBox(height: 10),
+                  SkeletonBox(
+                      width: 240, height: 34, borderRadius: 12, color: color),
                   const SizedBox(height: 24),
                   Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          height: 42,
-                          decoration: BoxDecoration(color: shimmerColor, borderRadius: BorderRadius.circular(12)),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Container(
-                          height: 42,
-                          decoration: BoxDecoration(color: baseColor, borderRadius: BorderRadius.circular(12)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: List.generate(
+                          3,
+                          (_) => Column(children: [
+                                SkeletonBox(
+                                    width: 48,
+                                    height: 48,
+                                    circle: true,
+                                    color: color),
+                                const SizedBox(height: 8),
+                                SkeletonBox(width: 52, height: 14, color: color)
+                              ]))),
+                  const SizedBox(height: 24),
+                  SkeletonBox(
+                      width: double.infinity,
+                      height: 50,
+                      borderRadius: 16,
+                      color: color),
+                ])),
+            Positioned(
+                top: 120,
+                left: 0,
+                right: 0,
+                child: Center(
+                    child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration:
+                            BoxDecoration(shape: BoxShape.circle, color: card),
+                        child: SkeletonBox(
+                            key: const ValueKey('profile_skeleton_avatar'),
+                            width: 92,
+                            height: 92,
+                            circle: true,
+                            color: color)))),
+            SafeArea(
+                child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: Container(
+                        decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.35),
+                            shape: BoxShape.circle),
+                        child: IconButton(
+                            icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                                color: Colors.white, size: 18),
+                            onPressed: () => Navigator.pop(context),
+                            tooltip: 'Quay lại')))),
+          ])),
+        ]);
   }
 }

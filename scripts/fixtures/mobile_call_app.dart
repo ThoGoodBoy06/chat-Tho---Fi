@@ -1,3 +1,4 @@
+import 'package:flutter_frontend/widgets/news_tab.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:provider/provider.dart';
@@ -23,5 +24,6 @@ Future<void> main() async {
     ChangeNotifierProvider<ChatProvider>.value(value: provider),
     ChangeNotifierProvider<ThemeProvider>(create: (_) => ThemeProvider()),
   ],child:MaterialApp(theme:ThemeData(fontFamily:'Inter'),home:Uri.base.queryParameters['settings']=='1'
-    ? SettingsScreen(onLogout:(){}) : ChatScreen(onLogout:(){}))));
+    ? SettingsScreen(onLogout:(){}) : Uri.base.queryParameters['news']=='1'
+    ? const Scaffold(body: NewsTab()) : ChatScreen(onLogout:(){}))));
 }

@@ -1,3 +1,6 @@
+import '../widgets/news_tab.dart';
+import '../widgets/skeleton_box.dart';
+import '../widgets/app_avatar.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
@@ -2143,15 +2146,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                           gradient: (avatarImg == null)
                                               ? _getAvatarGradient(conv.name)
                                               : null,
-                                          image: avatarImg != null
-                                              ? DecorationImage(
-                                                  image: avatarImg,
-                                                  fit: BoxFit.cover,
-                                                )
-                                              : null,
                                         ),
-                                        child: (conv.avatar == null || conv.avatar!.isEmpty)
-                                            ? Center(
+                                        child: avatarImg != null
+                                            ? AppAvatar(key: ValueKey('conversation_avatar_${conv.id}'), radius: 26,
+                                                backgroundImage: avatarImg)
+                                            : Center(
                                                 child: Text(
                                                   _getInitials(conv.name),
                                                   style: const TextStyle(
@@ -2160,8 +2159,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                                     color: Colors.white,
                                                   ),
                                                 ),
-                                              )
-                                            : null,
+                                              ),
                                       ),
                                       if (conv.isOnline == true)
                                         Positioned(
@@ -2654,7 +2652,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
             ),
           ],
         ),
-        child: CircleAvatar(
+        child: AppAvatar(
           radius: 8,
           foregroundImage: resizeAvatar(NetworkImage(fullUrl), size: 32),
           onForegroundImageError: (_, __) {},
@@ -2669,7 +2667,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         margin: const EdgeInsets.only(top: 3, right: 2),
         width: 16,
         height: 16,
-        child: CircleAvatar(
+        child: AppAvatar(
           radius: 8,
           backgroundColor: const Color(0xFF0068FF),
           child: Text(
@@ -2785,11 +2783,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                         Stack(
                           clipBehavior: Clip.none,
                           children: [
-                            CircleAvatar(
+                            AppAvatar(
                               radius: 20,
                               backgroundColor: primaryColor,
                               backgroundImage: (conv.avatar != null && conv.avatar!.isNotEmpty)
-                                  ? NetworkImage(conv.avatar!)
+                                  ? NetworkImage(ApiService.formatImageUrl(conv.avatar))
                                   : null,
                               child: (conv.avatar == null || conv.avatar!.isEmpty)
                                   ? Text(
@@ -2976,7 +2974,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
-                                    CircleAvatar(
+                                    AppAvatar(
                                       radius: 14,
                                       backgroundColor: primaryColor,
                                       backgroundImage: _partnerAvatarProvider(conv.avatar),
@@ -3058,7 +3056,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
                                   if (!isMe) ...[
-                                    CircleAvatar(
+                                    AppAvatar(
                                       radius: 14,
                                       backgroundColor: primaryColor,
                                       backgroundImage: _partnerAvatarProvider(conv.avatar),
@@ -3112,7 +3110,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                           );
                                         }
                                       },
-                                      child: CircleAvatar(
+                                      child: AppAvatar(
                                         radius: 14,
                                         backgroundColor: primaryColor,
                                         backgroundImage: _partnerAvatarProvider(conv.avatar),
@@ -3669,7 +3667,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
               future: ApiService.getUsers(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return _buildContactSkeletonList(isDark);
+                  return _buildContactSkeletonList(isDark, newChat: true);
                 }
                 final users = snapshot.data ?? [];
                 final filteredUsers = users.where((u) => u['id']?.toString() != provider.currentUser?.id).toList();
@@ -4048,6 +4046,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                       width: 48,
                                       height: 48,
                                       fit: BoxFit.cover,
+                                      frameBuilder: (_, child, frame, synchronous) => synchronous || frame != null
+                                          ? child : const SkeletonBox(width: 48, height: 48, circle: true),
                                       errorBuilder: (_, __, ___) => Container(
                                         width: 48,
                                         height: 48,
@@ -4176,83 +4176,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   }
 
   // TAB 2: Tin tức AI
-  Widget _buildNewsTab() {
-    final isDark = Provider.of<ThemeProvider>(context).isDarkMode;
-    final bgColor = isDark ? const Color(0xFF0F172A) : const Color(0xFFF0F2F5);
-    final cardBgColor = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final subTextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
-
-    final newsList = [
-      {'title': 'OpenAI ra mắt mô hình AI mới nâng cấp khả năng suy luận vượt trội', 'time': '10 phút trước', 'category': 'Trí tuệ nhân tạo'},
-      {'title': 'Google Gemini cập nhật tính năng phân tích video và âm thanh trực tiếp', 'time': '1 giờ trước', 'category': 'Google AI'},
-      {'title': 'Meta phát hành Llama 3 mã nguồn mở đạt hiệu năng xuất sắc', 'time': '3 giờ trước', 'category': 'Meta AI'},
-    ];
-
-    return Container(
-      color: bgColor,
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.newspaper_rounded, color: Color(0xFF0068FF), size: 28),
-              const SizedBox(width: 12),
-              Text(
-                'Tin Tức Công Nghệ AI',
-                style: TextStyle(color: textColor, fontSize: 22, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Expanded(
-            child: ListView.builder(
-              itemCount: newsList.length,
-              itemBuilder: (context, index) {
-                final item = newsList[index];
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: cardBgColor,
-                    borderRadius: BorderRadius.circular(18),
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(isDark ? 0.2 : 0.04), blurRadius: 10, offset: const Offset(0, 2)),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(color: const Color(0xFF0068FF).withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
-                            child: Text(item['category']!, style: const TextStyle(color: Color(0xFF0068FF), fontSize: 12, fontWeight: FontWeight.bold)),
-                          ),
-                          const Spacer(),
-                          Text(item['time']!, style: TextStyle(color: subTextColor, fontSize: 12)),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Text(item['title']!, style: TextStyle(color: textColor, fontSize: 17, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
-                      TextButton.icon(
-                        onPressed: () {},
-                        icon: const Icon(Icons.arrow_forward_rounded, size: 16, color: Color(0xFF0068FF)),
-                        label: const Text('Đọc chi tiết', style: TextStyle(color: Color(0xFF0068FF), fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _buildNewsTab() => const NewsTab();
 
   // TAB 3: Trợ lý AI
   Widget _buildAiAssistantTab() {
@@ -5353,7 +5277,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                 Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    CircleAvatar(
+                    AppAvatar(
                       radius: 46,
                       backgroundColor: const Color(0xFF0068FF),
                       backgroundImage: fullAvatarUrl != null ? NetworkImage(fullAvatarUrl) : null,
@@ -5825,10 +5749,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                     final hasCustomNick = conv.nicknames != null && conv.nicknames!.containsKey(member.id) && conv.nicknames![member.id]!.isNotEmpty;
 
                     return ListTile(
-                      leading: CircleAvatar(
+                      leading: AppAvatar(
                         backgroundColor: const Color(0xFF0068FF),
                         backgroundImage: (member.avatar != null && member.avatar!.isNotEmpty)
-                            ? NetworkImage(member.avatar!)
+                            ? NetworkImage(ApiService.formatImageUrl(member.avatar))
                             : null,
                         child: (member.avatar == null || member.avatar!.isEmpty)
                             ? Text(displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U', style: const TextStyle(color: Colors.white))
@@ -5942,9 +5866,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
           fit: BoxFit.cover,
           frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
             if (wasSynchronouslyLoaded || frame != null) return child;
-            return Container(
-              color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
-            );
+            return const SkeletonBox(width: 240, height: 180, borderRadius: 16);
           },
           errorBuilder: (_, __, ___) => Container(
             padding: const EdgeInsets.all(12),
@@ -7507,7 +7429,7 @@ class _SwipeToReplyWrapperState extends State<_SwipeToReplyWrapper> with SingleT
                     scale: progress,
                     child: const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 12),
-                      child: CircleAvatar(
+                      child: AppAvatar(
                         radius: 14,
                         backgroundColor: Color(0xFF0068FF),
                         child: Icon(Icons.reply_rounded, color: Colors.white, size: 16),
@@ -7920,7 +7842,7 @@ class _VoiceBubbleWidgetState extends State<VoiceBubbleWidget> {
         children: [
           GestureDetector(
             onTap: _togglePlay,
-            child: CircleAvatar(
+            child: AppAvatar(
               radius: 16,
               backgroundColor: widget.isMe ? Colors.white : const Color(0xFF0068FF),
               child: Icon(
@@ -8330,7 +8252,7 @@ class _ReactionDetailSheetState extends State<_ReactionDetailSheet> {
                                   Stack(
                                     clipBehavior: Clip.none,
                                     children: [
-                                      CircleAvatar(
+                                      AppAvatar(
                                         radius: 20,
                                         backgroundColor: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
                                         backgroundImage: (avatarUrl != null && avatarUrl.isNotEmpty)
@@ -8506,119 +8428,56 @@ class _ReactionDetailSheetState extends State<_ReactionDetailSheet> {
     Color? color,
     required bool isDark,
   }) {
-    return _AnimatedShimmerBox(
+    return SkeletonBox(
       width: width,
       height: height,
       borderRadius: borderRadius,
-      isCircle: isCircle,
+      circle: isCircle,
       color: color,
-      isDark: isDark,
     );
   }
 
   Widget _buildConversationSkeletonList(bool isDark) {
-    final baseColor = isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9);
-    final shimmerColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
-
+    final color = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
     return ListView.builder(
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: 7,
-      itemBuilder: (context, index) {
-        final nameWidth = 110.0 + ((index * 29) % 70);
-        final msgWidth = 180.0 + ((index * 37) % 90);
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              _buildSkeletonBox(width: 52, height: 52, isCircle: true, color: shimmerColor, isDark: isDark),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildSkeletonBox(width: nameWidth, height: 15, borderRadius: 4, color: shimmerColor, isDark: isDark),
-                    const SizedBox(height: 8),
-                    _buildSkeletonBox(width: msgWidth, height: 12, borderRadius: 4, color: baseColor, isDark: isDark),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 10),
-              _buildSkeletonBox(width: 36, height: 10, borderRadius: 4, color: baseColor, isDark: isDark),
-            ],
-          ),
-        );
-      },
+      physics: const NeverScrollableScrollPhysics(), itemCount: 7,
+      itemBuilder: (context, index) => Container(
+        height: 77, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(border: Border(bottom: BorderSide(
+          color: isDark ? const Color(0xFF334155) : const Color(0x0F000000)))),
+        child: Row(children: [
+          SkeletonBox(key: ValueKey('conversation_skeleton_avatar_$index'), width: 52, height: 52, circle: true, color: color),
+          const SizedBox(width: 14),
+          Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start, children: [
+              FractionallySizedBox(widthFactor: 0.65, child: SkeletonBox(height: 18, color: color)),
+              const SizedBox(height: 4),
+              FractionallySizedBox(widthFactor: 0.9, child: SkeletonBox(height: 16, color: color)),
+            ])),
+          const SizedBox(width: 8), SkeletonBox(width: 36, height: 12, color: color),
+          const SizedBox(width: 4), const SizedBox(width: 28, height: 28),
+        ]),
+      ),
     );
   }
 
-  Widget _buildContactSkeletonList(bool isDark) {
-    final baseColor = isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9);
-    final shimmerColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
-
+  Widget _buildContactSkeletonList(bool isDark, {bool newChat = false}) {
+    final color = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+    final diameter = newChat ? 44.0 : 48.0;
     return ListView.builder(
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: 7,
-      itemBuilder: (context, index) {
-        final nameWidth = 110.0 + ((index * 23) % 60);
-        final userWidth = 70.0 + ((index * 17) % 40);
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          child: Row(
-            children: [
-              _buildSkeletonBox(width: 48, height: 48, isCircle: true, color: shimmerColor, isDark: isDark),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildSkeletonBox(width: nameWidth, height: 14, borderRadius: 4, color: shimmerColor, isDark: isDark),
-                    const SizedBox(height: 8),
-                    _buildSkeletonBox(width: userWidth, height: 11, borderRadius: 4, color: baseColor, isDark: isDark),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 10),
-              _buildSkeletonBox(width: 72, height: 30, borderRadius: 15, color: shimmerColor, isDark: isDark),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildNewsSkeletonList(bool isDark) {
-    final baseColor = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final barColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
-
-    return ListView.builder(
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: 3,
-      itemBuilder: (context, index) {
-        return Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: baseColor,
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  _buildSkeletonBox(width: 70, height: 20, borderRadius: 8, color: barColor, isDark: isDark),
-                  const Spacer(),
-                  _buildSkeletonBox(width: 60, height: 12, borderRadius: 4, color: barColor, isDark: isDark),
-                ],
-              ),
-              const SizedBox(height: 14),
-              _buildSkeletonBox(width: double.infinity, height: 16, borderRadius: 4, color: barColor, isDark: isDark),
-              const SizedBox(height: 8),
-              _buildSkeletonBox(width: 200, height: 16, borderRadius: 4, color: barColor, isDark: isDark),
-            ],
-          ),
-        );
-      },
+      physics: const NeverScrollableScrollPhysics(), itemCount: 7,
+      itemBuilder: (context, index) => ListTile(
+        contentPadding: EdgeInsets.symmetric(horizontal: newChat ? 4 : 16, vertical: newChat ? 2 : 4),
+        leading: SkeletonBox(width: diameter, height: diameter, circle: true, color: color),
+        title: Align(alignment: Alignment.centerLeft,
+          child: FractionallySizedBox(widthFactor: 0.8, child: SkeletonBox(height: 18, color: color))),
+        subtitle: Align(alignment: Alignment.centerLeft,
+          child: FractionallySizedBox(widthFactor: 0.6, child: SkeletonBox(height: 16, color: color))),
+        trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+          SkeletonBox(width: newChat ? 70 : 94, height: newChat ? 28 : 32, borderRadius: 16, color: color),
+          if (!newChat) const SizedBox(width: 52),
+        ]),
+      ),
     );
   }
 
@@ -8628,21 +8487,22 @@ class _ReactionDetailSheetState extends State<_ReactionDetailSheet> {
     final avatarColor = isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: ListView(
+        reverse: true,
         physics: const NeverScrollableScrollPhysics(),
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              _buildSkeletonBox(width: 32, height: 32, isCircle: true, color: avatarColor, isDark: isDark),
+              _buildSkeletonBox(width: 28, height: 28, isCircle: true, color: avatarColor, isDark: isDark),
               const SizedBox(width: 8),
               _buildSkeletonBox(width: 180, height: 38, borderRadius: 18, color: baseColor, isDark: isDark),
             ],
           ),
           const SizedBox(height: 12),
           Padding(
-            padding: const EdgeInsets.only(left: 40),
+            padding: const EdgeInsets.only(left: 36),
             child: Row(
               children: [
                 _buildSkeletonBox(width: 240, height: 50, borderRadius: 18, color: baseColor, isDark: isDark),
@@ -8667,7 +8527,7 @@ class _ReactionDetailSheetState extends State<_ReactionDetailSheet> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              _buildSkeletonBox(width: 32, height: 32, isCircle: true, color: avatarColor, isDark: isDark),
+              _buildSkeletonBox(width: 28, height: 28, isCircle: true, color: avatarColor, isDark: isDark),
               const SizedBox(width: 8),
               _buildSkeletonBox(width: 150, height: 38, borderRadius: 18, color: baseColor, isDark: isDark),
             ],
@@ -8683,71 +8543,6 @@ class _ReactionDetailSheetState extends State<_ReactionDetailSheet> {
       ),
     );
   }
-
-class _AnimatedShimmerBox extends StatefulWidget {
-  final double width;
-  final double height;
-  final double borderRadius;
-  final bool isCircle;
-  final Color? color;
-  final bool isDark;
-
-  const _AnimatedShimmerBox({
-    Key? key,
-    required this.width,
-    required this.height,
-    this.borderRadius = 4,
-    this.isCircle = false,
-    this.color,
-    required this.isDark,
-  }) : super(key: key);
-
-  @override
-  State<_AnimatedShimmerBox> createState() => _AnimatedShimmerBoxState();
-}
-
-class _AnimatedShimmerBoxState extends State<_AnimatedShimmerBox> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2600),
-    )..repeat(reverse: true);
-    _animation = Tween<double>(begin: 0.65, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void disposeProfile() {}
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final defaultColor = widget.isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
-    return FadeTransition(
-      opacity: _animation,
-      child: Container(
-        width: widget.width,
-        height: widget.height,
-        decoration: BoxDecoration(
-          color: widget.color ?? defaultColor,
-          shape: widget.isCircle ? BoxShape.circle : BoxShape.rectangle,
-          borderRadius: widget.isCircle ? null : BorderRadius.circular(widget.borderRadius),
-        ),
-      ),
-    );
-  }
-}
 
 class _ShaderWarmupWidget extends StatelessWidget {
   const _ShaderWarmupWidget({Key? key}) : super(key: key);

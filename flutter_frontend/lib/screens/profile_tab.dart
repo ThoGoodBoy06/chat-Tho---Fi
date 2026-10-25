@@ -1,3 +1,5 @@
+import '../widgets/loading_photo.dart';
+import '../widgets/app_avatar.dart';
 import 'dart:async';
 import 'package:universal_html/html.dart' as html;
 import 'package:flutter/material.dart';
@@ -297,14 +299,12 @@ class _ProfileTabState extends State<ProfileTab> {
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
-                            image: (coverUrl != null && coverUrl.isNotEmpty)
-                                ? DecorationImage(
-                                    image: NetworkImage(coverUrl),
-                                    fit: BoxFit.cover,
-                                  )
-                                : null,
                           ),
-                          child: Container(
+                          child: Stack(fit: StackFit.expand, children: [
+                            if (coverUrl != null && coverUrl.isNotEmpty) LoadingPhoto(
+                              image: ResizeImage(NetworkImage(coverUrl), width: 1024),
+                              width: double.infinity, height: 185),
+                            Container(
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
@@ -315,7 +315,8 @@ class _ProfileTabState extends State<ProfileTab> {
                                 end: Alignment.bottomCenter,
                               ),
                             ),
-                          ),
+                            ),
+                          ]),
                         ),
 
                         // Nút Đổi Ảnh Bìa (Góc dưới bên phải ảnh bìa)
@@ -499,7 +500,7 @@ class _ProfileTabState extends State<ProfileTab> {
                               ),
                             ],
                           ),
-                          child: CircleAvatar(
+                          child: AppAvatar(
                             radius: 44,
                             backgroundColor: const Color(0xFF0068FF),
                             backgroundImage: (avatarUrl != null && avatarUrl.isNotEmpty)
