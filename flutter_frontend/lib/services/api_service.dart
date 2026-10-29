@@ -40,18 +40,9 @@ class ApiService {
         {'urls': 'stun:stun1.l.google.com:19302'},
         {'urls': 'stun:stun2.l.google.com:19302'},
         {'urls': 'stun:stun.cloudflare.com:3478'},
-        {
-          'urls': [
-            'turn:openrelay.metered.ca:80',
-            'turn:openrelay.metered.ca:443',
-            'turn:openrelay.metered.ca:443?transport=tcp'
-          ],
-          'username': 'openrelayproject',
-          'credential': 'openrelayproject'
-        }
       ],
-      'iceCandidatePoolSize': 10,
-      'relayConfigured': true,
+      'iceCandidatePoolSize': 0,
+      'relayConfigured': false,
     };
     try {
       final response = await _client.get(Uri.parse('$baseUrl/call/ice-config'), headers: await _getHeaders())
@@ -59,11 +50,11 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body)['data'];
         if (data is Map && data['iceServers'] is List) {
-          return {'iceServers': data['iceServers'], 'iceCandidatePoolSize': 10, 'relayConfigured': data['relayConfigured'] == true};
+          return {'iceServers': data['iceServers'], 'iceCandidatePoolSize': 0, 'relayConfigured': data['relayConfigured'] == true};
         }
       }
     } catch (error) {
-      debugPrint('Không tải được cấu hình ICE, dùng STUN/TURN dự phòng: $error');
+      debugPrint('Không tải được cấu hình ICE, dùng STUN dự phòng: $error');
     }
     return fallback;
   }

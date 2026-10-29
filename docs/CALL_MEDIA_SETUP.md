@@ -224,3 +224,14 @@ Nguồn: https://webkit.org/blog/13878/ và https://support.apple.com/en-lamr/gu
 - PWA nay mở một bảng cài đặt dùng chung từ SettingsScreen qua JS bridge; bridge trả true khi mở thành công. Thiếu bảng thì hiện lỗi tải lại, không rơi về luồng cũ gây báo thành công sai. App native vẫn dùng sheet riêng.
 - Nội dung cuộn bên trong bảng, các nút giữ chiều cao ít nhất 44px trên điện thoại. Nhãn sau đăng ký được cập nhật theo trạng thái hiện tại. Đổi lời báo thành công thành đã lưu đăng ký, không đồng nhất với iOS nhận/hiển thị.
 - Test mới scripts/test-notification-settings-ui.cjs chạy SettingsScreen thật trong browser mobile: bấm mục cài đặt, thấy nút thử 15 giây, bấm làm mới gọi deleteToken/getToken và lưu device đúng tài khoản, hẹn phép thử và đóng bảng. Fixture đăng nhập giả chỉ biên dịch vào scratch, không xuất bản. Test này và 16 tests thông báo qua. Chưa xác nhận push trên iPhone thật.
+
+
+## Lấy TURN tự động qua Metered API
+
+Backend hỗ trợ `METERED_TURN_DOMAIN` (chỉ hostname dạng `ten-app.metered.live`) và
+`METERED_TURN_API_KEY` trong Environment của Render. API key chỉ nằm trên backend;
+frontend nhận ICE credentials. Không gửi khóa trong chat hoặc đưa vào bundle web.
+Nếu có TURN_URLS cùng thông tin xác thực hợp lệ, backend ưu tiên cấu hình đó.
+Không dùng tài khoản công khai `openrelayproject` cũ. `relayConfigured` chỉ mô tả
+có thông tin xác thực; cần kiểm tra ICE candidate kiểu relay để xác nhận hoạt động.
+Tài liệu nhà cung cấp: https://www.metered.ca/tools/openrelay/.
