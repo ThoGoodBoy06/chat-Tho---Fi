@@ -1,3 +1,4 @@
+import 'tab_design.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -85,7 +86,7 @@ class _NewsTabState extends State<NewsTab> with WidgetsBindingObserver {
       return;
     }
     await Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => NewsArticleScreen(article: article)));
+        builder: (_) => NewsArticleScreen(article: article)));
   }
 
   @override
@@ -101,18 +102,13 @@ class _NewsTabState extends State<NewsTab> with WidgetsBindingObserver {
           child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 840),
               child: Column(children: [
-                Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 18, 12, 4),
-                    child: Row(children: [
-                      const Expanded(
-                          child: Text('Tin tức',
-                              style: TextStyle(
-                                  fontSize: 26, fontWeight: FontWeight.w800))),
-                      IconButton(
-                          onPressed: _loading ? null : () => _load(force: true),
-                          tooltip: 'Làm mới tin tức',
-                          icon: const Icon(Icons.refresh_rounded)),
-                    ])),
+                TabHeading(title: 'Tin tức', actions: [
+                  IconButton(
+                      onPressed: _loading ? null : () => _load(force: true),
+                      tooltip: 'Làm mới tin tức',
+                      icon: const Icon(Icons.refresh_rounded,
+                          color: Color(0xFF0068FF))),
+                ]),
                 Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: Row(
@@ -129,11 +125,13 @@ class _NewsTabState extends State<NewsTab> with WidgetsBindingObserver {
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 4),
                                     foregroundColor: _category == entry.key
-                                        ? const Color(0xFF0068FF)
+                                        ? Colors.white
                                         : muted,
                                     backgroundColor: _category == entry.key
-                                        ? const Color(0x146068FF)
-                                        : Colors.transparent,
+                                        ? const Color(0xFF0068FF)
+                                        : dark
+                                            ? const Color(0xFF1E293B)
+                                            : const Color(0xFFF2F5FA),
                                     shape: RoundedRectangleBorder(
                                         borderRadius:
                                             BorderRadius.circular(12)),
@@ -168,7 +166,9 @@ class _NewsTabState extends State<NewsTab> with WidgetsBindingObserver {
                   child: initialLoading
                       ? ListView.builder(
                           itemCount: 5,
-                          itemBuilder: (_, i) => const NewsArticleRow())
+                          itemBuilder: (_, i) => i == 0
+                              ? const NewsLeadArticle()
+                              : const NewsArticleRow())
                       : RefreshIndicator(
                           onRefresh: () => _load(force: true),
                           child: articles.isEmpty
@@ -217,10 +217,14 @@ class _NewsTabState extends State<NewsTab> with WidgetsBindingObserver {
                                       const AlwaysScrollableScrollPhysics(),
                                   itemCount: articles.length,
                                   addAutomaticKeepAlives: false,
-                                  itemBuilder: (_, i) => NewsArticleRow(
-                                      key: ValueKey(articles[i].id),
-                                      article: articles[i],
-                                      onTap: () => _open(articles[i])),
+                                  itemBuilder: (_, i) => i == 0
+                                      ? NewsLeadArticle(
+                                          article: articles[i],
+                                          onTap: () => _open(articles[i]))
+                                      : NewsArticleRow(
+                                          key: ValueKey(articles[i].id),
+                                          article: articles[i],
+                                          onTap: () => _open(articles[i])),
                                 ),
                         ),
                 ),
@@ -341,4 +345,75 @@ class NewsArticleRow extends StatelessWidget {
   Widget _missingImage(Color color) => ColoredBox(
       color: color.withOpacity(0.08),
       child: Icon(Icons.newspaper_rounded, size: 28, color: color));
+}
+
+/// The leading story reserves the same image bounds before and after decoding.
+class NewsLeadArticle extends StatelessWidget {
+  const NewsLeadArticle({super.key, this.article, this.onTap});
+  final NewsArticle? article;
+  final VoidCallback? onTap;
+  @override
+  Widget build(BuildContext context) {
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: AspectRatio(
+                    aspectRatio: 1.65,
+                    child: article == null
+                        ? const SkeletonBox(borderRadius: 18)
+                        : article!.imageUrl == null
+                            ? ColoredBox(
+                                color: muted.withOpacity(0.08),
+                                child: Icon(Icons.newspaper_rounded,
+                                    color: muted, size: 40))
+                            : Image.network(
+                                '${ApiService.baseUrl}/news/image/${Uri.encodeComponent(article!.id)}',
+                                fit: BoxFit.cover,
+                                cacheWidth: 1200,
+                                frameBuilder: (_, child, frame, synchronous) =>
+                                    synchronous || frame != null
+                                        ? child
+                                        : const SkeletonBox(borderRadius: 18),
+                                errorBuilder: (_, __, ___) => ColoredBox(
+                                    color: muted.withOpacity(0.08),
+                                    child: Icon(Icons.newspaper_rounded,
+                                        color: muted, size: 40))),
+                  )),
+              const SizedBox(height: 14),
+              article == null
+                  ? const SkeletonBox(width: 160, height: 14)
+                  : Text(
+                      '${article!.source} · ${DateFormat('HH:mm dd/MM').format(article!.publishedAt.toLocal())}',
+                      style: TextStyle(color: muted, fontSize: 11)),
+              const SizedBox(height: 8),
+              article == null
+                  ? const SkeletonBox(height: 54)
+                  : Text(article!.title,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 21,
+                          fontWeight: FontWeight.w800,
+                          height: 1.3,
+                          letterSpacing: -0.4)),
+              const SizedBox(height: 8),
+              article == null
+                  ? const SkeletonBox(height: 36)
+                  : Text(article!.summary,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style:
+                          TextStyle(fontSize: 13, height: 1.5, color: muted)),
+            ]),
+          ),
+        ));
+  }
 }

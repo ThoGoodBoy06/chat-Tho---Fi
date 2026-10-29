@@ -11,12 +11,14 @@ class AppAvatar extends StatelessWidget {
       this.backgroundImage,
       this.foregroundImage,
       this.onForegroundImageError,
+      this.overlayChild = false,
       this.child});
   final double radius;
   final Color? backgroundColor;
   final ImageProvider? backgroundImage;
   final ImageProvider? foregroundImage;
   final ImageErrorListener? onForegroundImageError;
+  final bool overlayChild;
   final Widget? child;
 
   @override
@@ -30,32 +32,35 @@ class AppAvatar extends StatelessWidget {
               Icon(Icons.person_rounded, color: Colors.white, size: radius)),
     );
     final photo = provider == null
-              ? fallback
-              : Image(
-                  image: provider is ResizeImage
-                      ? provider
-                      : resizeAvatar(provider,
-                          size: (size * MediaQuery.devicePixelRatioOf(context))
-                              .ceil()
-                              .clamp(16, 512)
-                              .toInt()),
-                  width: size,
-                  height: size,
-                  fit: BoxFit.cover,
-                  gaplessPlayback: false,
-                  frameBuilder: (_, image, frame, synchronous) => synchronous ||
-                          frame != null
-                      ? image
-                      : SkeletonBox(width: size, height: size, circle: true),
-                  errorBuilder: (_, error, stack) {
-                    onForegroundImageError?.call(error, stack);
-                    return fallback;
-                  },
-                );
-    return SizedBox.square(dimension: size, child: ClipOval(
-      child: provider != null && foregroundImage == null && child != null
-        ? Stack(fit: StackFit.expand, children: [photo, Center(child: child)])
-        : photo,
-    ));
+        ? fallback
+        : Image(
+            image: provider is ResizeImage
+                ? provider
+                : resizeAvatar(provider,
+                    size: (size * MediaQuery.devicePixelRatioOf(context))
+                        .ceil()
+                        .clamp(16, 512)
+                        .toInt()),
+            width: size,
+            height: size,
+            fit: BoxFit.cover,
+            gaplessPlayback: false,
+            frameBuilder: (_, image, frame, synchronous) =>
+                synchronous || frame != null
+                    ? image
+                    : SkeletonBox(width: size, height: size, circle: true),
+            errorBuilder: (_, error, stack) {
+              onForegroundImageError?.call(error, stack);
+              return fallback;
+            },
+          );
+    return SizedBox.square(
+        dimension: size,
+        child: ClipOval(
+          child: provider != null && overlayChild && child != null
+              ? Stack(
+                  fit: StackFit.expand, children: [photo, Center(child: child)])
+              : photo,
+        ));
   }
 }

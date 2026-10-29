@@ -13,10 +13,12 @@ import 'login_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   final VoidCallback onLogout;
+  final String? initialSection;
 
   const SettingsScreen({
     Key? key,
     required this.onLogout,
+    this.initialSection,
   }) : super(key: key);
 
   @override
@@ -24,6 +26,22 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  final _accountSectionKey = GlobalKey();
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (widget.initialSection == 'notifications') {
+        _showNotificationModal(context, context.read<ThemeProvider>().isDarkMode);
+      } else if (widget.initialSection == 'privacy') {
+        final target = _accountSectionKey.currentContext;
+        if (target != null) Scrollable.ensureVisible(target,
+          duration: Duration(milliseconds: MediaQuery.of(context).disableAnimations ? 0 : 220));
+      }
+    });
+  }
+
   void _showLogoutConfirmDialog() {
     showDialog(
       context: context,
@@ -139,6 +157,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                   // Section 2: Tài khoản & Bảo mật
                   Padding(
+                    key: _accountSectionKey,
                     padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
                     child: Text(
                       'TÀI KHOẢN & BẢO MẬT',

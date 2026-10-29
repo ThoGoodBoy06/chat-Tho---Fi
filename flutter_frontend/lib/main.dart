@@ -1,3 +1,4 @@
+import 'theme/app_theme.dart';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -205,43 +206,8 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
       debugShowCheckedModeBanner: false,
       scrollBehavior: const SmoothWebScrollBehavior(),
       themeMode: themeProvider.themeMode,
-      theme: ThemeData(
-        brightness: Brightness.light,
-        primaryColor: const Color(0xFF0068FF),
-        scaffoldBackgroundColor: const Color(0xFFF8FAFC),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.white,
-          foregroundColor: Color(0xFF0F172A),
-          elevation: 0,
-        ),
-        colorScheme: const ColorScheme.light(
-          primary: Color(0xFF0068FF),
-          secondary: Color(0xFF0068FF),
-          surface: Colors.white,
-          background: Color(0xFFF8FAFC),
-        ),
-        fontFamily: 'Inter',
-        fontFamilyFallback: const ['Noto Color Emoji'],
-      ),
-      darkTheme: ThemeData(
-        brightness: Brightness.dark,
-        primaryColor: const Color(0xFF0068FF),
-        scaffoldBackgroundColor: const Color(0xFF0F172A),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF1E293B),
-          foregroundColor: Colors.white,
-          elevation: 0,
-        ),
-        cardColor: const Color(0xFF1E293B),
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF0068FF),
-          secondary: Color(0xFF0068FF),
-          surface: Color(0xFF1E293B),
-          background: Color(0xFF0F172A),
-        ),
-        fontFamily: 'Inter',
-        fontFamilyFallback: const ['Noto Color Emoji'],
-      ),
+      theme: AppTheme.create(Brightness.light),
+      darkTheme: AppTheme.create(Brightness.dark),
       builder: (context, child) {
         final mediaQueryData = MediaQuery.of(context);
         return MediaQuery(

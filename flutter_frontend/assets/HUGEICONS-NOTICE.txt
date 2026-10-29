@@ -1,0 +1,5 @@
+Tab icons from Hugeicons
+https://github.com/hugeicons/hugeicons
+https://hugeicons.com
+{}
+PNG renderings of bubble-chat, user-group-03, news-01, ai-chat-02, user-circle.

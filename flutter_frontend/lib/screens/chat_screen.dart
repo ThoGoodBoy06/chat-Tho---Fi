@@ -1,3 +1,6 @@
+import '../widgets/contacts_workspace.dart';
+import '../widgets/tab_design.dart';
+import '../widgets/navigation_icon.dart';
 import '../widgets/news_tab.dart';
 import '../widgets/skeleton_box.dart';
 import '../widgets/app_avatar.dart';
@@ -29,6 +32,7 @@ import 'add_friend_screen.dart';
 import 'qr_scanner_screen.dart';
 import 'other_user_profile_screen.dart';
 import 'profile_tab.dart';
+import 'settings_screen.dart';
 import '../utils/web_helpers.dart';
 import '../utils/call_media.dart';
 import '../utils/call_navigation.dart';
@@ -110,7 +114,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   bool _isAttachmentMenuOpen = false;
   bool _isTyping = false;
   String _searchQuery = '';
-  bool _isSearchOpen = false;
   bool _showEmojiPicker = false;
   int _selectedEmojiCategory = 0;
   final _searchController = TextEditingController();
@@ -157,6 +160,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   String? _lastOpenedConversationId;
   int _progressiveMessageLimit = 15;
   Future<List<dynamic>>? _contactsFuture;
+  final Map<String, bool> _contactPresence = {};
+  StreamSubscription? _contactPresenceSub;
   Timer? _pendingRefreshTimer;
 
   String _removeAccents(String str) {
@@ -217,6 +222,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
       }
     });
     _contactsFuture = ApiService.getFriends();
+    _contactPresenceSub = SocketService.onUserStatusChanged.listen((data) {
+      final id = data['userId']?.toString() ?? data['id']?.toString();
+      if (mounted && id != null && id.isNotEmpty) setState(() {
+        _contactPresence[id] = data['isOnline'] == true || data['status'] == 'online';
+      });
+    });
     WidgetsBinding.instance.addObserver(this);
     if (kIsWeb) {
       _visibilitySub = html.document.onVisibilityChange.listen((_) {
@@ -458,6 +469,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
 
   @override
   void dispose() {
+    _contactPresenceSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _visibilitySub?.cancel();
     _friendRequestSub?.cancel();
@@ -1606,6 +1618,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         content = _buildChatList(provider);
     }
 
+    if (isDesktop) {
+      return ColoredBox(color: Theme.of(context).scaffoldBackgroundColor,
+        child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 840), child: content)));
+    }
     if (!isDesktop) {
       return Column(
         children: [
@@ -1783,11 +1799,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: isSelected ? const Color(0xFF0068FF).withOpacity(0.15) : Colors.transparent,
+                        color: isSelected ? const Color(0xFF0068FF).withOpacity(0.22) : Colors.transparent,
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      child: Icon(
-                        navItems[index]['icon'] as IconData,
+                      child: NavigationIcon(
+                        index, selected: isSelected,
                         color: isSelected ? const Color(0xFF0068FF) : unselectedIconColor,
                         size: 24,
                       ),
@@ -1897,7 +1913,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     }
     final isDark = Provider.of<ThemeProvider>(context).isDarkMode;
     final bgColor = isDark ? const Color(0xFF0F172A) : Colors.white;
-    final headerBgColor = isDark ? const Color(0xFF1E293B) : Colors.white;
     final textColor = isDark ? Colors.white : const Color(0xFF000000);
     final subTextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF8E8E93);
     final cardBgColor = isDark ? const Color(0xFF1E293B) : const Color(0xFFF2F2F7);
@@ -1917,258 +1932,35 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
       color: bgColor,
       child: Column(
         children: [
-          // 1. Top Navigation Bar (Height 56px, iOS style)
-          Container(
-            height: 56,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: headerBgColor,
-              border: Border(bottom: BorderSide(color: borderColor, width: 1)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Left: Bell Icon
-                IconButton(
-                  icon: Icon(Icons.notifications_none_rounded, color: textColor, size: 24),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Không có thông báo mới nào'), duration: Duration(seconds: 2)),
-                    );
-                  },
-                  tooltip: 'Thông báo',
-                ),
-                // Center: Title "Chat Tho-Fi" (18px, Bold, #007AFF)
-                const Expanded(
-                  child: Text(
-                    'Chat Tho-Fi',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF007AFF),
-                    ),
-                  ),
-                ),
-                // Right: QR Scanner + Add Friend Button
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // QR Scanner Button
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const QrScannerScreen()),
-                        );
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(7),
-                        decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF334155) : const Color(0xFF475569).withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          Icons.qr_code_scanner_rounded,
-                          color: isDark ? Colors.white : const Color(0xFF334155),
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Add Friend Button
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const AddFriendScreen()),
-                        );
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0068FF).withOpacity(0.12),
-                          border: Border.all(color: const Color(0x1F0068FF), width: 1),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            Icon(
-                              Icons.person_add_alt_1_rounded,
-                              color: Color(0xFF0068FF),
-                              size: 18,
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              'Thêm bạn bè',
-                              style: TextStyle(
-                                color: Color(0xFF0068FF),
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // Search Field (If search icon toggled)
-          if (_isSearchOpen)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: headerBgColor,
-                border: Border(bottom: BorderSide(color: borderColor, width: 1)),
+          TabHeading(title: 'Tin nhắn', showBrand: true, brandActions: [
+            IconButton(tooltip: 'Thông báo', icon: const Icon(Icons.notifications_none_rounded, size: 22),
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => SettingsScreen(onLogout: widget.onLogout, initialSection: 'notifications')))),
+            IconButton(tooltip: 'Quét mã QR', icon: const Icon(Icons.qr_code_scanner_rounded, size: 21),
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const QrScannerScreen()))),
+            IconButton(tooltip: 'Thêm bạn bè', icon: const Icon(Icons.person_add_alt_1_rounded, color: Color(0xFF0068FF), size: 22),
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddFriendScreen()))),
+          ], actions: [
+            IconButton.filled(tooltip: 'Nhắn mới', onPressed: () => _showNewChatDialog(provider),
+              style: IconButton.styleFrom(backgroundColor: const Color(0xFF0068FF), foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13))),
+              icon: const Icon(Icons.edit_square, size: 21)),
+          ]),
+          TabSearch(controller: _searchController, hint: 'Tìm cuộc trò chuyện',
+            onChanged: (value) => setState(() => _searchQuery = value.trim())),
+          Padding(padding: const EdgeInsets.fromLTRB(20, 0, 20, 10), child: Row(children: [
+            for (final unreadOnly in [false, true]) Expanded(child: Padding(
+              padding: EdgeInsets.only(right: unreadOnly ? 0 : 8),
+              child: TextButton(
+                onPressed: () => provider.setShowUnreadOnly(unreadOnly),
+                style: TextButton.styleFrom(minimumSize: const Size(0, 44),
+                  backgroundColor: provider.showUnreadOnly == unreadOnly ? const Color(0xFF0068FF) : cardBgColor,
+                  foregroundColor: provider.showUnreadOnly == unreadOnly ? Colors.white : subTextColor,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13))),
+                child: Text(unreadOnly && totalUnreadCount > 0 ? 'Chưa đọc ($totalUnreadCount)' : unreadOnly ? 'Chưa đọc' : 'Tất cả',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
               ),
-              child: Container(
-                height: 38,
-                decoration: BoxDecoration(
-                  color: cardBgColor,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: TextField(
-                  controller: _searchController,
-                  autofocus: true,
-                  onChanged: (val) => setState(() => _searchQuery = val),
-                  style: TextStyle(fontSize: 14, color: textColor),
-                  decoration: InputDecoration(
-                    hintText: 'Tìm kiếm cuộc trò chuyện...',
-                    hintStyle: TextStyle(color: subTextColor, fontSize: 14),
-                    prefixIcon: Icon(Icons.search_rounded, color: subTextColor, size: 18),
-                    suffixIcon: _searchQuery.isNotEmpty
-                        ? GestureDetector(
-                            onTap: () {
-                              _searchController.clear();
-                              setState(() => _searchQuery = '');
-                            },
-                            child: Icon(Icons.cancel_rounded, color: subTextColor, size: 16),
-                          )
-                        : null,
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                  ),
-                ),
-              ),
-            ),
-
-          // 2. Section Header (Placed directly above chat list)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  'Tin nhắn',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: textColor,
-                  ),
-                ),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    if (totalUnreadCount > 0)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 12),
-                        child: Text(
-                          '$totalUnreadCount chưa đọc',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF007AFF),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    InkWell(
-                      onTap: () => _showNewChatDialog(provider),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEBF3FF),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.edit_note_rounded, size: 16, color: Color(0xFF007AFF)),
-                            SizedBox(width: 4),
-                            Text(
-                              'Nhắn mới',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF007AFF),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // Filter Badges (Tất cả / Chưa đọc)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            margin: const EdgeInsets.only(bottom: 8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                GestureDetector(
-                  onTap: () => provider.setShowUnreadOnly(false),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: !provider.showUnreadOnly ? const Color(0xFF007AFF) : cardBgColor,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      'Tất cả',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: !provider.showUnreadOnly ? Colors.white : subTextColor,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: () => provider.setShowUnreadOnly(true),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: provider.showUnreadOnly ? const Color(0xFF007AFF) : cardBgColor,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      'Chưa đọc',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: provider.showUnreadOnly ? Colors.white : subTextColor,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+            )),
+          ])),
 
           // 3. Item Danh sách Chat (ListView.builder with RefreshIndicator)
           Expanded(
@@ -2304,7 +2096,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                           style: TextStyle(
                                             color: textColor,
                                             fontSize: 15,
-                                            fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w500,
+                                            fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w600,
                                           ),
                                         ),
                                         const SizedBox(height: 4),
@@ -4020,377 +3812,38 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   // TAB 1: Danh bạ
   // TAB 1: Danh bạ
   Widget _buildContactsTab(ChatProvider provider) {
-    final isDark = Provider.of<ThemeProvider>(context).isDarkMode;
-    final bgColor = isDark ? const Color(0xFF0F172A) : Colors.white;
-    final cardBgColor = isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC);
-    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final subTextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
-    final dividerColor = isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9);
-
-    return Container(
-      color: bgColor,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Row(
-              children: [
-                const Icon(Icons.people_alt_rounded, color: Color(0xFF0068FF), size: 26),
-                const SizedBox(width: 8),
-                Text(
-                  'Danh Bạ',
-                  style: TextStyle(color: textColor, fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-          ),
-
-          // Phần 1: Thanh Tìm kiếm (Search Bar)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: TextField(
-              controller: _contactSearchController,
-              onChanged: (val) {
-                setState(() {
-                  _contactSearchQuery = val.trim();
-                });
-              },
-              style: TextStyle(color: textColor),
-              decoration: InputDecoration(
-                hintText: 'Tìm kiếm bạn bè...',
-                hintStyle: TextStyle(color: subTextColor, fontSize: 14),
-                prefixIcon: Icon(Icons.search_rounded, color: subTextColor, size: 20),
-                suffixIcon: _contactSearchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: Icon(Icons.clear_rounded, size: 18, color: subTextColor),
-                        onPressed: () {
-                          _contactSearchController.clear();
-                          setState(() {
-                            _contactSearchQuery = '';
-                          });
-                        },
-                      )
-                    : null,
-                filled: true,
-                fillColor: cardBgColor,
-                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF0068FF), width: 1.5),
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 4),
-
-          // Phần 2: Menu tiện ích (Lời mời kết bạn & Nhóm của tôi)
-          ListTile(
-            leading: Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: const Color(0xFF0068FF),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.person_add_rounded, color: Colors.white, size: 22),
-            ),
-            title: Text(
-              'Lời mời kết bạn',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: textColor),
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (_pendingFriendRequestsCount > 0)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEF4444),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      '$_pendingFriendRequestsCount Mới',
-                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                if (_pendingFriendRequestsCount > 0) const SizedBox(width: 4),
-                Icon(Icons.chevron_right_rounded, color: subTextColor),
-              ],
-            ),
-            onTap: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const FriendRequestsScreen()),
-              );
-              _fetchPendingRequestsCount();
-              if (mounted) {
-                setState(() {
-                  _contactsFuture = ApiService.getFriends();
-                });
-              }
-            },
-          ),
-          ListTile(
-            leading: Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: const Color(0xFF0068FF),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.groups_rounded, color: Colors.white, size: 22),
-            ),
-            title: Text(
-              'Nhóm của tôi',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: textColor),
-            ),
-            trailing: Icon(Icons.chevron_right_rounded, color: subTextColor),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const MyGroupsScreen()),
-              );
-            },
-          ),
-
-          Divider(height: 16, thickness: 8, color: dividerColor),
-
-          // Phần 3: Khối danh sách bạn bè
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Text(
-              'Tất cả bạn bè',
-              style: TextStyle(color: subTextColor, fontSize: 13, fontWeight: FontWeight.w600),
-            ),
-          ),
-
-          Expanded(
-            child: FutureBuilder<List<dynamic>>(
-              future: _contactsFuture ??= ApiService.getFriends(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return _buildContactSkeletonList(isDark);
-                }
-                final users = snapshot.data ?? [];
-                final filteredUsers = users.where((u) {
-                  if (u['id']?.toString() == provider.currentUser?.id) return false;
-                  if (_contactSearchQuery.isNotEmpty) {
-                    final rawName = (u['fullName'] ?? u['name'] ?? u['username'] ?? '').toString();
-                    final rawUsername = (u['username'] ?? '').toString();
-                    final name = rawName.toLowerCase();
-                    final nameNoAccent = _removeAccents(rawName).toLowerCase();
-                    final username = rawUsername.toLowerCase();
-                    final q = _contactSearchQuery.toLowerCase();
-                    final qNoAccent = _removeAccents(q).toLowerCase();
-
-                    return name.contains(q) || nameNoAccent.contains(qNoAccent) || username.contains(q) || username.contains(qNoAccent);
-                  }
-                  return true;
-                }).toList();
-
-                if (filteredUsers.isEmpty) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.people_outline_rounded, size: 52, color: subTextColor),
-                          const SizedBox(height: 12),
-                          Text(
-                            _contactSearchQuery.isNotEmpty ? 'Không tìm thấy bạn bè nào phù hợp' : 'Bạn chưa có người bạn nào trong danh bạ.\nHãy bấm nút (+) ở góc trên để tìm và kết bạn mới!',
-                            style: TextStyle(color: subTextColor, fontSize: 14, height: 1.4),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }
-
-                return ListView.separated(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  itemCount: filteredUsers.length,
-                  separatorBuilder: (context, index) => Divider(
-                    height: 1,
-                    indent: 72,
-                    color: dividerColor,
-                  ),
-                  itemBuilder: (context, index) {
-                    final u = filteredUsers[index];
-                    final name = u['fullName'] ?? u['name'] ?? u['username'] ?? 'Người dùng';
-                    final username = u['username'] ?? '';
-                    final uid = u['id']?.toString() ?? '';
-                    final isOnline = u['isOnline'] == true || u['status'] == 'online';
-
-                    return ListTile(
-                      onTap: () async {
-                        if (uid.isNotEmpty) {
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => OtherUserProfileScreen(userId: uid, initialUserData: u is Map<String, dynamic> ? u : null)),
-                          );
-                          if (mounted) {
-                            setState(() {
-                              _contactsFuture = ApiService.getFriends();
-                            });
-                          }
-                        }
-                      },
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      leading: Stack(
-                        children: [
-                          Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: (u['avatar'] == null || u['avatar'].toString().trim().isEmpty) ? _getAvatarGradient(name) : null,
-                            ),
-                            child: ClipOval(
-                              child: (u['avatar'] != null && u['avatar'].toString().trim().isNotEmpty)
-                                  ? Image(
-                                      image: resizeAvatar(NetworkImage(ApiService.formatImageUrl(u['avatar'].toString())), size: 150),
-                                      width: 48,
-                                      height: 48,
-                                      fit: BoxFit.cover,
-                                      frameBuilder: (_, child, frame, synchronous) => synchronous || frame != null
-                                          ? child : const SkeletonBox(width: 48, height: 48, circle: true),
-                                      errorBuilder: (_, __, ___) => Container(
-                                        width: 48,
-                                        height: 48,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          gradient: _getAvatarGradient(name),
-                                        ),
-                                        child: Center(
-                                          child: Text(
-                                            _getInitials(name),
-                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white, height: 1.0),
-                                          ),
-                                        ),
-                                      ),
-                                    )
-                                  : Center(
-                                      child: Text(
-                                        _getInitials(name),
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white, height: 1.0),
-                                      ),
-                                    ),
-                            ),
-                          ),
-                          if (isOnline)
-                            Positioned(
-                              right: 0,
-                              bottom: 0,
-                              child: Container(
-                                width: 14,
-                                height: 14,
-                                decoration: BoxDecoration(
-                                  color: Colors.green,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: cardBgColor, width: 2),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      title: Text(
-                        name,
-                        style: TextStyle(
-                          color: textColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      subtitle: Text(
-                        '@$username',
-                        style: TextStyle(color: subTextColor, fontSize: 13),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Material(
-                            color: const Color(0xFF0068FF).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(20),
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(20),
-                              onTap: () async {
-                                setState(() => _currentTabIndex = 0);
-                                await provider.startPrivateChat(uid);
-                              },
-                              child: const Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.chat_bubble_rounded, size: 14, color: Color(0xFF0068FF)),
-                                    SizedBox(width: 4),
-                                    Text(
-                                      'Nhắn tin',
-                                      style: TextStyle(
-                                        color: Color(0xFF0068FF),
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          PopupMenuButton<String>(
-                            icon: Icon(Icons.more_vert_rounded, color: subTextColor, size: 20),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            onSelected: (val) {
-                              if (val == 'unfriend') {
-                                _showUnfriendDialog(u, () {
-                                  setState(() {});
-                                });
-                              }
-                            },
-                            itemBuilder: (ctx) => [
-                              PopupMenuItem<String>(
-                                value: 'unfriend',
-                                child: Row(
-                                  children: const [
-                                    Icon(Icons.person_remove_rounded, color: Colors.red, size: 20),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      'Xóa bạn bè',
-                                      style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 14),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-        ],
-      ),
+    Future<void> openChat(Map<String, dynamic> user, {bool call = false}) async {
+      final id = user['id']?.toString() ?? '';
+      if (id.isEmpty) return;
+      await provider.startPrivateChat(id);
+      if (!mounted) return;
+      final selected = provider.selectedConversation;
+      if (selected == null || (selected.targetUserId != id && !selected.members.any((m) => m.id == id))) return;
+      setState(() => _currentTabIndex = 0);
+      if (call) await _startCall(context, provider, isVideo: false);
+    }
+    return ContactsWorkspace(
+      friends: _contactsFuture ??= ApiService.getFriends(), currentUserId: provider.currentUser?.id,
+      query: _contactSearchQuery, controller: _contactSearchController,
+      onQuery: (value) => setState(() => _contactSearchQuery = value.trim()),
+      normalize: _removeAccents, presence: _contactPresence, pending: _pendingFriendRequestsCount,
+      onAdd: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddFriendScreen())),
+      onGroups: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyGroupsScreen())),
+      onRetry: () => setState(() => _contactsFuture = ApiService.getFriends()),
+      onRequests: () async {
+        await Navigator.push(context, MaterialPageRoute(builder: (_) => const FriendRequestsScreen()));
+        if (!mounted) return;
+        _fetchPendingRequestsCount();
+        setState(() => _contactsFuture = ApiService.getFriends());
+      },
+      onProfile: (u) async {
+        final id = u['id']?.toString() ?? '';
+        if (id.isEmpty) return;
+        await Navigator.push(context, MaterialPageRoute(builder: (_) => OtherUserProfileScreen(userId: id, initialUserData: u)));
+        if (mounted) setState(() => _contactsFuture = ApiService.getFriends());
+      },
+      onMessage: (u) => openChat(u), onCall: (u) => openChat(u, call: true),
+      onRemove: (u) => _showUnfriendDialog(u, () => setState(() => _contactsFuture = ApiService.getFriends())),
     );
   }
 
@@ -4406,7 +3859,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
       });
     }
     final isDark = Provider.of<ThemeProvider>(context).isDarkMode;
-    final bgColor = isDark ? const Color(0xFF0F172A) : const Color(0xFFF0F2F5);
+    final bgColor = isDark ? const Color(0xFF0F172A) : Colors.white;
     final cardBgColor = isDark ? const Color(0xFF1E293B) : Colors.white;
     final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final subTextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
@@ -4416,78 +3869,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
       color: bgColor,
       child: Column(
         children: [
-          // Header với nút 3 gạch mở Lịch sử Chat AI
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            color: cardBgColor,
-            child: Row(
-              children: [
-                // Nút 3 gạch mở Lịch sử trò chuyện
-                IconButton(
-                  icon: const Icon(Icons.menu_rounded, color: Color(0xFF0068FF), size: 26),
-                  tooltip: 'Lịch sử trò chuyện AI',
-                  onPressed: () {
-                    _loadAiSessions();
-                    _showAiHistoryDrawer(context);
-                  },
-                ),
-                const SizedBox(width: 4),
-                // Icon avatar bot nhỏ
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFF0068FF).withOpacity(0.2), width: 1.5),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(18),
-                    child: Image.asset(
-                      'assets/tho_fi_logo_transparent.png',
-                      width: 36,
-                      height: 36,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Image.network(
-                        '/tho_fi_logo_transparent.png',
-                        width: 36,
-                        height: 36,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const Icon(Icons.smart_toy_rounded, color: Color(0xFF0068FF), size: 22),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _aiCurrentConversationName.isNotEmpty ? _aiCurrentConversationName : 'Chat AI Tho-Fi',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Container(width: 7, height: 7, decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle)),
-                          const SizedBox(width: 5),
-                          Text('Sẵn sàng hỗ trợ 24/7', style: TextStyle(color: subTextColor, fontSize: 11)),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                // Nút tạo đoạn chat mới nhanh
-                IconButton(
-                  icon: const Icon(Icons.add_comment_rounded, color: Color(0xFF0068FF), size: 22),
-                  tooltip: 'Cuộc trò chuyện mới',
-                  onPressed: () {
-                    _createNewAiSession();
-                  },
-                ),
-                // Nút làm mới đoạn chat hiện tại
+          TabHeading(title: 'Trợ lý AI', actions: [
+            IconButton(tooltip: 'Lịch sử trò chuyện AI', icon: const Icon(Icons.history_rounded),
+              onPressed: () { _loadAiSessions(); _showAiHistoryDrawer(context); }),
+            IconButton(tooltip: 'Cuộc trò chuyện mới', icon: const Icon(Icons.add_rounded, color: Color(0xFF0068FF)),
+              onPressed: _createNewAiSession),
                 IconButton(
                   icon: Icon(Icons.delete_sweep_rounded, color: subTextColor, size: 22),
                   tooltip: 'Làm mới cuộc trò chuyện',
@@ -4518,9 +3904,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                     }
                   },
                 ),
-              ],
-            ),
-          ),
+          ]),
 
           // Messages
           Expanded(
@@ -4542,7 +3926,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                       ],
                     ),
                   )
-                : ListView.builder(
+                : !_isAiLoading && (_aiMessages.isEmpty || (_aiMessages.length == 1 && _aiMessages.first['sender'] != 'user'))
+                    ? AiWelcome(onPrompt: (prompt) { _aiTextController.text = prompt; _aiFocusNode.requestFocus(); })
+                    : ListView.builder(
                     controller: _aiScrollController,
                     keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -4785,7 +4171,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                         style: TextStyle(color: textColor, fontSize: 14.5),
                         enabled: !_isAiLoading,
                         decoration: InputDecoration(
-                          hintText: _isAiLoading ? 'Chat AI đang suy nghĩ...' : 'Hỏi AI Tho-Fi (Shift+Enter để xuống dòng)...',
+                          hintText: _isAiLoading ? 'Chat AI đang suy nghĩ...' : 'Hỏi điều gì đó...',
                           hintStyle: TextStyle(color: subTextColor, fontSize: 13.5),
                           filled: true,
                           fillColor: inputBgColor,
@@ -7681,159 +7067,55 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   }
 
   Widget _buildMobileBottomBar() {
-    final unreadMessagesCount = context.select<ChatProvider, int>((p) => p.totalUnreadCount);
-    final pendingRequestsCount = _pendingFriendRequestsCount;
-
-    final List<Map<String, dynamic>> tabs = [
-      {
-        'title': 'Tin nhắn',
-        'outlineIcon': Icons.chat_bubble_outline_rounded,
-        'solidIcon': Icons.chat_bubble_rounded,
-        'badge': unreadMessagesCount,
-      },
-      {
-        'title': 'Danh bạ',
-        'outlineIcon': Icons.people_outline_rounded,
-        'solidIcon': Icons.people_rounded,
-        'badge': pendingRequestsCount,
-      },
-      {
-        'title': 'Tin tức',
-        'outlineIcon': Icons.article_outlined,
-        'solidIcon': Icons.article_rounded,
-        'badge': 0,
-      },
-      {
-        'title': 'Trợ lý AI',
-        'outlineIcon': Icons.auto_awesome_outlined,
-        'solidIcon': Icons.auto_awesome_rounded,
-        'badge': 0,
-      },
-      {
-        'title': 'Cá nhân',
-        'outlineIcon': Icons.person_outline_rounded,
-        'solidIcon': Icons.person_rounded,
-        'badge': 0,
-      },
-    ];
-
-    final isDark = Provider.of<ThemeProvider>(context).isDarkMode;
-    final cardBgColor = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final borderColor = isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9);
-    final unselectedIconColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
-
-    return SafeArea(
-      bottom: true,
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        decoration: BoxDecoration(
-          color: cardBgColor,
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF0068FF).withOpacity(0.08),
-              blurRadius: 20,
-              offset: const Offset(0, 4),
-            ),
-            BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.3 : 0.06),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
-          border: Border.all(color: borderColor, width: 1.5),
+    final unread = context.select<ChatProvider, int>((p) => p.totalUnreadCount);
+    final scheme = Theme.of(context).colorScheme;
+    Widget destinationIcon(int index, int count) => Badge(
+      isLabelVisible: count > 0,
+      label: Text(count > 99 ? '99+' : '$count'),
+      child: NavigationIcon(index, selected: _currentTabIndex == index),
+    );
+    return Material(
+      color: scheme.surface,
+      child: NavigationBarTheme(
+        data: NavigationBarTheme.of(context).copyWith(
+          iconTheme: MaterialStateProperty.resolveWith((states) => IconThemeData(
+            size: 24,
+            color: states.contains(MaterialState.selected)
+                ? scheme.primary : scheme.onSurfaceVariant,
+          )),
+          labelTextStyle: MaterialStateProperty.resolveWith((states) => TextStyle(
+            fontFamily: 'Inter', fontSize: 11,
+            fontWeight: states.contains(MaterialState.selected)
+                ? FontWeight.w800 : FontWeight.w500,
+            color: states.contains(MaterialState.selected)
+                ? scheme.primary : scheme.onSurfaceVariant,
+          )),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: List.generate(tabs.length, (index) {
-            bool isSelected = _currentTabIndex == index;
-            int badgeNum = (tabs[index]['badge'] as int? ?? 0);
-
-            Widget iconWidget = Icon(
-              isSelected ? tabs[index]['solidIcon'] as IconData : tabs[index]['outlineIcon'] as IconData,
-              color: isSelected ? const Color(0xFF0068FF) : unselectedIconColor,
-              size: 22,
-            );
-
-            if (badgeNum > 0) {
-              iconWidget = Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  iconWidget,
-                  Positioned(
-                    top: -5,
-                    right: -7,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                      constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEF4444),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.white, width: 1.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFEF4444).withOpacity(0.4),
-                            blurRadius: 4,
-                            offset: const Offset(0, 1),
-                          ),
-                        ],
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        badgeNum > 99 ? '99+' : '$badgeNum',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.bold,
-                          height: 1.0,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            }
-
-            return GestureDetector(
-              onTap: () {
-                setState(() => _currentTabIndex = index);
-                if (index == 1) {
-                  _fetchPendingRequestsCount();
-                } else if (index == 3) {
-                  _loadAiHistory(forceReload: true);
-                  _loadAiSessions();
-                }
-              },
-              behavior: HitTestBehavior.opaque,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeInOut,
-                padding: EdgeInsets.symmetric(horizontal: isSelected ? 14 : 10, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFF0068FF).withOpacity(0.12) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    iconWidget,
-                    if (isSelected) ...[
-                      const SizedBox(width: 6),
-                      Text(
-                        tabs[index]['title'] as String,
-                        style: const TextStyle(
-                          color: Color(0xFF0068FF),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            );
-          }),
+        child: NavigationBar(
+        height: 76,
+        selectedIndex: _currentTabIndex,
+        backgroundColor: scheme.surface,
+        surfaceTintColor: Colors.transparent,
+        indicatorColor: scheme.primary.withOpacity(0.20),
+        indicatorShape: const StadiumBorder(),
+        animationDuration: Duration(milliseconds: MediaQuery.of(context).disableAnimations ? 0 : 220),
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        onDestinationSelected: (index) {
+          if (_currentTabIndex == index) return;
+          setState(() => _currentTabIndex = index);
+          if (index == 1) _fetchPendingRequestsCount();
+          if (index == 3) {
+            _loadAiHistory(forceReload: true);
+            _loadAiSessions();
+          }
+        },
+        destinations: [
+          NavigationDestination(icon: destinationIcon(0, unread), label: 'Tin nhắn'),
+          NavigationDestination(icon: destinationIcon(1, _pendingFriendRequestsCount), label: 'Danh bạ'),
+          NavigationDestination(icon: NavigationIcon(2, selected: _currentTabIndex == 2), label: 'Tin tức'),
+          NavigationDestination(icon: NavigationIcon(3, selected: _currentTabIndex == 3), label: 'Trợ lý AI'),
+          NavigationDestination(icon: NavigationIcon(4, selected: _currentTabIndex == 4), label: 'Cá nhân'),
+        ],
         ),
       ),
     );
