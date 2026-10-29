@@ -8,11 +8,17 @@ const video={muted:true,volume:1};elements.set('remoteVideoPlayer',video);
 function element(tag){return {tag,src:'',srcObject:null,style:{},events:{},setAttribute(){},removeAttribute(n){if(n==='src')this.src='';},addEventListener(n,f){this.events[n]=f;},remove(){elements.delete(this.id);},pause(){},play(){return blocked?Promise.reject(Error('NotAllowedError')):Promise.resolve();}};}
 const document={readyState:'complete',getElementById:id=>elements.get(id),createElement:element,body:{appendChild:e=>elements.set(e.id,e)}};
 const gum=()=>Promise.resolve();
+class AudioStream {
+ constructor(){this.tracks=[];}
+ getTracks(){return this.tracks;}
+ addTrack(track){this.tracks.push(track);}
+ removeTrack(track){this.tracks=this.tracks.filter(t=>t!==track);}
+}
 const window={addEventListener(){}};
 
 const index=fs.readFileSync(path.join(__dirname,'../flutter_frontend/web/index.html'),'utf8');
 vm.runInNewContext(index.match(/<script id="call-audio-engine-script">([\s\S]*?)<\/script>/)[1],{window,document});
-vm.runInNewContext(subsystem,{window,document,navigator:{mediaDevices:{getUserMedia:gum}},console:{log(){},warn(){}}});
+vm.runInNewContext(subsystem,{window,document,MediaStream:AudioStream,navigator:{mediaDevices:{getUserMedia:gum}},console:{log(){},warn(){}}});
 const flush=()=>new Promise(r=>setImmediate(r));
 (async()=>{
  const track={enabled:true,addEventListener(n,f){this[n]=f;}};
@@ -22,7 +28,7 @@ const flush=()=>new Promise(r=>setImmediate(r));
  window.attachRemoteStream(stream);await flush();assert.equal(video.muted,true);
  assert(elements.has('callAudioUnmuteBanner'));
  window.attachRemoteStream({id:'video',getAudioTracks:()=>[]});
- assert.equal(audio.srcObject,stream);
+ assert.deepEqual(audio.srcObject.getTracks(),[track]);
  track.unmute();await flush();assert(elements.has('callAudioUnmuteBanner'));
  blocked=false;window.unlockAudio();await flush();assert(!elements.has('callAudioUnmuteBanner'));
  window.setCallSpeakerEnabled(false);window.unlockAudio();await flush();assert.equal(audio.muted,true);assert.equal(video.muted,true);
@@ -39,6 +45,14 @@ const flush=()=>new Promise(r=>setImmediate(r));
  window.attachRemoteStream({id:'next-call',getAudioTracks:()=>[track]});await flush();
  rejectOld(Error('old autoplay rejection'));await flush();
  assert(!elements.has('callAudioUnmuteBanner'));
+ const sink=audio.srcObject;
+ window.attachRemoteStream({id:'with-camera',getAudioTracks:()=>[track],getTracks:()=>[track,{kind:'video'}]});
+ assert.equal(audio.srcObject,sink,'Camera changes must not replace the audio sink');
+ assert.deepEqual(sink.getTracks(),[track]);
+ const replacement={enabled:true,addEventListener(){}};
+ window.attachRemoteStream({id:'replacement',getAudioTracks:()=>[replacement]});
+ assert.equal(audio.srcObject,sink);
+ assert.deepEqual(sink.getTracks(),[replacement],'Only the current microphone is played');
  window.stopCallAudio();
  console.log('Audio engine: video preserves voice; autoplay retry/banner; speaker mute; cleanup; single engine: passed.');
 })().catch(e=>{console.error(e);process.exitCode=1;});

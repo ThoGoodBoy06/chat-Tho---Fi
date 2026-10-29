@@ -354,6 +354,7 @@
   console.log('🚀 [WebRTC Audio Subsystem] Khởi tạo hệ thống âm thanh & Guard chống lỗi tín hiệu...');
 
   let activeRemoteStream = null;
+  let playbackStream = null;
   let speakerEnabled = true;
   let playbackGeneration = 0;
   const observedTracks = new WeakSet();
@@ -505,9 +506,23 @@
       });
     });
 
-    if (el.srcObject !== mediaStream) {
+    // Keep video out of the voice sink. On mobile a video track can arrive first,
+    // or be replaced during camera switching, without the microphone changing.
+    // Rebinding that mixed stream can interrupt an otherwise playing audio sink.
+    if (typeof MediaStream !== 'undefined') {
+      if (!playbackStream) playbackStream = new MediaStream();
+      const live = audioTracks.filter(track => track.readyState !== 'ended');
+      for (const track of playbackStream.getTracks()) {
+        if (!live.includes(track)) playbackStream.removeTrack(track);
+      }
+      for (const track of live) {
+        if (!playbackStream.getTracks().includes(track)) playbackStream.addTrack(track);
+      }
+    }
+    const sinkStream = playbackStream || mediaStream;
+    if (el.srcObject !== sinkStream) {
       el.removeAttribute('src');
-      el.srcObject = mediaStream;
+      el.srcObject = sinkStream;
     }
     el.muted = !speakerEnabled;
     el.volume = 1.0;
@@ -526,6 +541,7 @@
   window.stopCallAudio = function () {
     console.log('🛑 [WebRTC Audio Engine] stopCallAudio() called');
     activeRemoteStream = null;
+    playbackStream = null;
     playbackGeneration++;
     speakerEnabled = true;
     hideUnmuteBanner();
