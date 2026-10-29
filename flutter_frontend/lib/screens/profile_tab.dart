@@ -1,3 +1,4 @@
+import 'profile_photo_viewer.dart';
 import '../widgets/profile_cover.dart';
 import '../widgets/tab_design.dart';
 import '../widgets/app_avatar.dart';
@@ -387,6 +388,15 @@ class _ProfileTabState extends State<ProfileTab> {
                     child: Column(children: [
                       ProfileCover(
                         image: fullCover,
+                        onOpen: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => ProfilePhotoViewer(
+                                    title: 'Ảnh bìa',
+                                    image: cover != null && cover.isNotEmpty
+                                        ? NetworkImage(cover) as ImageProvider
+                                        : const ExactAssetImage(
+                                            'assets/profile-cover-bay.webp')))),
                         fallback: defaultCover(),
                         editControl: Material(
                             color: Colors.black.withOpacity(0.5),
@@ -437,26 +447,35 @@ class _ProfileTabState extends State<ProfileTab> {
                                         blurRadius: 12,
                                         offset: const Offset(0, 3))
                                   ]),
-                              child: AppAvatar(
-                                  overlayChild: _isUploadingAvatar,
-                                  radius: 46,
-                                  backgroundColor: const Color(0xFF0068FF),
-                                  backgroundImage:
-                                      avatar != null && avatar.isNotEmpty
-                                          ? NetworkImage(avatar)
+                              child: Semantics(
+                                  label: avatar != null && avatar.isNotEmpty
+                                      ? 'Xem ảnh đại diện'
+                                      : 'Ảnh đại diện',
+                                  button: avatar != null && avatar.isNotEmpty,
+                                  child: InkWell(
+                                      customBorder: const CircleBorder(),
+                                      onTap: avatar != null && avatar.isNotEmpty
+                                          ? () => Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                  builder: (_) => ProfilePhotoViewer(
+                                                      title: 'Ảnh đại diện',
+                                                      image: NetworkImage(
+                                                          avatar))))
                                           : null,
-                                  child: _isUploadingAvatar
-                                      ? const CircularProgressIndicator(
-                                          strokeWidth: 2, color: Colors.white)
-                                      : Text(
-                                          fullName.isEmpty
-                                              ? 'U'
-                                              : fullName.characters.first
-                                                  .toUpperCase(),
-                                          style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 34,
-                                              fontWeight: FontWeight.w700)))),
+                                      child: AppAvatar(
+                                          overlayChild: _isUploadingAvatar,
+                                          radius: 46,
+                                          backgroundColor:
+                                              const Color(0xFF0068FF),
+                                          backgroundImage: avatar != null && avatar.isNotEmpty
+                                              ? NetworkImage(avatar)
+                                              : null,
+                                          child: _isUploadingAvatar
+                                              ? const CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  color: Colors.white)
+                                              : Text(fullName.isEmpty ? 'U' : fullName.characters.first.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w700)))))),
                           Positioned(
                               bottom: 0,
                               right: -2,

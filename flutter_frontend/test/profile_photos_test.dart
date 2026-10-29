@@ -1,9 +1,38 @@
+import 'package:flutter_frontend/screens/profile_photo_viewer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_frontend/widgets/app_avatar.dart';
 import 'package:flutter_frontend/widgets/profile_cover.dart';
 
 void main() {
+  testWidgets('cover opens full photo and closes without changing banner layout', (tester) async {
+    const photo = ExactAssetImage('assets/tho_fi_logo_transparent.png');
+    var edits = 0;
+    await tester.pumpWidget(MaterialApp(home: Builder(builder: (context) => Scaffold(body: SizedBox(width: 320,
+      child: ProfileCover(image: photo, fallback: const SizedBox(height: 160),
+        avatar: const SizedBox(width: 96, height: 96),
+        editControl: IconButton(tooltip: 'Sửa ảnh bìa', icon: const Icon(Icons.camera_alt_outlined), onPressed: () => edits++),
+        onOpen: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ProfilePhotoViewer(image: photo, title: 'Ảnh bìa'))),
+      ),
+    )))));
+    await tester.runAsync(() => precacheImage(photo, tester.element(find.byType(ProfileCover))));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Sửa ảnh bìa'));
+    await tester.pump();
+    expect(edits, 1);
+    expect(find.byType(ProfilePhotoViewer), findsNothing);
+    await tester.tapAt(const Offset(80, 80));
+    await tester.pumpAndSettle();
+    expect(find.byType(ProfilePhotoViewer), findsOneWidget);
+    expect(tester.widget<Image>(find.descendant(of: find.byType(ProfilePhotoViewer), matching: find.byType(Image))).fit, BoxFit.contain);
+    expect(find.byType(InteractiveViewer), findsOneWidget);
+    await tester.tap(find.byTooltip('Đóng ảnh'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ProfilePhotoViewer), findsNothing);
+    expect(tester.getSize(find.byType(ProfileCover)).height, 160);
+    expect(tester.takeException(), isNull);
+  });
+
   for (final cover in [
     (
       'square',

@@ -8,8 +8,10 @@ class ProfileCover extends StatelessWidget {
       required this.image,
       required this.fallback,
       required this.avatar,
-      required this.editControl});
+      required this.editControl,
+      this.onOpen});
   final ImageProvider image;
+  final VoidCallback? onOpen;
   final Widget fallback, avatar, editControl;
 
   @override
@@ -24,17 +26,22 @@ class ProfileCover extends StatelessWidget {
               clipBehavior: Clip.none,
               alignment: Alignment.bottomCenter,
               children: [
-                Image(
-                    image: image,
-                    width: double.infinity,
-                    height: height,
-                    fit: BoxFit.cover,
-                    alignment: Alignment.topCenter,
-                    frameBuilder: (_, child, frame, synchronous) =>
-                        synchronous || frame != null
-                            ? child
-                            : const SkeletonBox(borderRadius: 0),
-                    errorBuilder: (_, __, ___) => fallback),
+                Semantics(
+                    label: 'Xem ảnh bìa',
+                    button: onOpen != null,
+                    child: InkWell(
+                        onTap: onOpen,
+                        child: Image(
+                            image: image,
+                            width: double.infinity,
+                            height: height,
+                            fit: BoxFit.cover,
+                            alignment: Alignment.topCenter,
+                            frameBuilder: (_, child, frame, synchronous) =>
+                                synchronous || frame != null
+                                    ? child
+                                    : const SkeletonBox(borderRadius: 0),
+                            errorBuilder: (_, __, ___) => fallback))),
                 Positioned(bottom: 12, right: 12, child: editControl),
                 Positioned(bottom: -44, child: avatar),
               ],
