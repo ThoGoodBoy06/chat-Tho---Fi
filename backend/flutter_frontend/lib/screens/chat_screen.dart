@@ -189,6 +189,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   }
 
   void _switchTab(int index) {
+    Tooltip.dismissAllToolTips();
     if (_currentTabIndex == index && _visitedTabs.contains(index)) return;
     try {
       HapticFeedback.selectionClick();
@@ -7248,11 +7249,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
           _switchTab(index);
         },
         destinations: [
-          NavigationDestination(icon: destinationIcon(0, unread), label: 'Tin nhắn'),
-          NavigationDestination(icon: destinationIcon(1, _pendingFriendRequestsCount), label: 'Danh bạ'),
-          NavigationDestination(icon: NavigationIcon(2, selected: _currentTabIndex == 2), label: 'Tin tức'),
-          NavigationDestination(icon: NavigationIcon(3, selected: _currentTabIndex == 3), label: 'Trợ lý AI'),
-          NavigationDestination(icon: NavigationIcon(4, selected: _currentTabIndex == 4), label: 'Cá nhân'),
+          NavigationDestination(tooltip: '', icon: destinationIcon(0, unread), label: 'Tin nhắn'),
+          NavigationDestination(tooltip: '', icon: destinationIcon(1, _pendingFriendRequestsCount), label: 'Danh bạ'),
+          NavigationDestination(tooltip: '', icon: NavigationIcon(2, selected: _currentTabIndex == 2), label: 'Tin tức'),
+          NavigationDestination(tooltip: '', icon: NavigationIcon(3, selected: _currentTabIndex == 3), label: 'Trợ lý AI'),
+          NavigationDestination(tooltip: '', icon: NavigationIcon(4, selected: _currentTabIndex == 4), label: 'Cá nhân'),
         ],
         ),
       ),

@@ -1,3 +1,4 @@
+import 'dart:ui' show PointerDeviceKind;
 import 'package:flutter/rendering.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -117,6 +118,42 @@ void main() {
         await settle();
         expect(find.text('Ngân'), findsOneWidget);
         expectSharedFont(tester, 'Tin nhắn');
+        final bar = find.byType(NavigationBar);
+        final bounds = tester.getRect(bar);
+        const tabNames = [
+          'Tin nhắn',
+          'Danh bạ',
+          'Tin tức',
+          'Trợ lý AI',
+          'Cá nhân'
+        ];
+        int paintedLabelCount(String label) => find
+            .byWidgetPredicate(
+                (w) => w is RichText && w.text.toPlainText() == label)
+            .evaluate()
+            .length;
+        final labelsBeforeHover = {
+          for (final label in tabNames) label: paintedLabelCount(label)
+        };
+        final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+        await mouse.addPointer(location: Offset.zero);
+        for (var i = 0; i < 5; i++) {
+          await mouse.moveTo(Offset(
+              bounds.left + bounds.width * (i + 0.5) / 5, bounds.top + 24));
+          await tester.pump(const Duration(milliseconds: 900));
+          for (final label in tabNames) {
+            expect(paintedLabelCount(label), labelsBeforeHover[label],
+                reason: 'No floating tab label: $label');
+          }
+        }
+        await mouse.removePointer();
+        await tester.longPressAt(
+            Offset(bounds.left + bounds.width / 10, bounds.top + 24));
+        await tester.pump(const Duration(milliseconds: 900));
+        for (final label in tabNames) {
+          expect(paintedLabelCount(label), labelsBeforeHover[label]);
+        }
+
         expect(tester.takeException(), isNull);
         for (var index = 1; index < 5; index++) {
           tester
@@ -157,6 +194,7 @@ void main() {
             await tester.tap(find.text('Giao diện'));
             await settle();
             expect(find.text('Chế độ tối'), findsOneWidget);
+            expectSharedFont(tester, 'Cài đặt giao diện');
             expect(tester.takeException(), isNull);
           }
         }
