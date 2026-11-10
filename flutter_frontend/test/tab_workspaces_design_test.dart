@@ -21,8 +21,8 @@ class _DesignProvider extends ChatProvider {
 
 void main() {
   setUpAll(() async {
-    final loader = FontLoader('Inter')
-      ..addFont(rootBundle.load('assets/fonts/Inter-Regular.ttf'));
+    final loader = FontLoader('Roboto')
+      ..addFont(rootBundle.load('assets/fonts/Roboto-Regular.ttf'));
     await loader.load();
   });
   for (final width in [320.0, 390.0]) {

@@ -5987,7 +5987,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         children: [
           Text(
             content,
-            style: TextStyle(color: isMe ? Colors.white : (isDark ? Colors.white : const Color(0xFF0F172A)), fontSize: 15, height: 1.3),
+            style: TextStyle(color: isMe ? Colors.white : (isDark ? Colors.white : const Color(0xFF0F172A)), fontSize: 16, fontWeight: FontWeight.w600, height: 1.3, letterSpacing: -0.15),
           ),
           const SizedBox(height: 2),
           Text(
@@ -6004,7 +6004,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
 
     return Text(
       content,
-      style: TextStyle(color: isMe ? Colors.white : (isDark ? Colors.white : const Color(0xFF0F172A)), fontSize: 15, height: 1.3),
+      style: TextStyle(color: isMe ? Colors.white : (isDark ? Colors.white : const Color(0xFF0F172A)), fontSize: 16, fontWeight: FontWeight.w600, height: 1.3, letterSpacing: -0.15),
     );
   }
 
@@ -7228,7 +7228,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                 ? scheme.primary : scheme.onSurfaceVariant,
           )),
           labelTextStyle: MaterialStateProperty.resolveWith((states) => TextStyle(
-            fontFamily: 'Inter', fontSize: 11,
+            fontFamily: 'Roboto', fontSize: 11,
             fontWeight: states.contains(MaterialState.selected)
                 ? FontWeight.w800 : FontWeight.w500,
             color: states.contains(MaterialState.selected)

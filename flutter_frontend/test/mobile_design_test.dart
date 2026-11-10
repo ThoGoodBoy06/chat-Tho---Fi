@@ -1,9 +1,15 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_frontend/screens/login_screen.dart';
 import 'package:flutter_frontend/theme/app_theme.dart';
 
 void main() {
+  setUpAll(() async {
+    final fonts = FontLoader('Roboto')
+      ..addFont(rootBundle.load('assets/fonts/Roboto-Regular.ttf'));
+    await fonts.load();
+  });
   for (final brightness in Brightness.values) {
     testWidgets('mobile login and registration fit with keyboard: $brightness',
         (tester) async {

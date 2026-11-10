@@ -18,7 +18,7 @@ class AppTheme {
       brightness: brightness,
       colorScheme: scheme,
       primaryColor: const Color(0xFF0068FF),
-      fontFamily: 'Inter',
+      fontFamily: 'Roboto',
       fontFamilyFallback: const ['Noto Color Emoji'],
       scaffoldBackgroundColor:
           dark ? const Color(0xFF0F172A) : const Color(0xFFF7F9FC),
@@ -36,7 +36,7 @@ class AppTheme {
               foregroundColor: scheme.onPrimary,
               shape: shape,
               textStyle: const TextStyle(
-                  fontFamily: 'Inter',
+                  fontFamily: 'Roboto',
                   fontSize: 15,
                   fontWeight: FontWeight.w700))),
       filledButtonTheme: FilledButtonThemeData(
@@ -52,7 +52,7 @@ class AppTheme {
           style: IconButton.styleFrom(minimumSize: const Size(48, 48))),
       navigationBarTheme: NavigationBarThemeData(
           labelTextStyle: WidgetStateProperty.resolveWith((states) => TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: 'Roboto',
               fontSize: 11,
               fontWeight: states.contains(WidgetState.selected)
                   ? FontWeight.w700
