@@ -17,7 +17,9 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
   <!-- High Priority Preloads for Instant Native Startup -->
-
+  <link rel="preload" href="/flutter_bootstrap.js?v=__APP_BUILD_VERSION__" as="script">
+  <link rel="preload" href="/web_notifications.js?v=__APP_BUILD_VERSION__" as="script">
+  <link rel="preload" href="/webrtc_audio_helper.js?v=__APP_BUILD_VERSION__" as="script">
   <link rel="preload" href="/tho_fi_logo_transparent.png" as="image">
   <!-- Preload Reaction Emojis for Instant Zero-Lag Reaction & Chat Render -->
   <link rel="preload" href="/assets/assets/emojis/2764-fe0f.png" as="image">
@@ -496,6 +498,9 @@
       -webkit-text-size-adjust: 100%;
       overscroll-behavior: none;
       -webkit-tap-highlight-color: transparent;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
       user-select: none;
       -webkit-user-select: none;
       font-family: "Inter", Helvetica, Arial, Roboto, sans-serif;
@@ -3416,9 +3421,10 @@
     (async function () {
       const version = '__APP_BUILD_VERSION__';
       const corePaths = new Set(['/main.dart.js', '/flutter_bootstrap.js', '/webrtc_audio_helper.js', '/web_notifications.js']);
-      if ('caches' in window && navigator.onLine !== false) {
+      async function cleanStaleCaches() {
+        if (!('caches' in window) || navigator.onLine === false) return;
         const controller = new AbortController();
-        const timer = setTimeout(function () { controller.abort(); }, 2500);
+        const timer = setTimeout(function () { controller.abort(); }, 800);
         try {
           const response = await fetch('/release.json?startup=' + version, {cache: 'no-store', signal: controller.signal});
           const release = response.ok ? await response.json() : null;
@@ -3439,13 +3445,17 @@
         return new Promise(function (resolve, reject) {
           const script = document.createElement('script');
           script.src = src;
+          script.async = false;
           script.onload = resolve;
           script.onerror = reject;
           document.body.appendChild(script);
         });
       }
-      await loadScript('/web_notifications.js?v=' + version);
-      await loadScript('/webrtc_audio_helper.js?v=' + version);
+      await Promise.all([
+        cleanStaleCaches(),
+        loadScript('/web_notifications.js?v=' + version),
+        loadScript('/webrtc_audio_helper.js?v=' + version),
+      ]);
       await loadScript('/flutter_bootstrap.js?v=' + version);
     })().catch(function (error) { console.error('[App startup]', error); });
   </script>

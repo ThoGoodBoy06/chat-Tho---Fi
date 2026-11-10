@@ -187,6 +187,9 @@ class ContactsWorkspace extends StatelessWidget {
                   final online = users.where(_online).toList();
                   return CustomScrollView(
                       key: const PageStorageKey('contacts-workspace'),
+                      physics: const BouncingScrollPhysics(
+                          parent: AlwaysScrollableScrollPhysics()),
+                      cacheExtent: 600,
                       keyboardDismissBehavior:
                           ScrollViewKeyboardDismissBehavior.onDrag,
                       slivers: [

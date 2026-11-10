@@ -213,10 +213,12 @@ class _NewsTabState extends State<NewsTab> with WidgetsBindingObserver {
                                       ))
                               : ListView.builder(
                                   key: PageStorageKey('news_$_category'),
-                                  physics:
-                                      const AlwaysScrollableScrollPhysics(),
+                                  physics: const BouncingScrollPhysics(
+                                      parent: AlwaysScrollableScrollPhysics()),
+                                  cacheExtent: 600,
                                   itemCount: articles.length,
                                   addAutomaticKeepAlives: false,
+                                  addRepaintBoundaries: true,
                                   itemBuilder: (_, i) => i == 0
                                       ? NewsLeadArticle(
                                           article: articles[i],

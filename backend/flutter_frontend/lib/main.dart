@@ -1,4 +1,5 @@
 import 'theme/app_theme.dart';
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -35,6 +36,8 @@ class SmoothWebScrollBehavior extends MaterialScrollBehavior {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  PaintingBinding.instance.imageCache.maximumSize = 300;
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 120 << 20;
   runApp(
     MultiProvider(
       providers: [
@@ -86,15 +89,33 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
     try {
       final token = await ApiService.getToken();
       if (token != null && token.isNotEmpty) {
+        // Local-First Instant Boot (0ms): Hiển thị ngay phiên đã lưu trong máy không cần chờ mạng
+        final cachedUser = await ApiService.getOfflineUser();
+        if (!mounted || revision != _authRevision) return;
+        if (cachedUser != null && cachedUser['id'] != null) {
+          final cachedMap = Map<String, dynamic>.from(cachedUser);
+          final provider = Provider.of<ChatProvider>(context, listen: false);
+          await provider.setCurrentUser(cachedMap);
+          await provider.loadCachedConversationsImmediate();
+          if (!mounted || revision != _authRevision) return;
+          setState(() {
+            _isLoggedIn = true;
+            _isCheckingAuth = false;
+          });
+          _removeLoadingScreen();
+          // Xác thực và làm mới dữ liệu ngầm ở hậu cảnh (không chặn giao diện)
+          unawaited(_refreshSessionInBackground(revision));
+          return;
+        }
+
         Map<String, dynamic> meRes;
-        if (!NetworkStatus.online.value) { meRes = {'data': await ApiService.getOfflineUser()}; }
+        if (!NetworkStatus.online.value) { meRes = {'data': cachedUser}; }
         else {
           try { meRes = await ApiService.getMe(); }
           catch (_) {
-            final cached = await ApiService.getOfflineUser();
-            if (cached == null) rethrow;
+            if (cachedUser == null) rethrow;
             NetworkStatus.online.value = false;
-            meRes = {'data': cached};
+            meRes = {'data': cachedUser};
           }
         }
         final userObj = meRes['data'] ?? meRes['user'];
@@ -102,16 +123,21 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
         if (userObj is Map && userObj['id'] != null) {
           final userMap = Map<String, dynamic>.from(userObj);
           if (mounted) {
-            await Provider.of<ChatProvider>(context, listen: false).setCurrentUser(userMap);
-            await _prepareApp();
+            final provider = Provider.of<ChatProvider>(context, listen: false);
+            await provider.setCurrentUser(userMap);
+            await provider.loadCachedConversationsImmediate();
             if (!mounted || revision != _authRevision) return;
-            final provider = context.read<ChatProvider>();
-            if (NetworkStatus.online.value && provider.selectedConversation != null) {
-              provider.selectConversation(provider.selectedConversation!);
-            }
             setState(() {
               _isLoggedIn = true;
+              _isCheckingAuth = false;
             });
+            _removeLoadingScreen();
+            unawaited(_prepareApp().then((_) {
+              if (!mounted || revision != _authRevision) return;
+              if (NetworkStatus.online.value && provider.selectedConversation != null) {
+                provider.selectConversation(provider.selectedConversation!);
+              }
+            }));
           }
           if (NetworkStatus.online.value) FCMService.initAndRegisterToken();
         } else {
@@ -127,11 +153,42 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
       _isLoggedIn = false;
     } finally {
       if (mounted && revision == _authRevision) {
-        setState(() {
-          _isCheckingAuth = false;
-        });
+        if (_isCheckingAuth) {
+          setState(() {
+            _isCheckingAuth = false;
+          });
+        }
         _removeLoadingScreen();
       }
+    }
+  }
+
+  Future<void> _refreshSessionInBackground(int revision) async {
+    if (!mounted || revision != _authRevision || !NetworkStatus.online.value) return;
+    try {
+      final meRes = await ApiService.getMe();
+      if (!mounted || revision != _authRevision) return;
+      final userObj = meRes['data'] ?? meRes['user'];
+      if (userObj is Map && userObj['id'] != null) {
+        final provider = Provider.of<ChatProvider>(context, listen: false);
+        await provider.setCurrentUser(Map<String, dynamic>.from(userObj));
+        if (!mounted || revision != _authRevision) return;
+        await _prepareApp();
+        if (!mounted || revision != _authRevision) return;
+        if (NetworkStatus.online.value && provider.selectedConversation != null) {
+          provider.selectConversation(provider.selectedConversation!);
+        }
+        if (NetworkStatus.online.value) FCMService.initAndRegisterToken();
+      } else if (meRes['success'] == false && await ApiService.getToken() == null) {
+        if (mounted && revision == _authRevision) {
+          context.read<ChatProvider>().clearCurrentUser();
+          setState(() {
+            _isLoggedIn = false;
+          });
+        }
+      }
+    } catch (_) {
+      // Giữ nguyên phiên offline khi mạng chập chờn
     }
   }
 
@@ -170,17 +227,14 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
   }
 
   void _onLoginSuccess() async {
-    setState(() => _isCheckingAuth = true);
-    try {
-      await _prepareApp();
-    } catch (error) {
-      debugPrint('Initial cache preparation: $error');
-    }
+    final provider = Provider.of<ChatProvider>(context, listen: false);
+    await provider.loadCachedConversationsImmediate();
     if (!mounted) return;
     setState(() {
       _isLoggedIn = true;
       _isCheckingAuth = false;
     });
+    unawaited(_prepareApp());
     if (NetworkStatus.online.value) FCMService.initAndRegisterToken();
   }
 

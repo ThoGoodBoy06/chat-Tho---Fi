@@ -919,6 +919,10 @@ class ChatProvider extends ChangeNotifier {
     return result;
   }
 
+  Future<void> loadCachedConversationsImmediate() async {
+    await _loadCachedConversations();
+  }
+
   Future<void> _loadCachedConversations() async {
     final userId = currentUser?.id;
     if (userId == null) return;

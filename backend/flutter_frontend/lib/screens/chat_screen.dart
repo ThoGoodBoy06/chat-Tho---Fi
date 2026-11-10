@@ -100,6 +100,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   bool _messageMenuOpen = false;
   bool _reactionAssetsWarmed = false;
   int _currentTabIndex = 0; // 0: Tin nhắn, 1: Danh bạ, 2: Tin tức, 3: Trợ lý AI, 4: Cá nhân
+  final Set<int> _visitedTabs = {0};
   late AnimationController _mobileChatSlideController;
   late Animation<double> _mobileChatSlideAnimation;
   ConversationModel? _activeMobileConversation;
@@ -113,6 +114,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   final _inputFocusNode = FocusNode();
   bool _isAttachmentMenuOpen = false;
   bool _isTyping = false;
+  final ValueNotifier<bool> _isTypingNotifier = ValueNotifier<bool>(false);
   String _searchQuery = '';
   bool _showEmojiPicker = false;
   int _selectedEmojiCategory = 0;
@@ -145,6 +147,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   bool _isLoadingAiSessions = false;
 
   bool _showScrollToBottomButton = false;
+  final ValueNotifier<bool> _showScrollToBottomNotifier = ValueNotifier<bool>(false);
   Timer? _debounceTimer;
 
   // Voice recording state
@@ -164,13 +167,41 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   StreamSubscription? _contactPresenceSub;
   Timer? _pendingRefreshTimer;
 
-  String _removeAccents(String str) {
-    var withDia = 'áàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđÁÀẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬÉÈẺẼẸÊẾỀỂỄỆÍÌỈĨỊÓÒỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÚÙỦŨỤƯỨỪỬỮỰÝỲỶỸỴĐ';
-    var withoutDia = 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyydAAAAAAAAAAAAAAAAAEEEEEEEEEEEIIIIIOOOOOOOOOOOOOOOOOUUUUUUUUUUUYYYYYD';
-    for (int i = 0; i < withDia.length; i++) {
-      str = str.replaceAll(withDia[i], withoutDia[i]);
+  static final Map<int, int> _accentRuneMap = () {
+    const withDia = 'áàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđÁÀẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬÉÈẺẼẸÊẾỀỂỄỆÍÌỈĨỊÓÒỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÚÙỦŨỤƯỨỪỬỮỰÝỲỶỸỴĐ';
+    const withoutDia = 'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyydAAAAAAAAAAAAAAAAAEEEEEEEEEEEIIIIIOOOOOOOOOOOOOOOOOUUUUUUUUUUUYYYYYD';
+    final srcRunes = withDia.runes.toList(growable: false);
+    final dstRunes = withoutDia.runes.toList(growable: false);
+    final map = <int, int>{};
+    for (var i = 0; i < srcRunes.length && i < dstRunes.length; i++) {
+      map[srcRunes[i]] = dstRunes[i];
     }
-    return str;
+    return map;
+  }();
+
+  String _removeAccents(String str) {
+    if (str.isEmpty) return str;
+    final buffer = StringBuffer();
+    for (final rune in str.runes) {
+      buffer.writeCharCode(_accentRuneMap[rune] ?? rune);
+    }
+    return buffer.toString();
+  }
+
+  void _switchTab(int index) {
+    if (_currentTabIndex == index && _visitedTabs.contains(index)) return;
+    try {
+      HapticFeedback.selectionClick();
+    } catch (_) {}
+    setState(() {
+      _visitedTabs.add(index);
+      _currentTabIndex = index;
+    });
+    if (index == 1) _fetchPendingRequestsCount();
+    if (index == 3) {
+      _loadAiHistory(forceReload: true);
+      _loadAiSessions();
+    }
   }
 
   Future<void> _fetchPendingRequestsCount() async {
@@ -205,8 +236,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     });
     _mobileChatSlideController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 280),
-      reverseDuration: const Duration(milliseconds: 240),
+      duration: const Duration(milliseconds: 240),
+      reverseDuration: const Duration(milliseconds: 200),
     );
     _mobileChatSlideAnimation = CurvedAnimation(
       parent: _mobileChatSlideController,
@@ -224,9 +255,16 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     _contactsFuture = ApiService.getFriends();
     _contactPresenceSub = SocketService.onUserStatusChanged.listen((data) {
       final id = data['userId']?.toString() ?? data['id']?.toString();
-      if (mounted && id != null && id.isNotEmpty) setState(() {
-        _contactPresence[id] = data['isOnline'] == true || data['status'] == 'online';
-      });
+      if (!mounted || id == null || id.isEmpty) return;
+      final nextOnline = data['isOnline'] == true || data['status'] == 'online';
+      if (_contactPresence[id] == nextOnline) return;
+      if (_currentTabIndex == 1) {
+        setState(() {
+          _contactPresence[id] = nextOnline;
+        });
+      } else {
+        _contactPresence[id] = nextOnline;
+      }
     });
     WidgetsBinding.instance.addObserver(this);
     if (kIsWeb) {
@@ -359,7 +397,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   void _onScroll() {
     if (!_scrollController.hasClients) return;
     // The list is reversed: offset zero is the newest message.
-    _showScrollToBottomButton = _scrollController.offset > 150;
+    final show = _scrollController.offset > 220;
+    if (show != _showScrollToBottomButton) {
+      _showScrollToBottomButton = show;
+      _showScrollToBottomNotifier.value = show;
+    }
   }
 
   String _lastTypingText = '';
@@ -371,7 +413,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     _lastTypingText = text;
     final typing = text.trim().isNotEmpty;
     if (typing != _isTyping) {
-      setState(() => _isTyping = typing);
+      _isTyping = typing;
+      _isTypingNotifier.value = typing;
     }
 
     final provider = Provider.of<ChatProvider>(context, listen: false);
@@ -486,6 +529,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     _textController.removeListener(_onTextChanged);
     _scrollController.removeListener(_onScroll);
     _textController.dispose();
+    _isTypingNotifier.dispose();
+    _showScrollToBottomNotifier.dispose();
     _aiTextController.dispose();
     _aiFocusNode.dispose();
     _searchController.dispose();
@@ -501,6 +546,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   }
 
   void _openMobileConversation(ConversationModel conv, ChatProvider provider) {
+    try {
+      HapticFeedback.selectionClick();
+    } catch (_) {}
     setState(() {
       _activeMobileConversation = conv;
     });
@@ -1544,10 +1592,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     final bgColor = isDark ? const Color(0xFF0F172A) : const Color(0xFFF0F2F5);
 
     return PopScope(
-      canPop: !isChatOpen,
+      canPop: !isChatOpen && _currentTabIndex == 0,
       onPopInvoked: (didPop) {
-        if (!didPop && isChatOpen) {
-          _closeMobileChatWithAnimation();
+        if (!didPop) {
+          if (isChatOpen) {
+            _closeMobileChatWithAnimation();
+          } else if (_currentTabIndex != 0) {
+            _switchTab(0);
+          }
         }
       },
       child: Scaffold(
@@ -1578,8 +1630,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     );
   }
 
-  Widget _buildBodyForCurrentTab(ChatProvider provider, bool isDesktop) {
-    if (_currentTabIndex == 0) {
+  Widget _buildTabContent(int tabIndex, ChatProvider provider, bool isDesktop) {
+    if (tabIndex == 0) {
       if (isDesktop) {
         return Row(
           children: [
@@ -1600,8 +1652,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
       }
     }
 
+    if (!_visitedTabs.contains(tabIndex)) {
+      return const SizedBox.shrink();
+    }
+
     Widget content;
-    switch (_currentTabIndex) {
+    switch (tabIndex) {
       case 1: // Danh bạ
         content = _buildContactsTab(provider);
         break;
@@ -1619,18 +1675,38 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     }
 
     if (isDesktop) {
-      return ColoredBox(color: Theme.of(context).scaffoldBackgroundColor,
-        child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 840), child: content)));
-    }
-    if (!isDesktop) {
-      return Column(
-        children: [
-          Expanded(child: content),
-          _buildMobileBottomBar(),
-        ],
+      return ColoredBox(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 840),
+            child: content,
+          ),
+        ),
       );
     }
-    return content;
+    return Column(
+      children: [
+        Expanded(child: content),
+        _buildMobileBottomBar(),
+      ],
+    );
+  }
+
+  Widget _buildBodyForCurrentTab(ChatProvider provider, bool isDesktop) {
+    _visitedTabs.add(_currentTabIndex);
+    return IndexedStack(
+      index: _currentTabIndex,
+      children: List<Widget>.generate(5, (tabIndex) {
+        final isActive = _currentTabIndex == tabIndex;
+        return TickerMode(
+          enabled: isActive,
+          child: RepaintBoundary(
+            child: _buildTabContent(tabIndex, provider, isDesktop),
+          ),
+        );
+      }),
+    );
   }
 
   Widget _buildMobileMessengerView(ChatProvider provider) {
@@ -1787,13 +1863,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                 return Tooltip(
                   message: navItems[index]['label'] as String,
                   child: InkWell(
-                    onTap: () {
-                      setState(() => _currentTabIndex = index);
-                      if (index == 3) {
-                        _loadAiHistory(forceReload: true);
-                        _loadAiSessions();
-                      }
-                    },
+                    onTap: () => _switchTab(index),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
@@ -2008,7 +2078,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                           )
                         : ListView.builder(
                             physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-                            cacheExtent: 500,
+                            cacheExtent: 600,
+                            addAutomaticKeepAlives: false,
+                            addRepaintBoundaries: true,
                             itemCount: filteredList.length,
                         itemBuilder: (context, index) {
                           final conv = filteredList[index];
@@ -2021,7 +2093,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                               : bgColor;
 
                           final avatarImg = _partnerAvatarProvider(conv.avatar, size: 104);
-                          return InkWell(
+                          return RepaintBoundary(
+                            key: ValueKey('conv_row_${conv.id}'),
+                            child: InkWell(
                             onTap: () {
                               final isDesktopScreen = MediaQuery.of(context).size.width >= 900;
                               if (isDesktopScreen) {
@@ -2196,6 +2270,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                 ],
                               ),
                             ),
+                          ),
                           );
                         },
                       ),
@@ -2806,32 +2881,48 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
             ),
           ),
 
-          Consumer<ChatProvider>(
-            builder: (context, chatProv, _) {
+          Selector<ChatProvider, List<Object?>>(
+            selector: (_, p) => [
+              p.isSearching,
+              p.searchQuery,
+              p.searchResultIds.length,
+              p.currentSearchIndex,
+            ],
+            builder: (context, _, __) {
+              final chatProv = context.read<ChatProvider>();
               if (!chatProv.isSearching) return const SizedBox.shrink();
               return _buildInChatSearchBar(chatProv, isDark);
             },
           ),
-          Consumer<ChatProvider>(
-            builder: (context, chatProv, _) {
+          Selector<ChatProvider, List<Object?>>(
+            selector: (_, p) => [
+              p.pinnedMessages.length,
+              p.pinnedMessages.isNotEmpty ? p.pinnedMessages.first.id : null,
+              p.pinnedMessages.isNotEmpty ? p.pinnedMessages.first.content : null,
+              p.pinnedMessages.isNotEmpty ? p.pinnedMessages.first.isRecalled : null,
+            ],
+            builder: (context, _, __) {
+              final chatProv = context.read<ChatProvider>();
               return _buildPinnedMessageBanner(chatProv, isDark);
             },
           ),
 
           // C. Messages List #messages
           Expanded(
-            child: GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              onTap: () {
-                FocusScope.of(context).unfocus();
-                if (_isAttachmentMenuOpen || _showEmojiPicker) {
-                  setState(() {
-                    _isAttachmentMenuOpen = false;
-                    _showEmojiPicker = false;
-                  });
-                }
-              },
-              child: Selector<ChatProvider, List<Object?>>(
+            child: Stack(
+              children: [
+                GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onTap: () {
+                    FocusScope.of(context).unfocus();
+                    if (_isAttachmentMenuOpen || _showEmojiPicker) {
+                      setState(() {
+                        _isAttachmentMenuOpen = false;
+                        _showEmojiPicker = false;
+                      });
+                    }
+                  },
+                  child: Selector<ChatProvider, List<Object?>>(
                 // Copy the mutable list so in-place receipt updates are detected.
                 selector: (_, p) => [
                   List<MessageModel>.of(p.messages), p.currentUser,
@@ -2893,7 +2984,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                         controller: _scrollController,
                         reverse: true,
                         physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-                        cacheExtent: isDesktop ? 600 : 250,
+                        cacheExtent: isDesktop ? 800 : 500,
                         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                         addAutomaticKeepAlives: false,
                         addRepaintBoundaries: true,
@@ -3321,16 +3412,64 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                       );
                     },
                   ),
+                ),
+                Positioned(
+                  right: 14,
+                  bottom: 12,
+                  child: ValueListenableBuilder<bool>(
+                    valueListenable: _showScrollToBottomNotifier,
+                    builder: (context, showBtn, _) {
+                      return IgnorePointer(
+                        ignoring: !showBtn,
+                        child: AnimatedScale(
+                          scale: showBtn ? 1.0 : 0.7,
+                          duration: const Duration(milliseconds: 180),
+                          curve: Curves.easeOutBack,
+                          child: AnimatedOpacity(
+                            opacity: showBtn ? 1.0 : 0.0,
+                            duration: const Duration(milliseconds: 150),
+                            child: Material(
+                              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                              shape: const CircleBorder(),
+                              elevation: 4,
+                              shadowColor: Colors.black26,
+                              child: InkWell(
+                                customBorder: const CircleBorder(),
+                                onTap: () {
+                                  try {
+                                    HapticFeedback.selectionClick();
+                                  } catch (_) {}
+                                  _scrollToBottom();
+                                },
+                                child: SizedBox(
+                                  width: 38,
+                                  height: 38,
+                                  child: Icon(
+                                    Icons.keyboard_arrow_down_rounded,
+                                    color: primaryColor,
+                                    size: 24,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
 
           // Typing indicator moved inside ListView.builder as last item
 
           // Reply Quote Preview Bar
-          Consumer<ChatProvider>(
-            builder: (context, chatProv, child) {
-              final replyMsg = chatProv.replyingToMessage;
+          Selector<ChatProvider, MessageModel?>(
+            selector: (_, p) => p.replyingToMessage,
+            builder: (context, replyMsg, child) {
               if (replyMsg == null) return const SizedBox.shrink();
+              final chatProv = context.read<ChatProvider>();
 
               String senderName = 'Người dùng';
               if (replyMsg.senderId == chatProv.currentUser?.id) {
@@ -3549,15 +3688,20 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                         const SizedBox(width: 4),
                         Padding(
                           padding: const EdgeInsets.only(bottom: 2),
-                          child: IconButton(
-                            icon: Icon(
-                              _isTyping ? Icons.send_rounded : Icons.thumb_up_rounded,
-                              color: primaryColor,
-                              size: 26,
-                            ),
-                            onPressed: NetworkStatus.online.value ? () => _handleSend(provider) : null,
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(minWidth: 36),
+                          child: ValueListenableBuilder<bool>(
+                            valueListenable: _isTypingNotifier,
+                            builder: (context, isTypingNow, _) {
+                              return IconButton(
+                                icon: Icon(
+                                  isTypingNow ? Icons.send_rounded : Icons.thumb_up_rounded,
+                                  color: primaryColor,
+                                  size: 26,
+                                ),
+                                onPressed: NetworkStatus.online.value ? () => _handleSend(provider) : null,
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(minWidth: 36),
+                              );
+                            },
                           ),
                         ),
                       ],
@@ -3819,7 +3963,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
       if (!mounted) return;
       final selected = provider.selectedConversation;
       if (selected == null || (selected.targetUserId != id && !selected.members.any((m) => m.id == id))) return;
-      setState(() => _currentTabIndex = 0);
+      _switchTab(0);
       if (call) await _startCall(context, provider, isVideo: false);
     }
     return ContactsWorkspace(
@@ -7101,13 +7245,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         animationDuration: Duration(milliseconds: MediaQuery.of(context).disableAnimations ? 0 : 220),
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         onDestinationSelected: (index) {
-          if (_currentTabIndex == index) return;
-          setState(() => _currentTabIndex = index);
-          if (index == 1) _fetchPendingRequestsCount();
-          if (index == 3) {
-            _loadAiHistory(forceReload: true);
-            _loadAiSessions();
-          }
+          _switchTab(index);
         },
         destinations: [
           NavigationDestination(icon: destinationIcon(0, unread), label: 'Tin nhắn'),
@@ -7845,6 +7983,11 @@ class _SwipeToReplyWrapperState extends State<_SwipeToReplyWrapper> with SingleT
   }
 
   void _onPointerDown(PointerDownEvent event) {
+    // Nhường vùng mép trái (< 44px) cho cử chỉ vuốt quay lại danh sách chat trên mobile
+    if (event.position.dx < 44.0) {
+      _startPointerPosition = null;
+      return;
+    }
     _startPointerPosition = event.position;
     _isSwipingHorizontally = false;
     _isVerticalScroll = false;
@@ -7876,6 +8019,9 @@ class _SwipeToReplyWrapperState extends State<_SwipeToReplyWrapper> with SingleT
       _dragOffsetNotifier.value = currentDrag;
       if (currentDrag >= 28.0 && !_triggered) {
         _triggered = true;
+        try {
+          HapticFeedback.lightImpact();
+        } catch (_) {}
       }
     }
   }
