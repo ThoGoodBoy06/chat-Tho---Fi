@@ -17,9 +17,9 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
   <!-- High Priority Preloads for Instant Native Startup -->
-  <link rel="preload" href="/flutter_bootstrap.js?v=4b7d8e43f7a06318" as="script">
-  <link rel="preload" href="/web_notifications.js?v=4b7d8e43f7a06318" as="script">
-  <link rel="preload" href="/webrtc_audio_helper.js?v=4b7d8e43f7a06318" as="script">
+  <link rel="preload" href="/flutter_bootstrap.js?v=c3945fdbb168e718" as="script">
+  <link rel="preload" href="/web_notifications.js?v=c3945fdbb168e718" as="script">
+  <link rel="preload" href="/webrtc_audio_helper.js?v=c3945fdbb168e718" as="script">
   <link rel="preload" href="/tho_fi_logo_transparent.png" as="image">
   <!-- Preload Reaction Emojis for Instant Zero-Lag Reaction & Chat Render -->
   <link rel="preload" href="/assets/assets/emojis/2764-fe0f.png" as="image">
@@ -3415,16 +3415,78 @@
 })();
 </script>
 
+  <script id="app-update-manager">
+    (function () {
+      const pageVersion = 'c3945fdbb168e718';
+      let checking = false;
+      let lastCheck = 0;
+      function showUpdate(version) {
+        if (document.getElementById('app-update-banner')) return;
+        const banner = document.createElement('button');
+        banner.id = 'app-update-banner';
+        banner.type = 'button';
+        banner.textContent = 'Đã có bản mới · Bấm để cập nhật';
+        banner.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top,0px) + 12px);left:50%;transform:translateX(-50%);z-index:2147483647;max-width:calc(100% - 24px);padding:12px 18px;border:1px solid #bfd4ff;border-radius:16px;background:#0068ff;color:white;font:600 14px Roboto,sans-serif;box-shadow:0 6px 24px #003b9140;cursor:pointer;';
+        banner.onclick = async function () {
+          banner.disabled = true;
+          banner.textContent = 'Đang cập nhật…';
+          try {
+            const response = await fetch('/release.json?refresh=' + Date.now(), {cache:'no-store'});
+            if (!response.ok) throw Error('Offline');
+            const release = await response.json();
+            if (!/^[a-f0-9]{16}$/.test(release.version)) throw Error('Invalid release');
+            // Only replace cached public app code. Keep sessions, chats and uploads.
+            if ('caches' in window) for (const name of await caches.keys()) {
+              if (!name.startsWith('chat-thofi-assets-') && name !== 'flutter-app-cache') continue;
+              if (name === 'chat-thofi-assets-' + release.version) continue;
+              const cache = await caches.open(name);
+              for (const request of await cache.keys()) {
+                if (/^\/(?:index\.html|main\.dart\.js|flutter_bootstrap\.js|webrtc_audio_helper\.js|web_notifications\.js)$/.test(new URL(request.url).pathname)) await cache.delete(request);
+              }
+            }
+            const url = new URL(location.href);
+            url.searchParams.set('app_update', release.version);
+            location.replace(url.href);
+          } catch (_) {
+            banner.disabled = false;
+            banner.textContent = 'Chưa có mạng · Bấm để thử cập nhật lại';
+          }
+        };
+        document.body.appendChild(banner);
+      }
+      async function check() {
+        if (checking || navigator.onLine === false || document.hidden || Date.now() - lastCheck < 30000) return;
+        checking = true; lastCheck = Date.now();
+        const controller = new AbortController();
+        const timer = setTimeout(function () { controller.abort(); }, 10000);
+        try {
+          const response = await fetch('/release.json?update=' + Date.now(), {cache:'no-store',signal:controller.signal});
+          const release = response.ok ? await response.json() : null;
+          if (release && /^[a-f0-9]{16}$/.test(release.version) && release.version !== pageVersion) showUpdate(release.version);
+          if ('serviceWorker' in navigator) {
+            const registration = await navigator.serviceWorker.getRegistration('/');
+            if (registration) registration.update().catch(function () {});
+          }
+        } catch (_) {} finally {clearTimeout(timer);checking = false;}
+      }
+      window.addEventListener('pageshow', check);
+      window.addEventListener('online', function () {lastCheck = 0;check();});
+      document.addEventListener('visibilitychange', check);
+      setInterval(check, 5 * 60 * 1000);
+      setTimeout(check, 1000);
+    })();
+  </script>
+
   <script id="app-code-loader">
     // An older PWA worker ignores ?v= when matching code in its cache. Remove
     // only stale public code after verifying this release is reachable online.
     (async function () {
-      const version = '4b7d8e43f7a06318';
+      const version = 'c3945fdbb168e718';
       const corePaths = new Set(['/main.dart.js', '/flutter_bootstrap.js', '/webrtc_audio_helper.js', '/web_notifications.js']);
       async function cleanStaleCaches() {
         if (!('caches' in window) || navigator.onLine === false) return;
         const controller = new AbortController();
-        const timer = setTimeout(function () { controller.abort(); }, 800);
+        const timer = setTimeout(function () { controller.abort(); }, 5000);
         try {
           const response = await fetch('/release.json?startup=' + version, {cache: 'no-store', signal: controller.signal});
           const release = response.ok ? await response.json() : null;
