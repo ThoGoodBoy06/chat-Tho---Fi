@@ -1,3 +1,4 @@
+import 'package:flutter/rendering.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -20,6 +21,35 @@ class _DesignProvider extends ChatProvider {
 }
 
 void main() {
+  void expectSharedFont(WidgetTester tester, String workspace) {
+    var checked = 0;
+    for (final element in find.byType(RichText).evaluate()) {
+      final paragraph = element.renderObject;
+      if (paragraph is! RenderParagraph) continue;
+      final root = paragraph.text;
+      if (root.toPlainText().trim().isEmpty) continue;
+      void inspect(InlineSpan span, TextStyle inherited) {
+        final resolved = inherited.merge(span.style);
+        if (span is TextSpan) {
+          final text = span.text ?? '';
+          final family = resolved.fontFamily ?? '';
+          if (text.trim().isNotEmpty &&
+              !family.contains('Icons') &&
+              !family.contains('Emoji')) {
+            expect(family, 'Roboto', reason: '$workspace: $text');
+            checked++;
+          }
+          for (final child in span.children ?? <InlineSpan>[]) {
+            inspect(child, resolved);
+          }
+        }
+      }
+
+      inspect(root, const TextStyle());
+    }
+    expect(checked, greaterThan(8), reason: workspace);
+  }
+
   setUpAll(() async {
     final loader = FontLoader('Roboto')
       ..addFont(rootBundle.load('assets/fonts/Roboto-Regular.ttf'));
@@ -86,6 +116,7 @@ void main() {
         await tester.tap(find.byTooltip('Xóa tìm kiếm'));
         await settle();
         expect(find.text('Ngân'), findsOneWidget);
+        expectSharedFont(tester, 'Tin nhắn');
         expect(tester.takeException(), isNull);
         for (var index = 1; index < 5; index++) {
           tester
@@ -93,6 +124,7 @@ void main() {
               .onDestinationSelected!(index);
           await settle();
           expect(tester.takeException(), isNull, reason: 'tab $index');
+          expectSharedFont(tester, 'tab $index');
           if (index == 1) {
             expect(find.text('Đang hoạt động'), findsOneWidget);
             expect(find.text('Bạn bè'), findsOneWidget);
@@ -114,8 +146,13 @@ void main() {
             expect(find.text('Sửa ảnh bìa'), findsOneWidget);
             expect(find.text('Thanh Tho'), findsOneWidget);
             expect(find.text('Chỉnh sửa hồ sơ'), findsOneWidget);
-            expect(find.byWidgetPredicate((w) => w is Image && w.image is ExactAssetImage &&
-              (w.image as ExactAssetImage).assetName == 'assets/profile-cover-bay.webp'), findsOneWidget);
+            expect(
+                find.byWidgetPredicate((w) =>
+                    w is Image &&
+                    w.image is ExactAssetImage &&
+                    (w.image as ExactAssetImage).assetName ==
+                        'assets/profile-cover-bay.webp'),
+                findsOneWidget);
             await tester.ensureVisible(find.text('Giao diện'));
             await tester.tap(find.text('Giao diện'));
             await settle();

@@ -1,3 +1,4 @@
+import '../theme/app_typography.dart';
 import 'profile_photo_viewer.dart';
 import '../widgets/profile_cover.dart';
 import '../widgets/tab_design.dart';
@@ -360,10 +361,8 @@ class _ProfileTabState extends State<ProfileTab> {
                   ? const Color(0xFFDC3545)
                   : Theme.of(context).colorScheme.onSurface),
           title: Text(label,
-              style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: danger ? const Color(0xFFDC3545) : null)),
+              style: AppTypography.menuLabel
+                  .copyWith(color: danger ? const Color(0xFFDC3545) : null)),
           trailing: danger
               ? null
               : Icon(Icons.chevron_right_rounded, color: muted, size: 21),
@@ -503,15 +502,13 @@ class _ProfileTabState extends State<ProfileTab> {
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                    fontSize: 21,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: -0.5)),
+                                style: AppTypography.profileName),
                             const SizedBox(height: 3),
                             Text('@${user?.username ?? 'user'}',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: TextStyle(color: muted, fontSize: 13)),
+                                style: AppTypography.caption
+                                    .copyWith(color: muted)),
                             if (bio.isNotEmpty) ...[
                               const SizedBox(height: 8),
                               Text(bio,

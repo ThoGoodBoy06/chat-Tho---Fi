@@ -1,3 +1,4 @@
+import 'app_typography.dart';
 import 'package:flutter/material.dart';
 
 /// Shared mobile controls: clear focus, comfortable touch targets and calm surfaces.
@@ -12,14 +13,14 @@ class AppTheme {
     );
     final shape =
         RoundedRectangleBorder(borderRadius: BorderRadius.circular(16));
-    return ThemeData(
+    final theme = ThemeData(
       splashFactory: InkRipple.splashFactory,
       useMaterial3: true,
       brightness: brightness,
       colorScheme: scheme,
       primaryColor: const Color(0xFF0068FF),
-      fontFamily: 'Roboto',
-      fontFamilyFallback: const ['Noto Color Emoji'],
+      fontFamily: AppTypography.family,
+      fontFamilyFallback: AppTypography.emojiFallback,
       scaffoldBackgroundColor:
           dark ? const Color(0xFF0F172A) : const Color(0xFFF7F9FC),
       appBarTheme: AppBarTheme(
@@ -36,7 +37,7 @@ class AppTheme {
               foregroundColor: scheme.onPrimary,
               shape: shape,
               textStyle: const TextStyle(
-                  fontFamily: 'Roboto',
+                  fontFamily: AppTypography.family,
                   fontSize: 15,
                   fontWeight: FontWeight.w700))),
       filledButtonTheme: FilledButtonThemeData(
@@ -52,7 +53,7 @@ class AppTheme {
           style: IconButton.styleFrom(minimumSize: const Size(48, 48))),
       navigationBarTheme: NavigationBarThemeData(
           labelTextStyle: WidgetStateProperty.resolveWith((states) => TextStyle(
-              fontFamily: 'Roboto',
+              fontFamily: AppTypography.family,
               fontSize: 11,
               fontWeight: states.contains(WidgetState.selected)
                   ? FontWeight.w700
@@ -78,6 +79,10 @@ class AppTheme {
           behavior: SnackBarBehavior.floating,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+    );
+    return theme.copyWith(
+      textTheme: AppTypography.normalize(theme.textTheme),
+      primaryTextTheme: AppTypography.normalize(theme.primaryTextTheme),
     );
   }
 }
