@@ -3,6 +3,7 @@ import '../services/api_service.dart';
 import 'app_avatar.dart';
 import 'skeleton_box.dart';
 import 'tab_design.dart';
+import '../theme/app_typography.dart';
 
 /// Contacts are loaded once by the screen; online faces and rows use that same data.
 class ContactsWorkspace extends StatelessWidget {
@@ -201,9 +202,7 @@ class ContactsWorkspace extends StatelessWidget {
                                 const Padding(
                                     padding: EdgeInsets.fromLTRB(20, 8, 20, 14),
                                     child: Text('Đang hoạt động',
-                                        style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w700))),
+                                        style: AppTypography.sectionTitle)),
                                 SizedBox(
                                     height: 86,
                                     child: ListView.separated(
@@ -295,10 +294,7 @@ class ContactsWorkspace extends StatelessWidget {
                                                   maxLines: 1,
                                                   overflow:
                                                       TextOverflow.ellipsis,
-                                                  style: const TextStyle(
-                                                      fontSize: 14,
-                                                      fontWeight:
-                                                          FontWeight.w600)))),
+                                                  style: AppTypography.listTitle))),
                                       IconButton(
                                           tooltip: 'Gọi ${_name(u)}',
                                           onPressed: () => onCall(u),

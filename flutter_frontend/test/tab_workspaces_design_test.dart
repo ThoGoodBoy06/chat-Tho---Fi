@@ -118,6 +118,18 @@ void main() {
         await settle();
         expect(find.text('Ngân'), findsOneWidget);
         expectSharedFont(tester, 'Tin nhắn');
+        void expectTextRole(String text, double size, FontWeight weight,
+            {Finder? within}) {
+          final target = within == null ? find.text(text) : find.descendant(
+              of: within, matching: find.text(text));
+          final label = tester.widget<Text>(target.first);
+          expect(label.style?.fontFamily, 'Roboto', reason: text);
+          expect(label.style?.fontSize, size, reason: text);
+          expect(label.style?.fontWeight, weight, reason: text);
+          expect(label.style?.letterSpacing, 0, reason: text);
+        }
+        expectTextRole('Tin nhắn', 27, FontWeight.w700);
+        expectTextRole('Minh Khang', 15, FontWeight.w600);
         final bar = find.byType(NavigationBar);
         final bounds = tester.getRect(bar);
         const tabNames = [
@@ -163,14 +175,23 @@ void main() {
           expect(tester.takeException(), isNull, reason: 'tab $index');
           expectSharedFont(tester, 'tab $index');
           if (index == 1) {
+            expectTextRole('Danh bạ', 27, FontWeight.w700);
+            expectTextRole('Nguyễn Minh Khang', 15, FontWeight.w600,
+                within: find.byType(ListTile));
             expect(find.text('Đang hoạt động'), findsOneWidget);
             expect(find.text('Bạn bè'), findsOneWidget);
             expect(find.byTooltip('Gọi Nguyễn Minh Khang'), findsOneWidget);
           }
           if (index == 3) {
+            expectTextRole('Trợ lý AI', 27, FontWeight.w700);
+            expectTextRole('Viết một lời chúc', 15, FontWeight.w600);
             await tester.ensureVisible(find.text('Viết một lời chúc'));
             await tester.tap(find.text('Viết một lời chúc'));
             await settle();
+            final aiInput = tester.widget<EditableText>(find.byType(EditableText).last);
+            expect(aiInput.style.fontFamily, 'Roboto');
+            expect(aiInput.style.fontSize, 15);
+            expect(aiInput.style.fontWeight, FontWeight.w400);
             expect(
                 tester
                     .widget<TextField>(find.byType(TextField).last)

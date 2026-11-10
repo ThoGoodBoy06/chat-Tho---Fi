@@ -5,6 +5,7 @@ import '../widgets/news_tab.dart';
 import '../widgets/skeleton_box.dart';
 import '../widgets/app_avatar.dart';
 import 'dart:async';
+import '../theme/app_typography.dart';
 import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
@@ -2168,9 +2169,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                           conv.name,
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
+                                          style: AppTypography.listTitle.copyWith(
                                             color: textColor,
-                                            fontSize: 15,
                                             fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w600,
                                           ),
                                         ),
@@ -2179,8 +2179,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                           _formatLastMessageText(conv.lastMessage),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            fontSize: 13,
+                                          style: AppTypography.supporting.copyWith(
                                             color: hasUnread ? (isDark ? Colors.white : const Color(0xFF3C3C43)) : subTextColor,
                                           ),
                                         ),
@@ -3667,10 +3666,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                       onTapOutside: (event) {
                                         FocusScope.of(context).unfocus();
                                       },
-                                      style: TextStyle(color: textColor, fontSize: 15),
+                                      style: AppTypography.message.copyWith(color: textColor),
                                       decoration: InputDecoration(
                                         hintText: 'Aa',
-                                        hintStyle: TextStyle(color: subTextColor, fontSize: 15),
+                                        hintStyle: AppTypography.message.copyWith(color: subTextColor),
                                         // The surrounding pill owns the background and shape.
                                         // Override every themed border, including focus states.
                                         filled: false,
@@ -4167,10 +4166,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                       ),
                                       child: SelectableText(
                                         content,
-                                        style: TextStyle(
+                                        style: AppTypography.body.copyWith(
                                           color: isUser ? Colors.white : (isError ? const Color(0xFFEF4444) : textColor),
-                                          fontSize: 15,
-                                          height: 1.4,
                                         ),
                                       ),
                                     ),
@@ -4327,11 +4324,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                         minLines: 1,
                         maxLines: 4,
                         keyboardType: TextInputType.multiline,
-                        style: TextStyle(color: textColor, fontSize: 14.5),
+                        style: AppTypography.body.copyWith(color: textColor),
                         enabled: !_isAiLoading,
                         decoration: InputDecoration(
                           hintText: _isAiLoading ? 'Chat AI đang suy nghĩ...' : 'Hỏi điều gì đó...',
-                          hintStyle: TextStyle(color: subTextColor, fontSize: 13.5),
+                          hintStyle: AppTypography.body.copyWith(color: subTextColor),
                           filled: true,
                           fillColor: inputBgColor,
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: BorderSide.none),
@@ -6002,7 +5999,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         children: [
           Text(
             content,
-            style: TextStyle(color: isMe ? Colors.white : (isDark ? Colors.white : const Color(0xFF0F172A)), fontSize: 16, fontWeight: FontWeight.w600, height: 1.3, letterSpacing: -0.15),
+            style: AppTypography.message.copyWith(color: isMe ? Colors.white : (isDark ? Colors.white : const Color(0xFF0F172A))),
           ),
           const SizedBox(height: 2),
           Text(
@@ -6019,7 +6016,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
 
     return Text(
       content,
-      style: TextStyle(color: isMe ? Colors.white : (isDark ? Colors.white : const Color(0xFF0F172A)), fontSize: 16, fontWeight: FontWeight.w600, height: 1.3, letterSpacing: -0.15),
+      style: AppTypography.message.copyWith(color: isMe ? Colors.white : (isDark ? Colors.white : const Color(0xFF0F172A))),
     );
   }
 

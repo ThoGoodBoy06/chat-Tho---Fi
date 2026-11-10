@@ -5,6 +5,28 @@ class AppTypography {
   static const family = 'Roboto';
   static const emojiFallback = ['Noto Color Emoji'];
 
+  static const workspaceTitle = TextStyle(
+      fontFamily: family, fontSize: 27, fontWeight: FontWeight.w700,
+      height: 1.25, letterSpacing: 0);
+  static const listTitle = TextStyle(
+      fontFamily: family, fontSize: 15, fontWeight: FontWeight.w600,
+      height: 1.35, letterSpacing: 0);
+  static const body = TextStyle(
+      fontFamily: family, fontSize: 15, fontWeight: FontWeight.w400,
+      height: 1.4, letterSpacing: 0);
+  static const supporting = TextStyle(
+      fontFamily: family, fontSize: 13, fontWeight: FontWeight.w400,
+      height: 1.4, letterSpacing: 0);
+  static const sectionTitle = TextStyle(
+      fontFamily: family, fontSize: 15, fontWeight: FontWeight.w700,
+      height: 1.35, letterSpacing: 0);
+  static const welcomeTitle = TextStyle(
+      fontFamily: family, fontSize: 22, fontWeight: FontWeight.w700,
+      height: 1.25, letterSpacing: 0);
+  static const message = TextStyle(
+      fontFamily: family, fontSize: 16, fontWeight: FontWeight.w600,
+      height: 1.3, letterSpacing: -0.15);
+
   static TextStyle? _normalize(TextStyle? style) => style?.copyWith(
       fontFamily: family, fontFamilyFallback: emojiFallback, letterSpacing: 0);
   static TextTheme normalize(TextTheme theme) => theme.copyWith(

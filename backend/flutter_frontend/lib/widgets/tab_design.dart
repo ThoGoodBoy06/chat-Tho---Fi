@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_typography.dart';
 
 /// Shared hierarchy for the five workspaces; actions retain their own semantics.
 class TabHeading extends StatelessWidget {
@@ -37,10 +38,7 @@ class TabHeading extends StatelessWidget {
             Row(children: [
               Expanded(
                   child: Text(title,
-                      style: const TextStyle(
-                          fontSize: 27,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.8))),
+                      style: AppTypography.workspaceTitle)),
               if (!showBrand) ...brandActions,
               ...actions,
             ]),
@@ -67,7 +65,7 @@ class TabSearch extends StatelessWidget {
         child: TextField(
           controller: controller,
           onChanged: onChanged,
-          style: const TextStyle(fontSize: 14),
+          style: AppTypography.body,
           decoration: InputDecoration(
             hintText: hint,
             isDense: true,
@@ -131,15 +129,11 @@ class AiWelcome extends StatelessWidget {
           const SizedBox(height: 24),
           const Text('Hôm nay mình giúp gì cho bạn?',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.6,
-                  height: 1.25)),
+              style: AppTypography.welcomeTitle),
           const SizedBox(height: 12),
           Text('Cùng tìm câu trả lời và khơi nguồn ý tưởng.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: muted, fontSize: 13, height: 1.5)),
+              style: AppTypography.supporting.copyWith(color: muted)),
           const SizedBox(height: 30),
           for (final prompt in prompts)
             Padding(
@@ -163,15 +157,10 @@ class AiWelcome extends StatelessWidget {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                 Text(prompt.$1,
-                                    style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700)),
+                                    style: AppTypography.listTitle),
                                 const SizedBox(height: 4),
                                 Text(prompt.$2,
-                                    style: TextStyle(
-                                        color: muted,
-                                        fontSize: 12,
-                                        height: 1.4)),
+                                    style: AppTypography.supporting.copyWith(color: muted)),
                               ])),
                           Icon(Icons.chevron_right_rounded,
                               color: muted, size: 19)

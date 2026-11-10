@@ -12,6 +12,7 @@ import 'package:flutter_frontend/providers/theme_provider.dart';
 import 'package:flutter_frontend/screens/chat_screen.dart';
 import 'package:flutter_frontend/services/api_service.dart';
 import 'package:flutter_frontend/theme/app_theme.dart';
+import 'package:flutter_frontend/theme/app_typography.dart';
 
 void main() {
   setUpAll(() async {
@@ -56,6 +57,12 @@ void main() {
         final composer = find.byWidgetPredicate(
             (w) => w is TextField && w.decoration?.hintText == 'Aa');
         void expectSinglePill() {
+          final editable = tester.widget<EditableText>(find.descendant(
+              of: composer, matching: find.byType(EditableText)));
+          expect(editable.style.fontFamily, AppTypography.message.fontFamily);
+          expect(editable.style.fontSize, AppTypography.message.fontSize);
+          expect(editable.style.fontWeight, AppTypography.message.fontWeight);
+          expect(editable.style.height, AppTypography.message.height);
           final decorator = tester.widget<InputDecorator>(find.descendant(
               of: composer, matching: find.byType(InputDecorator)));
           final decoration = decorator.decoration;
