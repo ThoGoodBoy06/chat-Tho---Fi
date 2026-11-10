@@ -3526,7 +3526,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                 color: headerBgColor,
                 border: Border(top: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFE4E6EB))),
               ),
-              child: _isRecording
+              child: IconButtonTheme(
+                data: IconButtonThemeData(style: IconButton.styleFrom(
+                  minimumSize: const Size(36, 48),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                )),
+                child: _isRecording
                   ? Row(
                       children: [
                         IconButton(
@@ -3666,7 +3671,15 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                       decoration: InputDecoration(
                                         hintText: 'Aa',
                                         hintStyle: TextStyle(color: subTextColor, fontSize: 15),
+                                        // The surrounding pill owns the background and shape.
+                                        // Override every themed border, including focus states.
+                                        filled: false,
                                         border: InputBorder.none,
+                                        enabledBorder: InputBorder.none,
+                                        focusedBorder: InputBorder.none,
+                                        disabledBorder: InputBorder.none,
+                                        errorBorder: InputBorder.none,
+                                        focusedErrorBorder: InputBorder.none,
                                         isDense: true,
                                         contentPadding: const EdgeInsets.symmetric(vertical: 8),
                                       ),
@@ -3707,6 +3720,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                         ),
                       ],
                     ),
+              ),
             ),
           ),
           if (_showEmojiPicker) ...[
