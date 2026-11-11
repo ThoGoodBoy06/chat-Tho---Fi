@@ -1,0 +1,71 @@
+- generic [ref=e3] [cursor=pointer]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic [ref=e29]: Danh bạ
+                    - button "Nhóm của tôi" [ref=e30]
+                    - button "Thêm bạn bè" [ref=e31]
+                    - textbox "Tìm bạn bè" [ref=e33]
+                    - button "Bạn bè" [ref=e34]
+                    - button "Lời mời" [ref=e35]
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic [ref=e36]: Đang hoạt động
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - generic [ref=e37]: K Khang
+                                    - generic [ref=e38]: MK Minh Khang
+                                    - generic [ref=e39]: N Ngân
+                                    - generic [ref=e40]: PA Phương Anh
+                            - group "B BĐ Bé Đàaaa":
+                              - generic:
+                                - button "Gọi Bé Đàaaa" [ref=e41]
+                                - button "Nhắn tin cho Bé Đàaaa" [ref=e42]
+                                - button "Tùy chọn Bé Đàaaa" [ref=e43]
+                            - group "BV Bùi Văn Thịnh":
+                              - generic:
+                                - button "Gọi Bùi Văn Thịnh" [ref=e44]
+                                - button "Nhắn tin cho Bùi Văn Thịnh" [ref=e45]
+                                - button "Tùy chọn Bùi Văn Thịnh" [ref=e46]
+                            - group "K K Khang":
+                              - generic:
+                                - button "Gọi Khang" [ref=e47]
+                                - button "Nhắn tin cho Khang" [ref=e48]
+                                - button "Tùy chọn Khang" [ref=e49]
+                            - group "M MK Minh Khang":
+                              - generic:
+                                - button "Gọi Minh Khang" [ref=e50]
+                                - button "Nhắn tin cho Minh Khang" [ref=e51]
+                                - button "Tùy chọn Minh Khang" [ref=e52]
+                            - group "N N Ngân":
+                              - generic:
+                                - button "Gọi Ngân" [ref=e53]
+                                - button "Nhắn tin cho Ngân" [ref=e54]
+                                - button "Tùy chọn Ngân" [ref=e55]
+                            - group "NA Nhóm AE":
+                              - generic:
+                                - button "Gọi Nhóm AE" [ref=e56]
+                                - button "Nhắn tin cho Nhóm AE" [ref=e57]
+                                - button "Tùy chọn Nhóm AE" [ref=e58]
+                            - group "P PA Phương Anh":
+                              - generic:
+                                - button "Gọi Phương Anh" [ref=e59]
+                                - button "Nhắn tin cho Phương Anh" [ref=e60]
+                                - button "Tùy chọn Phương Anh" [ref=e61]
+                    - generic:
+                      - generic:
+                        - generic [ref=e62]: 4 Tin nhắn Tab 1 of 5
+                        - generic [ref=e63]: Danh bạ Tab 2 of 5
+                        - generic [ref=e64]: Tin tức Tab 3 of 5
+                        - generic [ref=e65]: Trợ lý AI Tab 4 of 5
+                        - generic [ref=e66]: Cá nhân Tab 5 of 5

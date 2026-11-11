@@ -952,6 +952,57 @@ class ChatProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
+  dynamic _sanitizeConversationCacheValue(
+    dynamic value, {
+    String? key,
+    Map<dynamic, dynamic>? parent,
+  }) {
+    if (value is List) {
+      return value
+          .map((item) => _sanitizeConversationCacheValue(item))
+          .toList();
+    }
+    if (value is Map) {
+      final sanitized = <String, dynamic>{};
+      value.forEach((k, v) {
+        final keyStr = k.toString();
+        sanitized[keyStr] = _sanitizeConversationCacheValue(
+          v,
+          key: keyStr,
+          parent: value,
+        );
+      });
+      return sanitized;
+    }
+    if (value is String && value.startsWith('data:')) {
+      if (key == 'avatar') {
+        final uid = parent?['id']?.toString();
+        if (uid != null &&
+            uid.isNotEmpty &&
+            (parent?.containsKey('username') == true ||
+                parent?.containsKey('fullName') == true)) {
+          return '/api/users/$uid/avatar';
+        }
+        return null;
+      }
+      if (key == 'coverPhoto' || key == 'coverImage') {
+        final uid = parent?['id']?.toString();
+        if (uid != null && uid.isNotEmpty) {
+          return '/api/users/$uid/cover';
+        }
+        return null;
+      }
+      if (key == 'content' || key == 'lastMessage') {
+        if (value.startsWith('data:image')) return 'Đã gửi một hình ảnh';
+        if (value.startsWith('data:video')) return 'Đã gửi một video';
+        if (value.startsWith('data:audio')) return 'Đã gửi một tin nhắn thoại';
+        return '';
+      }
+      return null;
+    }
+    return value;
+  }
+
   bool _isFetchingConversations = false;
   DateTime? _lastFetchTime;
 
@@ -1020,8 +1071,21 @@ class ChatProvider extends ChangeNotifier {
             if (!_disposed &&
                 session == _sessionRevision &&
                 currentUser != null) {
-              await prefs.setString('cached_conversations_${currentUser!.id}',
-                  jsonEncode(rawList));
+              final sanitizedRaw = _sanitizeConversationCacheValue(rawList);
+              final encoded = jsonEncode(sanitizedRaw);
+              final cacheKey = 'cached_conversations_${currentUser!.id}';
+              try {
+                await prefs.setString(cacheKey, encoded);
+              } catch (_) {
+                final msgKeys = prefs
+                    .getKeys()
+                    .where((k) => k.startsWith('cached_msgs_'))
+                    .toList();
+                for (final k in msgKeys) {
+                  await prefs.remove(k);
+                }
+                await prefs.setString(cacheKey, encoded);
+              }
               await _persistConversationThemes();
             }
             for (final c in conversations.take(8)) {

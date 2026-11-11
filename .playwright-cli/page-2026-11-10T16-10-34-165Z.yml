@@ -1,0 +1,32 @@
+- generic [ref=e3] [cursor=pointer]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic [ref=e67]: Trợ lý AI
+                    - button "Lịch sử trò chuyện AI" [ref=e68]
+                    - button "Cuộc trò chuyện mới" [ref=e69]
+                    - button "Làm mới cuộc trò chuyện" [ref=e70]
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic [ref=e73]: Hôm nay mình giúp gì cho bạn?
+                            - generic [ref=e75]: Cùng tìm câu trả lời và khơi nguồn ý tưởng.
+                            - generic [ref=e77]: Viết một lời chúc Dành cho một người đặc biệt
+                            - generic [ref=e78]: Giải thích dễ hiểu Biến điều phức tạp thành đơn giản
+                            - generic [ref=e79]: Lên ý tưởng mới Cho công việc và cuộc sống mỗi ngày
+                    - textbox "Hỏi điều gì đó..." [ref=e81]
+                    - button "Gửi" [ref=e82]
+                    - generic:
+                      - generic:
+                        - generic [ref=e83]: 4 Tin nhắn Tab 1 of 5
+                        - generic [ref=e84]: Danh bạ Tab 2 of 5
+                        - generic [ref=e85]: Tin tức Tab 3 of 5
+                        - generic [ref=e86]: Trợ lý AI Tab 4 of 5
+                        - generic [ref=e87]: Cá nhân Tab 5 of 5

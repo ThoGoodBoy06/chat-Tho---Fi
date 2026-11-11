@@ -2780,15 +2780,17 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                             AppAvatar(
                               radius: 20,
                               backgroundColor: primaryColor,
-                              backgroundImage: (conv.avatar != null && conv.avatar!.isNotEmpty)
-                                  ? NetworkImage(ApiService.formatImageUrl(conv.avatar))
+                              backgroundImage: ((conv.avatar != null && conv.avatar!.isNotEmpty) ||
+                                      (!conv.isGroup && conv.targetUserId != null && conv.targetUserId!.isNotEmpty))
+                                  ? NetworkImage(ApiService.formatImageUrl(
+                                      (conv.avatar != null && conv.avatar!.isNotEmpty)
+                                          ? conv.avatar
+                                          : '/api/users/${conv.targetUserId}/avatar'))
                                   : null,
-                              child: (conv.avatar == null || conv.avatar!.isEmpty)
-                                  ? Text(
-                                      conv.name.isNotEmpty ? conv.name[0].toUpperCase() : 'U',
-                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-                                    )
-                                  : null,
+                              child: Text(
+                                conv.name.isNotEmpty ? conv.name[0].toUpperCase() : 'U',
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                              ),
                             ),
                             if (conv.isOnline == true)
                               Positioned(
@@ -3129,9 +3131,15 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                       onTap: () {
                                         final senderId = msg.senderId;
                                         if (senderId != null && senderId.isNotEmpty) {
+                                          final partner = conv.members.where((m) => m.id == senderId).firstOrNull;
                                           Navigator.push(
                                             context,
-                                            MaterialPageRoute(builder: (_) => OtherUserProfileScreen(userId: senderId)),
+                                            MaterialPageRoute(
+                                              builder: (_) => OtherUserProfileScreen(
+                                                userId: senderId,
+                                                initialUserData: partner?.toJson(),
+                                              ),
+                                            ),
                                           );
                                         }
                                       },
@@ -3139,9 +3147,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                         radius: 14,
                                         backgroundColor: primaryColor,
                                         backgroundImage: _partnerAvatarProvider(conv.avatar),
-                                        child: (conv.avatar == null || conv.avatar!.isEmpty)
-                                            ? Text(conv.name.isNotEmpty ? conv.name[0].toUpperCase() : 'U', style: const TextStyle(fontSize: 10, color: Colors.white))
-                                            : null,
+                                        child: Text(conv.name.isNotEmpty ? conv.name[0].toUpperCase() : 'U', style: const TextStyle(fontSize: 10, color: Colors.white)),
                                       ),
                                     ),
                                     const SizedBox(width: 8),
@@ -5063,12 +5069,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
             }
           }
 
-          String? fullAvatarUrl;
-          if (partnerAvatar != null && partnerAvatar.isNotEmpty) {
-            fullAvatarUrl = partnerAvatar.startsWith('http')
+          final fullAvatarUrl = ApiService.formatImageUrl(
+            partnerAvatar != null && partnerAvatar.isNotEmpty
                 ? partnerAvatar
-                : '${ApiService.baseUrl.replaceAll('/api', '')}$partnerAvatar';
-          }
+                : (partnerUser != null ? '/api/users/${partnerUser.id}/avatar' : null),
+          );
 
           final isOnline = liveConv.isOnline == true;
           final liveTheme = ChatThemes.getTheme(liveConv.theme);
@@ -5088,13 +5093,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                     AppAvatar(
                       radius: 54,
                       backgroundColor: const Color(0xFF0068FF),
-                      backgroundImage: fullAvatarUrl != null ? NetworkImage(fullAvatarUrl) : null,
-                      child: fullAvatarUrl == null
-                          ? Text(
-                              liveConv.name.isNotEmpty ? liveConv.name[0].toUpperCase() : 'U',
-                              style: const TextStyle(fontSize: 42, color: Colors.white, fontWeight: FontWeight.bold),
-                            )
-                          : null,
+                      backgroundImage: fullAvatarUrl.isNotEmpty ? NetworkImage(fullAvatarUrl) : null,
+                      child: Text(
+                        liveConv.name.isNotEmpty ? liveConv.name[0].toUpperCase() : 'U',
+                        style: const TextStyle(fontSize: 42, color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
                     ),
                     if (isOnline)
                       Positioned(

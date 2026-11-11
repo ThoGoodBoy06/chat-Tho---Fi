@@ -1,6 +1,7 @@
 import '../widgets/app_avatar.dart';
 import '../widgets/skeleton_box.dart';
 import '../widgets/loading_photo.dart';
+import 'profile_photo_viewer.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -35,6 +36,32 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen> {
     if (widget.initialUserData != null) {
       _userData = Map<String, dynamic>.from(widget.initialUserData!);
       _isLoading = false;
+    } else {
+      // Khôi phục dữ liệu tức thì từ bộ nhớ đệm ChatProvider nếu có
+      try {
+        final chatProv = Provider.of<ChatProvider>(context, listen: false);
+        for (final conv in chatProv.conversations) {
+          for (final m in conv.members) {
+            if (m.id == widget.userId) {
+              _userData = m.toJson();
+              _isLoading = false;
+              break;
+            }
+          }
+          if (_userData != null) break;
+          if (!conv.isGroup && conv.targetUserId == widget.userId) {
+            _userData = {
+              'id': widget.userId,
+              'fullName': conv.name,
+              'username': conv.name,
+              'avatar': conv.avatar ?? '/api/users/${widget.userId}/avatar',
+              'isOnline': conv.isOnline,
+            };
+            _isLoading = false;
+            break;
+          }
+        }
+      } catch (_) {}
     }
     _loadProfileData();
     _profileSub = SocketService.onUserProfileUpdated.listen((data) {
@@ -73,7 +100,10 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen> {
       if (mounted) {
         setState(() {
           if (data != null) {
-            _userData = data;
+            _userData = <String, dynamic>{
+              ...?_userData,
+              ...data,
+            };
           }
           _isLoading = false;
         });
@@ -303,8 +333,17 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen> {
     final String bio = (_userData?['bio'] != null && _userData!['bio'].toString().trim().isNotEmpty)
         ? _userData!['bio'].toString().trim()
         : 'Đang sử dụng Chat Tho-Fi ✨';
-    final String? avatarUrl = _userData?['avatar'];
-    final String? coverUrl = _userData?['coverPhoto'] ?? _userData?['coverImage'];
+    final String targetUid = (_userData?['id']?.toString().isNotEmpty == true)
+        ? _userData!['id'].toString()
+        : widget.userId;
+    final dynamic rawAvatar = _userData?['avatar'] ??
+        _userData?['avatarUrl'] ??
+        _userData?['profileAvatarUrl'] ??
+        _userData?['avatar_url'] ??
+        (targetUid.isNotEmpty ? '/api/users/$targetUid/avatar' : null);
+    final String avatarUrl = ApiService.formatImageUrl(rawAvatar?.toString());
+    final dynamic rawCover = _userData?['coverPhoto'] ?? _userData?['coverImage'];
+    final String coverUrl = ApiService.formatImageUrl(rawCover?.toString());
     final bool isOnline = _userData?['isOnline'] == true;
 
     final String status = (_userData?['status'] ?? 'NONE').toString().toUpperCase();
@@ -321,24 +360,43 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen> {
               clipBehavior: Clip.none,
               children: [
                 // Khung chứa Ảnh bìa (Cover Photo)
-                Container(
-                  height: 220,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0068FF),
-                    gradient: coverUrl == null
-                        ? LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: isDark
-                                ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
-                                : [const Color(0xFF0068FF), const Color(0xFF00C6FF)],
+                GestureDetector(
+                  onTap: coverUrl.isNotEmpty
+                      ? () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ProfilePhotoViewer(
+                                image: NetworkImage(coverUrl),
+                                title: 'Ảnh bìa của $fullName',
+                              ),
+                            ),
+                          );
+                        }
+                      : null,
+                  child: Container(
+                    height: 220,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0068FF),
+                      gradient: coverUrl.isEmpty
+                          ? LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: isDark
+                                  ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
+                                  : [const Color(0xFF0068FF), const Color(0xFF00C6FF)],
+                            )
+                          : null,
+                    ),
+                    child: coverUrl.isNotEmpty
+                        ? LoadingPhoto(
+                            image: ResizeImage(NetworkImage(coverUrl), width: 1024),
+                            width: double.infinity,
+                            height: 220,
                           )
                         : null,
                   ),
-                  child: coverUrl != null && coverUrl.isNotEmpty ? LoadingPhoto(
-                    image: ResizeImage(NetworkImage(ApiService.formatImageUrl(coverUrl)), width: 1024),
-                    width: double.infinity, height: 220) : null,
                 ),
 
                 // Top Floating AppBar Controls (Back + 3 Dots Menu)
@@ -546,49 +604,67 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen> {
                   left: 0,
                   right: 0,
                   child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: cardBgColor,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
-                            blurRadius: 14,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Stack(
-                        children: [
-                          AppAvatar(
-                            key: const ValueKey('profile_avatar'), radius: 46,
-                            backgroundColor: const Color(0xFF0068FF),
-                            backgroundImage: (avatarUrl != null && avatarUrl.isNotEmpty)
-                                ? NetworkImage(avatarUrl)
-                                : null,
-                            child: (avatarUrl == null || avatarUrl.isEmpty)
-                                ? Text(
-                                    fullName.isNotEmpty ? fullName[0].toUpperCase() : 'U',
-                                    style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold),
-                                  )
-                                : null,
-                          ),
-                          if (isOnline)
-                            Positioned(
-                              right: 2,
-                              bottom: 2,
-                              child: Container(
-                                width: 18,
-                                height: 18,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF10B981),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: cardBgColor, width: 3),
+                    child: GestureDetector(
+                      onTap: avatarUrl.isNotEmpty
+                          ? () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ProfilePhotoViewer(
+                                    image: NetworkImage(avatarUrl),
+                                    title: fullName,
+                                  ),
+                                ),
+                              );
+                            }
+                          : null,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: cardBgColor,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.15),
+                              blurRadius: 14,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Stack(
+                          children: [
+                            AppAvatar(
+                              key: const ValueKey('profile_avatar'),
+                              radius: 46,
+                              backgroundColor: const Color(0xFF0068FF),
+                              backgroundImage: avatarUrl.isNotEmpty
+                                  ? NetworkImage(avatarUrl)
+                                  : null,
+                              child: Text(
+                                fullName.isNotEmpty ? fullName[0].toUpperCase() : 'U',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 36,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),
-                        ],
+                            if (isOnline)
+                              Positioned(
+                                right: 2,
+                                bottom: 2,
+                                child: Container(
+                                  width: 18,
+                                  height: 18,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF10B981),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: cardBgColor, width: 3),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

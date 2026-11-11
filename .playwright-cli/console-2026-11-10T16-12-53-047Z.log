@@ -1,0 +1,1 @@
+[   10760ms] [ERROR] A VideoFrame was garbage collected without being closed. Applications should call close() on frames when done with them to prevent stalls. @ http://127.0.0.1:3012/?check=typing:1

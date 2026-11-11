@@ -45,13 +45,14 @@ if (!getApps().length) {
     }
 }
 
-// Cache ngắn hạn 3s để bảo vệ Connection Pool khỏi bị bão request
+// Cache ngắn hạn để bảo vệ Connection Pool khỏi bị bão request
 const conversationsCache = new Map();
 
-// Cache ngắn hạn 3s cho tin nhắn để phản hồi tức thì và triệt tiêu độ trễ khi chuyển chat
+// Cache ngắn hạn cho tin nhắn để phản hồi tức thì và triệt tiêu độ trễ khi chuyển chat
 const messagesCache = new Map();
 
 function clearConversationMessagesCache(conversationId) {
+    conversationsCache.clear();
     if (conversationId) {
         for (const key of messagesCache.keys()) {
             if (key.startsWith(conversationId + ":")) {
@@ -68,16 +69,15 @@ exports.getConversations = async(req, res) => {
     try {
         const userId = req.user.id; // Lấy từ Token thông qua authMiddleware
         
-        // Trả ngay kết quả từ cache nếu vừa được gọi trong vòng 3 giây
+        // Trả ngay kết quả từ cache nếu vừa được gọi trong vòng 4 giây
         const cached = conversationsCache.get(userId);
-        if (cached && (Date.now() - cached.timestamp < 3000)) {
+        if (cached && (Date.now() - cached.timestamp < 4000)) {
             return res.status(200).json({ success: true, data: cached.data });
         }
 
         console.log(`📥 [getConversations] Bắt đầu tải danh sách chat cho user: ${userId}`);
         const t0 = Date.now();
 
-        // ⚡ TỐI ƯU HÓA SIÊU TỐC & CHỐNG CHÁY CONNECTION POOL: Dùng 1 query duy nhất findMany
         const userMemberships = await prisma.conversationMembers.findMany({
             where: { userId },
             select: {
@@ -91,80 +91,121 @@ exports.getConversations = async(req, res) => {
             },
         });
 
-        const convIds = userMemberships.map((m) => m.conversationId);
-        const conversationsList = await prisma.conversations.findMany({
-            where: { id: { in: convIds } },
-            select: {
-                id: true,
-                type: true,
-                name: true,
-                avatar: true,
-                createdBy: true,
-                theme: true,
-                createdAt: true,
-                ConversationMembers: {
-                    select: {
-                        id: true,
-                        conversationId: true,
-                        userId: true,
-                        role: true,
-                        nickname: true,
-                        Users: {
-                            select: {
-                                id: true,
-                                fullName: true,
-                                username: true,
-                                avatar: true,
-                                coverPhoto: true,
-                                bio: true,
-                                isOnline: true,
-                                lastActive: true,
-                            },
-                        },
-                    },
+        const convIds = userMemberships.map((m) => m.conversationId).filter(Boolean);
+        if (convIds.length === 0) {
+            conversationsCache.set(userId, { data: [], timestamp: Date.now() });
+            return res.status(200).json({ success: true, data: [] });
+        }
+
+        // ⚡ TỐI ƯU HÓA SIÊU TỐC: Chạy song song 4 truy vấn nhẹ, TUYỆT ĐỐI KHÔNG kéo cột Base64 avatar/coverPhoto hay toàn bộ bảng Messages
+        const [conversationsList, allMembersRows, latestMsgRows, unreadCounts] = await Promise.all([
+            prisma.conversations.findMany({
+                where: { id: { in: convIds } },
+                select: {
+                    id: true,
+                    type: true,
+                    name: true,
+                    avatar: true,
+                    createdBy: true,
+                    theme: true,
+                    createdAt: true,
                 },
-                Messages: {
-                    where: {
-                        NOT: {
-                            deletedBy: {
-                                has: userId,
-                            },
-                        },
-                    },
-                    select: {
-                        id: true,
-                        conversationId: true,
-                        senderId: true,
-                        type: true,
-                        content: true,
-                        imageUrl: true,
-                        videoUrl: true,
-                        audioUrl: true,
-                        fileUrl: true,
-                        isRecalled: true,
-                        isDeleted: true,
-                        isRead: true,
-                        isDelivered: true,
-                        createdAt: true,
-                    },
-                    orderBy: { createdAt: "desc" },
-                    take: 1,
+            }),
+            prisma.$queryRawUnsafe(
+                `SELECT cm.id, cm."conversationId", cm."userId", cm.role, cm.nickname,
+                        u.id AS "uId", u."fullName", u.username, u.bio, u."isOnline", u."lastActive",
+                        (u.avatar IS NOT NULL AND LENGTH(TRIM(u.avatar)) > 0) AS "hasAvatar",
+                        (u."coverPhoto" IS NOT NULL AND LENGTH(TRIM(u."coverPhoto")) > 0) AS "hasCover"
+                 FROM "ConversationMembers" cm
+                 LEFT JOIN "Users" u ON u.id = cm."userId"
+                 WHERE cm."conversationId" = ANY($1::text[])`,
+                convIds
+            ),
+            prisma.$queryRawUnsafe(
+                `SELECT DISTINCT ON ("conversationId")
+                    id, "conversationId", "senderId",
+                    CASE WHEN LEFT(content, 10) = 'data:image' THEN 'image'
+                         WHEN LEFT(content, 10) = 'data:video' THEN 'video'
+                         WHEN LEFT(content, 10) = 'data:audio' THEN 'audio'
+                         ELSE type END AS type,
+                    CASE WHEN LEFT(content, 10) = 'data:image' THEN 'Đã gửi một hình ảnh'
+                         WHEN LEFT(content, 10) = 'data:video' THEN 'Đã gửi một video'
+                         WHEN LEFT(content, 10) = 'data:audio' THEN 'Đã gửi một tin nhắn thoại'
+                         WHEN LEFT(content, 5) = 'data:' THEN '/api/chat/messages/' || id || '/media'
+                         ELSE LEFT(content, 300) END AS content,
+                    CASE WHEN LEFT("imageUrl", 5) = 'data:' THEN '/api/chat/messages/' || id || '/media'
+                         ELSE LEFT("imageUrl", 300) END AS "imageUrl",
+                    CASE WHEN LEFT("videoUrl", 5) = 'data:' THEN '/api/chat/messages/' || id || '/media'
+                         ELSE LEFT("videoUrl", 300) END AS "videoUrl",
+                    CASE WHEN LEFT("audioUrl", 5) = 'data:' THEN '/api/chat/messages/' || id || '/media'
+                         ELSE LEFT("audioUrl", 300) END AS "audioUrl",
+                    LEFT("fileUrl", 300) AS "fileUrl",
+                    "isRecalled", "isDeleted", "isRead", "isDelivered", "createdAt"
+                 FROM "Messages"
+                 WHERE "conversationId" = ANY($1::text[]) AND NOT ($2 = ANY("deletedBy"))
+                 ORDER BY "conversationId", "createdAt" DESC`,
+                convIds,
+                userId
+            ),
+            prisma.messages.groupBy({
+                by: ["conversationId"],
+                where: {
+                    conversationId: { in: convIds },
+                    senderId: { not: userId },
+                    isRead: false,
                 },
-                _count: {
-                    select: {
-                        Messages: {
-                            where: {
-                                senderId: { not: userId },
-                                isRead: false,
-                            },
-                        },
-                    },
-                },
-            },
-        });
+                _count: { _all: true },
+            }),
+        ]);
+
+        const membersByConv = new Map();
+        for (const row of allMembersRows) {
+            const cid = row.conversationId;
+            if (!membersByConv.has(cid)) membersByConv.set(cid, []);
+            const hasCover = Boolean(row.hasCover);
+            membersByConv.get(cid).push({
+                id: row.id,
+                conversationId: row.conversationId,
+                userId: row.userId,
+                role: row.role,
+                nickname: row.nickname,
+                Users: row.uId
+                    ? {
+                        id: row.uId,
+                        fullName: row.fullName,
+                        username: row.username,
+                        avatar: `/api/users/${row.uId}/avatar`,
+                        coverPhoto: hasCover ? `/api/users/${row.uId}/cover` : null,
+                        bio: row.bio,
+                        isOnline: row.isOnline,
+                        lastActive: row.lastActive,
+                    }
+                    : null,
+            });
+        }
+
+        const latestMsgByConv = new Map();
+        for (const msg of latestMsgRows) {
+            latestMsgByConv.set(msg.conversationId, [msg]);
+        }
+
+        const unreadByConv = new Map();
+        for (const u of unreadCounts) {
+            unreadByConv.set(u.conversationId, (u._count && u._count._all) || 0);
+        }
 
         const convMap = new Map();
-        conversationsList.forEach((c) => convMap.set(c.id, c));
+        conversationsList.forEach((c) => {
+            convMap.set(c.id, {
+                ...c,
+                avatar: c.avatar && c.avatar.startsWith("data:") ? null : c.avatar,
+                ConversationMembers: membersByConv.get(c.id) || [],
+                Messages: latestMsgByConv.get(c.id) || [],
+                _count: {
+                    Messages: unreadByConv.get(c.id) || 0,
+                },
+            });
+        });
 
         const conversations = userMemberships.map((item) => ({
             ...item,
@@ -174,16 +215,11 @@ exports.getConversations = async(req, res) => {
         // Lọc bỏ các cuộc trò chuyện đã bị xóa ở phía người dùng hiện tại và chưa có tin nhắn mới hơn thời điểm xóa
         const activeConversations = conversations.filter((item) => {
             if (!item.Conversations) return false;
-            
-            // Nếu chưa từng xóa, hiển thị bình thường
             if (!item.deletedAt) return true;
-            
-            // Nếu đã xóa, chỉ hiển thị lại nếu có ít nhất 1 tin nhắn mới được tạo sau thời điểm xóa
             const latestMsg = item.Conversations.Messages[0];
             if (latestMsg && new Date(latestMsg.createdAt) > new Date(item.deletedAt)) {
                 return true;
             }
-            
             return false;
         });
 
@@ -191,47 +227,19 @@ exports.getConversations = async(req, res) => {
         activeConversations.sort((a, b) => {
             const getLatestTime = (member) => {
                 const conv = member.Conversations;
-                if (!conv) return 0; // Tránh lỗi nếu dữ liệu phòng chat bị rỗng
-
-                // Lấy thời gian của tin nhắn mới nhất nếu có
-                if (
-                    conv.Messages &&
-                    conv.Messages.length > 0 &&
-                    conv.Messages[0].createdAt
-                ) {
+                if (!conv) return 0;
+                if (conv.Messages && conv.Messages.length > 0 && conv.Messages[0].createdAt) {
                     return new Date(conv.Messages[0].createdAt).getTime();
                 }
-                // Nếu không có tin nhắn, lấy thời gian lúc tạo phòng
                 return conv.createdAt ? new Date(conv.createdAt).getTime() : 0;
             };
-
             return getLatestTime(b) - getLatestTime(a);
-        });
-
-        // Map avatar sang URL tĩnh mà không cần truy vấn DB lại
-        const mappedConversations = activeConversations.map((item) => {
-            if (!item.Conversations) return item;
-
-            const conv = { ...item.Conversations };
-
-            if (conv.ConversationMembers) {
-                conv.ConversationMembers.forEach((member) => {
-                    if (member.Users) {
-                        member.Users.avatar = `/api/users/${member.Users.id}/avatar`;
-                    }
-                });
-            }
-
-            return {
-                ...item,
-                Conversations: conv,
-            };
         });
 
         // Lọc chống trùng lặp phòng chat 1-1 cho cùng một đối phương
         const seenPartners = new Set();
         const deduplicatedConversations = [];
-        for (const item of mappedConversations) {
+        for (const item of activeConversations) {
             const conv = item.Conversations;
             if (conv && conv.type === "private" && Array.isArray(conv.ConversationMembers)) {
                 const partner = conv.ConversationMembers.find((m) => m.userId !== userId);
@@ -275,44 +283,85 @@ exports.getMessages = async(req, res) => {
             }
         }
 
-        // Xây dựng điều kiện where
-        const whereClause = {
-            conversationId,
-            NOT: {
-                deletedBy: {
-                    has: userId,
-                },
-            },
-        };
-
-        // Nếu có cursor "before" → tìm tin nhắn có thời gian tạo TRƯỚC tin nhắn đó
+        let beforeDate = null;
         if (before) {
             const cursorMessage = await prisma.messages.findUnique({
                 where: { id: before },
                 select: { createdAt: true },
             });
-
-            if (cursorMessage) {
-                whereClause.createdAt = { lt: cursorMessage.createdAt };
+            if (cursorMessage && cursorMessage.createdAt) {
+                beforeDate = cursorMessage.createdAt;
             }
         }
 
-        // ⚡ TỐI ƯU HÓA SONG SONG TẤT CẢ TRUY VẤN: Chạy song song cả conversation, messages, members và block
-        const [conversation, messages, membersWithNicknames, blockRecord] = await Promise.all([
+        // ⚡ TỐI ƯU HÓA SONG SONG TẤT CẢ TRUY VẤN & CHẶN TRUYỀN BASE64 QUA JSON
+        const [conversation, rawMessages, membersWithNicknames, blockRecord] = await Promise.all([
             prisma.conversations.findUnique({
                 where: { id: conversationId },
                 select: { theme: true },
             }),
-            prisma.messages.findMany({
-                where: whereClause,
-                orderBy: { createdAt: "desc" }, // Mới nhất trước → lấy N tin mới nhất
-                take: limit + 1,
-                include: {
-                    Users: {
-                        select: { id: true, fullName: true },
-                    },
-                },
-            }),
+            beforeDate
+                ? prisma.$queryRawUnsafe(
+                    `SELECT m.id, m."conversationId", m."senderId",
+                            CASE WHEN LEFT(m.content, 10) = 'data:image' THEN 'image'
+                                 WHEN LEFT(m.content, 10) = 'data:video' THEN 'video'
+                                 WHEN LEFT(m.content, 10) = 'data:audio' THEN 'audio'
+                                 ELSE m.type END AS type,
+                            CASE WHEN LEFT(m.content, 5) = 'data:' THEN '/api/chat/messages/' || m.id || '/media'
+                                 ELSE m.content END AS content,
+                            CASE WHEN LEFT(m."imageUrl", 5) = 'data:' THEN '/api/chat/messages/' || m.id || '/media'
+                                 WHEN LEFT(m.content, 10) = 'data:image' THEN '/api/chat/messages/' || m.id || '/media'
+                                 ELSE m."imageUrl" END AS "imageUrl",
+                            CASE WHEN LEFT(m."videoUrl", 5) = 'data:' THEN '/api/chat/messages/' || m.id || '/media'
+                                 WHEN LEFT(m.content, 10) = 'data:video' THEN '/api/chat/messages/' || m.id || '/media'
+                                 ELSE m."videoUrl" END AS "videoUrl",
+                            CASE WHEN LEFT(m."audioUrl", 5) = 'data:' THEN '/api/chat/messages/' || m.id || '/media'
+                                 WHEN LEFT(m.content, 10) = 'data:audio' THEN '/api/chat/messages/' || m.id || '/media'
+                                 ELSE m."audioUrl" END AS "audioUrl",
+                            m."fileUrl", m."replyMessageId", m."isDeleted", m."isRecalled",
+                            m."isRead", m."isDelivered", m."isEdited", m."isPinned", m."isForwarded",
+                            m."pinnedAt", m.reactions, m."createdAt", m."updatedAt",
+                            u."fullName" AS "senderFullName"
+                     FROM "Messages" m
+                     LEFT JOIN "Users" u ON u.id = m."senderId"
+                     WHERE m."conversationId" = $1 AND NOT ($2 = ANY(m."deletedBy")) AND m."createdAt" < $3
+                     ORDER BY m."createdAt" DESC
+                     LIMIT $4`,
+                    conversationId,
+                    userId,
+                    beforeDate,
+                    limit + 1
+                )
+                : prisma.$queryRawUnsafe(
+                    `SELECT m.id, m."conversationId", m."senderId",
+                            CASE WHEN LEFT(m.content, 10) = 'data:image' THEN 'image'
+                                 WHEN LEFT(m.content, 10) = 'data:video' THEN 'video'
+                                 WHEN LEFT(m.content, 10) = 'data:audio' THEN 'audio'
+                                 ELSE m.type END AS type,
+                            CASE WHEN LEFT(m.content, 5) = 'data:' THEN '/api/chat/messages/' || m.id || '/media'
+                                 ELSE m.content END AS content,
+                            CASE WHEN LEFT(m."imageUrl", 5) = 'data:' THEN '/api/chat/messages/' || m.id || '/media'
+                                 WHEN LEFT(m.content, 10) = 'data:image' THEN '/api/chat/messages/' || m.id || '/media'
+                                 ELSE m."imageUrl" END AS "imageUrl",
+                            CASE WHEN LEFT(m."videoUrl", 5) = 'data:' THEN '/api/chat/messages/' || m.id || '/media'
+                                 WHEN LEFT(m.content, 10) = 'data:video' THEN '/api/chat/messages/' || m.id || '/media'
+                                 ELSE m."videoUrl" END AS "videoUrl",
+                            CASE WHEN LEFT(m."audioUrl", 5) = 'data:' THEN '/api/chat/messages/' || m.id || '/media'
+                                 WHEN LEFT(m.content, 10) = 'data:audio' THEN '/api/chat/messages/' || m.id || '/media'
+                                 ELSE m."audioUrl" END AS "audioUrl",
+                            m."fileUrl", m."replyMessageId", m."isDeleted", m."isRecalled",
+                            m."isRead", m."isDelivered", m."isEdited", m."isPinned", m."isForwarded",
+                            m."pinnedAt", m.reactions, m."createdAt", m."updatedAt",
+                            u."fullName" AS "senderFullName"
+                     FROM "Messages" m
+                     LEFT JOIN "Users" u ON u.id = m."senderId"
+                     WHERE m."conversationId" = $1 AND NOT ($2 = ANY(m."deletedBy"))
+                     ORDER BY m."createdAt" DESC
+                     LIMIT $3`,
+                    conversationId,
+                    userId,
+                    limit + 1
+                ),
             prisma.conversationMembers.findMany({
                 where: { conversationId },
                 select: { userId: true, nickname: true },
@@ -327,6 +376,7 @@ exports.getMessages = async(req, res) => {
             }).catch(() => null)
         ]);
 
+        const messages = Array.from(rawMessages || []);
         const otherMember = membersWithNicknames.find((m) => m.userId !== userId);
         const theme = conversation ? conversation.theme : "default";
 
@@ -337,18 +387,25 @@ exports.getMessages = async(req, res) => {
         // Đảo ngược lại thứ tự: cũ nhất trước, mới nhất sau (để frontend render đúng)
         messages.reverse();
 
-        // Batch-fetch tin nhắn gốc (Parent Messages) nếu có trích dẫn reply
-        const replyIds = messages.map(m => m.replyMessageId).filter(Boolean);
+        // Batch-fetch tin nhắn gốc (Parent Messages) nếu có trích dẫn reply (không kéo Base64)
+        const replyIds = [...new Set(messages.map(m => m.replyMessageId).filter(Boolean))];
         let parentMap = {};
 
         if (replyIds.length > 0) {
             try {
-                const parents = await prisma.messages.findMany({
-                    where: { id: { in: replyIds } },
-                    include: {
-                        Users: { select: { id: true, fullName: true } }
-                    }
-                });
+                const parents = await prisma.$queryRawUnsafe(
+                    `SELECT p.id, p."senderId", p.type, p."isRecalled",
+                            CASE WHEN LEFT(p.content, 10) = 'data:image' THEN '[Hình ảnh]'
+                                 WHEN LEFT(p.content, 10) = 'data:video' THEN '[Video]'
+                                 WHEN LEFT(p.content, 10) = 'data:audio' THEN '[Tin nhắn thoại]'
+                                 WHEN LEFT(p.content, 5) = 'data:' THEN '[Tệp đính kèm]'
+                                 ELSE LEFT(p.content, 300) END AS content,
+                            u."fullName" AS "senderFullName"
+                     FROM "Messages" p
+                     LEFT JOIN "Users" u ON u.id = p."senderId"
+                     WHERE p.id = ANY($1::text[])`,
+                    replyIds
+                );
                 parents.forEach(p => {
                     parentMap[p.id] = {
                         id: p.id,
@@ -356,7 +413,7 @@ exports.getMessages = async(req, res) => {
                         senderId: p.senderId,
                         type: p.type,
                         isRecalled: p.isRecalled || false,
-                        senderName: p.Users ? p.Users.fullName : "Người dùng"
+                        senderName: p.senderFullName || "Người dùng"
                     };
                 });
             } catch (err) {
@@ -375,13 +432,17 @@ exports.getMessages = async(req, res) => {
         }
 
         const mappedMessages = messages.map((m) => {
-            const mapped = m.Users ? {
-                ...m,
+            const senderFullName = m.senderFullName;
+            const cleanM = { ...m };
+            delete cleanM.senderFullName;
+            const mapped = m.senderId ? {
+                ...cleanM,
                 Users: {
-                    ...m.Users,
-                    avatar: `/api/users/${m.Users.id}/avatar`,
+                    id: m.senderId,
+                    fullName: senderFullName || "Người dùng",
+                    avatar: `/api/users/${m.senderId}/avatar`,
                 },
-            } : { ...m };
+            } : cleanM;
 
             if (m.replyMessageId && parentMap[m.replyMessageId]) {
                 mapped.replyMessage = parentMap[m.replyMessageId];
@@ -593,7 +654,7 @@ exports.sendMessage = async(req, res) => {
         if (io) {
             let broadcast = io.to(conversationId);
             for (const member of conversation.ConversationMembers) {
-                if (member.userId !== senderId) broadcast = broadcast.to(member.userId);
+                broadcast = broadcast.to(member.userId);
             }
             broadcast.emit("receive_message", mappedMessage);
         }
@@ -1631,20 +1692,10 @@ exports.pinMessage = async (req, res) => {
         const { messageId } = req.params;
         const userId = req.user ? req.user.id : req.userId;
 
-        const message = await prisma.messages.findUnique({
-            where: { id: messageId },
-            include: { Users: { select: { id: true, fullName: true, avatarUrl: true } } },
-        });
-
+        const message = await prisma.messages.findUnique({ where: { id: messageId } });
         if (!message) {
             return res.status(404).json({ success: false, message: "Không tìm thấy tin nhắn." });
         }
-
-        const conversationId = message.conversationId;
-        const members = await prisma.conversationMembers.findMany({
-            where: { conversationId },
-        });
-        const io = req.app.get("io");
 
         // Nếu tin nhắn đang ghim → bỏ ghim
         if (message.isPinned) {
@@ -1653,16 +1704,10 @@ exports.pinMessage = async (req, res) => {
                 data: { isPinned: false, pinnedAt: null },
             });
 
-            // Xóa cache tin nhắn của đoạn chat
-            clearConversationMessagesCache(conversationId);
-
-            // Phát socket event bỏ ghim tới phòng chat VÀ từng thành viên để nhận realtime tức thì
+            // Phát socket event bỏ ghim
+            const io = req.app.get("io");
             if (io) {
-                const unpinPayload = { messageId, conversationId };
-                io.to(conversationId).emit("message_unpinned", unpinPayload);
-                members.forEach((m) => {
-                    io.to(m.userId).emit("message_unpinned", unpinPayload);
-                });
+                io.to(message.conversationId).emit("message_unpinned", { messageId, conversationId: message.conversationId });
             }
 
             return res.status(200).json({ success: true, message: "Đã bỏ ghim tin nhắn.", pinned: false });
@@ -1670,7 +1715,7 @@ exports.pinMessage = async (req, res) => {
 
         // Kiểm tra số lượng tin nhắn đang ghim (tối đa 3)
         const pinnedCount = await prisma.messages.count({
-            where: { conversationId, isPinned: true },
+            where: { conversationId: message.conversationId, isPinned: true },
         });
 
         if (pinnedCount >= 3) {
@@ -1681,42 +1726,19 @@ exports.pinMessage = async (req, res) => {
         const updatedMessage = await prisma.messages.update({
             where: { id: messageId },
             data: { isPinned: true, pinnedAt: new Date() },
-            include: { Users: { select: { id: true, fullName: true, avatarUrl: true } } },
+            include: { Users: { select: { id: true, fullName: true } } },
         });
 
-        // Xóa cache tin nhắn của đoạn chat
-        clearConversationMessagesCache(conversationId);
-
-        // Phát socket event ghim tới phòng chat VÀ từng thành viên với đầy đủ dữ liệu
+        // Phát socket event ghim
+        const io = req.app.get("io");
         if (io) {
-            const pinPayload = {
+            io.to(message.conversationId).emit("message_pinned", {
                 messageId,
-                conversationId,
+                conversationId: message.conversationId,
                 content: updatedMessage.content,
                 type: updatedMessage.type,
                 senderName: updatedMessage.Users ? updatedMessage.Users.fullName : "Người dùng",
                 pinnedAt: updatedMessage.pinnedAt,
-                message: {
-                    id: updatedMessage.id,
-                    conversationId: updatedMessage.conversationId,
-                    senderId: updatedMessage.senderId,
-                    content: updatedMessage.content,
-                    type: updatedMessage.type,
-                    fileUrl: updatedMessage.fileUrl,
-                    fileName: updatedMessage.fileName,
-                    fileSize: updatedMessage.fileSize,
-                    createdAt: updatedMessage.createdAt,
-                    senderName: updatedMessage.Users ? updatedMessage.Users.fullName : "Người dùng",
-                    senderAvatar: updatedMessage.Users ? updatedMessage.Users.avatarUrl : null,
-                    isPinned: true,
-                    pinnedAt: updatedMessage.pinnedAt,
-                    isEdited: updatedMessage.isEdited,
-                    isForwarded: updatedMessage.isForwarded,
-                },
-            };
-            io.to(conversationId).emit("message_pinned", pinPayload);
-            members.forEach((m) => {
-                io.to(m.userId).emit("message_pinned", pinPayload);
             });
         }
 
@@ -1738,25 +1760,16 @@ exports.getPinnedMessages = async (req, res) => {
         const pinnedMessages = await prisma.messages.findMany({
             where: { conversationId, isPinned: true, isRecalled: false },
             orderBy: { pinnedAt: "desc" },
-            include: { Users: { select: { id: true, fullName: true, avatarUrl: true } } },
+            include: { Users: { select: { id: true, fullName: true } } },
         });
 
         const mapped = pinnedMessages.map((m) => ({
             id: m.id,
-            conversationId: m.conversationId,
-            senderId: m.senderId,
             content: m.content,
             type: m.type,
-            fileUrl: m.fileUrl,
-            fileName: m.fileName,
-            fileSize: m.fileSize,
             senderName: m.Users ? m.Users.fullName : "Người dùng",
-            senderAvatar: m.Users ? m.Users.avatarUrl : null,
             pinnedAt: m.pinnedAt,
             createdAt: m.createdAt,
-            isPinned: true,
-            isEdited: m.isEdited,
-            isForwarded: m.isForwarded,
         }));
 
         res.status(200).json({ success: true, data: mapped });
@@ -1838,6 +1851,17 @@ exports.forwardMessage = async (req, res) => {
         const io = req.app.get("io");
         const forwardedMessages = [];
 
+        // ⚡ Tối ưu hiệu năng: Lấy danh sách thành viên của tất cả các cuộc hội thoại nhận tin (1 query duy nhất)
+        const allMembers = await prisma.conversationMembers.findMany({
+            where: { conversationId: { in: conversationIds } },
+            select: { conversationId: true, userId: true },
+        });
+        const membersByConv = {};
+        for (const m of allMembers) {
+            if (!membersByConv[m.conversationId]) membersByConv[m.conversationId] = [];
+            membersByConv[m.conversationId].push(m.userId);
+        }
+
         for (const convId of conversationIds) {
             for (const originalMessage of originalMessages) {
                 const isImage = originalMessage.type === "image" || (originalMessage.imageUrl && originalMessage.imageUrl.trim() !== "");
@@ -1870,19 +1894,22 @@ exports.forwardMessage = async (req, res) => {
 
                 forwardedMessages.push(mapped);
 
-                // Phát socket event đến phòng nhận và từng thành viên
+                // ⚡ Phát socket event tức thì tới room và các thành viên
                 if (io) {
                     io.to(convId).emit("receive_message", mapped);
-                    const members = await prisma.conversationMembers.findMany({
-                        where: { conversationId: convId },
-                        select: { userId: true },
-                    });
-                    members.forEach((member) => {
-                        io.to(member.userId).emit("receive_message", mapped);
-                    });
+                    const targetUserIds = membersByConv[convId] || [];
+                    for (const uId of targetUserIds) {
+                        io.to(uId).emit("receive_message", mapped);
+                    }
                 }
             }
         }
+
+        // Cập nhật thời gian cuộc trò chuyện nhận tin để đưa lên đầu danh sách
+        prisma.conversations.updateMany({
+            where: { id: { in: conversationIds } },
+            data: { updatedAt: new Date() },
+        }).catch(() => {});
 
         res.status(201).json({ success: true, data: forwardedMessages, message: `Đã chuyển tiếp tin nhắn tới ${conversationIds.length} cuộc hội thoại.` });
     } catch (error) {
@@ -2221,7 +2248,17 @@ exports.uploadMedia = async (req, res) => {
 
         const io = req.app.get("io");
         if (io) {
-            io.to(conversationId).emit("receive_message", mappedMessage);
+            let broadcast = io.to(conversationId);
+            try {
+                const members = await prisma.conversationMembers.findMany({
+                    where: { conversationId },
+                    select: { userId: true },
+                });
+                for (const m of members) {
+                    broadcast = broadcast.to(m.userId);
+                }
+            } catch (_) {}
+            broadcast.emit("receive_message", mappedMessage);
         }
     } catch (error) {
         console.error("❌ Lỗi uploadMedia:", error);
@@ -2509,28 +2546,22 @@ exports.changeConversationTheme = async (req, res) => {
         const conversation = await prisma.conversations.findUnique({where:{id:conversationId},include:{ConversationMembers:true}});
         if (!conversation) return res.status(404).json({success:false,message:'Không tìm thấy cuộc trò chuyện'});
         if (!conversation.ConversationMembers.some(m => m.userId === req.user?.id)) return res.status(403).json({success:false,message:'Bạn không có quyền đổi chủ đề'});
-        if (conversation.theme === themeToSet) return res.json({success:true,data:{conversationId,theme:themeToSet}});
-        const rooms = [conversationId, ...conversation.ConversationMembers.map(m=>m.userId)];
-
-        await prisma.conversations.update({
-            where: { id: conversationId },
-            data: { theme: themeToSet },
-        });
-
-        // Xóa cache danh sách chat để dữ liệu luôn tươi mới
-        if (typeof conversationsCache !== 'undefined') {
-            conversationsCache.clear();
-        }
+        const memberUserIds = conversation.ConversationMembers.map(m => m.userId).filter(Boolean);
+        const payload = {
+            conversationId,
+            conversation_id: conversationId,
+            theme: themeToSet,
+        };
 
         const io = req.app.get("io");
         if (io) {
-            io.to(rooms).emit("conversation_theme_updated", {
-                conversationId,
-                theme: themeToSet,
-            });
+            io.to(conversationId).emit("conversation_theme_updated", payload);
+            for (const uid of memberUserIds) {
+                io.to(uid).emit("conversation_theme_updated", payload);
+            }
         }
 
-        // Tạo tin nhắn hệ thống ghi nhận đổi chủ đề cho cả 2 bên thấy
+        // Tạo tin nhắn hệ thống ghi nhận đổi chủ đề cho cả 2 bên thấy ngay lập tức
         try {
             {
                 const themeLabels = {
@@ -2568,9 +2599,17 @@ exports.changeConversationTheme = async (req, res) => {
                 const mappedSysMsg = {
                     ...sysMsg,
                     Users: sysMsg.Users ? { ...sysMsg.Users, avatar: `/api/users/${sysMsg.Users.id}/avatar` } : null,
+                    systemMetadata: {
+                        action: "theme_changed",
+                        theme: themeToSet,
+                        conversationId,
+                    },
                 };
                 if (io) {
-                    io.to(rooms).emit("receive_message", mappedSysMsg);
+                    io.to(conversationId).emit("receive_message", mappedSysMsg);
+                    for (const uid of memberUserIds) {
+                        io.to(uid).emit("receive_message", mappedSysMsg);
+                    }
                 }
             }
         } catch (sysErr) {
@@ -2653,6 +2692,73 @@ const MAX_THUMBNAIL_MEMORY_ITEMS = 300;
 // Các thumbnail đang được tạo: nhiều request cùng 1 ảnh chỉ tải + nén đúng 1 lần
 const thumbnailInFlight = new Map();
 
+// Bộ nhớ đệm RAM cho media nhúng trực tiếp trong tin nhắn (legacy Base64 data URI)
+const messageMediaCache = new Map();
+const MAX_MESSAGE_MEDIA_CACHE_ITEMS = 150;
+
+function rememberMessageMedia(messageId, entry) {
+    messageMediaCache.delete(messageId);
+    if (messageMediaCache.size >= MAX_MESSAGE_MEDIA_CACHE_ITEMS) {
+        messageMediaCache.delete(messageMediaCache.keys().next().value);
+    }
+    messageMediaCache.set(messageId, entry);
+}
+
+async function getMessageMediaBuffer(messageId) {
+    if (!messageId) return null;
+    const cached = messageMediaCache.get(messageId);
+    if (cached) {
+        rememberMessageMedia(messageId, cached);
+        return cached;
+    }
+
+    const rows = await prisma.$queryRawUnsafe(
+        `SELECT content, "imageUrl", "videoUrl", "audioUrl", "fileUrl", type FROM "Messages" WHERE id = $1 LIMIT 1`,
+        String(messageId)
+    );
+    const msg = rows && rows[0];
+    if (!msg) return null;
+
+    const rawCandidates = [msg.content, msg.imageUrl, msg.videoUrl, msg.audioUrl, msg.fileUrl];
+    const rawSource = rawCandidates.find((v) => typeof v === "string" && v.trim().length > 0);
+    if (!rawSource) return null;
+
+    if (rawSource.startsWith("data:")) {
+        const matches = rawSource.match(/^data:([A-Za-z0-9-+\/.]+);base64,(.+)$/);
+        if (matches && matches.length === 3) {
+            const entry = {
+                contentType: matches[1],
+                buffer: Buffer.from(matches[2], "base64"),
+            };
+            rememberMessageMedia(messageId, entry);
+            return entry;
+        }
+    }
+
+    return { redirectUrl: rawSource };
+}
+
+exports.getMessageMedia = async (req, res) => {
+    try {
+        const { messageId } = req.params;
+        const result = await getMessageMediaBuffer(messageId);
+        if (!result) {
+            return res.status(404).send("Không tìm thấy media cho tin nhắn này");
+        }
+        if (result.redirectUrl) {
+            return res.redirect(result.redirectUrl);
+        }
+        res.setHeader("Content-Type", result.contentType || "image/jpeg");
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+        return res.send(result.buffer);
+    } catch (err) {
+        console.error("❌ Lỗi getMessageMedia:", err);
+        return res.status(500).send("Lỗi tải media tin nhắn");
+    }
+};
+
 function rememberThumbnail(hash, entry) {
     // LRU đơn giản: xóa rồi set lại để key mới nhất nằm cuối Map
     thumbnailMemoryCache.delete(hash);
@@ -2684,9 +2790,22 @@ async function produceThumbnail(url, width, quality, hash, sourceBuffer) {
         return entry;
     } catch (_) {}
 
-    // Đọc ảnh gốc (buffer có sẵn khi vừa upload, file local, hoặc remote)
+    // Đọc ảnh gốc (buffer có sẵn khi vừa upload, tin nhắn Base64 trong DB, file local, hoặc remote)
     let inputBuffer = sourceBuffer || null;
     let originalContentType = "image/jpeg";
+
+    if (!inputBuffer) {
+        const msgMediaMatch = String(url).match(/\/api\/chat\/messages\/([^/?#]+)\/media/);
+        if (msgMediaMatch && msgMediaMatch[1]) {
+            try {
+                const mediaEntry = await getMessageMediaBuffer(msgMediaMatch[1]);
+                if (mediaEntry && mediaEntry.buffer) {
+                    inputBuffer = mediaEntry.buffer;
+                    originalContentType = mediaEntry.contentType || "image/jpeg";
+                }
+            } catch (_) {}
+        }
+    }
 
     if (!inputBuffer && (url.startsWith("/uploads/") || url.startsWith("uploads/"))) {
         const relPath = url.startsWith("/") ? url.slice(1) : url;

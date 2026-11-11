@@ -10,15 +10,21 @@ const upload = multer({ storage: multer.memoryStorage() });
 // Tải tệp tin/media trực tiếp về máy (bảo toàn định dạng, tự động tải qua browser download)
 router.get("/download-file", chatController.downloadMediaProxy);
 
+// Thumbnail siêu tốc cho chat (hỗ trợ WebP, cache, CORS '*')
+router.get("/thumbnail", chatController.getMediaThumbnail);
+
+// Phục vụ trực tiếp media nhúng trong tin nhắn (binary buffer + browser cache dài hạn)
+router.get("/messages/:messageId/media", chatController.getMessageMedia);
+
 // Bật lớp bảo vệ: Chỉ user đã đăng nhập (có Token) mới được dùng các API này
 router.use(authMiddleware);
 
 router.get("/conversations", chatController.getConversations);
 router.post("/conversations", chatController.createConversation);
-router.post("/block", chatController.blockUser);
 router.post("/conversations/:conversationId/read", chatController.markAsRead);
 router.post("/messages/mark-delivered", chatController.markAsDelivered);
 router.post("/messages/:messageId/delivered", chatController.markAsDelivered);
+router.post("/block", chatController.blockUser);
 router.patch("/conversations/:conversationId/theme", chatController.changeConversationTheme);
 router.patch("/conversations/:conversationId/nickname", chatController.setNickname);
 router.post("/conversations/:conversationId/nickname", chatController.setNickname);
@@ -30,6 +36,7 @@ router.delete("/conversations/:conversationId", chatController.deleteConversatio
 router.get("/:conversationId/messages", chatController.getMessages);
 router.post("/:conversationId/messages", chatController.sendMessage);
 router.post("/:conversationId/upload-media", upload.single("file"), chatController.uploadMedia);
+router.get("/presigned-upload-url", chatController.getPresignedUploadUrl);
 
 // API cho các tính năng Big Update
 router.put("/messages/:messageId/recall", chatController.recallMessage);
@@ -38,7 +45,6 @@ router.post("/messages/:messageId/react", chatController.reactToMessage);
 router.get("/messages/:messageId/reactions", chatController.getMessageReactions);
 router.patch("/messages/:messageId/edit", chatController.editMessage);
 router.delete("/messages/:messageId/me", chatController.deleteMessageForMe);
-router.post("/messages/:messageId/delete", chatController.deleteMessageForMe);
 
 // API cho tính năng Ghim, Tìm kiếm, Chuyển tiếp, Link Preview
 router.post("/messages/:messageId/pin", chatController.pinMessage);

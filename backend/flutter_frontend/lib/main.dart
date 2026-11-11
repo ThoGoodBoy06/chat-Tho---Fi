@@ -212,14 +212,12 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
     Future<void> warmAvatars() async {
       while (mounted && nextAvatar < avatars.length && DateTime.now().isBefore(deadline)) {
         final url = ApiService.formatImageUrl(avatars[nextAvatar++]);
-        // Match the cache keys used by the sidebar and message avatars.
-        for (final size in [104, 56]) {
-          if (!mounted || DateTime.now().isAfter(deadline)) return;
-          await precacheImage(
-            resizeAvatar(NetworkImage(url), size: size), context,
-            onError: (_, __) {},
-          );
-        }
+        // Match the canonical 192px cache key used by resizeAvatar for all size <= 256.
+        if (!mounted || DateTime.now().isAfter(deadline)) return;
+        await precacheImage(
+          resizeAvatar(NetworkImage(url), size: 192), context,
+          onError: (_, __) {},
+        );
       }
     }
     await Future.wait([warmAvatars(), warmAvatars()])

@@ -13,6 +13,9 @@ router.get("/download-file", chatController.downloadMediaProxy);
 // Thumbnail siêu tốc cho chat (hỗ trợ WebP, cache, CORS '*')
 router.get("/thumbnail", chatController.getMediaThumbnail);
 
+// Phục vụ trực tiếp media nhúng trong tin nhắn (binary buffer + browser cache dài hạn)
+router.get("/messages/:messageId/media", chatController.getMessageMedia);
+
 // Bật lớp bảo vệ: Chỉ user đã đăng nhập (có Token) mới được dùng các API này
 router.use(authMiddleware);
 

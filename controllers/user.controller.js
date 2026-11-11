@@ -1,8 +1,10 @@
 const prisma = require("../prisma");
+let sharp;
+try { sharp = require("sharp"); } catch (_) {}
 
 // Bộ nhớ đệm RAM lưu trữ binary avatar và cover photo giúp phản hồi siêu tốc (<1ms) mà không tốn DB Query
-const avatarCache = new Map(); // id -> { buffer, contentType, isRedirect, redirectUrl, timestamp }
-const coverCache = new Map();  // id -> { buffer, contentType, isRedirect, redirectUrl, timestamp }
+const avatarCache = new Map(); // id -> { buffer, contentType, timestamp }
+const coverCache = new Map();  // id -> { buffer, contentType, timestamp }
 
 const CACHE_TTL = 3600 * 1000; // 1 giờ
 
@@ -13,17 +15,70 @@ function clearUserImageCache(userId) {
 }
 exports.clearUserImageCache = clearUserImageCache;
 
+const AVATAR_PALETTE = [
+  ["#0068FF", "#00C6FF"],
+  ["#6366F1", "#8B5CF6"],
+  ["#EC4899", "#F43F5E"],
+  ["#10B981", "#059669"],
+  ["#F59E0B", "#EA580C"],
+  ["#0EA5E9", "#2563EB"],
+];
+
+function getInitialsFromName(name) {
+  const clean = (name || "U").toString().trim();
+  if (!clean) return "U";
+  const parts = clean.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  return clean.slice(0, 2).toUpperCase();
+}
+
+async function generateInitialsPngBuffer(name) {
+  const initials = getInitialsFromName(name)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  let hash = 0;
+  const str = (name || "User").toString();
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+  }
+  const [c1, c2] = AVATAR_PALETTE[hash % AVATAR_PALETTE.length];
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+    <defs>
+      <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="${c1}"/>
+        <stop offset="100%" stop-color="${c2}"/>
+      </linearGradient>
+    </defs>
+    <rect width="256" height="256" rx="128" fill="url(#g)"/>
+    <text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" fill="#FFFFFF" font-family="sans-serif" font-weight="700" font-size="96">${initials}</text>
+  </svg>`;
+  if (sharp) {
+    return await sharp(Buffer.from(svg)).png().toBuffer();
+  }
+  return Buffer.from(svg);
+}
+
+function sendBinaryImage(res, buffer, contentType, maxAge = 86400) {
+  res.writeHead(200, {
+    "Content-Type": contentType || "image/jpeg",
+    "Content-Length": buffer.length,
+    "Cache-Control": `public, max-age=${maxAge}, stale-while-revalidate=86400`,
+    "Access-Control-Allow-Origin": "*",
+    "Cross-Origin-Resource-Policy": "cross-origin",
+  });
+  return res.end(buffer);
+}
+
 // Endpoint lấy ảnh đại diện của User dưới dạng file ảnh binary thực tế
 exports.getUserAvatar = async (req, res) => {
-  // Cho phép trình duyệt cache redirect avatar 1 giờ thay vì hỏi lại server mỗi lần render
-  const cachedRedirect = (url) => {
-    res.setHeader("Cache-Control", "public, max-age=3600");
-    return res.redirect(url);
-  };
   try {
     const { id } = req.params;
     if (!id || id === "null" || id === "undefined") {
-      return cachedRedirect(`https://ui-avatars.com/api/?name=User&background=random`);
+      const fallbackBuf = await generateInitialsPngBuffer("U");
+      return sendBinaryImage(res, fallbackBuf, sharp ? "image/png" : "image/svg+xml", 3600);
     }
 
     let cleanId = id.trim();
@@ -33,16 +88,8 @@ exports.getUserAvatar = async (req, res) => {
 
     // 1. Kiểm tra RAM cache
     const cached = avatarCache.get(cleanId);
-    if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
-      if (cached.isRedirect) {
-        return cachedRedirect(cached.redirectUrl);
-      }
-      res.writeHead(200, {
-        "Content-Type": cached.contentType,
-        "Content-Length": cached.buffer.length,
-        "Cache-Control": "public, max-age=86400, must-revalidate"
-      });
-      return res.end(cached.buffer);
+    if (cached && cached.buffer && (Date.now() - cached.timestamp < CACHE_TTL)) {
+      return sendBinaryImage(res, cached.buffer, cached.contentType);
     }
 
     // 2. Query DB theo UUID hoặc username / phone / email
@@ -73,50 +120,80 @@ exports.getUserAvatar = async (req, res) => {
       } catch (_) {}
     }
 
-    if (!user || !user.avatar) {
-      const name = encodeURIComponent(user ? user.fullName || "User" : "User");
-      const redirectUrl = `https://ui-avatars.com/api/?name=${name}&background=random`;
-      avatarCache.set(cleanId, { isRedirect: true, redirectUrl, timestamp: Date.now() });
-      return cachedRedirect(redirectUrl);
+    const rawAvatar = user && user.avatar ? user.avatar.trim() : "";
+    // Ngăn vòng lặp tự trỏ vào /api/users/:id/avatar
+    if (!user || !rawAvatar || rawAvatar.includes(`/api/users/`)) {
+      const pngBuffer = await generateInitialsPngBuffer(user ? (user.fullName || "U") : "U");
+      const contentType = sharp ? "image/png" : "image/svg+xml";
+      const entry = { buffer: pngBuffer, contentType, timestamp: Date.now() };
+      avatarCache.set(cleanId, entry);
+      if (user && user.id) avatarCache.set(user.id, entry);
+      return sendBinaryImage(res, pngBuffer, contentType, 3600);
     }
 
-    // Nếu là đường dẫn URL http hoặc file tĩnh
-    if (user.avatar.startsWith("http") || user.avatar.startsWith("/")) {
-      avatarCache.set(cleanId, { isRedirect: true, redirectUrl: user.avatar, timestamp: Date.now() });
-      return cachedRedirect(user.avatar);
+    // Nếu là đường dẫn URL http(s) (VD: Supabase Storage / Cloudflare R2) -> tải & lưu đệm binary vào RAM
+    if (rawAvatar.startsWith("http://") || rawAvatar.startsWith("https://")) {
+      try {
+        const resp = await fetch(rawAvatar);
+        if (resp.ok) {
+          const contentType = resp.headers.get("content-type") || "image/jpeg";
+          const buffer = Buffer.from(await resp.arrayBuffer());
+          if (buffer.length > 0) {
+            const entry = { buffer, contentType, timestamp: Date.now() };
+            avatarCache.set(cleanId, entry);
+            if (user.id) avatarCache.set(user.id, entry);
+            return sendBinaryImage(res, buffer, contentType);
+          }
+        }
+      } catch (_) {}
+      const pngBuffer = await generateInitialsPngBuffer(user.fullName || "U");
+      return sendBinaryImage(res, pngBuffer, sharp ? "image/png" : "image/svg+xml", 300);
+    }
+
+    // Nếu là đường dẫn file tĩnh cục bộ (/uploads/... hoặc /avatars/...)
+    if (rawAvatar.startsWith("/")) {
+      const path = require("path");
+      const fs = require("fs");
+      const rel = rawAvatar.replace(/^\/+/, "");
+      const candidates = [
+        path.join(__dirname, "..", rel),
+        path.join(__dirname, "..", "public", rel),
+      ];
+      for (const filePath of candidates) {
+        if (fs.existsSync(filePath)) {
+          const buffer = await fs.promises.readFile(filePath);
+          const ext = path.extname(filePath).toLowerCase();
+          const contentType = ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : "image/jpeg";
+          const entry = { buffer, contentType, timestamp: Date.now() };
+          avatarCache.set(cleanId, entry);
+          if (user.id) avatarCache.set(user.id, entry);
+          return sendBinaryImage(res, buffer, contentType);
+        }
+      }
     }
 
     // Nếu là chuỗi Data URL Base64 (VD: data:image/png;base64,...)
-    const matches = user.avatar.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    const matches = rawAvatar.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
     if (matches && matches.length === 3) {
       const contentType = matches[1];
       const base64Data = matches[2];
       const buffer = Buffer.from(base64Data, "base64");
-
-      avatarCache.set(cleanId, { buffer, contentType, timestamp: Date.now() });
-      res.writeHead(200, {
-        "Content-Type": contentType,
-        "Content-Length": buffer.length,
-        "Cache-Control": "public, max-age=86400, must-revalidate"
-      });
-      return res.end(buffer);
+      const entry = { buffer, contentType, timestamp: Date.now() };
+      avatarCache.set(cleanId, entry);
+      if (user.id) avatarCache.set(user.id, entry);
+      return sendBinaryImage(res, buffer, contentType);
     }
 
     // Trả về trực tiếp nếu là Base64 thuần không có tiền tố data:
     try {
-      const buffer = Buffer.from(user.avatar, "base64");
-      avatarCache.set(cleanId, { buffer, contentType: "image/jpeg", timestamp: Date.now() });
-      res.writeHead(200, {
-        "Content-Type": "image/jpeg",
-        "Content-Length": buffer.length,
-        "Cache-Control": "public, max-age=86400, must-revalidate"
-      });
-      return res.end(buffer);
+      const buffer = Buffer.from(rawAvatar, "base64");
+      const entry = { buffer, contentType: "image/jpeg", timestamp: Date.now() };
+      avatarCache.set(cleanId, entry);
+      if (user.id) avatarCache.set(user.id, entry);
+      return sendBinaryImage(res, buffer, "image/jpeg");
     } catch (e) {
-      const name = encodeURIComponent(user.fullName || "User");
-      const redirectUrl = `https://ui-avatars.com/api/?name=${name}&background=random`;
-      avatarCache.set(cleanId, { isRedirect: true, redirectUrl, timestamp: Date.now() });
-      return cachedRedirect(redirectUrl);
+      const pngBuffer = await generateInitialsPngBuffer(user.fullName || "U");
+      return sendBinaryImage(res, pngBuffer, sharp ? "image/png" : "image/svg+xml", 3600);
     }
   } catch (error) {
     console.error("Lỗi khi tải avatar:", error.message);
@@ -401,7 +478,7 @@ exports.getUserProfile = async (req, res) => {
   }
 };
 
-// Lookup user by ID (for QR scan) - returns user info + relationship status
+// Lookup user by ID (for QR scan / profile screen) - returns user info + relationship status
 exports.lookupUserById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -416,34 +493,36 @@ exports.lookupUserById = async (req, res) => {
       cleanId = cleanId.substring(1).trim();
     }
 
-    // 1. Kiểm tra UUID regex để tránh Prisma ném lỗi 500 Malformed UUID khi tìm kiếm username/SĐT
+    // 1. Kiểm tra UUID regex để tránh lỗi khi tìm kiếm username/SĐT
     const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(cleanId);
     let user = null;
     if (isUuid) {
       try {
-        user = await prisma.users.findUnique({
-          where: { id: cleanId },
-          select: { id: true, fullName: true, username: true, phone: true, email: true, isOnline: true, bio: true, avatar: true, coverPhoto: true },
-        });
+        const rows = await prisma.$queryRawUnsafe(
+          `SELECT id, "fullName", username, phone, email, "isOnline", bio,
+                  (avatar IS NOT NULL AND LENGTH(TRIM(avatar)) > 0) AS "hasAvatar",
+                  ("coverPhoto" IS NOT NULL AND LENGTH(TRIM("coverPhoto")) > 0) AS "hasCover"
+           FROM "Users" WHERE id = $1 LIMIT 1`,
+          cleanId
+        );
+        if (rows && rows.length > 0) user = rows[0];
       } catch (_) {}
 
       // Nếu cleanId là UUID nhưng không phải User ID, kiểm tra xem có phải mã phòng chat Conversation ID không
       if (!user) {
         try {
-          const convMember = await prisma.conversationMembers.findFirst({
-            where: {
-              conversationId: cleanId,
-              userId: currentUserId ? { not: currentUserId } : undefined,
-            },
-            select: {
-              Users: {
-                select: { id: true, fullName: true, username: true, phone: true, email: true, isOnline: true, bio: true, avatar: true, coverPhoto: true },
-              },
-            },
-          });
-          if (convMember && convMember.Users) {
-            user = convMember.Users;
-          }
+          const rows = await prisma.$queryRawUnsafe(
+            `SELECT u.id, u."fullName", u.username, u.phone, u.email, u."isOnline", u.bio,
+                    (u.avatar IS NOT NULL AND LENGTH(TRIM(u.avatar)) > 0) AS "hasAvatar",
+                    (u."coverPhoto" IS NOT NULL AND LENGTH(TRIM(u."coverPhoto")) > 0) AS "hasCover"
+             FROM "ConversationMembers" cm
+             JOIN "Users" u ON u.id = cm."userId"
+             WHERE cm."conversationId" = $1 AND ($2::text IS NULL OR cm."userId" <> $2)
+             LIMIT 1`,
+            cleanId,
+            currentUserId || null
+          );
+          if (rows && rows.length > 0) user = rows[0];
         } catch (_) {}
       }
     }
@@ -451,16 +530,16 @@ exports.lookupUserById = async (req, res) => {
     // 2. Fallback: Tra cứu theo username, phone hoặc email
     if (!user) {
       try {
-        user = await prisma.users.findFirst({
-          where: {
-            OR: [
-              { username: { equals: cleanId, mode: "insensitive" } },
-              { phone: cleanId },
-              { email: { equals: cleanId, mode: "insensitive" } },
-            ],
-          },
-          select: { id: true, fullName: true, username: true, phone: true, email: true, isOnline: true, bio: true, avatar: true, coverPhoto: true },
-        });
+        const rows = await prisma.$queryRawUnsafe(
+          `SELECT id, "fullName", username, phone, email, "isOnline", bio,
+                  (avatar IS NOT NULL AND LENGTH(TRIM(avatar)) > 0) AS "hasAvatar",
+                  ("coverPhoto" IS NOT NULL AND LENGTH(TRIM("coverPhoto")) > 0) AS "hasCover"
+           FROM "Users"
+           WHERE LOWER(username) = LOWER($1) OR phone = $1 OR LOWER(email) = LOWER($1)
+           LIMIT 1`,
+          cleanId
+        );
+        if (rows && rows.length > 0) user = rows[0];
       } catch (_) {}
     }
 
@@ -476,30 +555,26 @@ exports.lookupUserById = async (req, res) => {
       relationship = "self";
     } else if (currentUserId) {
       try {
-        // Check FriendRequests
-        const fr = await prisma.friendRequests.findFirst({
-          where: {
-            OR: [
-              { requesterId: currentUserId, receiverId: user.id },
-              { receiverId: currentUserId, requesterId: user.id },
-            ],
-          },
-        });
-
-        // Check Friends table
-        let fRecord = null;
-        try {
-          if (prisma.friends) {
-            fRecord = await prisma.friends.findFirst({
-              where: {
-                OR: [
-                  { senderId: currentUserId, receiverId: user.id },
-                  { receiverId: currentUserId, senderId: user.id },
-                ],
-              },
-            });
-          }
-        } catch (_) {}
+        const [fr, fRecord] = await Promise.all([
+          prisma.friendRequests.findFirst({
+            where: {
+              OR: [
+                { requesterId: currentUserId, receiverId: user.id },
+                { receiverId: currentUserId, requesterId: user.id },
+              ],
+            },
+          }),
+          prisma.friends
+            ? prisma.friends.findFirst({
+                where: {
+                  OR: [
+                    { senderId: currentUserId, receiverId: user.id },
+                    { receiverId: currentUserId, senderId: user.id },
+                  ],
+                },
+              }).catch(() => null)
+            : Promise.resolve(null),
+        ]);
 
         if ((fr && fr.status === "ACCEPTED") || (fRecord && (fRecord.status === "accepted" || fRecord.status === "ACCEPTED"))) {
           status = "FRIEND";
@@ -516,7 +591,11 @@ exports.lookupUserById = async (req, res) => {
       }
     }
 
-    const ts = Date.now();
+    const hasAvatar = Boolean(user.hasAvatar);
+    const hasCover = Boolean(user.hasCover);
+    const avatarPath = `/api/users/${user.id}/avatar`;
+    const coverPath = hasCover ? `/api/users/${user.id}/cover` : null;
+
     return res.status(200).json({
       success: true,
       data: {
@@ -527,9 +606,12 @@ exports.lookupUserById = async (req, res) => {
         email: user.email,
         isOnline: user.isOnline,
         bio: user.bio,
-        avatar: `/api/users/${user.id}/avatar?v=${ts}`,
-        coverPhoto: `/api/users/${user.id}/cover?v=${ts}`,
-        coverImage: `/api/users/${user.id}/cover?v=${ts}`,
+        hasAvatar,
+        hasCover,
+        avatar: avatarPath,
+        avatarUrl: avatarPath,
+        coverPhoto: coverPath,
+        coverImage: coverPath,
         status,
         relationship,
       },
@@ -935,103 +1017,77 @@ exports.getFriends = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // 1. Tìm các yêu cầu kết bạn đã ACCEPTED
-    const acceptedRequests = await prisma.friendRequests.findMany({
-      where: {
-        status: "ACCEPTED",
-        OR: [
-          { requesterId: userId },
-          { receiverId: userId },
-        ],
-      },
-      include: {
-        requester: {
-          select: { id: true, fullName: true, username: true, phone: true, email: true, isOnline: true, lastActive: true, avatar: true },
+    // 1. Tìm các yêu cầu kết bạn đã ACCEPTED + kiểm tra bảng Friends song song
+    const [acceptedRequests, friendsRecords] = await Promise.all([
+      prisma.friendRequests.findMany({
+        where: {
+          status: "ACCEPTED",
+          OR: [
+            { requesterId: userId },
+            { receiverId: userId },
+          ],
         },
-        receiver: {
-          select: { id: true, fullName: true, username: true, phone: true, email: true, isOnline: true, lastActive: true, avatar: true },
+        select: {
+          requesterId: true,
+          receiverId: true,
         },
-      },
-    });
-
-    const friendMap = new Map();
-
-    acceptedRequests.forEach((r) => {
-      const friend = r.requesterId === userId ? r.receiver : r.requester;
-      if (friend && friend.id !== userId) {
-        const hasCustomAvatar = Boolean(friend.avatar && friend.avatar.trim());
-        friendMap.set(friend.id, {
-          id: friend.id,
-          fullName: friend.fullName || friend.username,
-          username: friend.username,
-          phone: friend.phone,
-          email: friend.email,
-          isOnline: friend.isOnline,
-          lastActive: friend.lastActive,
-          avatar: hasCustomAvatar ? `/api/users/${friend.id}/avatar` : null,
-          avatarUrl: hasCustomAvatar ? `/api/users/${friend.id}/avatar` : null,
-          avatar_url: hasCustomAvatar ? `/api/users/${friend.id}/avatar` : null,
-          hasAvatar: hasCustomAvatar,
-          status: "FRIEND",
-          relationship: "friends",
-        });
-      }
-    });
-
-    // 2. Check bảng Friends nếu có
-    try {
-      if (prisma.friends) {
-        const friendsRecords = await prisma.friends.findMany({
-          where: {
-            OR: [{ senderId: userId }, { receiverId: userId }],
-            status: { in: ["accepted", "ACCEPTED"] },
-          },
-        });
-
-        const otherUserIds = friendsRecords
-          .map((f) => (f.senderId === userId ? f.receiverId : f.senderId))
-          .filter((id) => id && id !== userId && !friendMap.has(id));
-
-        if (otherUserIds.length > 0) {
-          const friendUsers = await prisma.users.findMany({
-            where: { id: { in: otherUserIds } },
-            select: {
-              id: true,
-              fullName: true,
-              username: true,
-              phone: true,
-              email: true,
-              isOnline: true,
-              lastActive: true,
-              avatar: true,
+      }),
+      prisma.friends
+        ? prisma.friends.findMany({
+            where: {
+              OR: [{ senderId: userId }, { receiverId: userId }],
+              status: { in: ["accepted", "ACCEPTED"] },
             },
-          });
+            select: {
+              senderId: true,
+              receiverId: true,
+            },
+          }).catch(() => [])
+        : Promise.resolve([]),
+    ]);
 
-          for (const friend of friendUsers) {
-            const hasCustomAvatar = Boolean(friend.avatar && friend.avatar.trim());
-            friendMap.set(friend.id, {
-              id: friend.id,
-              fullName: friend.fullName || friend.username,
-              username: friend.username,
-              phone: friend.phone,
-              email: friend.email,
-              isOnline: friend.isOnline,
-              lastActive: friend.lastActive,
-              avatar: hasCustomAvatar ? `/api/users/${friend.id}/avatar` : null,
-              avatarUrl: hasCustomAvatar ? `/api/users/${friend.id}/avatar` : null,
-              avatar_url: hasCustomAvatar ? `/api/users/${friend.id}/avatar` : null,
-              hasAvatar: hasCustomAvatar,
-              status: "FRIEND",
-              relationship: "friends",
-            });
-          }
-        }
-      }
-    } catch (e) {
-      console.warn("⚠️ Friends table lookup err:", e.message);
+    const friendIdsSet = new Set();
+    for (const r of acceptedRequests) {
+      const fid = r.requesterId === userId ? r.receiverId : r.requesterId;
+      if (fid && fid !== userId) friendIdsSet.add(fid);
+    }
+    for (const f of friendsRecords) {
+      const fid = f.senderId === userId ? f.receiverId : f.senderId;
+      if (fid && fid !== userId) friendIdsSet.add(fid);
     }
 
-    const friendsList = Array.from(friendMap.values());
+    const friendIds = Array.from(friendIdsSet);
+    if (friendIds.length === 0) {
+      return res.status(200).json({ success: true, data: [] });
+    }
+
+    const friendUsers = await prisma.$queryRawUnsafe(
+      `SELECT id, "fullName", username, phone, email, "isOnline", "lastActive",
+              (avatar IS NOT NULL AND LENGTH(TRIM(avatar)) > 0) AS "hasAvatar"
+       FROM "Users"
+       WHERE id = ANY($1::text[])`,
+      friendIds
+    );
+
+    const friendsList = friendUsers.map((friend) => {
+      const hasCustomAvatar = Boolean(friend.hasAvatar);
+      return {
+        id: friend.id,
+        fullName: friend.fullName || friend.username,
+        username: friend.username,
+        phone: friend.phone,
+        email: friend.email,
+        isOnline: friend.isOnline,
+        lastActive: friend.lastActive,
+        avatar: hasCustomAvatar ? `/api/users/${friend.id}/avatar` : null,
+        avatarUrl: hasCustomAvatar ? `/api/users/${friend.id}/avatar` : null,
+        avatar_url: hasCustomAvatar ? `/api/users/${friend.id}/avatar` : null,
+        hasAvatar: hasCustomAvatar,
+        status: "FRIEND",
+        relationship: "friends",
+      };
+    });
+
     return res.status(200).json({ success: true, data: friendsList });
   } catch (error) {
     console.error("Lỗi lấy danh sách bạn bè:", error.message);
@@ -1061,14 +1117,15 @@ exports.searchUsers = async (req, res) => {
     const lowerQ = keyword.toLowerCase();
     const cleanQ = removeAccents(lowerQ);
 
-    // Query tất cả user
-    const allUsers = await prisma.users.findMany({
-      select: { id: true, fullName: true, username: true, phone: true, email: true, isOnline: true, avatar: true },
-      take: 200,
-    });
+    // Query tất cả user mà KHÔNG kéo chuỗi Base64 avatar nặng nề từ DB
+    const allUsers = await prisma.$queryRawUnsafe(
+      `SELECT id, "fullName", username, phone, email, "isOnline",
+              (avatar IS NOT NULL AND LENGTH(TRIM(avatar)) > 0) AS "hasAvatar"
+       FROM "Users"
+       LIMIT 200`
+    );
 
     let scoredUsers = [];
-    const suggestionsSet = new Set();
 
     if (!hasQuery) {
       // Khi không nhập từ khóa: hiển thị tất cả user trừ bản thân
@@ -1090,12 +1147,10 @@ exports.searchUsers = async (req, res) => {
 
         let score = 0;
 
-        // 1. Tên bắt đầu bằng từ khóa (ví dụ "The", "Thanh Tho")
         if (nLower.startsWith(lowerQ) || nClean.startsWith(cleanQ)) {
           score += 1000;
         }
 
-        // 2. Có từ trong tên bắt đầu bằng từ khóa (ví dụ: "Thanh Tho" -> "Tho", "Bùi Văn Thịnh" -> "Thịnh")
         const words = nClean.split(/\s+/);
         for (let i = 0; i < words.length; i++) {
           if (words[i].startsWith(cleanQ)) {
@@ -1104,12 +1159,10 @@ exports.searchUsers = async (req, res) => {
           }
         }
 
-        // 3. Username bắt đầu bằng từ khóa
         if (uLower.startsWith(lowerQ) || uClean.startsWith(cleanQ)) {
           score += 300;
         }
 
-        // 4. Nếu từ khóa từ 2 ký tự trở lên: cho phép tìm theo cụm từ trong tên hoặc username
         if (cleanQ.length >= 2) {
           if (nClean.includes(cleanQ)) {
             score += 100;
@@ -1119,7 +1172,6 @@ exports.searchUsers = async (req, res) => {
           }
         }
 
-        // 5. Số điện thoại hoặc email khớp
         if (phone && phone.includes(keyword)) {
           score += 40;
         } else if (email && email.toLowerCase().includes(lowerQ)) {
@@ -1131,7 +1183,6 @@ exports.searchUsers = async (req, res) => {
         }
       }
 
-      // Sắp xếp ưu tiên: Điểm cao nhất lên đầu
       scoredUsers.sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
         const nameA = a.user.fullName || a.user.username || "";
@@ -1143,30 +1194,28 @@ exports.searchUsers = async (req, res) => {
     const users = scoredUsers.map((item) => item.user);
     const targetUserIds = users.map((u) => u.id);
 
-    // 1. Kiểm tra trong FriendRequests (ACCEPTED hoặc PENDING)
-    const friendRequests = targetUserIds.length > 0 ? await prisma.friendRequests.findMany({
-      where: {
-        OR: [
-          { requesterId: currentUserId, receiverId: { in: targetUserIds } },
-          { receiverId: currentUserId, requesterId: { in: targetUserIds } },
-        ],
-      },
-    }) : [];
-
-    // 2. Kiểm tra trong bảng Friends nếu có
-    let friendsRecords = [];
-    try {
-      if (prisma.friends && targetUserIds.length > 0) {
-        friendsRecords = await prisma.friends.findMany({
-          where: {
-            OR: [
-              { senderId: currentUserId, receiverId: { in: targetUserIds } },
-              { receiverId: currentUserId, senderId: { in: targetUserIds } },
-            ],
-          },
-        });
-      }
-    } catch (_) {}
+    const [friendRequests, friendsRecords] = await Promise.all([
+      targetUserIds.length > 0
+        ? prisma.friendRequests.findMany({
+            where: {
+              OR: [
+                { requesterId: currentUserId, receiverId: { in: targetUserIds } },
+                { receiverId: currentUserId, requesterId: { in: targetUserIds } },
+              ],
+            },
+          })
+        : Promise.resolve([]),
+      prisma.friends && targetUserIds.length > 0
+        ? prisma.friends.findMany({
+            where: {
+              OR: [
+                { senderId: currentUserId, receiverId: { in: targetUserIds } },
+                { receiverId: currentUserId, senderId: { in: targetUserIds } },
+              ],
+            },
+          }).catch(() => [])
+        : Promise.resolve([]),
+    ]);
 
     const mappedUsers = users.map((u) => {
       let status = "NONE";
@@ -1200,7 +1249,7 @@ exports.searchUsers = async (req, res) => {
         }
       }
 
-      const hasCustomAvatar = Boolean(u.avatar && u.avatar.trim());
+      const hasCustomAvatar = Boolean(u.hasAvatar);
       return {
         id: u.id,
         fullName: u.fullName || u.username,
@@ -1210,7 +1259,7 @@ exports.searchUsers = async (req, res) => {
         isOnline: u.isOnline,
         avatar: hasCustomAvatar ? `/api/users/${u.id}/avatar` : null,
         hasAvatar: hasCustomAvatar,
-        status, // "FRIEND", "PENDING", "NONE", "SELF"
+        status,
         relationship,
       };
     });

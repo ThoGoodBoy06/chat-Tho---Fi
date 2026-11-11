@@ -12,6 +12,7 @@ class LoadingPhoto extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SizedBox(width: width, height: height,
     child: Image(image: image, width: width, height: height, fit: fit,
+      gaplessPlayback: true,
       frameBuilder: (_, child, frame, synchronous) => synchronous || frame != null ? child
         : SkeletonBox(width: width, height: height, borderRadius: 0),
       errorBuilder: (_, __, ___) => fallback ?? const SizedBox.expand(),

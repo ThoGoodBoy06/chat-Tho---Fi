@@ -44,7 +44,7 @@ class AppAvatar extends StatelessWidget {
             width: size,
             height: size,
             fit: BoxFit.cover,
-            gaplessPlayback: false,
+            gaplessPlayback: true,
             frameBuilder: (_, image, frame, synchronous) =>
                 synchronous || frame != null
                     ? image
