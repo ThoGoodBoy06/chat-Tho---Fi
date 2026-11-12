@@ -1,5 +1,6 @@
 import 'tab_design.dart';
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../screens/news_article_screen.dart';
@@ -28,6 +29,23 @@ class _NewsTabState extends State<NewsTab> with WidgetsBindingObserver {
   String? _error;
   Timer? _refreshTimer;
   bool _foreground = true;
+
+  ScrollPhysics _getAdaptiveScrollPhysics(BuildContext context) {
+    if (kIsWeb) {
+      return const ClampingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
+    }
+    switch (Theme.of(context).platform) {
+      case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
+        return const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
+      case TargetPlatform.android:
+      case TargetPlatform.fuchsia:
+      case TargetPlatform.linux:
+      case TargetPlatform.windows:
+      default:
+        return const ClampingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
+    }
+  }
 
   @override
   void initState() {
@@ -169,65 +187,66 @@ class _NewsTabState extends State<NewsTab> with WidgetsBindingObserver {
                           itemBuilder: (_, i) => i == 0
                               ? const NewsLeadArticle()
                               : const NewsArticleRow())
-                      : RefreshIndicator(
-                          onRefresh: () => _load(force: true),
-                          child: articles.isEmpty
-                              ? LayoutBuilder(
-                                  builder: (context, constraints) => ListView(
-                                        physics:
-                                            const AlwaysScrollableScrollPhysics(),
-                                        children: [
-                                          SizedBox(
-                                              height: constraints.maxHeight,
-                                              child: Center(
-                                                  child: Padding(
-                                                padding:
-                                                    const EdgeInsets.all(24),
-                                                child: Column(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    children: [
-                                                      Icon(
-                                                          Icons
-                                                              .newspaper_rounded,
-                                                          size: 40,
-                                                          color: muted),
-                                                      const SizedBox(
-                                                          height: 12),
-                                                      Text(
-                                                          _error ??
-                                                              'Chưa tải được tin ${_categories[_category]}.',
-                                                          textAlign:
-                                                              TextAlign.center),
-                                                      const SizedBox(height: 8),
-                                                      TextButton(
-                                                          onPressed: _loading
-                                                              ? null
-                                                              : () => _load(
-                                                                  force: true),
-                                                          child: const Text(
-                                                              'Thử lại')),
-                                                    ]),
-                                              ))),
-                                        ],
-                                      ))
-                              : ListView.builder(
-                                  key: PageStorageKey('news_$_category'),
-                                  physics: const BouncingScrollPhysics(
-                                      parent: AlwaysScrollableScrollPhysics()),
-                                  cacheExtent: 600,
-                                  itemCount: articles.length,
-                                  addAutomaticKeepAlives: false,
-                                  addRepaintBoundaries: true,
-                                  itemBuilder: (_, i) => i == 0
-                                      ? NewsLeadArticle(
-                                          article: articles[i],
-                                          onTap: () => _open(articles[i]))
-                                      : NewsArticleRow(
-                                          key: ValueKey(articles[i].id),
-                                          article: articles[i],
-                                          onTap: () => _open(articles[i])),
-                                ),
+                      : RepaintBoundary(
+                          child: RefreshIndicator(
+                            onRefresh: () => _load(force: true),
+                            child: articles.isEmpty
+                                ? LayoutBuilder(
+                                    builder: (context, constraints) => ListView(
+                                          physics:
+                                              const AlwaysScrollableScrollPhysics(),
+                                          children: [
+                                            SizedBox(
+                                                height: constraints.maxHeight,
+                                                child: Center(
+                                                    child: Padding(
+                                                  padding:
+                                                      const EdgeInsets.all(24),
+                                                  child: Column(
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      children: [
+                                                        Icon(
+                                                            Icons
+                                                                .newspaper_rounded,
+                                                            size: 40,
+                                                            color: muted),
+                                                        const SizedBox(
+                                                            height: 12),
+                                                        Text(
+                                                            _error ??
+                                                                'Chưa tải được tin ${_categories[_category]}.',
+                                                            textAlign:
+                                                                TextAlign.center),
+                                                        const SizedBox(height: 8),
+                                                        TextButton(
+                                                            onPressed: _loading
+                                                                ? null
+                                                                : () => _load(
+                                                                    force: true),
+                                                            child: const Text(
+                                                                'Thử lại')),
+                                                      ]),
+                                                ))),
+                                          ],
+                                        ))
+                                : ListView.builder(
+                                    key: PageStorageKey('news_$_category'),
+                                    physics: _getAdaptiveScrollPhysics(context),
+                                    cacheExtent: 1500,
+                                    itemCount: articles.length,
+                                    addAutomaticKeepAlives: false,
+                                    addRepaintBoundaries: true,
+                                    itemBuilder: (_, i) => i == 0
+                                        ? NewsLeadArticle(
+                                            article: articles[i],
+                                            onTap: () => _open(articles[i]))
+                                        : NewsArticleRow(
+                                            key: ValueKey(articles[i].id),
+                                            article: articles[i],
+                                            onTap: () => _open(articles[i])),
+                                  ),
+                          ),
                         ),
                 ),
               ]))),

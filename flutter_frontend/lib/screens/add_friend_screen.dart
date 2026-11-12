@@ -479,13 +479,15 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
             )
           else
             Expanded(
-              child: ListView.separated(
-                itemCount: _searchResults.length,
-                separatorBuilder: (context, index) => const Divider(
-                  height: 1,
-                  indent: 76,
-                  color: Color(0xFFF1F5F9),
-                ),
+              child: RepaintBoundary(
+                child: ListView.separated(
+                  cacheExtent: 1200,
+                  itemCount: _searchResults.length,
+                  separatorBuilder: (context, index) => const Divider(
+                    height: 1,
+                    indent: 76,
+                    color: Color(0xFFF1F5F9),
+                  ),
                 itemBuilder: (context, index) {
                   final user = Map<String, dynamic>.from(_searchResults[index] as Map);
                   final name = user['fullName'] ?? user['username'] ?? 'Người dùng';
@@ -574,6 +576,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
                 },
               ),
             ),
+          ),
         ],
       ),
     );

@@ -17,9 +17,9 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
   <!-- High Priority Preloads for Instant Native Startup -->
-  <link rel="preload" href="/flutter_bootstrap.js?v=e1bdaa2fe4ce398a" as="script">
-  <link rel="preload" href="/web_notifications.js?v=e1bdaa2fe4ce398a" as="script">
-  <link rel="preload" href="/webrtc_audio_helper.js?v=e1bdaa2fe4ce398a" as="script">
+  <link rel="preload" href="/flutter_bootstrap.js?v=31df122c9c0d2d20" as="script">
+  <link rel="preload" href="/web_notifications.js?v=31df122c9c0d2d20" as="script">
+  <link rel="preload" href="/webrtc_audio_helper.js?v=31df122c9c0d2d20" as="script">
   <link rel="preload" href="/tho_fi_logo_transparent.png" as="image">
   <!-- Preload Reaction Emojis for Instant Zero-Lag Reaction & Chat Render -->
   <link rel="preload" href="/assets/assets/emojis/2764-fe0f.png" as="image">
@@ -3436,7 +3436,7 @@
 
   <script id="app-update-manager">
     (function () {
-      const pageVersion = 'e1bdaa2fe4ce398a';
+      const pageVersion = '31df122c9c0d2d20';
       let checking = false;
       let lastCheck = 0;
       function showUpdate(version) {
@@ -3500,7 +3500,7 @@
     // An older PWA worker ignores ?v= when matching code in its cache. Remove
     // only stale public code after verifying this release is reachable online.
     (async function () {
-      const version = 'e1bdaa2fe4ce398a';
+      const version = '31df122c9c0d2d20';
       const corePaths = new Set(['/main.dart.js', '/flutter_bootstrap.js', '/webrtc_audio_helper.js', '/web_notifications.js', '/app_fonts.css', '/assets/FontManifest.json', '/assets/AssetManifest.json', '/assets/AssetManifest.bin']);
       async function cleanStaleCaches() {
         if (!('caches' in window) || navigator.onLine === false) return;

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'app_avatar.dart';
@@ -46,6 +47,23 @@ class ContactsWorkspace extends StatelessWidget {
   String _section(Map<String, dynamic> u) {
     final text = normalize(_name(u)).trim().toUpperCase();
     return text.isEmpty || !RegExp(r'^[A-Z]').hasMatch(text) ? '#' : text[0];
+  }
+
+  ScrollPhysics _getAdaptivePhysics(BuildContext context) {
+    if (kIsWeb) {
+      return const ClampingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
+    }
+    switch (Theme.of(context).platform) {
+      case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
+        return const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
+      case TargetPlatform.android:
+      case TargetPlatform.fuchsia:
+      case TargetPlatform.linux:
+      case TargetPlatform.windows:
+      default:
+        return const ClampingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
+    }
   }
 
   Widget _avatar(Map<String, dynamic> u, {double radius = 23}) {
@@ -186,11 +204,11 @@ class ContactsWorkspace extends StatelessWidget {
                         .toLowerCase()
                         .compareTo(normalize(_name(b)).toLowerCase()));
                   final online = users.where(_online).toList();
-                  return CustomScrollView(
+                  return RepaintBoundary(
+                    child: CustomScrollView(
                       key: const PageStorageKey('contacts-workspace'),
-                      physics: const BouncingScrollPhysics(
-                          parent: AlwaysScrollableScrollPhysics()),
-                      cacheExtent: 600,
+                      physics: _getAdaptivePhysics(context),
+                      cacheExtent: 1500,
                       keyboardDismissBehavior:
                           ScrollViewKeyboardDismissBehavior.onDrag,
                       slivers: [
@@ -267,69 +285,73 @@ class ContactsWorkspace extends StatelessWidget {
                           final section = _section(u);
                           final showSection =
                               i == 0 || _section(users[i - 1]) != section;
-                          return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (showSection)
+                          return RepaintBoundary(
+                            key: ValueKey('contact_${u['id']}'),
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (showSection)
+                                    Padding(
+                                        padding: const EdgeInsets.fromLTRB(
+                                            20, 14, 20, 6),
+                                        child: Text(section,
+                                            style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w700,
+                                                color: muted))),
                                   Padding(
-                                      padding: const EdgeInsets.fromLTRB(
-                                          20, 14, 20, 6),
-                                      child: Text(section,
-                                          style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w700,
-                                              color: muted))),
-                                Padding(
-                                    padding: const EdgeInsets.only(
-                                        left: 12, right: 6),
-                                    child: Row(children: [
-                                      Expanded(
-                                          child: ListTile(
-                                              contentPadding:
-                                                  const EdgeInsets.only(
-                                                      left: 8),
-                                              onTap: () => onProfile(u),
-                                              leading: _avatar(u),
-                                              title: Text(_name(u),
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: AppTypography.listTitle))),
-                                      IconButton(
-                                          tooltip: 'Gọi ${_name(u)}',
-                                          onPressed: () => onCall(u),
-                                          icon: Icon(Icons.call_outlined,
-                                              size: 21, color: scheme.primary)),
-                                      IconButton(
-                                          tooltip: 'Nhắn tin cho ${_name(u)}',
-                                          onPressed: () => onMessage(u),
-                                          icon: Icon(
-                                              Icons.chat_bubble_outline_rounded,
-                                              size: 21,
-                                              color: scheme.primary)),
-                                      PopupMenuButton<String>(
-                                          tooltip: 'Tùy chọn ${_name(u)}',
-                                          padding: EdgeInsets.zero,
-                                          constraints: const BoxConstraints(
-                                              minWidth: 130),
-                                          iconSize: 18,
-                                          onSelected: (_) => onRemove(u),
-                                          itemBuilder: (_) => [
-                                                const PopupMenuItem(
-                                                    value: 'remove',
-                                                    child: Text('Xóa bạn bè'))
-                                              ]),
-                                    ])),
-                                Divider(
-                                    height: 1,
-                                    indent: 80,
-                                    endIndent: 20,
-                                    color:
-                                        scheme.outlineVariant.withOpacity(0.4)),
-                              ]);
+                                      padding: const EdgeInsets.only(
+                                          left: 12, right: 6),
+                                      child: Row(children: [
+                                        Expanded(
+                                            child: ListTile(
+                                                contentPadding:
+                                                    const EdgeInsets.only(
+                                                        left: 8),
+                                                onTap: () => onProfile(u),
+                                                leading: _avatar(u),
+                                                title: Text(_name(u),
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: AppTypography.listTitle))),
+                                        IconButton(
+                                            tooltip: 'Gọi ${_name(u)}',
+                                            onPressed: () => onCall(u),
+                                            icon: Icon(Icons.call_outlined,
+                                                size: 21, color: scheme.primary)),
+                                        IconButton(
+                                            tooltip: 'Nhắn tin cho ${_name(u)}',
+                                            onPressed: () => onMessage(u),
+                                            icon: Icon(
+                                                Icons.chat_bubble_outline_rounded,
+                                                size: 21,
+                                                color: scheme.primary)),
+                                        PopupMenuButton<String>(
+                                            tooltip: 'Tùy chọn ${_name(u)}',
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(
+                                                minWidth: 130),
+                                            iconSize: 18,
+                                            onSelected: (_) => onRemove(u),
+                                            itemBuilder: (_) => [
+                                                  const PopupMenuItem(
+                                                      value: 'remove',
+                                                      child: Text('Xóa bạn bè'))
+                                                ]),
+                                      ])),
+                                  Divider(
+                                      height: 1,
+                                      indent: 80,
+                                      endIndent: 20,
+                                      color:
+                                          scheme.outlineVariant.withOpacity(0.4)),
+                                ]),
+                          );
                         }, childCount: users.length)),
                         const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                      ]);
+                      ]),
+                  );
                 })),
       ]),
     );

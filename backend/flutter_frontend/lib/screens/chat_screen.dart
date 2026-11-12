@@ -4136,25 +4136,31 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                   )
                 : !_isAiLoading && (_aiMessages.isEmpty || (_aiMessages.length == 1 && _aiMessages.first['sender'] != 'user'))
                     ? AiWelcome(onPrompt: (prompt) { _aiTextController.text = prompt; _aiFocusNode.requestFocus(); })
-                    : ListView.builder(
-                    controller: _aiScrollController,
-                    keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    itemCount: _aiMessages.length + (_isAiLoading ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      // Khi AI đang phản hồi: hiển thị avatar bot nhỏ và 3 chấm nảy lên
-                      if (index == _aiMessages.length && _isAiLoading) {
-                        return _AiBouncingDotsBubble(isDark: isDark);
-                      }
+                    : RepaintBoundary(
+                        child: ListView.builder(
+                          controller: _aiScrollController,
+                          cacheExtent: 1500,
+                          addRepaintBoundaries: true,
+                          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          itemCount: _aiMessages.length + (_isAiLoading ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            // Khi AI đang phản hồi: hiển thị avatar bot nhỏ và 3 chấm nảy lên
+                            if (index == _aiMessages.length && _isAiLoading) {
+                              return RepaintBoundary(
+                                child: _AiBouncingDotsBubble(isDark: isDark),
+                              );
+                            }
 
-                      final msg = _aiMessages[index];
-                      final isUser = msg['sender'] == 'user';
-                      final content = msg['content'] ?? '';
-                      final isError = !isUser && content.startsWith('⚠️');
+                            final msg = _aiMessages[index];
+                            final isUser = msg['sender'] == 'user';
+                            final content = msg['content'] ?? '';
+                            final isError = !isUser && content.startsWith('⚠️');
 
-                      final bubbleWidget = Align(
-                        alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                        child: Container(
+                            final bubbleWidget = RepaintBoundary(
+                              child: Align(
+                                alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                                child: Container(
                           margin: const EdgeInsets.only(bottom: 12),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -4285,7 +4291,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                             ],
                           ),
                         ),
-                      );
+                      ),
+                    );
 
                       // Hiển thị gợi ý câu hỏi khi đoạn chat mới chỉ có câu chào mở đầu
                       if (index == 0 && _aiMessages.length == 1 && !isUser) {
@@ -4346,6 +4353,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                       return bubbleWidget;
                     },
                   ),
+                ),
           ),
 
           // Input

@@ -245,8 +245,8 @@ function getMaintenanceHtml(msg) {
 // NGOẠI TRỪ avatar và cover photo (ảnh tĩnh nên để browser cache)
 app.use("/api", (req, res, next) => {
     const url = req.originalUrl || req.url;
-    // Cho phép browser cache ảnh avatar, cover photo, thumbnail và media tin nhắn (giảm tải rất nhiều)
-    if (url.match(/\/api\/(users\/[^/]+\/(avatar|cover)|chat\/(thumbnail|media-proxy|messages\/[^/]+\/media))/)) {
+    // Cho phép browser cache ảnh avatar, cover photo, thumbnail, media tin nhắn và ảnh tin tức (giảm tải rất nhiều)
+    if (url.match(/\/api\/(users\/[^/]+\/(avatar|cover)|chat\/(thumbnail|media-proxy|messages\/[^/]+\/media)|news\/(image\/[^/]+|[^/]+\/images\/[^/]+))/)) {
         return next();
     }
     res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0");
