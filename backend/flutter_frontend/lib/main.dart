@@ -16,8 +16,8 @@ import 'screens/chat_screen.dart';
 import 'utils/web_utils.dart' as web_utils;
 import 'utils/avatar_image.dart';
 
-/// Custom ScrollBehavior tối ưu cho Flutter Web:
-/// Kích hoạt cuộn mượt cho chuột, cảm ứng, trackpad với BouncingScrollPhysics.
+/// Custom ScrollBehavior tối ưu cho Flutter Web & Đa nền tảng:
+/// Kích hoạt cuộn mượt cho chuột, cảm ứng, trackpad với Adaptive Platform Scroll Physics.
 class SmoothWebScrollBehavior extends MaterialScrollBehavior {
   const SmoothWebScrollBehavior();
 
@@ -30,8 +30,22 @@ class SmoothWebScrollBehavior extends MaterialScrollBehavior {
   };
 
   @override
-  ScrollPhysics getScrollPhysics(BuildContext context) =>
-      const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
+  ScrollPhysics getScrollPhysics(BuildContext context) {
+    if (kIsWeb) {
+      return const ClampingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
+    }
+    switch (getPlatform(context)) {
+      case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
+        return const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
+      case TargetPlatform.android:
+      case TargetPlatform.fuchsia:
+      case TargetPlatform.linux:
+      case TargetPlatform.windows:
+      default:
+        return const ClampingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
+    }
+  }
 }
 
 void main() async {

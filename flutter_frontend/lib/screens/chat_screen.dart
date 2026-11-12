@@ -1983,6 +1983,23 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
     return trimmed[0].toUpperCase();
   }
 
+  ScrollPhysics _getAdaptiveScrollPhysics(BuildContext context) {
+    if (kIsWeb) {
+      return const ClampingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
+    }
+    switch (Theme.of(context).platform) {
+      case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
+        return const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
+      case TargetPlatform.android:
+      case TargetPlatform.fuchsia:
+      case TargetPlatform.linux:
+      case TargetPlatform.windows:
+      default:
+        return const ClampingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
+    }
+  }
+
   Widget _buildChatList(ChatProvider provider) {
     return Selector<ChatProvider, List<Object?>>(
       selector: (_, p) => [
@@ -2055,7 +2072,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
           Expanded(
             child: provider.isLoadingConversations && provider.conversations.isEmpty
                 ? _buildConversationSkeletonList(isDark)
-                : RefreshIndicator(
+                : RepaintBoundary(
+                    child: RefreshIndicator(
                     color: const Color(0xFF007AFF),
                     onRefresh: () => provider.fetchConversations(),
                     child: filteredList.isEmpty
@@ -2096,8 +2114,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                             ],
                           )
                         : ListView.builder(
-                            physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-                            cacheExtent: 600,
+                            physics: _getAdaptiveScrollPhysics(context),
+                            cacheExtent: 1500,
                             addAutomaticKeepAlives: false,
                             addRepaintBoundaries: true,
                             itemCount: filteredList.length,
@@ -2292,6 +2310,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                         },
                       ),
                 ),
+                  ),
           ),
         ],
       ),
@@ -2998,12 +3017,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                           ValueKey('message_${allMessages[i].id}'):
                             messageCount - 1 - i + (hasTyping ? 1 : 0),
                       };
-                      return ListView.builder(
-                        findChildIndexCallback: (key) => rowIndices[key],
-                        controller: _scrollController,
-                        reverse: true,
-                        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-                        cacheExtent: isDesktop ? 800 : 500,
+                      return RepaintBoundary(
+                        child: ListView.builder(
+                          findChildIndexCallback: (key) => rowIndices[key],
+                          controller: _scrollController,
+                          reverse: true,
+                          physics: _getAdaptiveScrollPhysics(context),
+                          cacheExtent: 1500,
                         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                         addAutomaticKeepAlives: false,
                         addRepaintBoundaries: true,
@@ -3432,6 +3452,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                       ),
                       );
                     },
+                        ),
                       );
                     },
                   ),

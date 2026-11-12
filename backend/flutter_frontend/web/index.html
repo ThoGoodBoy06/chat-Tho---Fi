@@ -484,9 +484,7 @@
 
     html,
     body,
-    #flutter_container,
-    flt-glass-pane,
-    flt-scene-host {
+    #flutter_container {
       width: 100%;
       height: 100%;
       margin: 0;
@@ -495,9 +493,20 @@
       overscroll-behavior: none;
       overscroll-behavior-x: none;
       overscroll-behavior-y: none;
-      touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
       -webkit-touch-callout: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    flt-glass-pane,
+    flt-scene-host,
+    flt-glass-pane canvas {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      touch-action: none !important;
       user-select: none;
       -webkit-user-select: none;
     }
