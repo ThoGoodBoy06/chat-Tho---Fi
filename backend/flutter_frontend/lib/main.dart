@@ -31,20 +31,7 @@ class SmoothWebScrollBehavior extends MaterialScrollBehavior {
 
   @override
   ScrollPhysics getScrollPhysics(BuildContext context) {
-    if (kIsWeb) {
-      return const ClampingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
-    }
-    switch (getPlatform(context)) {
-      case TargetPlatform.iOS:
-      case TargetPlatform.macOS:
-        return const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
-      case TargetPlatform.android:
-      case TargetPlatform.fuchsia:
-      case TargetPlatform.linux:
-      case TargetPlatform.windows:
-      default:
-        return const ClampingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
-    }
+    return const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
   }
 }
 

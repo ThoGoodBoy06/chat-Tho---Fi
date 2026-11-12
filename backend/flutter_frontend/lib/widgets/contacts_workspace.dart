@@ -50,20 +50,7 @@ class ContactsWorkspace extends StatelessWidget {
   }
 
   ScrollPhysics _getAdaptivePhysics(BuildContext context) {
-    if (kIsWeb) {
-      return const ClampingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
-    }
-    switch (Theme.of(context).platform) {
-      case TargetPlatform.iOS:
-      case TargetPlatform.macOS:
-        return const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
-      case TargetPlatform.android:
-      case TargetPlatform.fuchsia:
-      case TargetPlatform.linux:
-      case TargetPlatform.windows:
-      default:
-        return const ClampingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
-    }
+    return const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
   }
 
   Widget _avatar(Map<String, dynamic> u, {double radius = 23}) {
@@ -208,7 +195,7 @@ class ContactsWorkspace extends StatelessWidget {
                     child: CustomScrollView(
                       key: const PageStorageKey('contacts-workspace'),
                       physics: _getAdaptivePhysics(context),
-                      cacheExtent: 1500,
+                      cacheExtent: 800,
                       keyboardDismissBehavior:
                           ScrollViewKeyboardDismissBehavior.onDrag,
                       slivers: [

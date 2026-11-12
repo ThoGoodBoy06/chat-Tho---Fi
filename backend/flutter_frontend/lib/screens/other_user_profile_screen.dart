@@ -336,14 +336,41 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen> {
     final String targetUid = (_userData?['id']?.toString().isNotEmpty == true)
         ? _userData!['id'].toString()
         : widget.userId;
-    final dynamic rawAvatar = _userData?['avatar'] ??
-        _userData?['avatarUrl'] ??
-        _userData?['profileAvatarUrl'] ??
-        _userData?['avatar_url'] ??
-        (targetUid.isNotEmpty ? '/api/users/$targetUid/avatar' : null);
-    final String avatarUrl = ApiService.formatImageUrl(rawAvatar?.toString());
-    final dynamic rawCover = _userData?['coverPhoto'] ?? _userData?['coverImage'];
-    final String coverUrl = ApiService.formatImageUrl(rawCover?.toString());
+    String? rawAvatarStr;
+    for (final candidate in [
+      _userData?['avatar'],
+      _userData?['avatarUrl'],
+      _userData?['profileAvatarUrl'],
+      _userData?['avatar_url'],
+    ]) {
+      if (candidate != null) {
+        final s = candidate.toString().trim();
+        if (s.isNotEmpty && s != 'null' && s != 'undefined') {
+          rawAvatarStr = s;
+          break;
+        }
+      }
+    }
+    if (rawAvatarStr == null && targetUid.isNotEmpty) {
+      rawAvatarStr = '/api/users/$targetUid/avatar';
+    }
+    final String avatarUrl = ApiService.formatImageUrl(rawAvatarStr);
+    String? rawCoverStr;
+    for (final candidate in [
+      _userData?['coverPhoto'],
+      _userData?['coverImage'],
+      _userData?['cover_photo'],
+      _userData?['cover_image'],
+    ]) {
+      if (candidate != null) {
+        final s = candidate.toString().trim();
+        if (s.isNotEmpty && s != 'null' && s != 'undefined') {
+          rawCoverStr = s;
+          break;
+        }
+      }
+    }
+    final String coverUrl = ApiService.formatImageUrl(rawCoverStr);
     final bool isOnline = _userData?['isOnline'] == true;
 
     final String status = (_userData?['status'] ?? 'NONE').toString().toUpperCase();
@@ -634,7 +661,7 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen> {
                         child: Stack(
                           children: [
                             AppAvatar(
-                              key: const ValueKey('profile_avatar'),
+                              key: ValueKey('profile_avatar_${targetUid}_${avatarUrl.hashCode}'),
                               radius: 46,
                               backgroundColor: const Color(0xFF0068FF),
                               backgroundImage: avatarUrl.isNotEmpty

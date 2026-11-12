@@ -255,14 +255,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         chatProv.onConversationSelected = () {
           _jumpToBottom();
         };
-        // Pre-warm background tabs gracefully to guarantee 0ms instant tab switching with zero frame stutter
-        Future.delayed(const Duration(milliseconds: 150), () {
-          if (mounted && _visitedTabs.length < 5) {
-            setState(() {
-              _visitedTabs.addAll(const [1, 2, 3, 4]);
-            });
-          }
-        });
       }
     });
     _contactsFuture = ApiService.getFriends();
@@ -1984,20 +1976,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   }
 
   ScrollPhysics _getAdaptiveScrollPhysics(BuildContext context) {
-    if (kIsWeb) {
-      return const ClampingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
-    }
-    switch (Theme.of(context).platform) {
-      case TargetPlatform.iOS:
-      case TargetPlatform.macOS:
-        return const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
-      case TargetPlatform.android:
-      case TargetPlatform.fuchsia:
-      case TargetPlatform.linux:
-      case TargetPlatform.windows:
-      default:
-        return const ClampingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
-    }
+    return const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
   }
 
   Widget _buildChatList(ChatProvider provider) {
@@ -2115,7 +2094,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                           )
                         : ListView.builder(
                             physics: _getAdaptiveScrollPhysics(context),
-                            cacheExtent: 1500,
+                            cacheExtent: 800,
                             addAutomaticKeepAlives: false,
                             addRepaintBoundaries: true,
                             itemCount: filteredList.length,
@@ -3023,7 +3002,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                           controller: _scrollController,
                           reverse: true,
                           physics: _getAdaptiveScrollPhysics(context),
-                          cacheExtent: 1500,
+                          cacheExtent: 800,
                         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                         addAutomaticKeepAlives: false,
                         addRepaintBoundaries: true,
@@ -4139,7 +4118,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                     : RepaintBoundary(
                         child: ListView.builder(
                           controller: _aiScrollController,
-                          cacheExtent: 1500,
+                          cacheExtent: 800,
                           addRepaintBoundaries: true,
                           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

@@ -46,9 +46,7 @@ class AppAvatar extends StatelessWidget {
             fit: BoxFit.cover,
             gaplessPlayback: true,
             frameBuilder: (_, image, frame, synchronous) =>
-                synchronous || frame != null
-                    ? image
-                    : SkeletonBox(width: size, height: size, circle: true),
+                synchronous || frame != null ? image : fallback,
             errorBuilder: (_, error, stack) {
               onForegroundImageError?.call(error, stack);
               return fallback;
