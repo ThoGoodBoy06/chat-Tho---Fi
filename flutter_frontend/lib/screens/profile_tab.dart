@@ -1,4 +1,5 @@
 import '../theme/app_typography.dart';
+import '../widgets/account_image_warmup.dart';
 import 'profile_photo_viewer.dart';
 import '../widgets/profile_cover.dart';
 import '../widgets/tab_design.dart';
@@ -339,12 +340,7 @@ class _ProfileTabState extends State<ProfileTab> {
     final avatar = user?.avatar;
     final cover = user?.coverImage;
     final bio = user?.bio?.trim() ?? '';
-    final ImageProvider fullCover;
-    if (cover != null && cover.isNotEmpty) {
-      fullCover = ResizeImage(NetworkImage(cover), width: 1200);
-    } else {
-      fullCover = const ExactAssetImage('assets/profile-cover-bay.webp');
-    }
+    final ImageProvider fullCover = profileCoverImage(cover);
     Widget defaultCover() => Image.asset('assets/profile-cover-bay.webp',
         scale: 1,
         width: double.infinity,

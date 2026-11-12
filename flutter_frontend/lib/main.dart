@@ -14,7 +14,6 @@ import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/chat_screen.dart';
 import 'utils/web_utils.dart' as web_utils;
-import 'utils/avatar_image.dart';
 
 /// Custom ScrollBehavior tối ưu cho Flutter Web & Đa nền tảng:
 /// Kích hoạt cuộn mượt cho chuột, cảm ứng, trackpad với Adaptive Platform Scroll Physics.
@@ -203,26 +202,6 @@ class _ChatThoFiAppState extends State<ChatThoFiApp> {
     } catch (error) {
       debugPrint('Initial message preparation: $error');
     }
-    if (!mounted) return;
-    if (!NetworkStatus.online.value) return;
-    final avatars = provider.conversations.take(12)
-        .map((conversation) => conversation.avatar)
-        .whereType<String>().where((avatar) => avatar.isNotEmpty).toSet().toList();
-    final deadline = DateTime.now().add(const Duration(seconds: 1));
-    var nextAvatar = 0;
-    Future<void> warmAvatars() async {
-      while (mounted && nextAvatar < avatars.length && DateTime.now().isBefore(deadline)) {
-        final url = ApiService.formatImageUrl(avatars[nextAvatar++]);
-        // Match the canonical 192px cache key used by resizeAvatar for all size <= 256.
-        if (!mounted || DateTime.now().isAfter(deadline)) return;
-        await precacheImage(
-          resizeAvatar(NetworkImage(url), size: 192), context,
-          onError: (_, __) {},
-        );
-      }
-    }
-    await Future.wait([warmAvatars(), warmAvatars()])
-        .timeout(const Duration(seconds: 1), onTimeout: () => []);
   }
 
   void _onLoginSuccess() async {

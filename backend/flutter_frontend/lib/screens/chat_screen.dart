@@ -1,4 +1,5 @@
 import '../widgets/contacts_workspace.dart';
+import '../widgets/account_image_warmup.dart';
 import '../widgets/tab_design.dart';
 import '../widgets/navigation_icon.dart';
 import '../widgets/news_tab.dart';
@@ -1617,6 +1618,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         backgroundColor: bgColor,
         body: Stack(
           children: [
+            const AccountImageWarmup(),
             SafeArea(
               child: Container(
                 color: bgColor,
