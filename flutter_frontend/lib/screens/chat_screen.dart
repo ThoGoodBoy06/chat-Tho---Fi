@@ -191,19 +191,22 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
 
   void _switchTab(int index) {
     Tooltip.dismissAllToolTips();
-    if (_currentTabIndex == index && _visitedTabs.contains(index)) return;
     try {
       HapticFeedback.selectionClick();
     } catch (_) {}
+    if (_currentTabIndex == index && _visitedTabs.contains(index)) return;
     setState(() {
       _visitedTabs.add(index);
       _currentTabIndex = index;
     });
-    if (index == 1) _fetchPendingRequestsCount();
-    if (index == 3) {
-      _loadAiHistory(forceReload: true);
-      _loadAiSessions();
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (index == 1) _fetchPendingRequestsCount();
+      if (index == 3) {
+        _loadAiHistory(forceReload: true);
+        _loadAiSessions();
+      }
+    });
   }
 
   Future<void> _fetchPendingRequestsCount() async {
@@ -252,6 +255,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         chatProv.onConversationSelected = () {
           _jumpToBottom();
         };
+        // Pre-warm background tabs gracefully to guarantee 0ms instant tab switching with zero frame stutter
+        Future.delayed(const Duration(milliseconds: 150), () {
+          if (mounted && _visitedTabs.length < 5) {
+            setState(() {
+              _visitedTabs.addAll(const [1, 2, 3, 4]);
+            });
+          }
+        });
       }
     });
     _contactsFuture = ApiService.getFriends();
@@ -949,6 +960,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                             parentOverlay.insert(entry);
                                           },
                                           onTap: () {
+                                            try {
+                                              HapticFeedback.lightImpact();
+                                            } catch (_) {}
                                             Navigator.pop(dialogContext);
                                             provider.reactToMessage(msg.id, emoji);
                                           },
@@ -1486,6 +1500,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   Future<void> _handleAiSend([String? presetText]) async {
     final text = (presetText ?? _aiTextController.text).trim();
     if (text.isEmpty || _isAiLoading) return;
+    try {
+      HapticFeedback.lightImpact();
+    } catch (_) {}
 
     setState(() {
       _aiMessages.add({'sender': 'user', 'content': text});
@@ -3737,12 +3754,18 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   }
 
   void _toggleEmojiPicker() {
+    try {
+      HapticFeedback.selectionClick();
+    } catch (_) {}
     setState(() {
       _showEmojiPicker = !_showEmojiPicker;
     });
   }
 
   void _onEmojiSelected(String emoji) {
+    try {
+      HapticFeedback.lightImpact();
+    } catch (_) {}
     final text = _textController.text;
     final selection = _textController.selection;
     if (selection.isValid && selection.start >= 0 && selection.end >= 0) {
@@ -4919,6 +4942,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   }
 
   Future<void> _handleVoiceRecording(ChatProvider provider) async {
+    try {
+      HapticFeedback.lightImpact();
+    } catch (_) {}
     if (_isRecording) {
       await _stopAndSendRecording(provider);
     } else {
@@ -4999,10 +5025,16 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   }
 
   void _startVoiceCall(ChatProvider provider) {
+    try {
+      HapticFeedback.lightImpact();
+    } catch (_) {}
     _startCall(context, provider, isVideo: false);
   }
 
   void _startVideoCall(ChatProvider provider) {
+    try {
+      HapticFeedback.lightImpact();
+    } catch (_) {}
     _startCall(context, provider, isVideo: true);
   }
 
@@ -6378,6 +6410,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   }
 
   Future<void> _startCall(BuildContext context, ChatProvider provider, {required bool isVideo}) async {
+    try {
+      HapticFeedback.lightImpact();
+    } catch (_) {}
     if (!NetworkStatus.online.value || !SocketService.isConnected) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Chưa kết nối mạng. Kết nối lại để gọi điện.')));
       return;
@@ -7237,16 +7272,16 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
       color: scheme.surface,
       child: NavigationBarTheme(
         data: NavigationBarTheme.of(context).copyWith(
-          iconTheme: MaterialStateProperty.resolveWith((states) => IconThemeData(
+          iconTheme: WidgetStateProperty.resolveWith((states) => IconThemeData(
             size: 24,
-            color: states.contains(MaterialState.selected)
+            color: states.contains(WidgetState.selected)
                 ? scheme.primary : scheme.onSurfaceVariant,
           )),
-          labelTextStyle: MaterialStateProperty.resolveWith((states) => TextStyle(
-            fontFamily: 'Roboto', fontSize: 11,
-            fontWeight: states.contains(MaterialState.selected)
+          labelTextStyle: WidgetStateProperty.resolveWith((states) => TextStyle(
+            fontFamily: AppTypography.family, fontSize: 11,
+            fontWeight: states.contains(WidgetState.selected)
                 ? FontWeight.w800 : FontWeight.w500,
-            color: states.contains(MaterialState.selected)
+            color: states.contains(WidgetState.selected)
                 ? scheme.primary : scheme.onSurfaceVariant,
           )),
         ),
@@ -7255,9 +7290,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         selectedIndex: _currentTabIndex,
         backgroundColor: scheme.surface,
         surfaceTintColor: Colors.transparent,
-        indicatorColor: scheme.primary.withOpacity(0.20),
+        indicatorColor: scheme.primary.withOpacity(0.18),
         indicatorShape: const StadiumBorder(),
-        animationDuration: Duration(milliseconds: MediaQuery.of(context).disableAnimations ? 0 : 220),
+        animationDuration: Duration(milliseconds: MediaQuery.of(context).disableAnimations ? 0 : 200),
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         onDestinationSelected: (index) {
           _switchTab(index);

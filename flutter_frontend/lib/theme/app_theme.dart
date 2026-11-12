@@ -14,7 +14,16 @@ class AppTheme {
     final shape =
         RoundedRectangleBorder(borderRadius: BorderRadius.circular(16));
     final theme = ThemeData(
-      splashFactory: InkRipple.splashFactory,
+      splashFactory: InkSparkle.splashFactory,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: ZoomPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.windows: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.linux: ZoomPageTransitionsBuilder(),
+        },
+      ),
       useMaterial3: true,
       brightness: brightness,
       colorScheme: scheme,
@@ -52,6 +61,17 @@ class AppTheme {
       iconButtonTheme: IconButtonThemeData(
           style: IconButton.styleFrom(minimumSize: const Size(48, 48))),
       navigationBarTheme: NavigationBarThemeData(
+          elevation: 0,
+          surfaceTintColor: Colors.transparent,
+          backgroundColor: scheme.surface,
+          indicatorColor: scheme.primary.withOpacity(0.16),
+          indicatorShape: const StadiumBorder(),
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          iconTheme: WidgetStateProperty.resolveWith((states) => IconThemeData(
+              size: 24,
+              color: states.contains(WidgetState.selected)
+                  ? scheme.primary
+                  : scheme.onSurfaceVariant)),
           labelTextStyle: WidgetStateProperty.resolveWith((states) => TextStyle(
               fontFamily: AppTypography.family,
               fontSize: 11,
@@ -61,6 +81,13 @@ class AppTheme {
               color: states.contains(WidgetState.selected)
                   ? scheme.primary
                   : scheme.onSurfaceVariant))),
+      badgeTheme: const BadgeThemeData(
+          backgroundColor: Color(0xFFEF4444),
+          textColor: Colors.white,
+          textStyle: TextStyle(
+              fontFamily: AppTypography.family,
+              fontSize: 11,
+              fontWeight: FontWeight.w700)),
       inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: dark ? const Color(0xFF0F172A) : const Color(0xFFF3F6FA),
