@@ -3604,12 +3604,90 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                             descendantsAreFocusable: false,
                             child: Padding(
                               padding: const EdgeInsets.only(bottom: 2),
-                              child: IconButton(
-                                icon: Icon(Icons.add_circle_rounded, color: primaryColor, size: 28),
-                                onPressed: () => _showAttachmentMenuSheet(provider),
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(minWidth: 36),
-                                tooltip: 'Tiện ích đính kèm',
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: AnimatedRotation(
+                                      turns: _isAttachmentMenuOpen ? 0.125 : 0.0,
+                                      duration: const Duration(milliseconds: 280),
+                                      curve: Curves.easeOutBack,
+                                      child: Icon(Icons.add_circle_rounded, color: primaryColor, size: 28),
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _isAttachmentMenuOpen = !_isAttachmentMenuOpen;
+                                        if (_isAttachmentMenuOpen) {
+                                          _showEmojiPicker = false;
+                                        }
+                                      });
+                                    },
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(minWidth: 36),
+                                    tooltip: _isAttachmentMenuOpen ? 'Đóng menu' : 'Mở menu tiện ích',
+                                  ),
+                                  AnimatedSize(
+                                    duration: const Duration(milliseconds: 280),
+                                    curve: Curves.easeOutBack,
+                                    child: _isAttachmentMenuOpen
+                                        ? Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              IconButton(
+                                                icon: Icon(Icons.camera_alt_rounded, color: primaryColor, size: 23),
+                                                onPressed: () {
+                                                  setState(() => _isAttachmentMenuOpen = false);
+                                                  _captureCameraImage(provider);
+                                                },
+                                                padding: EdgeInsets.zero,
+                                                constraints: const BoxConstraints(minWidth: 32),
+                                                tooltip: 'Chụp ảnh',
+                                              ),
+                                              IconButton(
+                                                icon: Icon(Icons.image_rounded, color: primaryColor, size: 23),
+                                                onPressed: () {
+                                                  setState(() => _isAttachmentMenuOpen = false);
+                                                  _pickAndUploadImage(provider);
+                                                },
+                                                padding: EdgeInsets.zero,
+                                                constraints: const BoxConstraints(minWidth: 32),
+                                                tooltip: 'Gửi ảnh',
+                                              ),
+                                              IconButton(
+                                                icon: Icon(Icons.gif_box_rounded, color: primaryColor, size: 23),
+                                                onPressed: () {
+                                                  setState(() => _isAttachmentMenuOpen = false);
+                                                  _showGifPickerModal(provider);
+                                                },
+                                                padding: EdgeInsets.zero,
+                                                constraints: const BoxConstraints(minWidth: 32),
+                                                tooltip: 'Kho ảnh GIF',
+                                              ),
+                                              IconButton(
+                                                icon: Icon(Icons.location_on_rounded, color: primaryColor, size: 23),
+                                                onPressed: () {
+                                                  setState(() => _isAttachmentMenuOpen = false);
+                                                  _handleShareLocation(provider);
+                                                },
+                                                padding: EdgeInsets.zero,
+                                                constraints: const BoxConstraints(minWidth: 32),
+                                                tooltip: 'Chia sẻ vị trí',
+                                              ),
+                                              IconButton(
+                                                icon: Icon(Icons.mic_rounded, color: primaryColor, size: 23),
+                                                onPressed: () {
+                                                  setState(() => _isAttachmentMenuOpen = false);
+                                                  _handleVoiceRecording(provider);
+                                                },
+                                                padding: EdgeInsets.zero,
+                                                constraints: const BoxConstraints(minWidth: 32),
+                                                tooltip: 'Ghi âm',
+                                              ),
+                                            ],
+                                          )
+                                        : const SizedBox(width: 0, height: 0),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
@@ -3668,18 +3746,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                 Padding(
                                   padding: const EdgeInsets.only(bottom: 2),
                                   child: IconButton(
-                                    icon: Icon(Icons.gif_box_rounded, color: primaryColor, size: 24),
-                                    onPressed: () => _showGifPickerModal(provider),
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(minWidth: 30),
-                                    tooltip: 'Kho ảnh GIF',
-                                  ),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 2),
-                                  child: IconButton(
                                     icon: Icon(Icons.sentiment_satisfied_alt_rounded, color: primaryColor, size: 22),
-                                    onPressed: () => _toggleEmojiPicker(),
+                                    onPressed: () {
+                                      if (_isAttachmentMenuOpen) {
+                                        setState(() => _isAttachmentMenuOpen = false);
+                                      }
+                                      _toggleEmojiPicker();
+                                    },
                                     padding: EdgeInsets.zero,
                                     constraints: const BoxConstraints(minWidth: 30),
                                     tooltip: 'Biểu tượng cảm xúc',
@@ -3965,133 +4038,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   }
 
   // --- TÍNH NĂNG CHIA SẺ VỊ TRÍ (LIVE LOCATION) & KHO ẢNH GIF ---
-  void _showAttachmentMenuSheet(ChatProvider provider) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgCol = isDark ? const Color(0xFF1E293B) : Colors.white;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        decoration: BoxDecoration(
-          color: bgCol,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.18),
-              blurRadius: 18,
-              offset: const Offset(0, -4),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: isDark ? Colors.white24 : Colors.black12,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildAttachmentAction(
-                  icon: Icons.image_rounded,
-                  label: 'Ảnh',
-                  color: const Color(0xFF0068FF),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _pickAndUploadImage(provider);
-                  },
-                ),
-                _buildAttachmentAction(
-                  icon: Icons.camera_alt_rounded,
-                  label: 'Máy ảnh',
-                  color: const Color(0xFFF97316),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _captureCameraImage(provider);
-                  },
-                ),
-                _buildAttachmentAction(
-                  icon: Icons.gif_box_rounded,
-                  label: 'GIF',
-                  color: const Color(0xFF8B5CF6),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _showGifPickerModal(provider);
-                  },
-                ),
-                _buildAttachmentAction(
-                  icon: Icons.location_on_rounded,
-                  label: 'Vị trí',
-                  color: const Color(0xFF10B981),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _handleShareLocation(provider);
-                  },
-                ),
-                _buildAttachmentAction(
-                  icon: Icons.mic_rounded,
-                  label: 'Ghi âm',
-                  color: const Color(0xFFEF4444),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _handleVoiceRecording(provider);
-                  },
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAttachmentAction({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: color.withOpacity(isDark ? 0.22 : 0.12),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(icon, color: color, size: 25),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF334155),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Future<void> _handleShareLocation(ChatProvider provider) async {
     final conv = provider.selectedConversation;
     if (conv == null) return;
