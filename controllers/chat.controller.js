@@ -2832,25 +2832,39 @@ async function produceThumbnail(url, width, quality, hash, sourceBuffer) {
         throw new ThumbnailSourceError(404, "Không tìm thấy ảnh");
     }
 
-    // Nén & tối ưu sang WebP siêu nhẹ
+    // Nén & tối ưu ảnh
     let outputBuffer = inputBuffer;
     let outputContentType = originalContentType;
     if (inputBuffer.length >= 100 && sharp) {
-        try {
-            outputBuffer = await sharp(inputBuffer, { failOnError: false })
-                .rotate()
-                .resize({ width, withoutEnlargement: true, fit: "inside" })
-                .webp({ quality, effort: 3 })
-                .toBuffer();
-            outputContentType = "image/webp";
-        } catch (_) {
-            outputBuffer = inputBuffer;
-            outputContentType = originalContentType;
+        if (originalContentType === "image/gif" || url.toLowerCase().includes(".gif")) {
+            // Giữ nguyên hoạt ảnh GIF động, không ép thành WebP 1 khung hình tĩnh!
+            try {
+                outputBuffer = await sharp(inputBuffer, { animated: true })
+                    .resize({ width, withoutEnlargement: true, fit: "inside" })
+                    .gif({ effort: 1 })
+                    .toBuffer();
+                outputContentType = "image/gif";
+            } catch (_) {
+                outputBuffer = inputBuffer;
+                outputContentType = "image/gif";
+            }
+        } else {
+            try {
+                outputBuffer = await sharp(inputBuffer, { failOnError: false })
+                    .rotate()
+                    .resize({ width, withoutEnlargement: true, fit: "inside" })
+                    .webp({ quality, effort: 3 })
+                    .toBuffer();
+                outputContentType = "image/webp";
+            } catch (_) {
+                outputBuffer = inputBuffer;
+                outputContentType = originalContentType;
+            }
         }
     }
 
-    // Chỉ ghi đĩa khi đúng là WebP (file cache có đuôi .webp và được đọc lại là image/webp)
-    if (outputContentType === "image/webp") {
+    // Chỉ ghi đĩa khi định dạng chuẩn
+    if (outputContentType === "image/webp" || outputContentType === "image/gif") {
         fs.promises.writeFile(cacheFilePath, outputBuffer).catch(() => {});
     }
     const entry = { buffer: outputBuffer, contentType: outputContentType };
@@ -2917,5 +2931,88 @@ exports.getGifs = async (req, res) => {
     } catch (err) {
         console.error("❌ Lỗi getGifs:", err);
         return res.status(500).json({ success: false, message: "Lỗi tải kho ảnh GIF", error: err.message });
+    }
+};
+
+// 14. PROXY & TỐI ƯU HÓA ẢNH GIF HOẠT HÌNH (GIỮ NGUYÊN KHUNG HÌNH ĐỘNG, SIÊU NHẸ, CÓ CORS)
+const GIF_CACHE_DIR = path.join(__dirname, "../uploads/gif_cache");
+if (!fs.existsSync(GIF_CACHE_DIR)) {
+    try { fs.mkdirSync(GIF_CACHE_DIR, { recursive: true }); } catch (_) {}
+}
+const gifMemoryCache = new Map();
+const MAX_GIF_MEMORY_ITEMS = 150;
+
+exports.proxyGif = async (req, res) => {
+    try {
+        const { url, w } = req.query;
+        if (!url) {
+            return res.status(400).send("Thiếu tham số URL");
+        }
+
+        const targetWidth = Math.min(Math.max(parseInt(w) || 280, 80), 600);
+        const cacheKey = crypto.createHash("md5").update(url + "_" + targetWidth).digest("hex");
+        const cacheFilePath = path.join(GIF_CACHE_DIR, `${cacheKey}.gif`);
+
+        // 1. Kiểm tra RAM cache
+        if (gifMemoryCache.has(cacheKey)) {
+            const buf = gifMemoryCache.get(cacheKey);
+            res.setHeader("Content-Type", "image/gif");
+            res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+            res.setHeader("Access-Control-Allow-Origin", "*");
+            return res.send(buf);
+        }
+
+        // 2. Kiểm tra Disk cache
+        if (fs.existsSync(cacheFilePath)) {
+            const buf = await fs.promises.readFile(cacheFilePath);
+            gifMemoryCache.set(cacheKey, buf);
+            if (gifMemoryCache.size > MAX_GIF_MEMORY_ITEMS) {
+                gifMemoryCache.delete(gifMemoryCache.keys().next().value);
+            }
+            res.setHeader("Content-Type", "image/gif");
+            res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+            res.setHeader("Access-Control-Allow-Origin", "*");
+            return res.send(buf);
+        }
+
+        // 3. Tải từ nguồn từ xa (không bị chặn CORS)
+        const response = await fetch(url, {
+            headers: {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            }
+        });
+        if (!response.ok) {
+            return res.status(response.status).send("Lỗi tải ảnh GIF từ nguồn");
+        }
+
+        const inputBuffer = Buffer.from(await response.arrayBuffer());
+        let outputBuffer = inputBuffer;
+
+        // 4. Tối ưu kích thước giữ nguyên hoạt ảnh động
+        if (sharp && inputBuffer.length > 80000) {
+            try {
+                outputBuffer = await sharp(inputBuffer, { animated: true })
+                    .resize({ width: targetWidth, withoutEnlargement: true })
+                    .gif({ effort: 1 })
+                    .toBuffer();
+            } catch (_) {
+                outputBuffer = inputBuffer;
+            }
+        }
+
+        // Lưu cache đĩa & RAM
+        fs.promises.writeFile(cacheFilePath, outputBuffer).catch(() => {});
+        gifMemoryCache.set(cacheKey, outputBuffer);
+        if (gifMemoryCache.size > MAX_GIF_MEMORY_ITEMS) {
+            gifMemoryCache.delete(gifMemoryCache.keys().next().value);
+        }
+
+        res.setHeader("Content-Type", "image/gif");
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        return res.send(outputBuffer);
+    } catch (err) {
+        console.error("❌ Lỗi proxyGif:", err);
+        return res.status(500).send("Lỗi xử lý ảnh GIF: " + err.message);
     }
 };

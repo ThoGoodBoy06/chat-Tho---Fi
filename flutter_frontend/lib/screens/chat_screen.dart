@@ -3604,72 +3604,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                             descendantsAreFocusable: false,
                             child: Padding(
                               padding: const EdgeInsets.only(bottom: 2),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: AnimatedRotation(
-                                      turns: _isAttachmentMenuOpen ? 0.125 : 0.0,
-                                      duration: const Duration(milliseconds: 300),
-                                      curve: Curves.easeOutBack,
-                                      child: Icon(Icons.add_circle_rounded, color: primaryColor, size: 28),
-                                    ),
-                                    onPressed: () {
-                                      setState(() {
-                                        _isAttachmentMenuOpen = !_isAttachmentMenuOpen;
-                                      });
-                                    },
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(minWidth: 36),
-                                    tooltip: _isAttachmentMenuOpen ? 'Đóng menu' : 'Mở menu tiện ích',
-                                  ),
-                                  AnimatedSize(
-                                    duration: const Duration(milliseconds: 300),
-                                    curve: Curves.easeOutBack,
-                                    child: _isAttachmentMenuOpen
-                                        ? Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              IconButton(
-                                                icon: Icon(Icons.camera_alt_rounded, color: primaryColor, size: 24),
-                                                onPressed: () => _captureCameraImage(provider),
-                                                padding: EdgeInsets.zero,
-                                                constraints: const BoxConstraints(minWidth: 36),
-                                                tooltip: 'Chụp ảnh',
-                                              ),
-                                              IconButton(
-                                                icon: Icon(Icons.image_rounded, color: primaryColor, size: 24),
-                                                onPressed: () => _pickAndUploadImage(provider),
-                                                padding: EdgeInsets.zero,
-                                                constraints: const BoxConstraints(minWidth: 36),
-                                                tooltip: 'Gửi ảnh',
-                                              ),
-                                              IconButton(
-                                                icon: Icon(Icons.mic_rounded, color: primaryColor, size: 24),
-                                                onPressed: () => _handleVoiceRecording(provider),
-                                                padding: EdgeInsets.zero,
-                                                constraints: const BoxConstraints(minWidth: 36),
-                                                tooltip: 'Ghi âm',
-                                              ),
-                                              IconButton(
-                                                icon: Icon(Icons.location_on_rounded, color: primaryColor, size: 24),
-                                                onPressed: () => _handleShareLocation(provider),
-                                                padding: EdgeInsets.zero,
-                                                constraints: const BoxConstraints(minWidth: 36),
-                                                tooltip: 'Chia sẻ vị trí',
-                                              ),
-                                              IconButton(
-                                                icon: Icon(Icons.gif_box_rounded, color: primaryColor, size: 24),
-                                                onPressed: () => _showGifPickerModal(provider),
-                                                padding: EdgeInsets.zero,
-                                                constraints: const BoxConstraints(minWidth: 36),
-                                                tooltip: 'Kho ảnh GIF',
-                                              ),
-                                            ],
-                                          )
-                                        : const SizedBox(width: 0, height: 0),
-                                  ),
-                                ],
+                              child: IconButton(
+                                icon: Icon(Icons.add_circle_rounded, color: primaryColor, size: 28),
+                                onPressed: () => _showAttachmentMenuSheet(provider),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(minWidth: 36),
+                                tooltip: 'Tiện ích đính kèm',
                               ),
                             ),
                           ),
@@ -4025,6 +3965,133 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
   }
 
   // --- TÍNH NĂNG CHIA SẺ VỊ TRÍ (LIVE LOCATION) & KHO ẢNH GIF ---
+  void _showAttachmentMenuSheet(ChatProvider provider) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgCol = isDark ? const Color(0xFF1E293B) : Colors.white;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        decoration: BoxDecoration(
+          color: bgCol,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.18),
+              blurRadius: 18,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white24 : Colors.black12,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildAttachmentAction(
+                  icon: Icons.image_rounded,
+                  label: 'Ảnh',
+                  color: const Color(0xFF0068FF),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _pickAndUploadImage(provider);
+                  },
+                ),
+                _buildAttachmentAction(
+                  icon: Icons.camera_alt_rounded,
+                  label: 'Máy ảnh',
+                  color: const Color(0xFFF97316),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _captureCameraImage(provider);
+                  },
+                ),
+                _buildAttachmentAction(
+                  icon: Icons.gif_box_rounded,
+                  label: 'GIF',
+                  color: const Color(0xFF8B5CF6),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _showGifPickerModal(provider);
+                  },
+                ),
+                _buildAttachmentAction(
+                  icon: Icons.location_on_rounded,
+                  label: 'Vị trí',
+                  color: const Color(0xFF10B981),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _handleShareLocation(provider);
+                  },
+                ),
+                _buildAttachmentAction(
+                  icon: Icons.mic_rounded,
+                  label: 'Ghi âm',
+                  color: const Color(0xFFEF4444),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _handleVoiceRecording(provider);
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAttachmentAction({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: color.withOpacity(isDark ? 0.22 : 0.12),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(icon, color: color, size: 25),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF334155),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _handleShareLocation(ChatProvider provider) async {
     final conv = provider.selectedConversation;
     if (conv == null) return;
@@ -4236,7 +4303,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         }
       },
       child: Container(
-        width: 250,
+        width: 215,
         decoration: BoxDecoration(
           color: cardBg,
           borderRadius: BorderRadius.circular(16),
@@ -4250,7 +4317,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              height: 110,
+              height: 85,
               width: double.infinity,
               color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
               child: Stack(
@@ -4261,40 +4328,40 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                       'https://static-maps.yandex.ru/1.x/?ll=' + lng.toString() + ',' + lat.toString() + '&z=15&l=map&size=300,140&pt=' + lng.toString() + ',' + lat.toString() + ',pm2rdm',
                       fit: BoxFit.cover,
                       width: double.infinity,
-                      height: 110,
+                      height: 85,
                       errorBuilder: (_, __, ___) => Center(
-                        child: Icon(Icons.map_rounded, size: 48, color: isMe ? Colors.white38 : Colors.grey),
+                        child: Icon(Icons.map_rounded, size: 36, color: isMe ? Colors.white38 : Colors.grey),
                       ),
                     )
                   else
-                    Center(child: Icon(Icons.map_rounded, size: 48, color: isMe ? Colors.white38 : Colors.grey)),
+                    Center(child: Icon(Icons.map_rounded, size: 36, color: isMe ? Colors.white38 : Colors.grey)),
                   Container(
-                    padding: const EdgeInsets.all(6),
+                    padding: const EdgeInsets.all(5),
                     decoration: BoxDecoration(
                       color: const Color(0xFFEF4444),
                       shape: BoxShape.circle,
                       boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 6, offset: const Offset(0, 2)),
+                        BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 5, offset: const Offset(0, 2)),
                       ],
                     ),
-                    child: const Icon(Icons.location_on, color: Colors.white, size: 18),
+                    child: const Icon(Icons.location_on, color: Colors.white, size: 16),
                   ),
                 ],
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.place_rounded, color: Color(0xFFEF4444), size: 16),
+                      const Icon(Icons.place_rounded, color: Color(0xFFEF4444), size: 15),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           title,
-                          style: TextStyle(color: textCol, fontWeight: FontWeight.bold, fontSize: 13.5),
+                          style: TextStyle(color: textCol, fontWeight: FontWeight.bold, fontSize: 12.5),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -4302,16 +4369,16 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                     ],
                   ),
                   if (lat != 0.0 && lng != 0.0) ...[
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 2),
                     Text(
                       'Tọa độ: ' + lat.toStringAsFixed(4) + ', ' + lng.toStringAsFixed(4),
-                      style: TextStyle(color: subTextCol, fontSize: 11.5),
+                      style: TextStyle(color: subTextCol, fontSize: 11),
                     ),
                   ],
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    padding: const EdgeInsets.symmetric(vertical: 4.5),
                     decoration: BoxDecoration(
                       color: const Color(0xFF0068FF).withOpacity(isMe ? 0.9 : 0.12),
                       borderRadius: BorderRadius.circular(8),
@@ -4321,7 +4388,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                       'Mở trên Google Maps ↗',
                       style: TextStyle(
                         color: isMe ? Colors.white : const Color(0xFF0068FF),
-                        fontSize: 11.5,
+                        fontSize: 11,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -6151,25 +6218,29 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
           ),
         );
       } else if (imageUrl != null && imageUrl.isNotEmpty) {
-        final thumbUrl = ApiService.formatThumbnailUrl(imageUrl, width: 450);
-        imgWidget = Image.network(
-          thumbUrl,
-          cacheWidth: 450,
-          filterQuality: FilterQuality.low,
-          fit: BoxFit.cover,
-          frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-            if (wasSynchronouslyLoaded || frame != null) return child;
-            return const SkeletonBox(width: 240, height: 180, borderRadius: 16);
-          },
-          errorBuilder: (_, __, ___) => Container(
-            padding: const EdgeInsets.all(12),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.broken_image, color: Colors.grey),
-                SizedBox(width: 6),
-                Text('Ảnh lỗi'),
-              ],
+        final isGif = imageUrl.toLowerCase().contains('.gif') || imageUrl.contains('/api/chat/gif-proxy');
+        final displayUrl = isGif ? ApiService.formatImageUrl(imageUrl) : ApiService.formatThumbnailUrl(imageUrl, width: 450);
+        imgWidget = ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Image.network(
+            displayUrl,
+            cacheWidth: isGif ? null : 450, // KHÔNG đặt cacheWidth cho ảnh GIF để Flutter giải mã và phát toàn bộ khung hình động!
+            filterQuality: isGif ? FilterQuality.medium : FilterQuality.low,
+            fit: isGif ? BoxFit.contain : BoxFit.cover,
+            frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+              if (wasSynchronouslyLoaded || frame != null) return child;
+              return const SkeletonBox(width: 200, height: 160, borderRadius: 16);
+            },
+            errorBuilder: (_, __, ___) => Container(
+              padding: const EdgeInsets.all(12),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.broken_image, color: Colors.grey),
+                  SizedBox(width: 6),
+                  Text('Ảnh lỗi'),
+                ],
+              ),
             ),
           ),
         );

@@ -59,7 +59,7 @@ class _GifPickerSheetState extends State<GifPickerSheet> {
 
   void _onSearchChanged(String val) {
     _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 320), () {
+    _debounceTimer = Timer(const Duration(milliseconds: 280), () {
       if (mounted) {
         _fetchGifs(query: val, category: _selectedCategory);
       }
@@ -84,16 +84,17 @@ class _GifPickerSheetState extends State<GifPickerSheet> {
     final primaryColor = Theme.of(context).primaryColor;
 
     final screenHeight = MediaQuery.of(context).size.height;
+    final modalHeight = (screenHeight * 0.56).clamp(380.0, 520.0);
 
     return Container(
-      height: screenHeight * 0.72,
+      height: modalHeight,
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 20,
+            color: Colors.black.withOpacity(0.18),
+            blurRadius: 18,
             offset: const Offset(0, -4),
           ),
         ],
@@ -102,8 +103,8 @@ class _GifPickerSheetState extends State<GifPickerSheet> {
         children: [
           // Drag handle
           Container(
-            margin: const EdgeInsets.only(top: 10, bottom: 6),
-            width: 40,
+            margin: const EdgeInsets.only(top: 8, bottom: 4),
+            width: 36,
             height: 4,
             decoration: BoxDecoration(
               color: isDark ? Colors.white24 : Colors.black12,
@@ -113,23 +114,16 @@ class _GifPickerSheetState extends State<GifPickerSheet> {
 
           // Header: Title & Close
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             child: Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: primaryColor.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(Icons.gif_box_rounded, color: primaryColor, size: 22),
-                ),
-                const SizedBox(width: 10),
+                Icon(Icons.gif_box_rounded, color: primaryColor, size: 22),
+                const SizedBox(width: 8),
                 Text(
                   'Kho ảnh GIF & Sticker',
                   style: TextStyle(
                     color: textCol,
-                    fontSize: 17,
+                    fontSize: 15.5,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -138,34 +132,34 @@ class _GifPickerSheetState extends State<GifPickerSheet> {
                   icon: Icon(Icons.close_rounded, color: subTextCol, size: 20),
                   onPressed: () => Navigator.pop(context),
                   padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 32),
+                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                 ),
               ],
             ),
           ),
 
-          // Search Bar
+          // Compact Search Bar
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
             child: Container(
-              height: 42,
+              height: 36,
               decoration: BoxDecoration(
                 color: searchBg,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(12),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
               child: Row(
                 children: [
-                  Icon(Icons.search_rounded, color: subTextCol, size: 20),
-                  const SizedBox(width: 8),
+                  Icon(Icons.search_rounded, color: subTextCol, size: 18),
+                  const SizedBox(width: 6),
                   Expanded(
                     child: TextField(
                       controller: _searchController,
                       onChanged: _onSearchChanged,
-                      style: TextStyle(color: textCol, fontSize: 14),
+                      style: TextStyle(color: textCol, fontSize: 13),
                       decoration: InputDecoration(
-                        hintText: 'Tìm kiếm ảnh GIF (cười, tim, mèo, nhảy...)',
-                        hintStyle: TextStyle(color: subTextCol, fontSize: 13),
+                        hintText: 'Tìm kiếm Bubu, Dudu, mèo cute, cười...',
+                        hintStyle: TextStyle(color: subTextCol, fontSize: 12.5),
                         border: InputBorder.none,
                         isDense: true,
                         contentPadding: EdgeInsets.zero,
@@ -173,141 +167,154 @@ class _GifPickerSheetState extends State<GifPickerSheet> {
                     ),
                   ),
                   if (_searchController.text.isNotEmpty)
-                    IconButton(
-                      icon: Icon(Icons.clear_rounded, color: subTextCol, size: 16),
-                      onPressed: () {
+                    GestureDetector(
+                      onTap: () {
                         _searchController.clear();
                         _fetchGifs(query: '', category: _selectedCategory);
                       },
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(minWidth: 24),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Icon(Icons.clear_rounded, color: subTextCol, size: 16),
+                      ),
                     ),
                 ],
               ),
             ),
           ),
 
-          // Category Chips Bar
+          // Compact Category Chips Bar
           if (_categories.isNotEmpty)
             SizedBox(
-              height: 38,
+              height: 34,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
                 itemCount: _categories.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                separatorBuilder: (_, __) => const SizedBox(width: 6),
                 itemBuilder: (ctx, i) {
                   final cat = _categories[i];
                   final catId = cat['id']?.toString() ?? '';
                   final isSelected = _selectedCategory == catId;
-                  return ChoiceChip(
-                    label: Text(
-                      cat['name']?.toString() ?? '',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                        color: isSelected ? Colors.white : textCol,
+                  return InkWell(
+                    onTap: () => _onCategorySelected(catId),
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isSelected ? primaryColor : searchBg,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        cat['name']?.toString() ?? '',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                          color: isSelected ? Colors.white : textCol,
+                        ),
                       ),
                     ),
-                    selected: isSelected,
-                    selectedColor: primaryColor,
-                    backgroundColor: searchBg,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    side: BorderSide.none,
-                    onSelected: (_) => _onCategorySelected(catId),
                   );
                 },
               ),
             ),
 
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
 
-          // GIF Grid
+          // 3-Column Compact Sticker Grid
           Expanded(
             child: _isLoading
                 ? const Center(
-                    child: CircularProgressIndicator(strokeWidth: 2.5),
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
                   )
                 : _gifs.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.search_off_rounded, size: 48, color: subTextCol),
-                            const SizedBox(height: 8),
+                            Icon(Icons.search_off_rounded, size: 36, color: subTextCol),
+                            const SizedBox(height: 6),
                             Text(
                               'Không tìm thấy ảnh GIF phù hợp',
-                              style: TextStyle(color: subTextCol, fontSize: 14),
+                              style: TextStyle(color: subTextCol, fontSize: 13),
                             ),
                           ],
                         ),
                       )
                     : GridView.builder(
-                        padding: const EdgeInsets.fromLTRB(14, 4, 14, 18),
+                        padding: const EdgeInsets.fromLTRB(12, 2, 12, 14),
                         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 10,
-                          mainAxisSpacing: 10,
-                          childAspectRatio: 1.25,
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
+                          childAspectRatio: 1.0,
                         ),
                         itemCount: _gifs.length,
                         itemBuilder: (ctx, i) {
                           final item = _gifs[i];
-                          final url = item['url']?.toString() ?? '';
+                          final rawPreview = item['previewUrl']?.toString() ?? item['url']?.toString() ?? '';
+                          final rawFull = item['url']?.toString() ?? rawPreview;
+                          final previewUrl = ApiService.formatImageUrl(rawPreview);
+                          final fullUrl = ApiService.formatImageUrl(rawFull);
                           final title = item['title']?.toString() ?? 'GIF';
+
                           return InkWell(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(12),
                             onTap: () {
                               Navigator.pop(context);
-                              widget.onGifSelected(url);
+                              widget.onGifSelected(fullUrl);
                             },
                             child: Container(
                               decoration: BoxDecoration(
-                                color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-                                borderRadius: BorderRadius.circular(14),
+                                color: isDark ? const Color(0xFF334155).withOpacity(0.5) : const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: isDark ? Colors.white10 : Colors.black.withOpacity(0.04),
+                                ),
                               ),
                               clipBehavior: Clip.antiAlias,
                               child: Stack(
                                 fit: StackFit.expand,
                                 children: [
                                   Image.network(
-                                    url,
-                                    fit: BoxFit.cover,
+                                    previewUrl,
+                                    fit: BoxFit.contain,
                                     errorBuilder: (_, __, ___) => Center(
-                                      child: Icon(Icons.broken_image_rounded, color: subTextCol),
+                                      child: Icon(Icons.broken_image_rounded, size: 20, color: subTextCol),
                                     ),
                                     loadingBuilder: (_, child, prog) {
                                       if (prog == null) return child;
-                                      return Container(
-                                        color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-                                        child: Center(
-                                          child: SizedBox(
-                                            width: 22,
-                                            height: 22,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              value: prog.expectedTotalBytes != null
-                                                  ? prog.cumulativeBytesLoaded / prog.expectedTotalBytes!
-                                                  : null,
-                                            ),
+                                      return Center(
+                                        child: SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            value: prog.expectedTotalBytes != null
+                                                ? prog.cumulativeBytesLoaded / prog.expectedTotalBytes!
+                                                : null,
                                           ),
                                         ),
                                       );
                                     },
                                   ),
-                                  // Bottom gradient title
+                                  // Subtle hover/tap tooltip
                                   Positioned(
+                                    bottom: 0,
                                     left: 0,
                                     right: 0,
-                                    bottom: 0,
                                     child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                                       decoration: BoxDecoration(
                                         gradient: LinearGradient(
                                           begin: Alignment.bottomCenter,
                                           end: Alignment.topCenter,
                                           colors: [
-                                            Colors.black.withOpacity(0.7),
+                                            Colors.black.withOpacity(0.55),
                                             Colors.transparent,
                                           ],
                                         ),
@@ -316,11 +323,12 @@ class _GifPickerSheetState extends State<GifPickerSheet> {
                                         title,
                                         style: const TextStyle(
                                           color: Colors.white,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
+                                          fontSize: 9.5,
+                                          fontWeight: FontWeight.w500,
                                         ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
+                                        textAlign: TextAlign.center,
                                       ),
                                     ),
                                   ),

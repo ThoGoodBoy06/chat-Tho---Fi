@@ -98,6 +98,10 @@ class ApiService {
     if (url == null || url.trim().isEmpty) return '';
     final trimmed = url.trim();
     if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) return trimmed;
+    // Ảnh GIF hoạt hình: giữ nguyên đường dẫn hoạt hình động, không ép thumbnail tĩnh
+    if (trimmed.toLowerCase().contains('.gif') || trimmed.contains('/api/chat/gif-proxy')) {
+      return formatImageUrl(trimmed);
+    }
     final cleanBase = baseUrl.replaceAll('/api', '');
     return '$cleanBase/api/chat/thumbnail?url=${Uri.encodeComponent(trimmed)}&w=$width';
   }

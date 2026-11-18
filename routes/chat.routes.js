@@ -19,6 +19,9 @@ router.get("/messages/:messageId/media", chatController.getMessageMedia);
 // Kho ảnh GIF & Sticker động phong phú
 router.get("/gifs", chatController.getGifs);
 
+// Proxy & tối ưu ảnh GIF hoạt hình (giữ trọn vẹn animation, CORS '*', siêu nhẹ)
+router.get("/gif-proxy", chatController.proxyGif);
+
 // Bật lớp bảo vệ: Chỉ user đã đăng nhập (có Token) mới được dùng các API này
 router.use(authMiddleware);
 

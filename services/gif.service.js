@@ -475,6 +475,15 @@ exports.searchGifs = function (query = "", category = "all", limit = 60) {
     success: true,
     categories: CATEGORIES,
     count: results.length,
-    data: results.slice(0, limit)
+    data: results.slice(0, limit).map(item => {
+      const raw = item.rawUrl || item.url;
+      return {
+        ...item,
+        rawUrl: raw,
+        // Dùng proxy nén hoạt hình siêu tốc (preview 150px chỉ ~80KB, full 320px chỉ ~200KB, CORS '*')
+        url: `/api/chat/gif-proxy?url=${encodeURIComponent(raw)}&w=320`,
+        previewUrl: `/api/chat/gif-proxy?url=${encodeURIComponent(raw)}&w=150`
+      };
+    })
   };
 };
