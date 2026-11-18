@@ -16,6 +16,9 @@ router.get("/thumbnail", chatController.getMediaThumbnail);
 // Phục vụ trực tiếp media nhúng trong tin nhắn (binary buffer + browser cache dài hạn)
 router.get("/messages/:messageId/media", chatController.getMessageMedia);
 
+// Kho ảnh GIF & Sticker động phong phú
+router.get("/gifs", chatController.getGifs);
+
 // Bật lớp bảo vệ: Chỉ user đã đăng nhập (có Token) mới được dùng các API này
 router.use(authMiddleware);
 

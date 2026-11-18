@@ -5,6 +5,7 @@ import '../widgets/navigation_icon.dart';
 import '../widgets/news_tab.dart';
 import '../widgets/skeleton_box.dart';
 import '../widgets/app_avatar.dart';
+import '../widgets/gif_picker_sheet.dart';
 import 'dart:async';
 import '../theme/app_typography.dart';
 import 'dart:convert';
@@ -3196,7 +3197,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                               Builder(
                                                 builder: (context) {
                                                   final isEmojiMsg = renderFlags.isEmoji;
-                                                  final isSpecialType = msg.type == 'image' || msg.type == 'audio' || msg.type == 'file' || msg.type == 'missed_call' || msg.type == 'call'
+                                                  final isSpecialType = msg.type == 'image' || msg.type == 'audio' || msg.type == 'file' || msg.type == 'location' || msg.type == 'missed_call' || msg.type == 'call'
                                                       || msg.content.startsWith('data:image') || msg.content.startsWith('data:audio')
                                                       || (msg.imageUrl != null && msg.imageUrl!.isNotEmpty);
                                                   final hasImgUrl = renderFlags.hasImgUrl;
@@ -3650,6 +3651,20 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                                 constraints: const BoxConstraints(minWidth: 36),
                                                 tooltip: 'Ghi âm',
                                               ),
+                                              IconButton(
+                                                icon: Icon(Icons.location_on_rounded, color: primaryColor, size: 24),
+                                                onPressed: () => _handleShareLocation(provider),
+                                                padding: EdgeInsets.zero,
+                                                constraints: const BoxConstraints(minWidth: 36),
+                                                tooltip: 'Chia sẻ vị trí',
+                                              ),
+                                              IconButton(
+                                                icon: Icon(Icons.gif_box_rounded, color: primaryColor, size: 24),
+                                                onPressed: () => _showGifPickerModal(provider),
+                                                padding: EdgeInsets.zero,
+                                                constraints: const BoxConstraints(minWidth: 36),
+                                                tooltip: 'Kho ảnh GIF',
+                                              ),
                                             ],
                                           )
                                         : const SizedBox(width: 0, height: 0),
@@ -3713,10 +3728,21 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
                                 Padding(
                                   padding: const EdgeInsets.only(bottom: 2),
                                   child: IconButton(
+                                    icon: Icon(Icons.gif_box_rounded, color: primaryColor, size: 24),
+                                    onPressed: () => _showGifPickerModal(provider),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(minWidth: 30),
+                                    tooltip: 'Kho ảnh GIF',
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 2),
+                                  child: IconButton(
                                     icon: Icon(Icons.sentiment_satisfied_alt_rounded, color: primaryColor, size: 22),
                                     onPressed: () => _toggleEmojiPicker(),
                                     padding: EdgeInsets.zero,
                                     constraints: const BoxConstraints(minWidth: 30),
+                                    tooltip: 'Biểu tượng cảm xúc',
                                   ),
                                 ),
                               ],
@@ -3996,6 +4022,317 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         }
       }
     }
+  }
+
+  // --- TÍNH NĂNG CHIA SẺ VỊ TRÍ (LIVE LOCATION) & KHO ẢNH GIF ---
+  Future<void> _handleShareLocation(ChatProvider provider) async {
+    final conv = provider.selectedConversation;
+    if (conv == null) return;
+    setState(() => _isAttachmentMenuOpen = false);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Row(
+          children: [
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+            ),
+            SizedBox(width: 12),
+            Text('Đang xác định vị trí GPS của bạn...'),
+          ],
+        ),
+        duration: Duration(seconds: 4),
+      ),
+    );
+
+    double? lat;
+    double? lng;
+
+    if (kIsWeb) {
+      try {
+        final geo = html.window.navigator.geolocation;
+        final pos = await geo.getCurrentPosition(
+          enableHighAccuracy: true,
+          timeout: const Duration(seconds: 10),
+        );
+        lat = pos.coords?.latitude?.toDouble();
+        lng = pos.coords?.longitude?.toDouble();
+      } catch (e) {
+        debugPrint('⚠️ Lỗi Geolocation browser: $e');
+      }
+    }
+
+    if (lat == null || lng == null || (lat == 0.0 && lng == 0.0)) {
+      if (!mounted) return;
+      _showManualLocationDialog(provider, conv.id);
+      return;
+    }
+
+    final locationData = jsonEncode({
+      'type': 'location',
+      'latitude': lat,
+      'longitude': lng,
+      'title': 'Vị trí hiện tại',
+      'url': 'https://www.google.com/maps/search/?api=1&query=' + lat.toString() + ',' + lng.toString(),
+    });
+
+    await provider.sendMessage(locationData, type: 'location');
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đã gửi vị trí thành công 📍'),
+          backgroundColor: Color(0xFF10B981),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  void _showManualLocationDialog(ChatProvider provider, String convId) {
+    final latController = TextEditingController(text: '10.7769');
+    final lngController = TextEditingController(text: '106.7009');
+    final titleController = TextEditingController(text: 'Hồ Chí Minh, Việt Nam');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.location_on_rounded, color: Color(0xFF0068FF)),
+            SizedBox(width: 8),
+            Text('Chia sẻ vị trí', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Không thể tự động lấy GPS hoặc quyền vị trí bị chặn. Bạn có thể xác nhận vị trí dưới đây để gửi:',
+              style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: titleController,
+              decoration: InputDecoration(
+                labelText: 'Tên địa điểm',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                isDense: true,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: latController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: InputDecoration(
+                      labelText: 'Vĩ độ (Lat)',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      isDense: true,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: lngController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: InputDecoration(
+                      labelText: 'Kinh độ (Lng)',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      isDense: true,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Hủy', style: TextStyle(color: Color(0xFF64748B))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0068FF),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final lat = double.tryParse(latController.text.trim()) ?? 10.7769;
+              final lng = double.tryParse(lngController.text.trim()) ?? 106.7009;
+              final title = titleController.text.trim().isNotEmpty
+                  ? titleController.text.trim()
+                  : 'Vị trí được ghim';
+              final locationData = jsonEncode({
+                'type': 'location',
+                'latitude': lat,
+                'longitude': lng,
+                'title': title,
+                'url': 'https://www.google.com/maps/search/?api=1&query=' + lat.toString() + ',' + lng.toString(),
+              });
+              await provider.sendMessage(locationData, type: 'location');
+            },
+            child: const Text('Gửi vị trí', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showGifPickerModal(ChatProvider provider) {
+    final conv = provider.selectedConversation;
+    if (conv == null) return;
+    setState(() => _isAttachmentMenuOpen = false);
+
+    GifPickerSheet.show(
+      context,
+      onGifSelected: (gifUrl) async {
+        await provider.sendMessage(gifUrl, type: 'image');
+      },
+    );
+  }
+
+  Widget _buildLocationBubble(BuildContext context, MessageModel msg, bool isMe) {
+    double lat = 0.0;
+    double lng = 0.0;
+    String title = 'Vị trí được chia sẻ';
+    String mapUrl = '';
+    try {
+      final decoded = jsonDecode(msg.content);
+      if (decoded is Map) {
+        lat = (decoded['latitude'] as num?)?.toDouble() ?? 0.0;
+        lng = (decoded['longitude'] as num?)?.toDouble() ?? 0.0;
+        title = decoded['title']?.toString() ?? 'Vị trí hiện tại';
+        mapUrl = decoded['url']?.toString() ?? ('https://www.google.com/maps/search/?api=1&query=' + lat.toString() + ',' + lng.toString());
+      }
+    } catch (_) {
+      if (msg.content.contains('http')) {
+        mapUrl = msg.content;
+      }
+    }
+
+    if (mapUrl.isEmpty && lat != 0.0 && lng != 0.0) {
+      mapUrl = 'https://www.google.com/maps/search/?api=1&query=' + lat.toString() + ',' + lng.toString();
+    }
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isMe ? Colors.white.withOpacity(0.14) : (isDark ? const Color(0xFF1E293B) : Colors.white);
+    final textCol = isMe ? Colors.white : (isDark ? Colors.white : const Color(0xFF0F172A));
+    final subTextCol = isMe ? Colors.white70 : const Color(0xFF64748B);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () {
+        if (mapUrl.isNotEmpty && kIsWeb) {
+          html.window.open(mapUrl, '_blank');
+        }
+      },
+      child: Container(
+        width: 250,
+        decoration: BoxDecoration(
+          color: cardBg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isMe ? Colors.white24 : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              height: 110,
+              width: double.infinity,
+              color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  if (lat != 0.0 && lng != 0.0)
+                    Image.network(
+                      'https://static-maps.yandex.ru/1.x/?ll=' + lng.toString() + ',' + lat.toString() + '&z=15&l=map&size=300,140&pt=' + lng.toString() + ',' + lat.toString() + ',pm2rdm',
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: 110,
+                      errorBuilder: (_, __, ___) => Center(
+                        child: Icon(Icons.map_rounded, size: 48, color: isMe ? Colors.white38 : Colors.grey),
+                      ),
+                    )
+                  else
+                    Center(child: Icon(Icons.map_rounded, size: 48, color: isMe ? Colors.white38 : Colors.grey)),
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEF4444),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 6, offset: const Offset(0, 2)),
+                      ],
+                    ),
+                    child: const Icon(Icons.location_on, color: Colors.white, size: 18),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.place_rounded, color: Color(0xFFEF4444), size: 16),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: TextStyle(color: textCol, fontWeight: FontWeight.bold, fontSize: 13.5),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (lat != 0.0 && lng != 0.0) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      'Tọa độ: ' + lat.toStringAsFixed(4) + ', ' + lng.toStringAsFixed(4),
+                      style: TextStyle(color: subTextCol, fontSize: 11.5),
+                    ),
+                  ],
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0068FF).withOpacity(isMe ? 0.9 : 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      'Mở trên Google Maps ↗',
+                      style: TextStyle(
+                        color: isMe ? Colors.white : const Color(0xFF0068FF),
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   // TAB 1: Danh bạ
@@ -6035,6 +6372,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
           ),
         ],
       );
+    }
+
+    if (msg.type == 'location') {
+      return _buildLocationBubble(context, msg, isMe);
     }
 
     if (msg.isEdited) {

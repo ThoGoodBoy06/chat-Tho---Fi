@@ -51,7 +51,25 @@ self.addEventListener('push', event => {
     .catch(() => {}) : Promise.resolve();
   // Register the lifetime synchronously; no page, socket or network dependency.
   const receipt = display.then(() => reportReceipt(data,true), () => reportReceipt(data,false));
+  if (navigator.setAppBadge && !ended && !expired) {
+    navigator.setAppBadge().catch(() => {});
+  }
   event.waitUntil(Promise.allSettled([display, update, receipt]));
+});
+
+self.addEventListener('notificationclick', event => {
+  if (navigator.clearAppBadge) {
+    navigator.clearAppBadge().catch(() => {});
+  }
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+      for (const client of windowClients) {
+        if ('focus' in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow('/');
+    })
+  );
 });
 
 function reportReceipt(data, notificationRequested) {

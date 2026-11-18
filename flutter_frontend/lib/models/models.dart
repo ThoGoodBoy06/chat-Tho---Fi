@@ -432,6 +432,8 @@ class ConversationModel {
           lastMsgText = 'Đã gửi một tin nhắn thoại';
         } else if (type == 'file' || lower.startsWith('{"filename"')) {
           lastMsgText = 'Đã gửi một tệp đính kèm';
+        } else if (type == 'location') {
+          lastMsgText = 'Đã chia sẻ vị trí 📍';
         } else {
           lastMsgText = content;
         }

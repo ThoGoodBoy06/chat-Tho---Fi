@@ -989,6 +989,22 @@ class ApiService {
     return null;
   }
 
+  static Future<Map<String, dynamic>> getGifs({String query = '', String category = 'all'}) async {
+    try {
+      final uri = Uri.parse('$baseUrl/chat/gifs').replace(queryParameters: {
+        if (query.trim().isNotEmpty) 'q': query.trim(),
+        if (category.isNotEmpty && category != 'all') 'category': category,
+      });
+      final response = await _client.get(uri).timeout(const Duration(seconds: 10));
+      if (response.statusCode == 200) {
+        return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error getGifs: $e');
+    }
+    return {'success': false, 'data': [], 'categories': []};
+  }
+
   // AI Assistant: Send question
   static Future<Map<String, dynamic>> sendAiMessage(String prompt, {String? conversationId}) async {
     try {

@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
 import '../services/network_status.dart';
 import '../services/socket_service.dart';
+import '../utils/web_helpers.dart';
 
 class ChatProvider extends ChangeNotifier {
   UserModel? currentUser;
@@ -289,6 +291,20 @@ class ChatProvider extends ChangeNotifier {
       total += c.unreadCount;
     }
     return total;
+  }
+
+  void _syncAppBadge() {
+    if (kIsWeb) {
+      try {
+        callWebFunction('setAppBadgeCount', [totalUnreadCount]);
+      } catch (_) {}
+    }
+  }
+
+  @override
+  void notifyListeners() {
+    _syncAppBadge();
+    super.notifyListeners();
   }
 
   ChatProvider() {

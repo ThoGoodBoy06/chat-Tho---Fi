@@ -11,6 +11,19 @@
     registered = value === true;
     if (window.updateNotificationModalState) window.updateNotificationModalState();
   };
+  // App Badging API (Huy hiệu số tin nhắn chưa đọc trên icon app màn hình chính PWA)
+  window.setAppBadgeCount = async function (count) {
+    try {
+      const num = parseInt(count, 10) || 0;
+      if (navigator.setAppBadge) {
+        if (num > 0) {
+          await navigator.setAppBadge(num);
+        } else {
+          await navigator.clearAppBadge();
+        }
+      }
+    } catch (_) {}
+  };
   window.getWebDeviceId = function () {
     let id = localStorage.getItem('tho_fi_web_device_id');
     if (!id) {

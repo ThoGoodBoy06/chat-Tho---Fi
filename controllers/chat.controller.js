@@ -2905,3 +2905,17 @@ exports.getMediaThumbnail = async (req, res) => {
         return res.status(500).send("Lỗi xử lý ảnh thumbnail: " + err.message);
     }
 };
+
+// Kho ảnh GIF & Sticker động
+exports.getGifs = async (req, res) => {
+    try {
+        const gifService = require("../services/gif.service");
+        const { q, category, limit } = req.query;
+        const result = gifService.searchGifs(q, category, parseInt(limit) || 40);
+        res.setHeader("Cache-Control", "public, max-age=3600");
+        return res.status(200).json(result);
+    } catch (err) {
+        console.error("❌ Lỗi getGifs:", err);
+        return res.status(500).json({ success: false, message: "Lỗi tải kho ảnh GIF", error: err.message });
+    }
+};

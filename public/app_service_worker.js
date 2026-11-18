@@ -1,7 +1,7 @@
 'use strict';
 
 // Filled from release content, so a changed bundle always gets a fresh cache.
-const CACHE_NAME = 'chat-thofi-assets-9ca35f90336aee87';
+const CACHE_NAME = 'chat-thofi-assets-c2a7f37ae8a0e1f2';
 const APP_SHELL = [
   '/index.html',
   '/manifest.json',
