@@ -38,6 +38,27 @@
     }
     return result;
   };
+  let firebaseSdkPromise = null;
+  function loadExternalScript(src) {
+    return new Promise((resolve, reject) => {
+      if (document.querySelector('script[src="' + src + '"]')) { resolve(); return; }
+      const s = document.createElement('script');
+      s.src = src;
+      s.async = true;
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('Không tải được SDK thông báo: ' + src));
+      document.head.appendChild(s);
+    });
+  }
+  function ensureFirebaseSdk() {
+    if (window.firebase && typeof window.firebase.messaging === 'function') return Promise.resolve();
+    if (!firebaseSdkPromise) {
+      firebaseSdkPromise = loadExternalScript('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js')
+        .then(() => loadExternalScript('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js'))
+        .catch(err => { firebaseSdkPromise = null; throw err; });
+    }
+    return firebaseSdkPromise;
+  }
   async function registerToken(vapidKey, options) {
     if (!window.isNotificationSupported()) return null;
     // A permission prompt must originate directly from an explicit tap on iOS.
@@ -47,6 +68,7 @@
     }
     if (permission !== 'granted') return null;
     try {
+      await ensureFirebaseSdk();
       if (!window.firebase) throw new Error('Không tải được dịch vụ thông báo. Hãy kiểm tra mạng rồi thử lại.');
       if (!firebase.apps.length) firebase.initializeApp({
         apiKey: 'AIzaSyDk6fayVDs0YbbhwldYxgHcN4nnjnPwmRc',

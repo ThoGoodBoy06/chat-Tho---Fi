@@ -43,7 +43,6 @@ flutter:
     - assets/
     - assets/sounds/
     - assets/emojis/
-    - assets/fonts/
   fonts:
     - family: Roboto
       fonts:
@@ -57,14 +56,3 @@ flutter:
           weight: 700
         - asset: assets/fonts/Roboto-ExtraBold.ttf
           weight: 800
-        - asset: assets/fonts/Roboto-Black.ttf
-          weight: 900
-        - asset: assets/fonts/Roboto-Italic.ttf
-          weight: 400
-          style: italic
-        - asset: assets/fonts/Roboto-BoldItalic.ttf
-          weight: 700
-          style: italic
-    - family: Noto Color Emoji
-      fonts:
-        - asset: assets/fonts/NotoColorEmoji.ttf

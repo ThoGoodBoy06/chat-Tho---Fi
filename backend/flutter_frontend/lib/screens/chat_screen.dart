@@ -258,7 +258,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         };
       }
     });
-    _contactsFuture = ApiService.getFriends();
+    // Trì hoãn tải danh bạ đến khi người dùng mở Tab Danh bạ (hoặc refresh ngầm sau) để không tranh băng thông lúc khởi động Tab Tin nhắn
     _contactPresenceSub = SocketService.onUserStatusChanged.listen((data) {
       final id = data['userId']?.toString() ?? data['id']?.toString();
       if (!mounted || id == null || id.isEmpty) return;
@@ -5817,7 +5817,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver, Ti
         final thumbUrl = ApiService.formatThumbnailUrl(imageUrl, width: 450);
         imgWidget = Image.network(
           thumbUrl,
-          cacheWidth: 450,
+          cacheWidth: kIsWeb ? null : 450,
           filterQuality: FilterQuality.low,
           fit: BoxFit.cover,
           frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {

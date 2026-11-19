@@ -99,9 +99,9 @@ if (fs.existsSync(flutterBuildDir)) {
     } catch (_) {}
 }
 
-// 2. Chạy flutter build web
+// 2. Chạy flutter build web (bật tree-shake-icons để nén MaterialIcons từ 1.6MB xuống ~15KB)
 console.log('⚡ Đang biên dịch Flutter Web (CanvasKit Release)... Vui lòng đợi khoảng 1 phút.');
-const buildCmd = `"${flutterCmd}" --no-version-check build web --release --no-pub --web-renderer canvaskit --pwa-strategy none --no-tree-shake-icons`;
+const buildCmd = `"${flutterCmd}" --no-version-check build web --release --no-pub --web-renderer canvaskit --pwa-strategy none`;
 const buildResult = spawnSync(buildCmd, {
     cwd: frontendDir,
     stdio: 'inherit',

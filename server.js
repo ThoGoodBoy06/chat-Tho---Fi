@@ -308,34 +308,102 @@ app.use((req, res, next) => {
 // Mở thư mục Flutter Web static
 const flutterWebPath = path.join(__dirname, "flutter_frontend", "build", "web");
 const staticPath = fs.existsSync(flutterWebPath) ? flutterWebPath : path.join(__dirname, "public");
+const resolvedStaticRoot = path.resolve(staticPath);
 console.log(`📂 Đang serve giao diện từ: ${staticPath}`);
+
+function setStaticCacheHeaders(res, filePath, req) {
+    const basename = path.basename(filePath);
+    const versionQuery = req && req.query && typeof req.query.v === "string" ? req.query.v : "";
+    const isContentHashed = /^[a-f0-9]{16}$/.test(versionQuery);
+
+    // HTML, release/version manifests và Service Worker luôn revalidate để nhận diện bản build mới ngay tức thì
+    if (
+        basename === "index.html" ||
+        basename === "release.json" ||
+        basename === "version.json" ||
+        basename === "offline-assets.json" ||
+        basename.includes("service_worker") ||
+        basename.includes("sw.js")
+    ) {
+        res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
+        res.setHeader("Pragma", "no-cache");
+        res.setHeader("Expires", "0");
+    } else if (isContentHashed) {
+        // Các bundle gắn hash ?v=<16-hex> thay đổi URL theo mỗi bản build -> cache bất biến 1 năm
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    } else if (filePath.match(/\.wasm$/) || filePath.includes(`${path.sep}canvaskit${path.sep}`)) {
+        // CanvasKit runtime ổn định giữa các bản build; SW tự quản lý cache theo release
+        res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
+    } else if (filePath.match(/\.(otf|ttf|woff|woff2)$/)) {
+        res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
+    } else if (basename.endsWith(".js") || basename.endsWith(".css")) {
+        // Scripts/CSS không gắn hash version -> revalidate bằng ETag để không trộn bản cũ/mới
+        res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
+    } else if (filePath.match(/\.(png|jpg|jpeg|svg|gif|webp|ico|mp3)$/)) {
+        // Hình ảnh, âm thanh: Cache 7 ngày
+        res.setHeader("Cache-Control", "public, max-age=604800, stale-while-revalidate=86400");
+    }
+}
+
+// Phục vụ trực tiếp các file nén sẵn .br (Brotli) / .gz (Gzip) để giảm tải CPU server và tăng tốc tải lần đầu
+app.use((req, res, next) => {
+    if (req.method !== "GET" && req.method !== "HEAD") return next();
+    const acceptEncoding = String(req.headers["accept-encoding"] || "");
+    const acceptsBr = /\bbr\b/i.test(acceptEncoding);
+    const acceptsGz = /\bgzip\b/i.test(acceptEncoding);
+    if (!acceptsBr && !acceptsGz) return next();
+
+    let decodedPath;
+    try {
+        decodedPath = decodeURIComponent(req.path);
+    } catch (_) {
+        return next();
+    }
+    if (decodedPath === "/") decodedPath = "/index.html";
+    if (
+        decodedPath.startsWith("/api/") ||
+        decodedPath.startsWith("/uploads/") ||
+        decodedPath.startsWith("/admin") ||
+        decodedPath.startsWith("/socket.io") ||
+        decodedPath.includes("..")
+    ) {
+        return next();
+    }
+
+    const baseName = path.basename(decodedPath);
+    if (baseName.includes("service_worker") || baseName.includes("sw.js") || baseName === "release.json" || baseName === "version.json") {
+        return next();
+    }
+
+    const candidate = path.resolve(resolvedStaticRoot, "." + decodedPath);
+    if (!candidate.startsWith(resolvedStaticRoot + path.sep)) return next();
+
+    let compressedPath = null;
+    let encoding = null;
+    if (acceptsBr && fs.existsSync(candidate + ".br")) {
+        compressedPath = candidate + ".br";
+        encoding = "br";
+    } else if (acceptsGz && fs.existsSync(candidate + ".gz")) {
+        compressedPath = candidate + ".gz";
+        encoding = "gzip";
+    }
+    if (!compressedPath) return next();
+
+    res.type(path.extname(candidate));
+    res.setHeader("Content-Encoding", encoding);
+    res.setHeader("Vary", "Accept-Encoding");
+    setStaticCacheHeaders(res, candidate, req);
+    return res.sendFile(compressedPath, { cacheControl: false }, (err) => {
+        if (err && !res.headersSent) next();
+    });
+});
 
 // Phục vụ static file tối ưu với ETag, Last-Modified và Cache thông minh
 app.use(express.static(staticPath, {
     etag: true,
     lastModified: true,
     maxAge: "7d",
-    setHeaders: (res, filePath) => {
-        const basename = path.basename(filePath);
-        // HTML, version.json và Service Worker luôn revalidate để nhận diện bản build mới ngay tức thì
-        if (basename === "index.html" || basename === "version.json" || basename.includes("service_worker") || basename.includes("sw.js") || basename === "flutter.js" || basename.includes("main.dart") || basename.includes("flutter_bootstrap") || basename.includes("webrtc_audio_helper")) {
-            res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
-            res.setHeader("Pragma", "no-cache");
-            res.setHeader("Expires", "0");
-        } else if (filePath.match(/\.(wasm|js\.symbols)$/)) {
-            // Canvaskit WASM (6.7MB), symbol maps: Revalidate unversioned URLs; release worker handles warm cache
-            res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
-        } else if (filePath.match(/\.(otf|ttf|woff|woff2)$/)) {
-            // Fonts: revalidate HTTP cache across releases
-            res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
-        } else if (basename.endsWith(".js")) {
-            // Scripts: ETag revalidation prevents mixing old and new releases
-            res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
-        } else if (filePath.match(/\.(png|jpg|jpeg|svg|gif|webp|ico|mp3)$/)) {
-            // Hình ảnh, âm thanh: Cache 7 ngày
-            res.setHeader("Cache-Control", "public, max-age=604800, stale-while-revalidate=86400");
-        }
-    }
+    setHeaders: (res, filePath) => setStaticCacheHeaders(res, filePath, res.req)
 }));
 
 // Mở thư mục chứa file upload cục bộ
@@ -890,7 +958,8 @@ app.use((req, res, next) => {
 
         const indexPath = path.join(staticPath, "index.html");
         if (fs.existsSync(indexPath)) {
-            return res.sendFile(indexPath);
+            res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
+            return res.sendFile(indexPath, { cacheControl: false });
         }
     }
     next();

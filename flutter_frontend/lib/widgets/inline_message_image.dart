@@ -1,6 +1,6 @@
 import 'skeleton_box.dart';
 import 'dart:async';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../utils/inline_image_cache.dart';
 
@@ -91,7 +91,7 @@ class _InlineMessageImageState extends State<InlineMessageImage> {
     }
     return Image.memory(
       _bytes!,
-      cacheWidth: widget.cacheWidth,
+      cacheWidth: kIsWeb ? null : widget.cacheWidth,
       frameBuilder: (_, child, frame, synchronous) => synchronous || frame != null
           ? child : const SkeletonBox(width: 240, height: 180, borderRadius: 16),
       fit: widget.fit,

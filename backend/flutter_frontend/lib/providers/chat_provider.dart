@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
@@ -1193,8 +1194,10 @@ class ChatProvider extends ChangeNotifier {
           ApiService.formatThumbnailUrl(ApiService.formatImageUrl(url), width: 450);
       if (thumbUrl.isEmpty || !_warmedImageUrls.add(thumbUrl)) continue;
       started++;
-      final stream = ResizeImage(NetworkImage(thumbUrl), width: 450)
-          .resolve(ImageConfiguration.empty);
+      final ImageProvider networkImage = NetworkImage(thumbUrl);
+      final ImageProvider provider =
+          kIsWeb ? networkImage : ResizeImage(networkImage, width: 450);
+      final stream = provider.resolve(ImageConfiguration.empty);
       late final ImageStreamListener listener;
       listener = ImageStreamListener(
         (_, __) => stream.removeListener(listener),

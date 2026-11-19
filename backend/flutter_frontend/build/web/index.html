@@ -11,24 +11,70 @@
 
   <!-- Fast CDN Preconnects -->
   <link rel="preconnect" href="https://chat-tho-fi-vn-9s8u.onrender.com" crossorigin>
-  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="dns-prefetch" href="https://www.gstatic.com">
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
 
-  <!-- High Priority Preloads for Instant Native Startup -->
-  <link rel="preload" href="/flutter_bootstrap.js?v=9ca35f90336aee87" as="script">
-  <link rel="preload" href="/web_notifications.js?v=9ca35f90336aee87" as="script">
-  <link rel="preload" href="/webrtc_audio_helper.js?v=9ca35f90336aee87" as="script">
-  <link rel="preload" href="/tho_fi_logo_transparent.png" as="image">
-  <!-- Preload Reaction Emojis for Instant Zero-Lag Reaction & Chat Render -->
-  <link rel="preload" href="/assets/assets/emojis/2764-fe0f.png" as="image">
-  <link rel="preload" href="/assets/assets/emojis/1f44d.png" as="image">
-  <link rel="preload" href="/assets/assets/emojis/1f606.png" as="image">
-  <link rel="preload" href="/assets/assets/emojis/1f62e.png" as="image">
-  <link rel="preload" href="/assets/assets/emojis/1f622.png" as="image">
-  <link rel="preload" href="/assets/assets/emojis/1f621.png" as="image">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap">
+  <!-- High Priority Preloads & Early Parallel Engine Boot -->
+  <link rel="preload" href="/flutter_bootstrap.js?v=085b702da054bd43" as="script" fetchpriority="high">
+  <link rel="preload" href="/tho_fi_logo_transparent.png" as="image" fetchpriority="high">
+  <style>body, button, input, textarea, select { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }</style>
+  <script id="app-code-loader">
+    // Start downloading main.dart.js and CanvasKit WASM from <head> in parallel
+    // with HTML parsing, while still safely purging stale SW caches on upgrades.
+    (async function () {
+      const version = '085b702da054bd43';
+      const corePaths = new Set(['/main.dart.js', '/flutter_bootstrap.js', '/webrtc_audio_helper.js', '/web_notifications.js', '/app_fonts.css', '/assets/FontManifest.json', '/assets/AssetManifest.json', '/assets/AssetManifest.bin']);
+      if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
+        const preloadMain = document.createElement('link');
+        preloadMain.rel = 'preload';
+        preloadMain.as = 'script';
+        preloadMain.fetchPriority = 'high';
+        preloadMain.href = '/main.dart.js?v=' + version;
+        document.head.appendChild(preloadMain);
+      }
+      async function cleanStaleCachesIfNeeded() {
+        if (!('caches' in window) || navigator.onLine === false) return;
+        const names = await caches.keys();
+        const staleNames = names.filter(function (name) {
+          return (name.startsWith('chat-thofi-assets-') || name === 'flutter-app-cache') &&
+            name !== 'chat-thofi-assets-' + version;
+        });
+        if (!staleNames.length) return;
+        const controller = new AbortController();
+        const timer = setTimeout(function () { controller.abort(); }, 5000);
+        try {
+          const response = await fetch('/release.json?startup=' + version, {cache: 'no-store', signal: controller.signal});
+          const release = response.ok ? await response.json() : null;
+          if (release && release.version === version) {
+            for (const name of staleNames) {
+              const cache = await caches.open(name);
+              for (const request of await cache.keys()) {
+                if (corePaths.has(new URL(request.url).pathname)) await cache.delete(request);
+              }
+            }
+          }
+        } catch (_) { /* Offline startup retains its last complete cached code. */ }
+        finally { clearTimeout(timer); }
+      }
+      function loadScript(src, asyncLoad) {
+        return new Promise(function (resolve, reject) {
+          const script = document.createElement('script');
+          script.src = src;
+          script.async = asyncLoad !== false;
+          script.onload = resolve;
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+      }
+      await cleanStaleCachesIfNeeded();
+      await Promise.all([
+        loadScript('/flutter_bootstrap.js?v=' + version, true),
+        loadScript('/web_notifications.js?v=' + version, true).catch(function (e) { console.warn('[App startup] web_notifications:', e); }),
+        loadScript('/webrtc_audio_helper.js?v=' + version, true).catch(function (e) { console.warn('[App startup] webrtc_audio_helper:', e); }),
+      ]);
+    })().catch(function (error) { console.error('[App startup]', error); });
+  </script>
 
 
   <!-- PWA Standalone Meta Tags (iOS & Android) -->
@@ -309,21 +355,44 @@
 
   <link rel="manifest" href="/manifest.json">
 
-  <!-- Firebase Web SDK (v10 compat) -->
-  <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-  <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
-
-  <!-- jsQR Library for Real-time Web QR Code Scanning -->
-  <script defer src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <!-- Firebase SDK is lazy-loaded on demand inside web_notifications.js -->
+  <!-- jsQR Library is lazy-loaded on demand when QR Scanner opens -->
   <script>
     window.webQrScanner = {
       stream: null,
       video: null,
       animationFrameId: null,
       isScanning: false,
+      jsQrPromise: null,
+      ensureJsQr: function () {
+        if (window.jsQR) return Promise.resolve(window.jsQR);
+        if (!this.jsQrPromise) {
+          this.jsQrPromise = new Promise(function (resolve, reject) {
+            const existing = document.querySelector('script[src*="jsQR.js"]');
+            if (existing) {
+              if (window.jsQR) { resolve(window.jsQR); return; }
+              existing.addEventListener('load', function () { resolve(window.jsQR); }, { once: true });
+              existing.addEventListener('error', reject, { once: true });
+              return;
+            }
+            const s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';
+            s.async = true;
+            s.onload = function () { resolve(window.jsQR); };
+            s.onerror = reject;
+            document.head.appendChild(s);
+          }).catch((err) => {
+            this.jsQrPromise = null;
+            console.error('[WebQrScanner] Failed to load jsQR:', err);
+            return null;
+          });
+        }
+        return this.jsQrPromise;
+      },
       start: async function (containerId) {
         this.pause();
         this.isScanning = true;
+        this.ensureJsQr();
         console.log('[WebQrScanner] Initializing camera for container:', containerId);
 
         try {
@@ -422,7 +491,8 @@
       },
       scanImage: function (dataUrl) {
         const img = new Image();
-        img.onload = () => {
+        img.onload = async () => {
+          await this.ensureJsQr();
           const canvas = document.createElement('canvas');
           canvas.width = img.width;
           canvas.height = img.height;
@@ -440,6 +510,8 @@
             } else {
               window.dispatchEvent(new CustomEvent('qr-scan-failed', { detail: 'No QR code found in image' }));
             }
+          } else {
+            window.dispatchEvent(new CustomEvent('qr-scan-failed', { detail: 'QR scanner library failed to load' }));
           }
         };
         img.src = dataUrl;
@@ -818,8 +890,6 @@
       console.log('📳 [Vibration] Đã dừng rung cuộc gọi.');
     };
   </script>
-
-  <link rel="stylesheet" href="app_fonts.css">
 </head>
 
 <body>
@@ -1528,7 +1598,7 @@
   <div id="ai-drawer-panel" class="ai-drawer-panel">
     <div class="ai-drawer-header">
       <div class="ai-drawer-title">
-        <img src="/icon.png" style="width:24px;height:24px;border-radius:50%;" />
+        <img src="/icon-192.png" loading="lazy" decoding="async" style="width:24px;height:24px;border-radius:50%;" />
         <span>Lịch sử chat AI</span>
       </div>
       <button class="ai-drawer-close" onclick="window.closeAiHistory()">✕</button>
@@ -2790,9 +2860,9 @@
   <!-- Thẻ audio và video chuyên biệt cho WebRTC và chuông cuộc gọi -->
   <audio id="remoteAudioPlayer" autoplay playsinline
     style="position:fixed;bottom:0;right:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:999999;"></audio>
-  <audio id="callRingtoneAudio" loop preload="auto" src="/ringtone.mp3" style="display:none;"></audio>
-  <audio id="callTutTutAudio" loop preload="auto" src="/tuttut.mp3" style="display:none;"></audio>
-  <audio id="callEndAudio" preload="auto" src="/amthanhtat.mp3" style="display:none;"></audio>
+  <audio id="callRingtoneAudio" loop preload="none" src="/ringtone.mp3" style="display:none;"></audio>
+  <audio id="callTutTutAudio" loop preload="none" src="/tuttut.mp3" style="display:none;"></audio>
+  <audio id="callEndAudio" preload="none" src="/amthanhtat.mp3" style="display:none;"></audio>
 
   <script id="call-audio-engine-script">
     (function () {
@@ -2915,17 +2985,26 @@
         }
       };
 
+      let _pwaBannerPollTimer = null;
       function checkPwaFloatingBanner() {
+        const isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || (window.navigator && window.navigator.standalone === true);
         // Tự động ẩn nếu người dùng đã đăng nhập vào trong màn hình chat
         const token = localStorage.getItem('flutter.authToken');
         const isChatActive = !!(window._chatScreenState || (window.$ && window.$._activeChatScreenState) || window._currentUser);
-        if (token || isChatActive) {
+        if (isStandalone || token || isChatActive) {
           window.hidePwaFloatingBar();
+          if (_pwaBannerPollTimer) {
+            clearInterval(_pwaBannerPollTimer);
+            _pwaBannerPollTimer = null;
+          }
         }
       }
 
       window.checkPwaFloatingBanner = checkPwaFloatingBanner;
-      setInterval(checkPwaFloatingBanner, 600);
+      checkPwaFloatingBanner();
+      if (!localStorage.getItem('flutter.authToken')) {
+        _pwaBannerPollTimer = setInterval(checkPwaFloatingBanner, 1200);
+      }
     })();
   </script>
 
@@ -3436,7 +3515,7 @@
 
   <script id="app-update-manager">
     (function () {
-      const pageVersion = '9ca35f90336aee87';
+      const pageVersion = '085b702da054bd43';
       let checking = false;
       let lastCheck = 0;
       function showUpdate(version) {
@@ -3488,57 +3567,12 @@
           }
         } catch (_) {} finally {clearTimeout(timer);checking = false;}
       }
-      window.addEventListener('pageshow', check);
+      window.addEventListener('pageshow', function (e) { if (e.persisted) check(); });
       window.addEventListener('online', function () {lastCheck = 0;check();});
       document.addEventListener('visibilitychange', check);
       setInterval(check, 5 * 60 * 1000);
-      setTimeout(check, 1000);
+      setTimeout(check, 4000);
     })();
-  </script>
-
-  <script id="app-code-loader">
-    // An older PWA worker ignores ?v= when matching code in its cache. Remove
-    // only stale public code after verifying this release is reachable online.
-    (async function () {
-      const version = '9ca35f90336aee87';
-      const corePaths = new Set(['/main.dart.js', '/flutter_bootstrap.js', '/webrtc_audio_helper.js', '/web_notifications.js', '/app_fonts.css', '/assets/FontManifest.json', '/assets/AssetManifest.json', '/assets/AssetManifest.bin']);
-      async function cleanStaleCaches() {
-        if (!('caches' in window) || navigator.onLine === false) return;
-        const controller = new AbortController();
-        const timer = setTimeout(function () { controller.abort(); }, 5000);
-        try {
-          const response = await fetch('/release.json?startup=' + version, {cache: 'no-store', signal: controller.signal});
-          const release = response.ok ? await response.json() : null;
-          if (release && release.version === version) {
-            const names = await caches.keys();
-            for (const name of names) {
-              if ((!name.startsWith('chat-thofi-assets-') && name !== 'flutter-app-cache') || name === 'chat-thofi-assets-' + version) continue;
-              const cache = await caches.open(name);
-              for (const request of await cache.keys()) {
-                if (corePaths.has(new URL(request.url).pathname)) await cache.delete(request);
-              }
-            }
-          }
-        } catch (_) { /* Offline startup retains its last complete cached code. */ }
-        finally { clearTimeout(timer); }
-      }
-      function loadScript(src) {
-        return new Promise(function (resolve, reject) {
-          const script = document.createElement('script');
-          script.src = src;
-          script.async = false;
-          script.onload = resolve;
-          script.onerror = reject;
-          document.body.appendChild(script);
-        });
-      }
-      await Promise.all([
-        cleanStaleCaches(),
-        loadScript('/web_notifications.js?v=' + version),
-        loadScript('/webrtc_audio_helper.js?v=' + version),
-      ]);
-      await loadScript('/flutter_bootstrap.js?v=' + version);
-    })().catch(function (error) { console.error('[App startup]', error); });
   </script>
 
 </body>

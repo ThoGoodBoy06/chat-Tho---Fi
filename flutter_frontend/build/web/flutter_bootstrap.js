@@ -10,9 +10,19 @@ _flutter.buildConfig = {"engineRevision":"f6344b75dcf861d8bf1f1322780b8811f982e3
 
 
 for (const build of _flutter.buildConfig.builds) {
-  if (build.mainJsPath) build.mainJsPath += '?v=9ca35f90336aee87';
+  if (build.mainJsPath) build.mainJsPath += '?v=085b702da054bd43';
 }
+const _bootConfig = {renderer: 'canvaskit', canvasKitBaseUrl: 'canvaskit/', useColorEmoji: true};
 _flutter.loader.load({
-  config: {renderer: 'canvaskit', canvasKitBaseUrl: 'canvaskit/', useColorEmoji: true},
-  serviceWorkerSettings: null
+  config: _bootConfig,
+  serviceWorkerSettings: null,
+  onEntrypointLoaded: async function (engineInitializer) {
+    if (document.readyState === 'loading') {
+      await new Promise(function (resolve) {
+        document.addEventListener('DOMContentLoaded', resolve, {once: true});
+      });
+    }
+    const appRunner = await engineInitializer.initializeEngine(_bootConfig);
+    await appRunner.runApp();
+  }
 });

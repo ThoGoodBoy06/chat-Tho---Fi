@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
@@ -185,14 +186,17 @@ class _ReaderPhotoState extends State<_ReaderPhoto> {
   @override
   Widget build(BuildContext context)=>Image.network(widget.url, key:ValueKey(_attempt),
     fit:BoxFit.contain, semanticLabel:widget.alt.isEmpty ? 'Ảnh trong bài báo' : widget.alt,
-    cacheWidth:1440,
+    cacheWidth:kIsWeb ? null : 1440,
     frameBuilder:(_,child,frame,synchronous)=>synchronous || frame!=null ? child
       : const SkeletonBox(width:double.infinity,height:double.infinity,borderRadius:12),
     errorBuilder:(_,__,___)=>Center(child:Column(mainAxisSize:MainAxisSize.min,children:[
       const Icon(Icons.image_not_supported_outlined),const SizedBox(height:8),
       const Text('Chưa tải được ảnh'),
       TextButton(onPressed:() async {
-        await ResizeImage(NetworkImage(widget.url),width:1440).evict();
+        final ImageProvider networkImage = NetworkImage(widget.url);
+        final ImageProvider provider =
+            kIsWeb ? networkImage : ResizeImage(networkImage, width: 1440);
+        await provider.evict();
         if(mounted)setState(()=>_attempt++);
       },child:const Text('Thử lại ảnh')),
     ])),

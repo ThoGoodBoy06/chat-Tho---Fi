@@ -72,6 +72,26 @@ function sendBinaryImage(res, buffer, contentType, maxAge = 86400) {
   return res.end(buffer);
 }
 
+// Chuẩn hóa kích thước ảnh ngay trên server (WebP nhẹ, giúp Flutter Web không cần ResizeImage gây readPixels/PNG-encode)
+async function optimizeUserImage(buffer, contentType, maxDimension) {
+  if (!sharp || !buffer || buffer.length < 100) {
+    return { buffer, contentType: contentType || "image/jpeg" };
+  }
+  if (contentType && contentType.includes("svg")) {
+    return { buffer, contentType };
+  }
+  try {
+    const out = await sharp(buffer, { failOnError: false, limitInputPixels: 25000000 })
+      .rotate()
+      .resize({ width: maxDimension, height: maxDimension, fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 82, effort: 2 })
+      .toBuffer();
+    return { buffer: out, contentType: "image/webp" };
+  } catch (_) {
+    return { buffer, contentType: contentType || "image/jpeg" };
+  }
+}
+
 // Endpoint lấy ảnh đại diện của User dưới dạng file ảnh binary thực tế
 exports.getUserAvatar = async (req, res) => {
   try {
@@ -131,14 +151,15 @@ exports.getUserAvatar = async (req, res) => {
       return sendBinaryImage(res, pngBuffer, contentType, 3600);
     }
 
-    // Nếu là đường dẫn URL http(s) (VD: Supabase Storage / Cloudflare R2) -> tải & lưu đệm binary vào RAM
+    // Nếu là đường dẫn URL http(s) (VD: Supabase Storage / Cloudflare R2) -> tải, chuẩn hóa WebP & lưu đệm vào RAM
     if (rawAvatar.startsWith("http://") || rawAvatar.startsWith("https://")) {
       try {
         const resp = await fetch(rawAvatar);
         if (resp.ok) {
-          const contentType = resp.headers.get("content-type") || "image/jpeg";
-          const buffer = Buffer.from(await resp.arrayBuffer());
-          if (buffer.length > 0) {
+          const rawCt = resp.headers.get("content-type") || "image/jpeg";
+          const rawBuf = Buffer.from(await resp.arrayBuffer());
+          if (rawBuf.length > 0) {
+            const { buffer, contentType } = await optimizeUserImage(rawBuf, rawCt, 384);
             const entry = { buffer, contentType, timestamp: Date.now() };
             avatarCache.set(cleanId, entry);
             if (user.id) avatarCache.set(user.id, entry);
@@ -161,9 +182,10 @@ exports.getUserAvatar = async (req, res) => {
       ];
       for (const filePath of candidates) {
         if (fs.existsSync(filePath)) {
-          const buffer = await fs.promises.readFile(filePath);
+          const rawBuf = await fs.promises.readFile(filePath);
           const ext = path.extname(filePath).toLowerCase();
-          const contentType = ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : "image/jpeg";
+          const rawCt = ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : "image/jpeg";
+          const { buffer, contentType } = await optimizeUserImage(rawBuf, rawCt, 384);
           const entry = { buffer, contentType, timestamp: Date.now() };
           avatarCache.set(cleanId, entry);
           if (user.id) avatarCache.set(user.id, entry);
@@ -175,9 +197,9 @@ exports.getUserAvatar = async (req, res) => {
     // Nếu là chuỗi Data URL Base64 (VD: data:image/png;base64,...)
     const matches = rawAvatar.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
     if (matches && matches.length === 3) {
-      const contentType = matches[1];
-      const base64Data = matches[2];
-      const buffer = Buffer.from(base64Data, "base64");
+      const rawCt = matches[1];
+      const rawBuf = Buffer.from(matches[2], "base64");
+      const { buffer, contentType } = await optimizeUserImage(rawBuf, rawCt, 384);
       const entry = { buffer, contentType, timestamp: Date.now() };
       avatarCache.set(cleanId, entry);
       if (user.id) avatarCache.set(user.id, entry);
@@ -186,11 +208,12 @@ exports.getUserAvatar = async (req, res) => {
 
     // Trả về trực tiếp nếu là Base64 thuần không có tiền tố data:
     try {
-      const buffer = Buffer.from(rawAvatar, "base64");
-      const entry = { buffer, contentType: "image/jpeg", timestamp: Date.now() };
+      const rawBuf = Buffer.from(rawAvatar, "base64");
+      const { buffer, contentType } = await optimizeUserImage(rawBuf, "image/jpeg", 384);
+      const entry = { buffer, contentType, timestamp: Date.now() };
       avatarCache.set(cleanId, entry);
       if (user.id) avatarCache.set(user.id, entry);
-      return sendBinaryImage(res, buffer, "image/jpeg");
+      return sendBinaryImage(res, buffer, contentType);
     } catch (e) {
       const pngBuffer = await generateInitialsPngBuffer(user.fullName || "U");
       return sendBinaryImage(res, pngBuffer, sharp ? "image/png" : "image/svg+xml", 3600);
@@ -222,14 +245,15 @@ exports.getUserCover = async (req, res) => {
 
     // 1. Kiểm tra RAM Cache
     const cached = coverCache.get(cleanId);
-    if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
-      if (cached.isRedirect) return res.redirect(cached.redirectUrl);
-      res.writeHead(200, {
-        "Content-Type": cached.contentType,
-        "Content-Length": cached.buffer.length,
-        "Cache-Control": "public, max-age=86400, must-revalidate"
-      });
-      return res.end(cached.buffer);
+    if (cached) {
+      const ttl = cached.isEmpty ? 300 * 1000 : CACHE_TTL;
+      if (Date.now() - cached.timestamp < ttl) {
+        if (cached.isEmpty) {
+          return sendBinaryImage(res, transparentPixel, "image/png", 300);
+        }
+        if (cached.isRedirect) return res.redirect(cached.redirectUrl);
+        return sendBinaryImage(res, cached.buffer, cached.contentType, 86400);
+      }
     }
 
     // 2. Query DB theo UUID hoặc Username / Phone / Email
@@ -261,48 +285,56 @@ exports.getUserCover = async (req, res) => {
     }
 
     if (!user || !user.coverPhoto) {
-      res.writeHead(200, {
-        "Content-Type": "image/png",
-        "Cache-Control": "no-cache"
-      });
-      return res.end(transparentPixel);
+      const emptyEntry = { isEmpty: true, timestamp: Date.now() };
+      coverCache.set(cleanId, emptyEntry);
+      if (user && user.id) coverCache.set(user.id, emptyEntry);
+      return sendBinaryImage(res, transparentPixel, "image/png", 300);
     }
 
-    if (user.coverPhoto.startsWith("http") || user.coverPhoto.startsWith("/")) {
+    if (user.coverPhoto.startsWith("http://") || user.coverPhoto.startsWith("https://")) {
+      try {
+        const resp = await fetch(user.coverPhoto);
+        if (resp.ok) {
+          const rawCt = resp.headers.get("content-type") || "image/jpeg";
+          const rawBuf = Buffer.from(await resp.arrayBuffer());
+          if (rawBuf.length > 0) {
+            const { buffer, contentType } = await optimizeUserImage(rawBuf, rawCt, 1200);
+            const entry = { buffer, contentType, timestamp: Date.now() };
+            coverCache.set(cleanId, entry);
+            if (user.id) coverCache.set(user.id, entry);
+            return sendBinaryImage(res, buffer, contentType, 86400);
+          }
+        }
+      } catch (_) {}
+      coverCache.set(cleanId, { isRedirect: true, redirectUrl: user.coverPhoto, timestamp: Date.now() });
+      return res.redirect(user.coverPhoto);
+    }
+
+    if (user.coverPhoto.startsWith("/")) {
       coverCache.set(cleanId, { isRedirect: true, redirectUrl: user.coverPhoto, timestamp: Date.now() });
       return res.redirect(user.coverPhoto);
     }
 
     const matches = user.coverPhoto.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
     if (matches && matches.length === 3) {
-      const contentType = matches[1];
-      const base64Data = matches[2];
-      const buffer = Buffer.from(base64Data, "base64");
-
-      coverCache.set(cleanId, { buffer, contentType, timestamp: Date.now() });
-      res.writeHead(200, {
-        "Content-Type": contentType,
-        "Content-Length": buffer.length,
-        "Cache-Control": "public, max-age=86400, must-revalidate"
-      });
-      return res.end(buffer);
+      const rawCt = matches[1];
+      const rawBuf = Buffer.from(matches[2], "base64");
+      const { buffer, contentType } = await optimizeUserImage(rawBuf, rawCt, 1200);
+      const entry = { buffer, contentType, timestamp: Date.now() };
+      coverCache.set(cleanId, entry);
+      if (user.id) coverCache.set(user.id, entry);
+      return sendBinaryImage(res, buffer, contentType, 86400);
     }
 
     try {
-      const buffer = Buffer.from(user.coverPhoto, "base64");
-      coverCache.set(cleanId, { buffer, contentType: "image/jpeg", timestamp: Date.now() });
-      res.writeHead(200, {
-        "Content-Type": "image/jpeg",
-        "Content-Length": buffer.length,
-        "Cache-Control": "public, max-age=86400, must-revalidate"
-      });
-      return res.end(buffer);
+      const rawBuf = Buffer.from(user.coverPhoto, "base64");
+      const { buffer, contentType } = await optimizeUserImage(rawBuf, "image/jpeg", 1200);
+      const entry = { buffer, contentType, timestamp: Date.now() };
+      coverCache.set(cleanId, entry);
+      if (user.id) coverCache.set(user.id, entry);
+      return sendBinaryImage(res, buffer, contentType, 86400);
     } catch (e) {
-      res.writeHead(200, {
-        "Content-Type": "image/png",
-        "Cache-Control": "no-cache"
-      });
-      return res.end(transparentPixel);
+      return sendBinaryImage(res, transparentPixel, "image/png", 300);
     }
   } catch (error) {
     console.error("Lỗi khi tải cover photo:", error.message);

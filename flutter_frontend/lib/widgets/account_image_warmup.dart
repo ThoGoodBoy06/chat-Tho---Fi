@@ -11,7 +11,9 @@ ImageProvider profileCoverImage(String? url) {
   if (url == null || url.isEmpty) {
     return const ExactAssetImage('assets/profile-cover-bay.webp');
   }
-  return ResizeImage(NetworkImage(ApiService.formatImageUrl(url)), width: 1200);
+  final image = NetworkImage(ApiService.formatImageUrl(url));
+  if (kIsWeb) return image;
+  return ResizeImage(image, width: 1200);
 }
 
 /// Starts as soon as cached account data is displayed, without waiting for API
@@ -20,32 +22,54 @@ class AccountImageWarmup extends StatelessWidget {
   const AccountImageWarmup({super.key});
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<ChatProvider>();
-    final user = provider.currentUser;
-    final images = <ImageProvider>[];
-    if (user != null) {
-      if (user.avatar?.isNotEmpty == true) {
-        final image = NetworkImage(ApiService.formatImageUrl(user.avatar!));
-        images.add(resizeAvatar(image, size: 192));
-      }
-      images.add(profileCoverImage(user.coverImage));
-      if (user.avatar?.isNotEmpty == true) {
-        images.add(resizeAvatar(
-            NetworkImage(ApiService.formatImageUrl(user.avatar!)),
-            size: 384));
-      }
-      for (final conversation in provider.conversations.take(12)) {
-        if (conversation.avatar?.isNotEmpty == true) {
-          images.add(resizeAvatar(
-              NetworkImage(ApiService.formatImageUrl(conversation.avatar!)),
-              size: 192));
+    return Selector<ChatProvider, ({String? userId, String? avatar, String? cover, List<String> convAvatars})>(
+      selector: (_, provider) {
+        final user = provider.currentUser;
+        final convAvatars = <String>[];
+        if (user != null) {
+          for (final conversation in provider.conversations.take(10)) {
+            final av = conversation.avatar;
+            if (av != null && av.isNotEmpty) convAvatars.add(av);
+          }
         }
-      }
-    }
-    return ValueListenableBuilder<bool>(
-      valueListenable: NetworkStatus.online,
-      builder: (_, online, __) =>
-          ImageWarmup(key: ValueKey(user?.id), images: images, enabled: online),
+        return (
+          userId: user?.id,
+          avatar: user?.avatar,
+          cover: user?.coverImage,
+          convAvatars: convAvatars,
+        );
+      },
+      shouldRebuild: (prev, next) =>
+          prev.userId != next.userId ||
+          prev.avatar != next.avatar ||
+          prev.cover != next.cover ||
+          !listEquals(prev.convAvatars, next.convAvatars),
+      builder: (_, data, __) {
+        final images = <ImageProvider>[];
+        if (data.userId != null) {
+          if (data.avatar?.isNotEmpty == true) {
+            final image = NetworkImage(ApiService.formatImageUrl(data.avatar!));
+            images.add(resizeAvatar(image, size: 192));
+            if (!kIsWeb) {
+              images.add(resizeAvatar(image, size: 384));
+            }
+          }
+          images.add(profileCoverImage(data.cover));
+          for (final avatarUrl in data.convAvatars) {
+            images.add(resizeAvatar(
+                NetworkImage(ApiService.formatImageUrl(avatarUrl)),
+                size: 192));
+          }
+        }
+        return ValueListenableBuilder<bool>(
+          valueListenable: NetworkStatus.online,
+          builder: (_, online, __) => ImageWarmup(
+            key: ValueKey(data.userId),
+            images: images,
+            enabled: online,
+          ),
+        );
+      },
     );
   }
 }

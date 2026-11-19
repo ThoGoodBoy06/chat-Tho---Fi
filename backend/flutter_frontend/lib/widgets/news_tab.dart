@@ -325,7 +325,7 @@ class NewsArticleRow extends StatelessWidget {
                           width: 88,
                           height: 88,
                           fit: BoxFit.cover,
-                          cacheWidth: 264,
+                          cacheWidth: kIsWeb ? null : 264,
                           frameBuilder: (_, child, frame, synchronous) =>
                               synchronous || frame != null
                                   ? child
@@ -385,7 +385,7 @@ class NewsLeadArticle extends StatelessWidget {
                             : Image.network(
                                 '${ApiService.baseUrl}/news/image/${Uri.encodeComponent(article!.id)}',
                                 fit: BoxFit.cover,
-                                cacheWidth: 1200,
+                                cacheWidth: kIsWeb ? null : 1200,
                                 frameBuilder: (_, child, frame, synchronous) =>
                                     synchronous || frame != null
                                         ? child

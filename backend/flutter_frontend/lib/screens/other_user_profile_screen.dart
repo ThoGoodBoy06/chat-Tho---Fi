@@ -3,6 +3,7 @@ import '../widgets/skeleton_box.dart';
 import '../widgets/loading_photo.dart';
 import 'profile_photo_viewer.dart';
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/chat_provider.dart';
@@ -418,7 +419,9 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen> {
                     ),
                     child: coverUrl.isNotEmpty
                         ? LoadingPhoto(
-                            image: ResizeImage(NetworkImage(coverUrl), width: 1024),
+                            image: kIsWeb
+                                ? (NetworkImage(coverUrl) as ImageProvider<Object>)
+                                : ResizeImage(NetworkImage(coverUrl), width: 1024),
                             width: double.infinity,
                             height: 220,
                           )
